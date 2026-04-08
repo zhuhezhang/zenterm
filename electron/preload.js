@@ -1,17 +1,14 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
-contextBridge.exposeInMainWorld('zterm', {
-  // 系统路径
-  getDownloadsPath: () => ipcRenderer.sendSync('app:getDownloadsPath'),
-  chooseDirectory: () => ipcRenderer.invoke('app:chooseDirectory'),
+contextBridge.exposeInMainWorld('zterm', {  // 在渲染进程中通过window.zterm访问暴露的API
+  getDownloadsPath: () => ipcRenderer.sendSync('app:getDownloadsPath'),  // 同步调用主进程获取下载目录路径
+  chooseDirectory: () => ipcRenderer.invoke('app:chooseDirectory'),  // 弹出目录选择框，返回选中的目录路径（异步）
 
-  // 日志
-  log: {
+  log: {  // 日志写入
     write: (logDir, sessionId, data) => ipcRenderer.send('log:write', logDir, sessionId, data),
   },
 
-  // Window controls
-  window: {
+  window: {  // 窗口控制
     minimize: () => ipcRenderer.send('window:minimize'),
     maximize: () => ipcRenderer.send('window:maximize'),
     close: () => ipcRenderer.send('window:close'),
@@ -19,8 +16,7 @@ contextBridge.exposeInMainWorld('zterm', {
     onMaximized: (cb) => ipcRenderer.on('window:maximized', (_, v) => cb(v)),
   },
 
-  // SSH
-  ssh: {
+  ssh: {  // SSH
     connect: (id, config) => ipcRenderer.invoke('ssh:connect', id, config),
     disconnect: (id) => ipcRenderer.invoke('ssh:disconnect', id),
     sendData: (id, data) => ipcRenderer.send('ssh:data', id, data),
@@ -37,8 +33,7 @@ contextBridge.exposeInMainWorld('zterm', {
     },
   },
 
-  // SFTP
-  sftp: {
+  sftp: {  // SFTP
     connect: (id, config) => ipcRenderer.invoke('sftp:connect', id, config),
     disconnect: (id) => ipcRenderer.invoke('sftp:disconnect', id),
     list: (id, remotePath) => ipcRenderer.invoke('sftp:list', id, remotePath),
@@ -54,8 +49,7 @@ contextBridge.exposeInMainWorld('zterm', {
     },
   },
 
-  // Telnet
-  telnet: {
+  telnet: {  // Telnet
     connect: (id, config) => ipcRenderer.invoke('telnet:connect', id, config),
     disconnect: (id) => ipcRenderer.invoke('telnet:disconnect', id),
     sendData: (id, data) => ipcRenderer.send('telnet:data', id, data),

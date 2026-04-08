@@ -33,7 +33,6 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')  // 开发环境加载 Vite 开发服务器地址
-    // mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))  // 生产环境加载打包后的静态文件
   }
@@ -51,7 +50,7 @@ function createWindow() {
   // 每当渲染进程通过 window:isMaximized 通道发送 ipcRender.invoke 消息时，该函数就会作为回调函数来处理这个消息，然后将返回值送回到最初的 invoke 调用
   ipcMain.handle('window:isMaximized', () => mainWindow.isMaximized())
 
-  mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized', true))
+  mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized', true))  // 当窗口被最大化时，向渲染进程发送 window:maximized 消息
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximized', false))
 
 
@@ -59,8 +58,7 @@ function createWindow() {
     e.returnValue = app.getPath('downloads')  // 同步返回下载目录路径
   })
 
-  // 弹出目录选择框，返回选中的目录路径
-  ipcMain.handle('app:chooseDirectory', async () => {
+  ipcMain.handle('app:chooseDirectory', async () => {  // 弹出目录选择框，返回选中的目录路径
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory', 'createDirectory'],
       title: '选择日志保存目录',
@@ -68,11 +66,10 @@ function createWindow() {
     return result.canceled ? null : result.filePaths[0]
   })
 
-  // 日志写入
-  ipcMain.on('log:write', (e, logDir, sessionId, data) => {
+  ipcMain.on('log:write', (e, logDir, sessionId, data) => {  // 日志写入：参数为日志路径、日志文件名、日志内容
     try {
       if (!logDir) return
-      fs.mkdirSync(logDir, { recursive: true }) // 确保日志目录存在（recursive可以创建多级目录）
+      fs.mkdirSync(logDir, { recursive: true })  // 确保日志目录存在（recursive可以创建多级目录）
       const safeId = String(sessionId).replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '_').trim() || 'session'  // 只过滤真正的文件名非法字符，保留汉字等 Unicode 字符
       const filePath = path.join(logDir, `${safeId}.log`)
       fs.appendFileSync(filePath, data, 'utf8')
