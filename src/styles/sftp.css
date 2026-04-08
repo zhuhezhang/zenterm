@@ -1,0 +1,222 @@
+.sftp-panel {
+  width: 360px;
+  min-width: 280px;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-subtle);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.sftp-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 40px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.sftp-title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sftp-toolbar {
+  display: flex;
+  gap: 4px;
+}
+
+.sftp-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.sftp-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.sftp-close {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.sftp-close:hover { background: var(--red); color: #fff; }
+
+.sftp-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-subtle);
+  min-height: 32px;
+  flex-shrink: 0;
+}
+
+.sftp-sep {
+  color: var(--text-muted);
+  margin: 0 2px;
+  font-size: 11px;
+}
+
+.sftp-crumb {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: background 0.1s, color 0.1s;
+}
+.sftp-crumb:hover { background: var(--bg-hover); color: var(--accent); }
+
+.sftp-error {
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--red);
+  background: rgba(248,81,73,0.08);
+  border-bottom: 1px solid rgba(248,81,73,0.2);
+}
+
+.sftp-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.sftp-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-hover);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.sftp-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.2s;
+}
+
+.sftp-file-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sftp-loading, .sftp-empty {
+  padding: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sftp-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--border-subtle);
+  position: relative;
+  min-height: 34px;
+}
+
+.sftp-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.sftp-item.selected {
+  background: var(--accent-dim);
+}
+
+.sftp-item-icon { font-size: 14px; flex-shrink: 0; }
+
+.sftp-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.sftp-item-dir .sftp-item-name { color: var(--accent); font-weight: 600; }
+
+.sftp-item-size {
+  width: 64px;
+  text-align: right;
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.sftp-item-date {
+  width: 110px;
+  text-align: right;
+  color: var(--text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.sftp-item-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+.sftp-item:hover .sftp-item-actions { opacity: 1; }
+
+.sftp-action-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border-radius: 3px;
+  color: var(--text-secondary);
+  transition: background 0.1s, color 0.1s;
+}
+.sftp-action-btn:hover        { background: var(--bg-hover); color: var(--text-primary); }
+.sftp-action-btn.danger:hover { background: rgba(248,81,73,0.15); color: var(--red); }
+
+.sftp-rename-input {
+  flex: 1;
+  padding: 2px 6px;
+  font-size: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--text-primary);
+  outline: none;
+}
