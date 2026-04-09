@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback } from 'react'
 import TitleBar from './components/TitleBar.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -7,17 +7,17 @@ import ConnectDialog from './components/ConnectDialog.jsx'
 import SettingsDialog from './components/SettingsDialog.jsx'
 import {
   loadSavedSessions, addSavedSession, removeSavedSession, saveSessions, getGroups,
-  loadGroupPlaceholders, saveGroupPlaceholders, addGroupPlaceholder, removeGroupPlaceholder
+  loadGroupPlaceholders, saveGroupPlaceholders
 } from './store/sessionStorage.js'
 import { loadSettings } from './store/settingsStore.js'
 import './styles/app.css'
 
-const DEFAULT_SIDEBAR_W = 300
+const DEFAULT_SIDEBAR_W = 300  // 默认侧边栏宽度
 // 最小/最大宽度根据窗口宽度动态计算（10% ~ 90%），在鼠标移动时实时限制
-const getMinSidebar = () => Math.max(80, Math.floor(window.innerWidth * 0.10))
+const getMinSidebar = () => Math.max(80, Math.floor(window.innerWidth * 0.10))  // 最小宽度不小于 80px，且不小于窗口宽度的 10%
 const getMaxSidebar = () => Math.floor(window.innerWidth * 0.90)
 
-function generateId() {
+function generateId() {  // 生成唯一会话 ID，格式为 sess-时间戳-随机字符串
   return `sess-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import '../styles/titlebar.css'
 
 const IS_MAC = navigator.userAgent.includes('Mac OS X') &&

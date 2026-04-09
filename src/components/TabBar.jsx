@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import '../styles/tabbar.css'
 
 const TYPE_ICONS = { ssh: '⌨', telnet: '🔌', serial: '⚡' }
