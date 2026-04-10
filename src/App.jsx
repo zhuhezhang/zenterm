@@ -22,18 +22,18 @@ function generateId() {  // 生成唯一会话 ID，格式为 sess-时间戳-随
 }
 
 export default function App() {
-  const [sessions, setSessions]           = useState([])
-  const [activeId, setActiveId]           = useState(null)
-  const [sidebarOpen, setSidebarOpen]     = useState(true)
-  const [sidebarWidth, setSidebarWidth]   = useState(DEFAULT_SIDEBAR_W)
-  const [savedSessions, setSavedSessions] = useState(() => loadSavedSessions())
-  const [groupPlaceholders, setGroupPlaceholders] = useState(() => loadGroupPlaceholders())
-  const [settings, setSettings]           = useState(() => loadSettings())
-  const [showDialog, setShowDialog]       = useState(false)
-  const [showSettings, setShowSettings]   = useState(false)
-  const [dialogType, setDialogType]       = useState('ssh')
-  const [dialogInitial, setDialogInitial] = useState(null)
-  const [sftpState, setSftpState]         = useState({})
+  const [sessions, setSessions]           = useState([])  // 当前活跃会话列表
+  const [activeId, setActiveId]           = useState(null)  // 当前活跃会话 ID
+  const [sidebarOpen, setSidebarOpen]     = useState(true)  // 侧边栏是否打开
+  const [sidebarWidth, setSidebarWidth]   = useState(DEFAULT_SIDEBAR_W)  // 侧边栏宽度
+  const [savedSessions, setSavedSessions] = useState(() => loadSavedSessions())  // 已保存的会话配置列表，从 localStorage 加载
+  const [groupPlaceholders, setGroupPlaceholders] = useState(() => loadGroupPlaceholders())  // 分组占位符列表，从 localStorage 加载
+  const [settings, setSettings]           = useState(() => loadSettings())  // 应用设置，从 localStorage 加载
+  const [showDialog, setShowDialog]       = useState(false)  // 是否显示连接对话框
+  const [showSettings, setShowSettings]   = useState(false)  // 是否显示设置对话框
+  const [dialogType, setDialogType]       = useState('ssh')  // 连接对话框类型：ssh/telnet/serial
+  const [dialogInitial, setDialogInitial] = useState(null)  // 连接对话框初始数据（编辑已保存会话时传入）
+  const [sftpState, setSftpState]         = useState({})  // SFTP 状态，格式为 { [sessionId]: { files, path, loading } }
 
   // ── 可拖动分割线 ────────────────────────────────
   const handleDividerMouseDown = useCallback((e) => {
