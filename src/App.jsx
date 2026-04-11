@@ -12,15 +12,23 @@ import {
 import { loadSettings } from './store/settingsStore.js'
 import './styles/app.css'
 
-const DEFAULT_SIDEBAR_W = 300  // 默认侧边栏宽度
-// 最小/最大宽度根据窗口宽度动态计算（10% ~ 90%），在鼠标移动时实时限制
-const getMinSidebar = () => Math.max(80, Math.floor(window.innerWidth * 0.10))  // 最小宽度不小于 80px，且不小于窗口宽度的 10%
+/** 默认侧边栏宽度 */
+const DEFAULT_SIDEBAR_W = 300
+/** 获取最小侧边栏宽度。最小宽度不小于 80px，且不小于窗口宽度的 10% */
+const getMinSidebar = () => Math.max(80, Math.floor(window.innerWidth * 0.10))
+/** 获取最大侧边栏宽度。最大宽度不超过窗口宽度的 90% */
 const getMaxSidebar = () => Math.floor(window.innerWidth * 0.90)
 
-function generateId() {  // 生成唯一会话 ID，格式为 sess-时间戳-随机字符串
+/** 
+ * 生成唯一会话 ID，格式为 sess-时间戳-随机字符串
+ */
+function generateId() {
   return `sess-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 }
 
+/**
+ * 主应用组件
+ */
 export default function App() {
   const [sessions, setSessions]           = useState([])  // 当前活跃会话列表
   const [activeId, setActiveId]           = useState(null)  // 当前活跃会话 ID
@@ -35,8 +43,8 @@ export default function App() {
   const [dialogInitial, setDialogInitial] = useState(null)  // 连接对话框初始数据（编辑已保存会话时传入）
   const [sftpState, setSftpState]         = useState({})  // SFTP 状态，格式为 { [sessionId]: { files, path, loading } }
 
-  // ── 可拖动分割线 ────────────────────────────────
-  const handleDividerMouseDown = useCallback((e) => {
+  /** 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听器 */
+  const handleDividerMouseDown = useCallback((e) => {  // useCallback 在多次渲染中缓存一个函数，直至这个函数的依赖（这里为sidebarWidth）发生改变
     e.preventDefault()
     const startX = e.clientX
     const startW = sidebarWidth
@@ -48,38 +56,49 @@ export default function App() {
     window.addEventListener('mouseup', onUp)
   }, [sidebarWidth])
 
+  /** 从已保存会话和分组占位符生成分组列表 */
   const savedGroups    = getGroups(savedSessions, groupPlaceholders)
+  /** 当前活跃会话对象，如果 activeId 不存在于 sessions 中则为 null */
   const activeSession  = sessions.find(s => s.id === activeId) || null
-  const activeSftpInfo = activeSession?.sftpReady ? sftpState[activeId] : null
+  /** ?.是可选链运算符，用于访问一个可能为空或者未定义的对象的属性，如果对象为空或者未定义，它会返回 undefined，而不会抛出错误
+  这里意思为：activeSession 存在且 sftpReady 为真时，返回 sftpState[activeId]；否则返回 null */
+  const activeSftpInfo = activeSession?.sftpReady ? sftpState[activeId] : null  // 当前活跃会话的 SFTP 状态信息，如果没有或未准备好则为 null
 
+  /** 打开连接对话框，设置类型和初始数据 */
   const openDialog = useCallback((type = 'ssh', initial = null) => {
     setDialogType(type); setDialogInitial(initial); setShowDialog(true)
-  }, [])
+  }, [])  // useCallback 在多次渲染中缓存一个函数，直至这个函数的依赖发生改变（这里没有依赖，所以永远不会改变），适用于传递给子组件的回调函数，避免不必要的重新渲染
 
+  /** 启动新会话：生成 ID，添加到会话列表，设置为活跃状态，返回 ID */
   const launchSession = useCallback((config) => {
     const id = generateId()
+    // prev => ... 是函数形式的更新器，prev 代表更新前的旧 sessions 数组，使用函数形式可以确保你基于最新的状态更新，避免并发渲染时出现旧值问题
+    // [...prev, {...}] 是使用展开运算符创建一个新的数组，包含旧数组的所有元素以及一个新的会话对象，这样做是为了保持状态的不可变性，确保 React 能正确检测到状态变化并重新渲染组件
+    // { id, ...config, status: 'connecting' } 创建一个新的会话对象，包含生成的 ID、传入的配置（type、host、username 等）以及初始状态 'connecting'，然后添加到会话列表中
     setSessions(prev => [...prev, { id, ...config, status: 'connecting' }])
     setActiveId(id)
     return id
   }, [])
 
+  /** 删除会话 */
   const removeSession = useCallback((id) => {
     setSessions(prev => {
-      const next = prev.filter(s => s.id !== id)
-      setActiveId(cur => cur !== id ? cur : next[next.length - 1]?.id || null)
+      const next = prev.filter(s => s.id !== id)  // 过滤掉要删除的会话，生成新的会话列表
+      setActiveId(cur => cur !== id ? cur : next[next.length - 1]?.id || null)  // 更新当前活跃会话 ID，如果被删除的会话是当前活跃的，则切换到新的最后一个会话，否则保持不变
       return next
     })
-    setSftpState(prev => { const n = { ...prev }; delete n[id]; return n })
+    setSftpState(prev => { const n = { ...prev }; delete n[id]; return n })  // 删除对应会话的 SFTP 状态，保持 sftpState 与 sessions 同步，避免内存泄漏
   }, [])
 
+  /** 更新会话：应用更新，如果断连则清除 SFTP 状态 */
   const updateSession = useCallback((id, updates) => {
     setSessions(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
-    // 断连时清除 SFTP 状态
     if (updates.sftpReady === false || updates.status === 'disconnected') {
       setSftpState(prev => { const n = { ...prev }; delete n[id]; return n })
     }
   }, [])
 
+  /** SFTP 就绪时：初始化状态，调用 Electron 主进程的 SFTP 列表 API，更新文件列表 */
   const onSftpReady = useCallback(async (sessionId) => {
     setSftpState(prev => ({ ...prev, [sessionId]: { files: null, path: '/', loading: true } }))
     try {
@@ -90,6 +109,7 @@ export default function App() {
     }
   }, [])
 
+  /** 导航到 SFTP 目录：设置加载状态，获取新路径的文件列表 */
   const handleSftpNavigate = useCallback(async (sessionId, item) => {
     setSftpState(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], loading: true } }))
     const res = await window.zterm.sftp.list(sessionId + '-sftp', item.path)
@@ -101,6 +121,7 @@ export default function App() {
     }))
   }, [])
 
+  /** 返回上级目录：计算父路径，调用导航函数 */
   const handleSftpGoUp = useCallback(async (sessionId) => {
     const cur = sftpState[sessionId]
     if (!cur || cur.path === '/') return
@@ -108,10 +129,12 @@ export default function App() {
     handleSftpNavigate(sessionId, { path: parent })
   }, [sftpState, handleSftpNavigate])
 
+  /** 跳转到指定路径：直接调用导航函数 */
   const handleSftpJumpTo = useCallback(async (sessionId, path) => {
     handleSftpNavigate(sessionId, { path })
   }, [handleSftpNavigate])
 
+  /** 处理 SFTP 文件拖放上传：遍历本地文件列表，调用 Electron 主进程的 SFTP 上传 API，上传完成后刷新当前目录 */
   const handleSftpDrop = useCallback(async (sessionId, localFiles, targetItem) => {
     for (const file of localFiles) {
       const remotePath = (targetItem?.path || '/') + '/' + file.name
@@ -121,16 +144,19 @@ export default function App() {
     if (cur) handleSftpNavigate(sessionId, { path: cur.path })
   }, [sftpState, handleSftpNavigate])
 
-  const updateSaved       = useCallback((next) => { setSavedSessions(next); saveSessions(next) }, [])
+  /** 更新已保存会话列表并持久化到 localStorage */
+  const updateSaved = useCallback((next) => { setSavedSessions(next); saveSessions(next) }, [])
+  /** 更新分组占位符列表并持久化到 localStorage */
   const updatePlaceholders = useCallback((next) => { setGroupPlaceholders(next); saveGroupPlaceholders(next) }, [])
 
-  // 编辑会话保存：若 initialData 有 savedId，则编辑该会话；否则新建
-  const handleSaveOnly    = useCallback((c) => {
+  /** 仅保存会话（编辑/新建）：若 initialData 有 savedId，则编辑该会话；否则新建 */
+  const handleSaveOnly = useCallback((c) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
     updateSaved(addSavedSession(savedSessions, config))
     setShowDialog(false)
   }, [savedSessions, updateSaved, dialogInitial])
 
+  /** 保存并连接：先保存会话配置（编辑/新建），然后启动会话 */
   const handleSaveAndConn = useCallback((c) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
     updateSaved(addSavedSession(savedSessions, config))
@@ -138,11 +164,12 @@ export default function App() {
     setShowDialog(false)
   }, [savedSessions, updateSaved, launchSession, dialogInitial])
 
-  const handleConnect     = useCallback((c) => { launchSession(c); setShowDialog(false) }, [launchSession])
-  const [credDialogState, setCredDialogState] = useState(null)  // { session, callback }
+  /** 直接连接：不保存会话配置，直接启动会话 */
+  const handleConnect = useCallback((c) => { launchSession(c); setShowDialog(false) }, [launchSession])
 
-  const handleConnSaved   = useCallback((s) => {
-    // SSH/Telnet 如果缺少用户名或密码，弹出凭证对话框
+  const [credDialogState, setCredDialogState] = useState(null)  // 凭证对话框状态，包含 session、username、password 和 callback 属性，用于在连接已保存会话时弹出输入凭证的对话框
+  /** 连接已保存会话：如果是 SSH/Telnet 且缺少用户名或密码，弹出凭证对话框；否则直接启动会话 */
+  const handleConnSaved = useCallback((s) => {
     if ((s.type === 'ssh' || s.type === 'telnet') && (!s.username?.trim() || !s.password?.trim())) {
       setCredDialogState({
         session: s,
@@ -154,17 +181,19 @@ export default function App() {
     }
     launchSession(s)
   }, [launchSession])
-  const handleDelSaved    = useCallback((id) => updateSaved(removeSavedSession(savedSessions, id)), [savedSessions, updateSaved])
 
-  // Tab 拖拽排序
+  /** 删除已保存会话：从 savedSessions 中移除，并更新状态和 localStorage */
+  const handleDelSaved = useCallback((id) => updateSaved(removeSavedSession(savedSessions, id)), [savedSessions, updateSaved])
+
+  /** 处理标签页重新排序：接收拖动的会话 ID 和目标位置的会话 ID，更新 sessions 顺序 */
   const handleTabReorder  = useCallback((fromId, toId) => {
     setSessions(prev => {
-      const from = prev.findIndex(s => s.id === fromId)
-      const to   = prev.findIndex(s => s.id === toId)
+      const from = prev.findIndex(s => s.id === fromId)  // 找到被拖动的会话在当前列表中的索引，如果找不到则返回 -1
+      const to = prev.findIndex(s => s.id === toId)  // 找到目标位置的会话在当前列表中的索引，如果找不到则返回 -1
       if (from < 0 || to < 0) return prev
       const next = [...prev]
-      const [item] = next.splice(from, 1)
-      next.splice(to, 0, item)
+      const [item] = next.splice(from, 1)  // 从原位置移除被拖动的会话，splice 返回一个包含被移除元素的数组，这里使用解构赋值取出该元素
+      next.splice(to, 0, item)  // 在目标位置插入被拖动的会话，splice 的第二个参数为 0 表示不删除任何元素，而是直接插入
       return next
     })
   }, [])
