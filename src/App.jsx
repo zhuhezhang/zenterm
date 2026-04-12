@@ -30,6 +30,7 @@ function generateId() {
  * 主应用组件
  */
 export default function App() {
+  // 局部变量无法在多次渲染中持久保存、更改局部变量不会触发渲染，因此使用 useState 来管理组件状态，它保留渲染之间的数据、更新状态会触发组件重新渲染以反映最新状态
   const [sessions, setSessions]           = useState([])  // 当前活跃会话列表
   const [activeId, setActiveId]           = useState(null)  // 当前活跃会话 ID
   const [sidebarOpen, setSidebarOpen]     = useState(true)  // 侧边栏是否打开

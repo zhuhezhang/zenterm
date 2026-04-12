@@ -6,7 +6,7 @@ const { setupSFTPHandlers } = require('./handlers/sftp')
 const { setupTelnetHandlers } = require('./handlers/telnet')
 const { setupSerialHandlers } = require('./handlers/serial')
 
-const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged  // 兼容开发环境和生产环境的判断(通过环境变量和是否打包判读) 
+const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged  // 兼容开发环境和生产环境的判断(通过环境变量和是否打包判读)
 let mainWindow
 
 /** 
@@ -32,6 +32,7 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173')  // 开发环境加载 Vite 开发服务器地址
+    mainWindow.webContents.openDevTools()  // 开发环境自动打开开发者工具
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))  // 生产环境加载打包后的静态文件
   }
@@ -78,7 +79,7 @@ function createWindow() {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createWindow()
   setupSSHHandlers(ipcMain, mainWindow)  // 设置 SSH 相关的 IPC 处理函数，传入 ipcMain 和 mainWindow 以便在处理函数中使用 IPC 和窗口通信
   setupSFTPHandlers(ipcMain, mainWindow)
