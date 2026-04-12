@@ -12,11 +12,11 @@ contextBridge.exposeInMainWorld('zterm', {  // 在渲染进程中通过window.zt
     minimize: () => ipcRenderer.send('window:minimize'),
     maximize: () => ipcRenderer.send('window:maximize'),
     close: () => ipcRenderer.send('window:close'),
-    isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
     // 主进程 → 渲染进程：ipcRenderer 收到 'window:maximized' 事件
     // 事件处理器：(_, v) => cb(v) 被调用
     // 用户回调：传入的 cb 函数被执行，接收 v（true/false）
     onMaximized: (cb) => ipcRenderer.on('window:maximized', (_, v) => cb(v)),
+    isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   },
 
   ssh: {  // SSH 连接 API
