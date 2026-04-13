@@ -66,7 +66,7 @@ function createWindow() {
     return result.canceled ? null : result.filePaths[0]
   })
 
-  ipcMain.on('log:write', (e, logDir, sessionId, data) => {  // 日志写入：参数为日志路径、日志文件名、日志内容
+  ipcMain.on('log:write', (_e, logDir, sessionId, data) => {  // 日志写入：参数为日志路径、日志文件名、日志内容
     try {
       if (!logDir) return
       fs.mkdirSync(logDir, { recursive: true })  // 确保日志目录存在（recursive可以创建多级目录）
