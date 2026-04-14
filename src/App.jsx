@@ -8,7 +8,7 @@ import SettingsDialog from './components/SettingsDialog.jsx'
 import {
   loadSavedSessions, addSavedSession, removeSavedSession, saveSessions, getGroups,
   loadGroupPlaceholders, saveGroupPlaceholders
-} from './store/sessionStorage.js'
+} from './store/sessionStore.js'
 import { loadSettings } from './store/settingsStore.js'
 import './styles/app.css'
 
@@ -44,7 +44,10 @@ export default function App() {
   const [dialogInitial, setDialogInitial] = useState(null)  // 连接对话框初始数据（编辑已保存会话时传入）
   const [sftpState, setSftpState]         = useState({})  // SFTP 状态，格式为 { [sessionId]: { files, path, loading } }
 
-  /** 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听器 */
+  /**
+   * 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听器
+   * @param {MouseEvent} e 鼠标事件对象，包含鼠标位置等信息
+   */
   const handleDividerMouseDown = useCallback((e) => {  // useCallback 在多次渲染中缓存一个函数，直至这个函数的依赖（这里为sidebarWidth）发生改变
     e.preventDefault()
     const startX = e.clientX
@@ -65,12 +68,23 @@ export default function App() {
   这里意思为：activeSession 存在且 sftpReady 为真时，返回 sftpState[activeId]；否则返回 null */
   const activeSftpInfo = activeSession?.sftpReady ? sftpState[activeId] : null  // 当前活跃会话的 SFTP 状态信息，如果没有或未准备好则为 null
 
-  /** 打开连接对话框，设置类型和初始数据 */
+  /**
+   * 打开连接对话框，设置类型和初始数据（这里使用 useCallback，主要是为了“把这函数做成稳定的、可重用的函数引用”，
+   * 让它在组件重渲染时不会不断变动。这种模式在 Hook 里很常见，尤其当这些函数会被传到其他组件或作为依赖使用时）
+   * 
+   * @param {string} type 连接类型，可选值为 'ssh'、'telnet' 或 'serial'
+   * @param {Object|null} initial 初始数据，编辑已保存会话时传入
+   */
   const openDialog = useCallback((type = 'ssh', initial = null) => {
     setDialogType(type); setDialogInitial(initial); setShowDialog(true)
-  }, [])  // useCallback 在多次渲染中缓存一个函数，直至这个函数的依赖发生改变（这里没有依赖，所以永远不会改变），适用于传递给子组件的回调函数，避免不必要的重新渲染
+  }, [])
 
-  /** 启动新会话：生成 ID，添加到会话列表，设置为活跃状态，返回 ID */
+  /**
+   * 启动新会话：生成 ID，添加到会话列表，设置为活跃状态，返回 ID
+   * 
+   * @param {Object} config 会话配置对象
+   * @returns {string} 生成的会话 ID
+   */
   const launchSession = useCallback((config) => {
     const id = generateId()
     // prev => ... 是函数形式的更新器，prev 代表更新前的旧 sessions 数组，使用函数形式可以确保你基于最新的状态更新，避免并发渲染时出现旧值问题
@@ -81,7 +95,11 @@ export default function App() {
     return id
   }, [])
 
-  /** 删除会话 */
+  /**
+   * 删除会话
+   * 
+   * @param {string} id 要删除的会话 ID
+   */
   const removeSession = useCallback((id) => {
     setSessions(prev => {
       const next = prev.filter(s => s.id !== id)  // 过滤掉要删除的会话，生成新的会话列表
@@ -91,7 +109,12 @@ export default function App() {
     setSftpState(prev => { const n = { ...prev }; delete n[id]; return n })  // 删除对应会话的 SFTP 状态，保持 sftpState 与 sessions 同步，避免内存泄漏
   }, [])
 
-  /** 更新会话：应用更新，如果断连则清除 SFTP 状态 */
+  /**
+   * 更新会话：应用更新，如果断连则清除 SFTP 状态
+   * 
+   * @param {string} id 会话 ID
+   * @param {Object} updates 要更新的属性
+   */
   const updateSession = useCallback((id, updates) => {
     setSessions(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
     if (updates.sftpReady === false || updates.status === 'disconnected') {
@@ -99,7 +122,11 @@ export default function App() {
     }
   }, [])
 
-  /** SFTP 就绪时：初始化状态，调用 Electron 主进程的 SFTP 列表 API，更新文件列表 */
+  /**
+   * SFTP 就绪时：初始化状态，调用 Electron 主进程的 SFTP 列表 API，更新文件列表
+   * 
+   * @param {string} sessionId 会话 ID
+   */
   const onSftpReady = useCallback(async (sessionId) => {
     setSftpState(prev => ({ ...prev, [sessionId]: { files: null, path: '/', loading: true } }))
     try {
@@ -110,7 +137,12 @@ export default function App() {
     }
   }, [])
 
-  /** 导航到 SFTP 目录：设置加载状态，获取新路径的文件列表 */
+  /**
+   * 导航到 SFTP 目录：设置加载状态，获取新路径的文件列表
+   * 
+   * @param {string} sessionId 会话 ID
+   * @param {Object} item 目录项对象
+   */
   const handleSftpNavigate = useCallback(async (sessionId, item) => {
     setSftpState(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], loading: true } }))
     const res = await window.zterm.sftp.list(sessionId + '-sftp', item.path)
@@ -122,7 +154,11 @@ export default function App() {
     }))
   }, [])
 
-  /** 返回上级目录：计算父路径，调用导航函数 */
+  /**
+   * 返回上级目录：计算父路径，调用导航函数
+   * 
+   * @param {string} sessionId 会话 ID
+   */
   const handleSftpGoUp = useCallback(async (sessionId) => {
     const cur = sftpState[sessionId]
     if (!cur || cur.path === '/') return
@@ -130,12 +166,23 @@ export default function App() {
     handleSftpNavigate(sessionId, { path: parent })
   }, [sftpState, handleSftpNavigate])
 
-  /** 跳转到指定路径：直接调用导航函数 */
+  /**
+   * 跳转到指定路径：直接调用导航函数
+   * 
+   * @param {string} sessionId 会话 ID
+   * @param {string} path 目标路径
+   */
   const handleSftpJumpTo = useCallback(async (sessionId, path) => {
     handleSftpNavigate(sessionId, { path })
   }, [handleSftpNavigate])
 
-  /** 处理 SFTP 文件拖放上传：遍历本地文件列表，调用 Electron 主进程的 SFTP 上传 API，上传完成后刷新当前目录 */
+  /**
+   * 处理 SFTP 文件拖放上传：遍历本地文件列表，调用 Electron 主进程的 SFTP 上传 API，上传完成后刷新当前目录
+   * 
+   * @param {string} sessionId 会话 ID
+   * @param {Array} localFiles 本地文件列表
+   * @param {Object|null} targetItem 目标目录项对象
+   */
   const handleSftpDrop = useCallback(async (sessionId, localFiles, targetItem) => {
     for (const file of localFiles) {
       const remotePath = (targetItem?.path || '/') + '/' + file.name
@@ -145,19 +192,35 @@ export default function App() {
     if (cur) handleSftpNavigate(sessionId, { path: cur.path })
   }, [sftpState, handleSftpNavigate])
 
-  /** 更新已保存会话列表并持久化到 localStorage */
+  /**
+   * 更新已保存会话列表并持久化到 localStorage
+   * 
+   * @param {Array} next 新的会话列表
+   */
   const updateSaved = useCallback((next) => { setSavedSessions(next); saveSessions(next) }, [])
-  /** 更新分组占位符列表并持久化到 localStorage */
+  /**
+   * 更新分组占位符列表并持久化到 localStorage
+   * 
+   * @param {Array} next 新的占位符列表
+   */
   const updatePlaceholders = useCallback((next) => { setGroupPlaceholders(next); saveGroupPlaceholders(next) }, [])
 
-  /** 仅保存会话（编辑/新建）：若 initialData 有 savedId，则编辑该会话；否则新建 */
+  /**
+   * 仅保存会话（编辑/新建）：若 initialData 有 savedId，则编辑该会话；否则新建
+   * 
+   * @param {Object} c 会话配置对象
+   */
   const handleSaveOnly = useCallback((c) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
     updateSaved(addSavedSession(savedSessions, config))
     setShowDialog(false)
   }, [savedSessions, updateSaved, dialogInitial])
 
-  /** 保存并连接：先保存会话配置（编辑/新建），然后启动会话 */
+  /**
+   * 保存并连接：先保存会话配置（编辑/新建），然后启动会话
+   * 
+   * @param {Object} c 会话配置对象
+   */
   const handleSaveAndConn = useCallback((c) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
     updateSaved(addSavedSession(savedSessions, config))
@@ -165,11 +228,20 @@ export default function App() {
     setShowDialog(false)
   }, [savedSessions, updateSaved, launchSession, dialogInitial])
 
-  /** 直接连接：不保存会话配置，直接启动会话 */
+  /**
+   * 直接连接：不保存会话配置，直接启动会话
+   * 
+   * @param {Object} c 会话配置对象
+   */
   const handleConnect = useCallback((c) => { launchSession(c); setShowDialog(false) }, [launchSession])
 
   const [credDialogState, setCredDialogState] = useState(null)  // 凭证对话框状态，包含 session、username、password 和 callback 属性，用于在连接已保存会话时弹出输入凭证的对话框
-  /** 连接已保存会话：如果是 SSH/Telnet 且缺少用户名或密码，弹出凭证对话框；否则直接启动会话 */
+  
+  /**
+   * 连接已保存会话：如果是 SSH/Telnet 且缺少用户名或密码，弹出凭证对话框；否则直接启动会话
+   * 
+   * @param {Object} s 会话配置对象
+   */
   const handleConnSaved = useCallback((s) => {
     if ((s.type === 'ssh' || s.type === 'telnet') && (!s.username?.trim() || !s.password?.trim())) {
       setCredDialogState({
@@ -183,10 +255,19 @@ export default function App() {
     launchSession(s)
   }, [launchSession])
 
-  /** 删除已保存会话：从 savedSessions 中移除，并更新状态和 localStorage */
+  /**
+   * 删除已保存会话：从 savedSessions 中移除，并更新状态和 localStorage
+   * 
+   * @param {string} id 会话 ID
+   */
   const handleDelSaved = useCallback((id) => updateSaved(removeSavedSession(savedSessions, id)), [savedSessions, updateSaved])
 
-  /** 处理标签页重新排序：接收拖动的会话 ID 和目标位置的会话 ID，更新 sessions 顺序 */
+  /**
+   * 处理标签页重新排序：接收拖动的会话 ID 和目标位置的会话 ID，更新 sessions 顺序
+   * 
+   * @param {string} fromId 被拖动的会话 ID
+   * @param {string} toId 目标位置的会话 ID
+   */
   const handleTabReorder  = useCallback((fromId, toId) => {
     setSessions(prev => {
       const from = prev.findIndex(s => s.id === fromId)  // 找到被拖动的会话在当前列表中的索引，如果找不到则返回 -1

@@ -49,8 +49,7 @@
 │   │   ├── SettingsDialog.jsx         # 设置对话框
 │   │   └── SftpPanel.jsx              # SFTP 文件浏览器
 │   ├── store/                         # 数据管理
-│   │   ├── sessionStorage.js          # 本地会话存储（localStorage）
-│   │   ├── sessionStore.js            # 活跃会话状态管理
+│   │   ├── sessionStore.js            # 本地会话存储
 │   │   └── settingsStore.js           # 应用设置存储
 │   └── styles/                        # 样式文件
 │       ├── app.css                    # 主应用样式
@@ -216,8 +215,7 @@ window.zterm = {
 ### src/store/*.js
 
 状态和数据管理：
-- **sessionStorage.js** - 保存/加载会话配置到 localStorage
-- **sessionStore.js** - 管理当前活跃会话状态
+- **sessionStore.js** - 保存/加载会话配置到 localStorage
 - **settingsStore.js** - 应用设置的存储和读取
 
 ### src/components/*.jsx
@@ -250,7 +248,7 @@ UI 组件：
 
 ### 持久化新的数据
 
-1. 将数据保存到 store 文件（如 `sessionStorage.js`）
+1. 将数据保存到 store 文件（如 `sessionStore.js`）
 2. 使用 localStorage 或 localStorage 的包装函数
 3. 在 App 组件初始化时加载数据
 

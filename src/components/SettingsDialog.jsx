@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { SETTINGS_SCHEMA, saveSettings, DEFAULT_LOG_PATH } from '../store/settingsStore.js'
-import { exportSessions, importSessions, saveSessions } from '../store/sessionStorage.js'
+import { exportSessions, importSessions, saveSessions } from '../store/sessionStore.js'
 import '../styles/dialog.css'
 import '../styles/settings.css'
 

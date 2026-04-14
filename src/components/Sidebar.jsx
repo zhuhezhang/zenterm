@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { duplicateSavedSession, addGroupPlaceholder, uniqueLabelInGroup } from '../store/sessionStorage.js'
+import { duplicateSavedSession, addGroupPlaceholder, uniqueLabelInGroup } from '../store/sessionStore.js'
 import '../styles/sidebar.css'
 
 const TYPE_ICONS  = { ssh: '⌨', telnet: '🔌', serial: '⚡' }
