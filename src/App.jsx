@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import TitleBar from './components/TitleBar.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -337,7 +337,6 @@ export default function App() {
       )}
       {credDialogState && (
         <CredentialDialog
-          session={credDialogState.session}
           username={credDialogState.username}
           password={credDialogState.password}
           onConnect={(username, password) => {
@@ -362,6 +361,12 @@ export default function App() {
   )
 }
 
+/**
+ * 欢迎界面组件
+ * 显示在没有打开任何会话时，提供新建会话的入口
+ * 
+ * @param {Function} onNewSession 新建会话的回调函数
+ */
 function WelcomeScreen({ onNewSession }) {
   return (
     <div className="welcome">
@@ -384,15 +389,24 @@ function WelcomeScreen({ onNewSession }) {
   )
 }
 
-function CredentialDialog({ session, username, password, onConnect, onClose }) {
-  const [user, setUser] = React.useState(username)
-  const [pass, setPass] = React.useState(password)
+/**
+ * 凭证输入对话框组件
+ * 在连接已保存会话时，如果缺少用户名或密码，弹出该对话框让用户输入凭证
+ * 
+ * @param {string} username 初始用户名
+ * @param {string} password 初始密码
+ * @param {Function} onConnect 连接的回调函数，参数为包含用户名和密码的配置对象
+ * @param {Function} onClose 关闭对话框的回调函数
+ */
+function CredentialDialog({ username, password, onConnect, onClose }) {
+  const [user, setUser] = useState(username)
+  const [pass, setPass] = useState(password)
   const hasUser = user?.trim()
   const hasPass = pass?.trim()
   const autoFocusUser = !hasUser
   
   return (
-    <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && onClose()}>  {/* e.target：实际点击的元素; e.currentTarget：事件绑定的元素（这里是整个 dialog-overlay），当点击“遮罩层”时关闭对话框 */}
       <div className="dialog">
         <div className="dialog-header">
           <div className="dialog-tabs">输入凭证</div>
@@ -402,7 +416,7 @@ function CredentialDialog({ session, username, password, onConnect, onClose }) {
           <div className="form-row">
             <label className="form-label">用户名</label>
             <div className="form-control">
-              <input placeholder="用户名" value={user} autoFocus={autoFocusUser}
+              <input placeholder="用户名" value={user} autoFocus={autoFocusUser/* 当没有用户名时自动聚焦用户名输入框 */}
                 onChange={e => setUser(e.target.value)}
                 onKeyDown={e => {
                   if (e.key === 'Enter') {
