@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import '../styles/dialog.css'
 
 const SSH_DEFAULT = { host: '', port: '22', username: '', password: '', privateKey: '', passphrase: '', authType: 'password', label: '', group: '', enableSftp: false }
@@ -7,12 +7,28 @@ const SERIAL_DEFAULT = { path: '', baudRate: '9600', dataBits: '8', stopBits: '1
 const BAUD_RATES = ['110','300','600','1200','2400','4800','9600','14400','19200','38400','57600','115200','128000','256000']
 const PARITIES = ['none','even','odd','mark','space']
 
+/**
+ * 获取默认配置
+ * 根据协议类型返回对应的默认配置对象，如果传入 initial 则在默认配置基础上覆盖初始值
+ * 
+ * @param {string} tab 协议类型
+ * @param {Object} initial 初始配置
+ * @returns {Object} 默认配置
+ */
 function getDefault(tab, initial) {
   const base = tab === 'ssh' ? { ...SSH_DEFAULT } : tab === 'telnet' ? { ...TELNET_DEFAULT } : { ...SERIAL_DEFAULT }
   if (initial) return { ...base, ...initial }
   return base
 }
 
+/**
+ * 构建标签名称
+ * 根据协议类型和配置对象生成一个标签名称，去除非法字符并保证不为空
+ * 
+ * @param {string} tab 协议类型
+ * @param {Object} form 配置对象
+ * @returns {string} 标签名称
+ */
 function buildLabel(tab, form) {
   if (tab === 'serial') {
     const raw = form.path || 'Serial'
