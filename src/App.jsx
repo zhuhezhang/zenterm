@@ -234,7 +234,6 @@ export default function App() {
    * @param {Object} c 会话配置对象
    */
   const handleConnect = useCallback((c) => { launchSession(c); setShowDialog(false) }, [launchSession])
-
   const [credDialogState, setCredDialogState] = useState(null)  // 凭证对话框状态，包含 session、username、password 和 callback 属性，用于在连接已保存会话时弹出输入凭证的对话框
   
   /**

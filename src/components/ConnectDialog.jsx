@@ -38,21 +38,38 @@ function buildLabel(tab, form) {
   return raw.replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '').trim() || tab.toUpperCase()
 }
 
+/**
+ * 连接对话框组件
+ * 提供 SSH、Telnet、Serial 三种连接方式的配置界面，支持保存会话和直接连接
+ * 
+ * @param {string} initType 初始协议类型（ssh/telnet/serial）
+ * @param {Object} initialData 初始配置数据，用于编辑已保存会话时预填充表单
+ * @param {Array} savedGroups 已保存的分组列表，用于分组输入的自动补全
+ * @param {Function} onConnect 直接连接的回调函数，参数为配置对象
+ * @param {Function} onSaveAndConnect 保存并连接的回调函数，参数为配置对象
+ * @param {Function} onSaveOnly 仅保存的回调函数，参数为配置对象
+ * @param {Function} onClose 关闭对话框的回调函数
+ */
 export default function ConnectDialog({ type: initType, initialData, savedGroups, onConnect, onSaveAndConnect, onSaveOnly, onClose }) {
   const [tab, setTab] = useState(initType || 'ssh')
   const [form, setForm] = useState(() => getDefault(initType || 'ssh', initialData))
   const [ports, setPorts] = useState([])
   const [error, setError] = useState('')
-  const [credDialog, setCredDialog] = useState(null)  // { username, password }
+  const [credDialog, setCredDialog] = useState(null)  // { username, password, callback } 或 null，表示是否显示凭证输入对话框以及初始值和连接回调函数
 
+  /**
+   * 切换协议类型时更新表单数据。保留已有参数，补齐当前协议缺省字段，重置错误信息
+   * 
+   * @param {string} t 新的协议类型
+   */
   const switchTab = (t) => {
     if (t === tab) return
-    // 切换类型时保留已有所有参数，只补齐当前协议缺省字段
     setForm(prev => ({ ...prev, ...getDefault(t, prev) }))
     setTab(t)
     setError('')
   }
 
+  // 当tab切换且协议类型为 Serial 时，获取可用串口列表并更新状态（useEffect允许将组件与外部系统同步）
   useEffect(() => {
     setError('')
     if (tab === 'serial') {
@@ -60,8 +77,19 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
     }
   }, [tab])
 
+  /** 
+   * 更新表单数据
+   * 
+   * @param {string} key 设置项的键
+   * @param {string} value 设置项的值
+   */
   const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
 
+  /**
+   * 表单验证函数。根据当前协议类型和表单数据检查必填项是否填写，分组和标签是否包含非法字符，返回错误信息字符串
+   * 
+   * @returns {string} 错误信息，如果没有错误则返回空字符串
+   */
   const validate = () => {
     if (tab === 'ssh' && !form.host?.trim()) return '请填写主机地址'
     if (tab === 'telnet' && !form.host?.trim()) return '请填写主机地址'
@@ -73,6 +101,11 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
     return ''
   }
 
+  /**
+   * 构建配置对象，准备连接或保存。根据当前协议类型和表单数据生成一个完整的配置对象，进行必要的类型转换和默认值处理
+   * 
+   * @returns {Object} 配置对象
+   */
   const buildConfig = () => ({
     type: tab, ...form,
     port: parseInt(form.port) || undefined,
@@ -82,29 +115,41 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
     label: form.label?.trim() || buildLabel(tab, form),
   })
 
-  // 检查是否需要输入凭证（用户名或密码为空）
+  /**
+   * 检查是否需要输入凭证（用户名或密码为空）
+   * 
+   * @param {Object} config 配置对象
+   * @returns {boolean} 是否需要输入凭证
+   */
   const needsCredentials = (config) => {
     return (config.type === 'ssh' || config.type === 'telnet') && 
            (!config.username?.trim() || !config.password?.trim())
   }
 
+  /**
+   * 连接/保存操作的统一处理函数
+   * 根据当前表单数据构建配置对象，进行表单验证，如果需要输入凭证则弹出凭证对话框，否则直接调用回调函数
+   * 
+   * @param {Function} fn 连接或保存的回调函数，参数为配置对象
+   * @param {boolean} requireCreds 是否需要检查凭证（用户名和密码），默认为 true
+   */
   const act = (fn, requireCreds = true) => {
     const e = validate()
     if (e) return setError(e)
     const config = buildConfig()
-    // 只有在 requireCreds=true 时才检查凭证（保存会话时不检查）
-    if (requireCreds && needsCredentials(config)) {
-      setCredDialog({ 
+
+    if (requireCreds && needsCredentials(config)) {  // 只有在 requireCreds=true 时才检查凭证（保存会话时不检查）
+      setCredDialog({
         username: config.username || '', 
         password: config.password || '',
         callback: fn 
       })
-      return
+      return  // 当在ssh或telnet连接界面不输入用户名连接时，由于上面setCredDialog会触发重新渲染，此时credDialog不再是null，就会渲染输入凭证组件。
     }
     fn(config)
   }
 
-  if (credDialog) {
+  if (credDialog) {  // 如果 credDialog 不为 null，则渲染凭证输入对话框，传入初始用户名、密码和连接回调函数
     const { username, password, callback } = credDialog
     const hasUsername = username?.trim()
     const hasPassword = password?.trim()
@@ -173,7 +218,7 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
             <input placeholder="自定义名称（可选）" value={form.label} onChange={e => set('label', e.target.value)} />
           </FormRow>
           <FormRow label="分组">
-            <input placeholder="分组（如：工作/个人）" value={form.group} onChange={e => set('group', e.target.value)} list="group-list" />
+            <input placeholder="可选，空则保存在根分组" value={form.group} onChange={e => set('group', e.target.value)} list="group-list" />
             <datalist id="group-list">
               {(savedGroups||[]).map(g => <option key={g} value={g} />)}
             </datalist>
@@ -196,6 +241,14 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
   )
 }
 
+/**
+ * SSH 表单组件。根据 form 数据渲染 SSH 连接的表单项，支持密码认证和私钥认证两种方式，根据 visible 控制是否渲染
+ * 
+ * @param {Object} form 表单数据
+ * @param {Function} set 设置表单数据的函数
+ * @param {boolean} visible 是否可见
+ * @returns {JSX.Element} SSH 表单
+ */
 function SshForm({ form, set, visible }) {
   if (!visible) return null
   return (
@@ -225,7 +278,7 @@ function SshForm({ form, set, visible }) {
             <input placeholder="/path/to/id_rsa" value={form.privateKey} onChange={e => set('privateKey', e.target.value)} />
           </FormRow>
           <FormRow label="密码短语">
-            <input type="password" placeholder="可选" value={form.passphrase} onChange={e => set('passphrase', e.target.value)} />
+            <input type="password" placeholder="可选，私钥文件加密密码" value={form.passphrase} onChange={e => set('passphrase', e.target.value)} />
           </FormRow>
         </>
       )}
@@ -240,6 +293,14 @@ function SshForm({ form, set, visible }) {
   )
 }
 
+/**
+ * Telnet 表单组件。根据 form 数据渲染 Telnet 连接的表单项，根据 visible 控制是否渲染
+ * 
+ * @param {Object} form 表单数据
+ * @param {Function} set 设置表单数据的函数
+ * @param {boolean} visible 是否可见
+ * @returns {JSX.Element} Telnet 表单
+ */
 function TelnetForm({ form, set, visible }) {
   if (!visible) return null
   return (
@@ -260,6 +321,15 @@ function TelnetForm({ form, set, visible }) {
   )
 }
 
+/**
+ * Serial 表单组件。根据 form 数据渲染串口连接的表单项，提供串口路径的输入和可用串口的选择，根据 visible 控制是否渲染
+ * 
+ * @param {Object} form 表单数据
+ * @param {Function} set 设置表单数据的函数
+ * @param {Array} ports 可用串口列表，用于 datalist 自动补全
+ * @param {boolean} visible 是否可见
+ * @returns {JSX.Element} Serial 表单
+ */
 function SerialForm({ form, set, ports, visible }) {
   if (!visible) return null
   return (
@@ -299,6 +369,13 @@ function SerialForm({ form, set, ports, visible }) {
   )
 }
 
+/**
+ * 表单行组件。用于在连接对话框中渲染标签和输入控件的行布局
+ * 
+ * @param {string} label 行标签
+ * @param {JSX.Element} children 输入控件
+ * @returns {JSX.Element} 表单行
+ */
 function FormRow({ label, children }) {
   return (
     <div className="form-row">

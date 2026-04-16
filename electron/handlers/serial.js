@@ -20,7 +20,7 @@ function setupSerialHandlers(ipcMain, mainWindow) {
     }
   })
 
-  ipcMain.handle('serial:connect', async (event, id, config) => {
+  ipcMain.handle('serial:connect', async (_event, id, config) => {
     if (!SerialPort) return { success: false, error: 'serialport module not available' }
 
     return new Promise((resolve) => {
@@ -56,14 +56,14 @@ function setupSerialHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('serial:data', (event, id, data) => {
+  ipcMain.on('serial:data', (_event, id, data) => {
     const port = serialSessions.get(id)
     if (port && port.isOpen) {
       port.write(data)
     }
   })
 
-  ipcMain.handle('serial:disconnect', async (event, id) => {
+  ipcMain.handle('serial:disconnect', async (_event, id) => {
     const port = serialSessions.get(id)
     if (port) {
       try {
