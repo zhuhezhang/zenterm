@@ -5,7 +5,7 @@ const path = require('path')
 const sftpSessions = new Map()
 
 function setupSFTPHandlers(ipcMain, mainWindow) {
-  ipcMain.handle('sftp:connect', async (event, id, config) => {
+  ipcMain.handle('sftp:connect', async (_event, id, config) => {
     return new Promise((resolve, reject) => {
       const conn = new Client()
 
@@ -42,7 +42,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:disconnect', async (event, id) => {
+  ipcMain.handle('sftp:disconnect', async (_event, id) => {
     const session = sftpSessions.get(id)
     if (session) {
       try { session.conn.end() } catch (e) {}
@@ -51,7 +51,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     return { success: true }
   })
 
-  ipcMain.handle('sftp:list', async (event, id, remotePath) => {
+  ipcMain.handle('sftp:list', async (_event, id, remotePath) => {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
 
@@ -74,7 +74,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:download', async (event, id, remotePath, localPath) => {
+  ipcMain.handle('sftp:download', async (_event, id, remotePath, localPath) => {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
 
@@ -101,7 +101,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:upload', async (event, id, localPath, remotePath) => {
+  ipcMain.handle('sftp:upload', async (_event, id, localPath, remotePath) => {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
 
@@ -124,7 +124,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:mkdir', async (event, id, remotePath) => {
+  ipcMain.handle('sftp:mkdir', async (_event, id, remotePath) => {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     return new Promise((resolve) => {
@@ -135,7 +135,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:delete', async (event, id, remotePath) => {
+  ipcMain.handle('sftp:delete', async (_event, id, remotePath) => {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     return new Promise((resolve) => {
@@ -152,7 +152,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:rename', async (event, id, oldPath, newPath) => {
+  ipcMain.handle('sftp:rename', async (_event, id, oldPath, newPath) => {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     return new Promise((resolve) => {

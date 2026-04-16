@@ -38,7 +38,7 @@ function processTelnetData(data) {
 }
 
 function setupTelnetHandlers(ipcMain, mainWindow) {
-  ipcMain.handle('telnet:connect', async (event, id, config) => {
+  ipcMain.handle('telnet:connect', async (_event, id, config) => {
     return new Promise((resolve, reject) => {
       const socket = new net.Socket()
       const timeout = setTimeout(() => {
@@ -76,14 +76,14 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('telnet:data', (event, id, data) => {
+  ipcMain.on('telnet:data', (_event, id, data) => {
     const socket = telnetSessions.get(id)
     if (socket) {
       socket.write(data)
     }
   })
 
-  ipcMain.handle('telnet:disconnect', async (event, id) => {
+  ipcMain.handle('telnet:disconnect', async (_event, id) => {
     const socket = telnetSessions.get(id)
     if (socket) {
       try { socket.destroy() } catch (e) {}

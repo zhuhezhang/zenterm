@@ -3,7 +3,7 @@ const { Client } = require('ssh2')
 const sshSessions = new Map()
 
 function setupSSHHandlers(ipcMain, mainWindow) {
-  ipcMain.handle('ssh:connect', async (event, id, config) => {
+  ipcMain.handle('ssh:connect', async (_event, id, config) => {
     return new Promise((resolve, reject) => {
       const conn = new Client()
 
@@ -60,21 +60,21 @@ function setupSSHHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('ssh:data', (event, id, data) => {
+  ipcMain.on('ssh:data', (_event, id, data) => {
     const session = sshSessions.get(id)
     if (session && session.stream) {
       session.stream.write(data)
     }
   })
 
-  ipcMain.on('ssh:resize', (event, id, cols, rows) => {
+  ipcMain.on('ssh:resize', (_event, id, cols, rows) => {
     const session = sshSessions.get(id)
     if (session && session.stream) {
       session.stream.setWindow(rows, cols)
     }
   })
 
-  ipcMain.handle('ssh:disconnect', async (event, id) => {
+  ipcMain.handle('ssh:disconnect', async (_event, id) => {
     const session = sshSessions.get(id)
     if (session) {
       try {
