@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -13,7 +13,7 @@ function binaryToUtf8(binary) {
   } catch (e) { return binary }
 }
 
-export default function TerminalPanel({ session, active, onClose, onUpdate, settings }) {
+export default function TerminalPanel({ session, active, onUpdate, settings }) {
   const containerRef = useRef(null)
   const termRef      = useRef(null)
   const fitAddonRef  = useRef(null)

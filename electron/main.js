@@ -9,9 +9,7 @@ const { setupSerialHandlers } = require('./handlers/serial')
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged  // 兼容开发环境和生产环境的判断(通过环境变量和是否打包判读)
 let mainWindow
 
-/** 
- * 创建主窗口，设置窗口属性和事件处理
- */
+/** 创建主窗口，设置窗口属性和事件处理 */
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,

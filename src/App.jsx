@@ -19,18 +19,15 @@ const getMinSidebar = () => Math.max(80, Math.floor(window.innerWidth * 0.10))
 /** 获取最大侧边栏宽度。最大宽度不超过窗口宽度的 90% */
 const getMaxSidebar = () => Math.floor(window.innerWidth * 0.90)
 
-/** 
- * 生成唯一会话 ID，格式为 sess-时间戳-随机字符串
- */
+/** 生成唯一会话 ID，格式为 sess-时间戳-随机字符串 */
 function generateId() {
   return `sess-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 }
 
-/**
- * 主应用组件
- */
+/** 主应用组件 */
 export default function App() {
-  // 局部变量无法在多次渲染中持久保存、更改局部变量不会触发渲染，因此使用 useState 来管理组件状态，它保留渲染之间的数据、更新状态会触发组件重新渲染以反映最新状态
+  // 局部变量无法在多次渲染中持久保存、更改局部变量不会触发渲染，因此使用 useState 来管理组件状态，
+  // 它保留渲染之间的数据、更新状态(也就是useState的数据，比如这里的使用setSessions更新sessions)会触发组件(这里的组件就是APP)重新渲染以反映最新状态
   const [sessions, setSessions]           = useState([])  // 当前活跃会话列表
   const [activeId, setActiveId]           = useState(null)  // 当前活跃会话 ID
   const [sidebarOpen, setSidebarOpen]     = useState(true)  // 侧边栏是否打开
@@ -71,7 +68,6 @@ export default function App() {
   /**
    * 打开连接对话框，设置类型和初始数据（这里使用 useCallback，主要是为了“把这函数做成稳定的、可重用的函数引用”，
    * 让它在组件重渲染时不会不断变动。这种模式在 Hook 里很常见，尤其当这些函数会被传到其他组件或作为依赖使用时）
-   * 
    * @param {string} type 连接类型，可选值为 'ssh'、'telnet' 或 'serial'
    * @param {Object|null} initial 初始数据，编辑已保存会话时传入
    */
@@ -81,7 +77,6 @@ export default function App() {
 
   /**
    * 启动新会话：生成 ID，添加到会话列表，设置为活跃状态，返回 ID
-   * 
    * @param {Object} config 会话配置对象
    * @returns {string} 生成的会话 ID
    */
@@ -96,8 +91,7 @@ export default function App() {
   }, [])
 
   /**
-   * 删除会话
-   * 
+   * 删除会话：从会话列表中移除，更新活跃会话 ID（如果被删除的会话是当前活跃的，则切换到新的最后一个会话，否则保持不变），清除对应的 SFTP 状态
    * @param {string} id 要删除的会话 ID
    */
   const removeSession = useCallback((id) => {
@@ -111,7 +105,6 @@ export default function App() {
 
   /**
    * 更新会话：应用更新，如果断连则清除 SFTP 状态
-   * 
    * @param {string} id 会话 ID
    * @param {Object} updates 要更新的属性
    */
@@ -124,7 +117,6 @@ export default function App() {
 
   /**
    * SFTP 就绪时：初始化状态，调用 Electron 主进程的 SFTP 列表 API，更新文件列表
-   * 
    * @param {string} sessionId 会话 ID
    */
   const onSftpReady = useCallback(async (sessionId) => {
@@ -139,7 +131,6 @@ export default function App() {
 
   /**
    * 导航到 SFTP 目录：设置加载状态，获取新路径的文件列表
-   * 
    * @param {string} sessionId 会话 ID
    * @param {Object} item 目录项对象
    */
@@ -156,7 +147,6 @@ export default function App() {
 
   /**
    * 返回上级目录：计算父路径，调用导航函数
-   * 
    * @param {string} sessionId 会话 ID
    */
   const handleSftpGoUp = useCallback(async (sessionId) => {
@@ -168,7 +158,6 @@ export default function App() {
 
   /**
    * 跳转到指定路径：直接调用导航函数
-   * 
    * @param {string} sessionId 会话 ID
    * @param {string} path 目标路径
    */
@@ -178,7 +167,6 @@ export default function App() {
 
   /**
    * 处理 SFTP 文件拖放上传：遍历本地文件列表，调用 Electron 主进程的 SFTP 上传 API，上传完成后刷新当前目录
-   * 
    * @param {string} sessionId 会话 ID
    * @param {Array} localFiles 本地文件列表
    * @param {Object|null} targetItem 目标目录项对象
@@ -194,20 +182,17 @@ export default function App() {
 
   /**
    * 更新已保存会话列表并持久化到 localStorage
-   * 
    * @param {Array} next 新的会话列表
    */
   const updateSaved = useCallback((next) => { setSavedSessions(next); saveSessions(next) }, [])
   /**
    * 更新分组占位符列表并持久化到 localStorage
-   * 
    * @param {Array} next 新的占位符列表
    */
   const updatePlaceholders = useCallback((next) => { setGroupPlaceholders(next); saveGroupPlaceholders(next) }, [])
 
   /**
    * 仅保存会话（编辑/新建）：若 initialData 有 savedId，则编辑该会话；否则新建
-   * 
    * @param {Object} c 会话配置对象
    */
   const handleSaveOnly = useCallback((c) => {
@@ -218,7 +203,6 @@ export default function App() {
 
   /**
    * 保存并连接：先保存会话配置（编辑/新建），然后启动会话
-   * 
    * @param {Object} c 会话配置对象
    */
   const handleSaveAndConn = useCallback((c) => {
@@ -230,7 +214,6 @@ export default function App() {
 
   /**
    * 直接连接：不保存会话配置，直接启动会话
-   * 
    * @param {Object} c 会话配置对象
    */
   const handleConnect = useCallback((c) => { launchSession(c); setShowDialog(false) }, [launchSession])
@@ -238,7 +221,6 @@ export default function App() {
   
   /**
    * 连接已保存会话：如果是 SSH/Telnet 且缺少用户名或密码，弹出凭证对话框；否则直接启动会话
-   * 
    * @param {Object} s 会话配置对象
    */
   const handleConnSaved = useCallback((s) => {
@@ -256,14 +238,12 @@ export default function App() {
 
   /**
    * 删除已保存会话：从 savedSessions 中移除，并更新状态和 localStorage
-   * 
    * @param {string} id 会话 ID
    */
   const handleDelSaved = useCallback((id) => updateSaved(removeSavedSession(savedSessions, id)), [savedSessions, updateSaved])
 
   /**
    * 处理标签页重新排序：接收拖动的会话 ID 和目标位置的会话 ID，更新 sessions 顺序
-   * 
    * @param {string} fromId 被拖动的会话 ID
    * @param {string} toId 目标位置的会话 ID
    */
@@ -332,7 +312,7 @@ export default function App() {
       {showDialog && (
         <ConnectDialog type={dialogType} initialData={dialogInitial} savedGroups={savedGroups}
           onConnect={handleConnect} onSaveAndConnect={handleSaveAndConn}
-          onSaveOnly={handleSaveOnly} onClose={() => setShowDialog(false)} />
+          onSaveOnly={handleSaveOnly} />
       )}
       {credDialogState && (
         <CredentialDialog
@@ -363,7 +343,6 @@ export default function App() {
 /**
  * 欢迎界面组件
  * 显示在没有打开任何会话时，提供新建会话的入口
- * 
  * @param {Function} onNewSession 新建会话的回调函数
  */
 function WelcomeScreen({ onNewSession }) {
@@ -391,7 +370,6 @@ function WelcomeScreen({ onNewSession }) {
 /**
  * 凭证输入对话框组件
  * 在连接已保存会话时，如果缺少用户名或密码，弹出该对话框让用户输入凭证
- * 
  * @param {string} username 初始用户名
  * @param {string} password 初始密码
  * @param {Function} onConnect 连接的回调函数，参数为包含用户名和密码的配置对象

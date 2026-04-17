@@ -5,13 +5,25 @@ const TYPE_ICONS = { ssh: '⌨', telnet: '🔌', serial: '⚡' }
 const STATUS_DOT = { connecting: '●', connected: '●', disconnected: '○', error: '●' }
 const STATUS_CLS = { connecting: 'connecting', connected: 'connected', disconnected: 'disconnected', error: 'error' }
 
+/**
+ * 标签栏组件，显示当前会话列表和控制按钮。
+ * 通过 useState 管理右键菜单状态，useRef 管理拖拽状态和 DOM 引用。
+ * 支持标签页选择、关闭、新建、右键菜单操作和拖拽排序
+ * @param {Object[]} sessions - 当前会话列表，每个会话包含 id、type、label、status 等属性
+ * @param {string} activeId - 当前活跃会话 ID
+ * @param {function} onSelect - 选择标签页的回调函数，参数为会话 ID
+ * @param {function} onClose - 关闭标签页的回调函数，参数为会话 ID
+ * @param {function} onNew - 新建标签页的回调函数，无参数
+ * @param {function} onReorder - 拖拽排序后的回调函数，参数为 fromId 和 toId
+ */
 export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, onReorder }) {
-  const [ctxMenu, setCtxMenu] = useState(null)  // { x, y, id, idx }
-  const dragRef = useRef(null)
-  const tabsRef = useRef(null)
+  const [ctxMenu, setCtxMenu] = useState(null)  // 右键菜单状态，包含 { x, y, id, idx }，表示菜单位置和对应的标签页 ID 和索引
+  const dragRef = useRef(null)  // 当前拖拽的标签 ID
+  const tabsRef = useRef(null)  // 标签容器的 DOM 引用
+  const prevCountRef = useRef(sessions.length) // 上一次会话数量的引用，用于检测新增标签页
 
-  // 新 tab 出现时（activeId 变化且是最新 tab），滚动到可见
-  const prevCountRef = useRef(sessions.length)
+  // useEffect 监听 sessions.length 变化，如果增加了新的会话且 tabsRef 已经挂载，就将 scrollLeft 设置为 scrollWidth，
+  // 使得标签栏滚动到最右侧，确保新标签页可见。最后更新 prevCountRef.current 为当前的 sessions.length，以便下一次比较。
   useEffect(() => {
     if (sessions.length > prevCountRef.current && tabsRef.current) {
       // 滚动到最右侧，确保新 tab 可见
@@ -20,18 +32,42 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
     prevCountRef.current = sessions.length
   }, [sessions.length])
 
-  // ── 右键菜单 ──────────────────────────────────
+  /** 
+   * 右键菜单操作函数，分别用于关闭当前标签页、关闭其他标签页、关闭左侧标签页、关闭右侧标签页和关闭全部标签页。
+   * 每个函数调用对应的 onClose 回调来关闭指定的标签页，并调用 closeCtx 来关闭右键菜单
+   * @param {Event} e - 右键点击事件对象
+   * @param {string} id - 要关闭的标签页 ID
+   * @param {number} idx - 要关闭的标签页索引
+   */
   const openCtx = (e, id, idx) => {
     e.preventDefault()
-    e.stopPropagation()
+    e.stopPropagation()  // 阻止事件冒泡，避免触发父元素的点击事件
     setCtxMenu({ x: e.clientX, y: e.clientY, id, idx })
   }
-  const closeCtx = () => setCtxMenu(null)
 
+  /** 关闭右键菜单 */
+  const closeCtx = () => setCtxMenu(null)
+  /**
+   * 关闭标签页
+   * @param {string} id - 要关闭的标签页 ID
+   */
   const closeTab    = (id) => { onClose(id); closeCtx() }
+  /**
+   * 关闭其他标签页
+   * @param {string} id - 要保留的标签页 ID
+   */
   const closeOthers = (id) => { sessions.filter(s => s.id !== id).forEach(s => onClose(s.id)); closeCtx() }
+  /**
+   * 关闭左侧标签页
+   * @param {number} idx - 要关闭的标签页索引
+   */
   const closeLeft   = (idx) => { sessions.slice(0, idx).forEach(s => onClose(s.id)); closeCtx() }
+  /**
+   * 关闭右侧标签页
+   * @param {number} idx - 要关闭的标签页索引
+   */
   const closeRight  = (idx) => { sessions.slice(idx + 1).forEach(s => onClose(s.id)); closeCtx() }
+  /** 关闭全部标签页 */
   const closeAll    = () => { sessions.forEach(s => onClose(s.id)); closeCtx() }
 
   // ── 拖拽排序 ──────────────────────────────────

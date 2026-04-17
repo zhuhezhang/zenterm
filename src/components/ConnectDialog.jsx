@@ -10,7 +10,6 @@ const PARITIES = ['none','even','odd','mark','space']
 /**
  * 获取默认配置
  * 根据协议类型返回对应的默认配置对象，如果传入 initial 则在默认配置基础上覆盖初始值
- * 
  * @param {string} tab 协议类型
  * @param {Object} initial 初始配置
  * @returns {Object} 默认配置
@@ -24,7 +23,6 @@ function getDefault(tab, initial) {
 /**
  * 构建标签名称
  * 根据协议类型和配置对象生成一个标签名称，去除非法字符并保证不为空
- * 
  * @param {string} tab 协议类型
  * @param {Object} form 配置对象
  * @returns {string} 标签名称
@@ -41,7 +39,6 @@ function buildLabel(tab, form) {
 /**
  * 连接对话框组件
  * 提供 SSH、Telnet、Serial 三种连接方式的配置界面，支持保存会话和直接连接
- * 
  * @param {string} initType 初始协议类型（ssh/telnet/serial）
  * @param {Object} initialData 初始配置数据，用于编辑已保存会话时预填充表单
  * @param {Array} savedGroups 已保存的分组列表，用于分组输入的自动补全
@@ -59,7 +56,6 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
 
   /**
    * 切换协议类型时更新表单数据。保留已有参数，补齐当前协议缺省字段，重置错误信息
-   * 
    * @param {string} t 新的协议类型
    */
   const switchTab = (t) => {
@@ -78,8 +74,7 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
   }, [tab])
 
   /** 
-   * 更新表单数据
-   * 
+   * 更新表单数据的通用函数。接收一个键和值，使用 setForm 更新对应的表单字段，同时保留其他字段不变
    * @param {string} key 设置项的键
    * @param {string} value 设置项的值
    */
@@ -87,7 +82,6 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
 
   /**
    * 表单验证函数。根据当前协议类型和表单数据检查必填项是否填写，分组和标签是否包含非法字符，返回错误信息字符串
-   * 
    * @returns {string} 错误信息，如果没有错误则返回空字符串
    */
   const validate = () => {
@@ -102,8 +96,7 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
   }
 
   /**
-   * 构建配置对象，准备连接或保存。根据当前协议类型和表单数据生成一个完整的配置对象，进行必要的类型转换和默认值处理
-   * 
+   * 构建配置对象，准备连接或保存。根据当前协议类型和表单数据生成一个完整的配置对象，进行必要的类型转换和默认值处理，同时生成标签名称（如果未指定标签则根据协议和主机信息生成）。该配置对象将作为连接或保存的参数传递给回调函数
    * @returns {Object} 配置对象
    */
   const buildConfig = () => ({
@@ -117,7 +110,6 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
 
   /**
    * 检查是否需要输入凭证（用户名或密码为空）
-   * 
    * @param {Object} config 配置对象
    * @returns {boolean} 是否需要输入凭证
    */
@@ -129,7 +121,6 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
   /**
    * 连接/保存操作的统一处理函数
    * 根据当前表单数据构建配置对象，进行表单验证，如果需要输入凭证则弹出凭证对话框，否则直接调用回调函数
-   * 
    * @param {Function} fn 连接或保存的回调函数，参数为配置对象
    * @param {boolean} requireCreds 是否需要检查凭证（用户名和密码），默认为 true
    */
@@ -243,7 +234,6 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
 
 /**
  * SSH 表单组件。根据 form 数据渲染 SSH 连接的表单项，支持密码认证和私钥认证两种方式，根据 visible 控制是否渲染
- * 
  * @param {Object} form 表单数据
  * @param {Function} set 设置表单数据的函数
  * @param {boolean} visible 是否可见
@@ -323,7 +313,6 @@ function TelnetForm({ form, set, visible }) {
 
 /**
  * Serial 表单组件。根据 form 数据渲染串口连接的表单项，提供串口路径的输入和可用串口的选择，根据 visible 控制是否渲染
- * 
  * @param {Object} form 表单数据
  * @param {Function} set 设置表单数据的函数
  * @param {Array} ports 可用串口列表，用于 datalist 自动补全
@@ -371,7 +360,6 @@ function SerialForm({ form, set, ports, visible }) {
 
 /**
  * 表单行组件。用于在连接对话框中渲染标签和输入控件的行布局
- * 
  * @param {string} label 行标签
  * @param {JSX.Element} children 输入控件
  * @returns {JSX.Element} 表单行
