@@ -9,46 +9,45 @@ const sshSessions = new Map()
  * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息 
  */
 function setupSSHHandlers(ipcMain, mainWindow) {
-  ipcMain.handle('ssh:connect', async (_event, id, config) => {
+  ipcMain.handle('ssh:connect', async (_event, id, config) => {  // 监听渲染进程 ssh 连接请求，传入会话 ID 和连接配置，返回一个 Promise 以便在渲染进程使用 async/await 处理连接结果
     return new Promise((resolve, reject) => {
       const conn = new Client()
-
-      conn.on('ready', () => {
-        conn.shell({ term: 'xterm-256color' }, (err, stream) => {
-          if (err) {
+      
+      conn.on('ready', () => {  // 监听 ready 事件（SSH 认证成功后触发）
+        conn.shell({ term: 'xterm-256color' }, (err, stream) => {  // 调用 conn.shell() 启动交互式 shell，指定终端类型为 xterm-256color
+          if (err) {  // 如果启动 shell 失败，关闭连接并返回错误信息
             conn.end()
             return reject({ success: false, error: err.message })
           }
 
+          // 保存连接信息；监听数据输出和连接关闭事件，并通过 mainWindow.webContents.send 向渲染进程发送对应的 IPC 消息
           sshSessions.set(id, { conn, stream })
-
           stream.on('data', (data) => {
             mainWindow.webContents.send('ssh:output', id, data.toString('binary'))
           })
-
           stream.stderr.on('data', (data) => {
             mainWindow.webContents.send('ssh:output', id, data.toString('binary'))
           })
-
           stream.on('close', () => {
             sshSessions.delete(id)
             mainWindow.webContents.send('ssh:closed', id)
           })
 
-          resolve({ success: true })
+          resolve({ success: true })  // 连接成功后，解析 Promise
         })
       })
 
       conn.on('error', (err) => {
-        reject({ success: false, error: err.message })
+        reject({ success: false, error: err.message })  // 连接错误时，拒绝 Promise 并返回错误信息
       })
 
+      /** 构建连接配置对象，根据用户选择的认证方式（密码或私钥）设置相应的属性，并调用 conn.connect() 发起 SSH 连接请求 */
       const connectConfig = {
         host: config.host,
         port: config.port || 22,
         username: config.username,
-        readyTimeout: 20000,
-        keepaliveInterval: 10000,
+        readyTimeout: 20000,  // 连接超时20秒
+        keepaliveInterval: 10000,  // 发送 keepalive 消息的间隔时间（10秒）
       }
 
       if (config.authType === 'password') {
@@ -66,21 +65,21 @@ function setupSSHHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('ssh:data', (_event, id, data) => {
+  ipcMain.on('ssh:data', (_event, id, data) => {  // 监听渲染进程发送的 SSH 数据并写入 ssh:data 消息，传入会话 ID 和数据内容
     const session = sshSessions.get(id)
     if (session && session.stream) {
       session.stream.write(data)
     }
   })
 
-  ipcMain.on('ssh:resize', (_event, id, cols, rows) => {
+  ipcMain.on('ssh:resize', (_event, id, cols, rows) => {  // 监听渲染进程发送的 SSH 窗口调整消息，传入会话 ID、列数和行数
     const session = sshSessions.get(id)
     if (session && session.stream) {
       session.stream.setWindow(rows, cols)
     }
   })
 
-  ipcMain.handle('ssh:disconnect', async (_event, id) => {
+  ipcMain.handle('ssh:disconnect', async (_event, id) => {  // 监听渲染进程发送的 SSH 断开连接请求，传入会话 ID，返回一个 Promise 以便在渲染进程使用 async/await 处理断开结果
     const session = sshSessions.get(id)
     if (session) {
       try {

@@ -1,9 +1,14 @@
 const { Client } = require('ssh2')
 const fs = require('fs')
-const path = require('path')
 
+/** 存储所有 SFTP 会话信息的 Map */
 const sftpSessions = new Map()
 
+/**
+ * 设置 SFTP 相关的 IPC 处理函数，传入 ipcMain 和 mainWindow 以便在处理函数中使用 IPC 和窗口通信
+ * @param {Electron.IpcMain} ipcMain Electron 的 IPC 主进程模块，用于监听和处理来自渲染进程的 IPC 消息
+ * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息 
+ */
 function setupSFTPHandlers(ipcMain, mainWindow) {
   ipcMain.handle('sftp:connect', async (_event, id, config) => {
     return new Promise((resolve, reject) => {
