@@ -7,7 +7,7 @@ import '../styles/terminal.css'
 
 /**
  * 二进制数据转 UTF-8 字符串，兼容不同环境下的编码问题
- * @param {string} binary - 可能包含非 UTF-8 字符的二进制字符串
+ * @param {string} binary 可能包含非 UTF-8 字符的二进制字符串
  * @returns {string} 转换后的 UTF-8 字符串，如果转换失败则返回原始字符串
  */
 function binaryToUtf8(binary) {
@@ -20,11 +20,11 @@ function binaryToUtf8(binary) {
 
 /**
  * TerminalPanel 组件：负责渲染终端界面、管理终端实例和连接会话
- * @param {Object} props - 组件属性
- * @param {Object} props.session - 会话对象，包含连接信息和状态
- * @param {Boolean} props.active - 是否为当前活跃标签页
- * @param {Function} props.onUpdate - 会话状态更新回调函数
- * @param {Object} props.settings - 全局设置对象，包含用户偏好设置
+ * @param {Object} props 组件属性
+ * @param {Object} props.session 会话对象，包含连接信息和状态
+ * @param {Boolean} props.active 是否为当前活跃标签页
+ * @param {Function} props.onUpdate 会话状态更新回调函数
+ * @param {Object} props.settings 全局设置对象，包含用户偏好设置
  */
 export default function TerminalPanel({ session, active, onUpdate, settings }) {
   /** 终端容器的 DOM 引用，用于挂载 xterm 实例 */
@@ -133,7 +133,7 @@ function createTerminal() {
 /**
  * 应用终端交互设置：根据用户设置启用选中复制和右键粘贴功能
  * @param {Terminal} term - xterm 终端实例
- * @param {Object} settingsRef - 设置对象的引用，包含用户偏好设置
+ * @param {Object} settingsRef 设置对象的引用，包含用户偏好设置
  */
 function applyTerminalSettings(term, settingsRef) {
   term.onSelectionChange(() => {  // 监听选中时复制：通过 settingsRef 实时读取，保证设置变化后立即生效
@@ -159,7 +159,7 @@ function applyTerminalSettings(term, settingsRef) {
 
 /**
  * 去除字符串中的 ANSI 转义序列，保留可读文本
- * @param {string} str - 可能包含 ANSI 转义序列的字符串
+ * @param {string} str 可能包含 ANSI 转义序列的字符串
  * @returns {string} 去除 ANSI 序列后的纯文本字符串
  */
 function stripAnsi(str) {
@@ -179,10 +179,10 @@ function stripAnsi(str) {
 
 /**
  * 设置日志记录：根据用户设置启用日志功能，生成日志文件名，并将日志写入函数存储在 logFileRef 中以供连接过程中使用
- * @param {Object} session - 会话对象
- * @param {Object} settings - 设置对象
- * @param {Object} logFileRef - 日志文件引用
- * @param {Object} cleanupRef - 清理函数引用
+ * @param {Object} session 会话对象
+ * @param {Object} settings 设置对象
+ * @param {Object} logFileRef 日志文件引用
+ * @param {Object} cleanupRef 清理函数引用
  */
 function setupLogging(session, settings, logFileRef, cleanupRef) {
   if (!settings?.enableLogging) return
@@ -213,14 +213,14 @@ function setupLogging(session, settings, logFileRef, cleanupRef) {
 
 /**
  * 连接会话：根据会话类型（SSH/Telnet/Serial）调用对应的连接函数，设置数据接收和连接关闭的处理函数，并将清理函数添加到 cleanupRef 以便组件卸载时调用
- * @param {Terminal} term - xterm 终端实例
- * @param {FitAddon} fitAddon - FitAddon 实例，用于调整终端尺寸
- * @param {Object} session - 会话对象，包含连接信息和状态
- * @param {Function} onUpdate - 会话状态更新回调函数
- * @param {Object} cleanupRef - 清理函数引用，用于存储连接相关的清理函数
- * @param {Object} disconnectedRef - 断连状态引用，用于标记当前连接是否已断开
- * @param {Function} isCancelled - 可选的取消函数，组件卸载时返回 true，连接过程中定期调用以判断是否应放弃后续操作
- * @param {Object} logFileRef - 日志写入函数引用，用于记录连接过程中的日志
+ * @param {Terminal} term xterm 终端实例
+ * @param {FitAddon} fitAddon FitAddon 实例，用于调整终端尺寸
+ * @param {Object} session 会话对象，包含连接信息和状态
+ * @param {Function} onUpdate 会话状态更新回调函数
+ * @param {Object} cleanupRef 清理函数引用，用于存储连接相关的清理函数
+ * @param {Object} disconnectedRef 断连状态引用，用于标记当前连接是否已断开
+ * @param {Function} isCancelled 可选的取消函数，组件卸载时返回 true，连接过程中定期调用以判断是否应放弃后续操作
+ * @param {Object} logFileRef 日志写入函数引用，用于记录连接过程中的日志
  */
 async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, isCancelled, logFileRef) {
   const { id, type } = session  // 从会话对象中提取会话 ID 和类型（SSH/Telnet/Serial）
@@ -230,7 +230,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
 
   /**
    * 连接断开处理函数：在终端显示断开消息，提示用户按 R 重连，更新会话状态为断开，并设置断连标记
-   * @param {string} msg - 断开消息内容
+   * @param {string} msg 断开消息内容
    */
   const onDisconnect = (msg) => {
     writeInfo(msg)
@@ -241,7 +241,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
 
   /**
    * 数据接收处理函数：将接收到的二进制数据转换为 UTF-8 字符串，写入终端并记录日志
-   * @param {string} data - 接收到的二进制数据字符串
+   * @param {string} data 接收到的二进制数据字符串
    */
   const recv = (data) => {
     const decoded = binaryToUtf8(data)

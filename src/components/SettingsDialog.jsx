@@ -7,7 +7,7 @@ import '../styles/settings.css'
 /**
  * 设置对话框组件
  * 提供应用设置的界面，包括日志路径配置和会话管理功能
- * @param {Object} props - 组件属性
+ * @param {Object} props 组件属性
  * @param {Object} props.settings 当前的设置对象
  * @param {Array} props.savedSessions 已保存的会话列表
  * @param {Function} props.onUpdateSessions 更新会话列表的回调函数

@@ -10,12 +10,12 @@ const STATUS_CLS = { connecting: 'connecting', connected: 'connected', disconnec
  * 通过 useState 管理右键菜单状态，useRef 管理拖拽状态和 DOM 引用。
  * 支持标签页选择、关闭、新建、右键菜单操作和拖拽排序
  * @param {Object} props - 组件属性
- * @param {Object[]} props.sessions - 当前会话列表，每个会话包含 id、type、label、status 等属性
- * @param {string} props.activeId - 当前活跃会话 ID
- * @param {function} props.onSelect - 选择标签页的回调函数，参数为会话 ID
- * @param {function} props.onClose - 关闭标签页的回调函数，参数为会话 ID
- * @param {function} props.onNew - 新建标签页的回调函数，无参数
- * @param {function} props.onReorder - 拖拽排序后的回调函数，参数为 fromId 和 toId
+ * @param {Object[]} props.sessions 当前会话列表，每个会话包含 id、type、label、status 等属性
+ * @param {string} props.activeId 当前活跃会话 ID
+ * @param {function} props.onSelect 选择标签页的回调函数，参数为会话 ID
+ * @param {function} props.onClose 关闭标签页的回调函数，参数为会话 ID
+ * @param {function} props.onNew 新建标签页的回调函数，无参数
+ * @param {function} props.onReorder 拖拽排序后的回调函数，参数为 fromId 和 toId
  */
 export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, onReorder }) {
   const [ctxMenu, setCtxMenu] = useState(null)  // 右键菜单状态，包含 { x, y, id, idx }，表示菜单位置和对应的标签页 ID 和索引
@@ -35,9 +35,9 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
   /** 
    * 右键菜单操作函数，分别用于关闭当前标签页、关闭其他标签页、关闭左侧标签页、关闭右侧标签页和关闭全部标签页。
    * 每个函数调用对应的 onClose 回调来关闭指定的标签页，并调用 closeCtx 来关闭右键菜单
-   * @param {Event} e - 右键点击事件对象
-   * @param {string} id - 要关闭的标签页 ID
-   * @param {number} idx - 要关闭的标签页索引
+   * @param {Event} e 右键点击事件对象
+   * @param {string} id 要关闭的标签页 ID
+   * @param {number} idx 要关闭的标签页索引
    */
   const openCtx = (e, id, idx) => {
     e.preventDefault()
@@ -49,22 +49,22 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
   const closeCtx = () => setCtxMenu(null)
   /**
    * 关闭标签页
-   * @param {string} id - 要关闭的标签页 ID
+   * @param {string} id 要关闭的标签页 ID
    */
   const closeTab    = (id) => { onClose(id); closeCtx() }
   /**
    * 关闭其他标签页
-   * @param {string} id - 要保留的标签页 ID
+   * @param {string} id 要保留的标签页 ID
    */
   const closeOthers = (id) => { sessions.filter(s => s.id !== id).forEach(s => onClose(s.id)); closeCtx() }
   /**
    * 关闭左侧标签页
-   * @param {number} idx - 要关闭的标签页索引
+   * @param {number} idx 要关闭的标签页索引
    */
   const closeLeft   = (idx) => { sessions.slice(0, idx).forEach(s => onClose(s.id)); closeCtx() }
   /**
    * 关闭右侧标签页
-   * @param {number} idx - 要关闭的标签页索引
+   * @param {number} idx 要关闭的标签页索引
    */
   const closeRight  = (idx) => { sessions.slice(idx + 1).forEach(s => onClose(s.id)); closeCtx() }
   /** 关闭全部标签页 */
@@ -73,8 +73,8 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
   /**
    * 拖拽事件处理函数：开始拖拽
    * onDragStart 设置 dragRef.current 为当前拖拽的标签 ID，并添加 dragging 类以改变样式。
-   * @param {Event} e - 拖拽事件对象
-   * @param {string} id - 当前拖拽的标签页 ID
+   * @param {Event} e 拖拽事件对象
+   * @param {string} id 当前拖拽的标签页 ID
    */
   const onDragStart = (e, id) => {
     dragRef.current = id
@@ -86,7 +86,7 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
   /** 
    * 拖拽事件处理函数：拖拽经过
    * onDragOver 调用 e.preventDefault() 以允许 drop，并设置拖拽效果为 move。
-   * @param {Event} e - 拖拽事件对象
+   * @param {Event} e 拖拽事件对象
    */
   const onDragOver = (e) => {
     e.preventDefault()
@@ -96,8 +96,8 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
   /** 
    * 拖拽事件处理函数：放下
    * onDrop 获取拖拽来源的标签 ID（fromId）和目标标签 ID（toId），如果有效且不同，则调用 onReorder 回调来更新标签顺序，并重置 dragRef.current。
-   * @param {Event} e - 拖拽事件对象
-   * @param {string} toId - 放下目标的标签页 ID
+   * @param {Event} e 拖拽事件对象
+   * @param {string} toId 放下目标的标签页 ID
    */
   const onDrop = (e, toId) => {
     e.preventDefault()
@@ -110,7 +110,7 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
   /** 
    * 拖拽事件处理函数：结束拖拽
    * onDragEnd 将 dragRef.current 重置为 null，并移除 dragging 类。
-   * @param {Event} e - 拖拽事件对象
+   * @param {Event} e 拖拽事件对象
    */
   const onDragEnd = (e) => {
     e.currentTarget.classList.remove('dragging')
