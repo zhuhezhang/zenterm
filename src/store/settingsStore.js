@@ -20,7 +20,6 @@ export const DEFAULT_SETTINGS = {
 
 /**
  * 加载设置项，从 localStorage 获取并解析 JSON，如果失败则返回默认设置
- * 
  * @returns {Object} 设置项对象
  */
 export function loadSettings() {
@@ -40,7 +39,6 @@ export function loadSettings() {
 
 /**
  * 保存设置项，将设置对象序列化为 JSON 存储到 localStorage 中
- * 
  * @param {Object} settings 要保存的设置项对象
  */
 export function saveSettings(settings) {

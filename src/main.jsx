@@ -3,9 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './styles/global.css'
 
-/** 
- * React 错误边界组件，用于捕获子组件渲染过程中发生的错误，并显示友好的错误信息界面
- */
+/**  React 错误边界组件，用于捕获子组件渲染过程中发生的错误，并显示友好的错误信息界面 */
 class ErrorBoundary extends React.Component {
   /** 构造函数：初始化状态，error 用于存储捕获到的错误信息 */
   constructor(props) { super(props); this.state = { error: null } }

@@ -39,17 +39,18 @@ function buildLabel(tab, form) {
 /**
  * 连接对话框组件
  * 提供 SSH、Telnet、Serial 三种连接方式的配置界面，支持保存会话和直接连接
- * @param {string} initType 初始协议类型（ssh/telnet/serial）
- * @param {Object} initialData 初始配置数据，用于编辑已保存会话时预填充表单
- * @param {Array} savedGroups 已保存的分组列表，用于分组输入的自动补全
- * @param {Function} onConnect 直接连接的回调函数，参数为配置对象
- * @param {Function} onSaveAndConnect 保存并连接的回调函数，参数为配置对象
- * @param {Function} onSaveOnly 仅保存的回调函数，参数为配置对象
- * @param {Function} onClose 关闭对话框的回调函数
+ * @param {Object} props 组件属性
+ * @param {string} props.type 初始协议类型（ssh/telnet/serial）
+ * @param {Object} props.initialData 初始配置数据，用于编辑已保存会话时预填充表单
+ * @param {Array} props.savedGroups 已保存的分组列表，用于分组输入的自动补全
+ * @param {Function} props.onConnect 直接连接的回调函数，参数为配置对象
+ * @param {Function} props.onSaveAndConnect 保存并连接的回调函数，参数为配置对象
+ * @param {Function} props.onSaveOnly 仅保存的回调函数，参数为配置对象
+ * @param {Function} props.onClose 关闭对话框的回调函数
  */
-export default function ConnectDialog({ type: initType, initialData, savedGroups, onConnect, onSaveAndConnect, onSaveOnly, onClose }) {
-  const [tab, setTab] = useState(initType || 'ssh')
-  const [form, setForm] = useState(() => getDefault(initType || 'ssh', initialData))
+export default function ConnectDialog({ type, initialData, savedGroups, onConnect, onSaveAndConnect, onSaveOnly, onClose }) {
+  const [tab, setTab] = useState(type || 'ssh')
+  const [form, setForm] = useState(() => getDefault(type || 'ssh', initialData))
   const [ports, setPorts] = useState([])
   const [error, setError] = useState('')
   const [credDialog, setCredDialog] = useState(null)  // { username, password, callback } 或 null，表示是否显示凭证输入对话框以及初始值和连接回调函数
@@ -65,7 +66,7 @@ export default function ConnectDialog({ type: initType, initialData, savedGroups
     setError('')
   }
 
-  // 当tab切换且协议类型为 Serial 时，获取可用串口列表并更新状态（useEffect允许将组件与外部系统同步）
+  // 监听tab变化，当tab切换且协议类型为 Serial 时，获取可用串口列表并更新状态（useEffect允许将组件与外部系统同步）
   useEffect(() => {
     setError('')
     if (tab === 'serial') {

@@ -7,12 +7,13 @@ import '../styles/settings.css'
 /**
  * 设置对话框组件
  * 提供应用设置的界面，包括日志路径配置和会话管理功能
- * @param {Object} settings 当前的设置对象
- * @param {Array} savedSessions 已保存的会话列表
- * @param {Function} onUpdateSessions 更新会话列表的回调函数
- * @param {Function} onUpdatePlaceholders 更新分组占位符的回调函数（可选）
- * @param {Function} onClose 关闭对话框的回调函数
- * @param {Function} onSave 保存设置的回调函数，参数为新的设置对象
+ * @param {Object} props - 组件属性
+ * @param {Object} props.settings 当前的设置对象
+ * @param {Array} props.savedSessions 已保存的会话列表
+ * @param {Function} props.onUpdateSessions 更新会话列表的回调函数
+ * @param {Function} props.onUpdatePlaceholders 更新分组占位符的回调函数（可选）
+ * @param {Function} props.onClose 关闭对话框的回调函数
+ * @param {Function} props.onSave 保存设置的回调函数，参数为新的设置对象
  */
 export default function SettingsDialog({ settings, savedSessions, onUpdateSessions, onUpdatePlaceholders, onClose, onSave }) {
   const [form, setForm] = useState({ ...settings })

@@ -3,7 +3,6 @@ const STORAGE_KEY = 'zterm_saved_sessions'
 
 /**
  * 从本地存储中加载已保存的会话（JSON数组）
- * 
  * @returns {Array} 会话列表，如果没有数据或解析失败则返回空数组
  */
 export function loadSavedSessions() {
@@ -15,7 +14,6 @@ export function loadSavedSessions() {
 
 /**
  * 将会话列表保存到本地存储
- * 
  * @param {Array} sessions 要保存的会话列表（JSON数组）
  */
 export function saveSessions(sessions) {
@@ -24,7 +22,6 @@ export function saveSessions(sessions) {
 
 /** 
  * 保证同一分组内标签名唯一
- * 
  * @param {Array} sessions 当前会话列表
  * @param {string} group 会话分组
  * @param {string} label 期望的标签名
@@ -45,7 +42,6 @@ export function uniqueLabelInGroup(sessions, group, label, excludeSavedId) {
 
 /**
  * 添加或更新已保存的会话，如果 config 中有 savedId 则更新对应会话，否则新建一个会话
- * 
  * @param {Array} sessions 当前会话列表
  * @param {Object} config 会话配置对象，必须包含 group、label 等属性，编辑时必须包含 savedId
  * @returns {Array} 更新后的会话列表
@@ -69,7 +65,6 @@ export function addSavedSession(sessions, config) {
 
 /** 
  * 复制已保存的会话
- * 
  * @param {Array} sessions 当前会话列表
  * @param {string} savedId 要复制的会话 Id
  * @returns {Array} 更新后的会话列表
@@ -88,7 +83,6 @@ export function duplicateSavedSession(sessions, savedId) {
 
 /**
  * 删除已保存的会话
- * 
  * @param {Array} sessions 当前会话列表
  * @param {string} savedId 要删除的会话 Id
  * @returns {Array} 更新后的会话列表
@@ -101,7 +95,6 @@ export function removeSavedSession(sessions, savedId) {
 
 /**
  * 重新排序会话列表，将 fromId 的会话移动到 toId 之前，如果 toId 为空则移动到末尾，同时可选修改分组
- * 
  * @param {Array} sessions 当前会话列表
  * @param {string} fromId 要移动的会话 Id
  * @param {string} toId 目标位置的会话 Id，或 null/undefined 表示移动到末尾
@@ -129,7 +122,6 @@ export function reorderSessions(sessions, fromId, toId, targetGroup) {
 
 /**
  * 导出会话列表为 JSON 文件，文件名包含当前日期
- * 
  * @param {Array} sessions 要导出的会话列表
  */
 export function exportSessions(sessions) {
@@ -145,7 +137,6 @@ export function exportSessions(sessions) {
 
 /**
  * 从 JSON 文件中导入会话列表，返回一个 Promise，解析成功则返回会话数组，失败则抛出错误
- * 
  * @param {File} file 用户选择的 JSON 文件对象
  * @returns {Promise<Array>} 解析后的会话列表
  */
@@ -170,7 +161,6 @@ const PLACEHOLDER_KEY = '__zterm_group_placeholders__'
 /**
  * 加载占位分组列表，返回一个字符串数组，如果没有数据或解析失败则返回空数组
  * 占位分组用于在会话列表中显示没有会话的分组，以便用户可以将会话拖入这些分组
- * 
  * @returns {Array} 占位分组名称列表
  */
 export function loadGroupPlaceholders() {
@@ -182,7 +172,6 @@ export function loadGroupPlaceholders() {
 
 /**
  * 保存占位分组列表
- * 
  * @param {Array} list 要保存的占位分组名称列表
  */
 export function saveGroupPlaceholders(list) {
@@ -191,7 +180,6 @@ export function saveGroupPlaceholders(list) {
 
 /**
  * 添加一个占位分组，如果已存在则不添加，返回更新后的占位分组列表
- * 
  * @param {Array} list 当前占位分组列表
  * @param {string} groupName 要添加的分组名称
  * @returns {Array} 更新后的占位分组列表
@@ -205,7 +193,6 @@ export function addGroupPlaceholder(list, groupName) {
 
 /**
  * 删除一个占位分组，返回更新后的占位分组列表
- * 
  * @param {Array} list 当前占位分组列表
  * @param {string} groupName 要删除的分组名称
  * @returns {Array} 更新后的占位分组列表
@@ -218,7 +205,6 @@ export function removeGroupPlaceholder(list, groupName) {
 
 /**
  * 从会话列表中提取分组名称列表，合并占位分组，返回一个去重且排序后的分组名称数组
- * 
  * @param {Array} sessions 当前会话列表
  * @param {Array} placeholders 占位分组列表
  * @returns {Array} 分组名称列表

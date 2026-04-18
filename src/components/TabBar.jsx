@@ -9,12 +9,13 @@ const STATUS_CLS = { connecting: 'connecting', connected: 'connected', disconnec
  * 标签栏组件，显示当前会话列表和控制按钮。
  * 通过 useState 管理右键菜单状态，useRef 管理拖拽状态和 DOM 引用。
  * 支持标签页选择、关闭、新建、右键菜单操作和拖拽排序
- * @param {Object[]} sessions - 当前会话列表，每个会话包含 id、type、label、status 等属性
- * @param {string} activeId - 当前活跃会话 ID
- * @param {function} onSelect - 选择标签页的回调函数，参数为会话 ID
- * @param {function} onClose - 关闭标签页的回调函数，参数为会话 ID
- * @param {function} onNew - 新建标签页的回调函数，无参数
- * @param {function} onReorder - 拖拽排序后的回调函数，参数为 fromId 和 toId
+ * @param {Object} props - 组件属性
+ * @param {Object[]} props.sessions - 当前会话列表，每个会话包含 id、type、label、status 等属性
+ * @param {string} props.activeId - 当前活跃会话 ID
+ * @param {function} props.onSelect - 选择标签页的回调函数，参数为会话 ID
+ * @param {function} props.onClose - 关闭标签页的回调函数，参数为会话 ID
+ * @param {function} props.onNew - 新建标签页的回调函数，无参数
+ * @param {function} props.onReorder - 拖拽排序后的回调函数，参数为 fromId 和 toId
  */
 export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, onReorder }) {
   const [ctxMenu, setCtxMenu] = useState(null)  // 右键菜单状态，包含 { x, y, id, idx }，表示菜单位置和对应的标签页 ID 和索引
@@ -26,7 +27,6 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
   // 使得标签栏滚动到最右侧，确保新标签页可见。最后更新 prevCountRef.current 为当前的 sessions.length，以便下一次比较。
   useEffect(() => {
     if (sessions.length > prevCountRef.current && tabsRef.current) {
-      // 滚动到最右侧，确保新 tab 可见
       tabsRef.current.scrollLeft = tabsRef.current.scrollWidth
     }
     prevCountRef.current = sessions.length
