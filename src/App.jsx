@@ -298,9 +298,7 @@ export default function App() {
                 ? <WelcomeScreen onNewSession={openDialog} />
                 : sessions.map(s => (
                   <TerminalPanel key={s.id} session={s} active={s.id === activeId}
-                    settings={settings}
-                    onClose={() => removeSession(s.id)}
-                    onUpdate={(upd) => { updateSession(s.id, upd); if (upd.sftpReady) onSftpReady(s.id) }}
+                    settings={settings} onUpdate={(upd) => { updateSession(s.id, upd); if (upd.sftpReady) onSftpReady(s.id) }}
                   />
                 ))
               }
@@ -312,7 +310,7 @@ export default function App() {
       {showDialog && (
         <ConnectDialog type={dialogType} initialData={dialogInitial} savedGroups={savedGroups}
           onConnect={handleConnect} onSaveAndConnect={handleSaveAndConn}
-          onSaveOnly={handleSaveOnly} />
+          onSaveOnly={handleSaveOnly}  onClose={() => setShowDialog(false)}/>
       )}
       {credDialogState && (
         <CredentialDialog

@@ -70,21 +70,35 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
   /** 关闭全部标签页 */
   const closeAll    = () => { sessions.forEach(s => onClose(s.id)); closeCtx() }
 
-  // ── 拖拽排序 ──────────────────────────────────
+  /**
+   * 拖拽事件处理函数：开始拖拽
+   * onDragStart 设置 dragRef.current 为当前拖拽的标签 ID，并添加 dragging 类以改变样式。
+   * @param {Event} e - 拖拽事件对象
+   * @param {string} id - 当前拖拽的标签页 ID
+   */
   const onDragStart = (e, id) => {
     dragRef.current = id
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', id)
-    e.currentTarget.classList.add('dragging')
+    e.dataTransfer.effectAllowed = 'move'  // 告诉浏览器这次拖拽是移动操作；这会影响拖拽光标样式和可用 drop 行为；说明用户移动标签，而不是复制
+    e.dataTransfer.setData('text/plain', id)  // 设置拖拽数据为标签 ID，虽然在这个实现中我们不依赖这个数据，但它是必须的，否则某些浏览器可能无法正确处理拖拽事件
+    e.currentTarget.classList.add('dragging')  // 添加 dragging 类以改变样式，提供视觉反馈，告诉用户正在拖拽哪个标签
   }
-  const onDragEnd = (e) => {
-    e.currentTarget.classList.remove('dragging')
-    dragRef.current = null
-  }
+
+  /** 
+   * 拖拽事件处理函数：拖拽经过
+   * onDragOver 调用 e.preventDefault() 以允许 drop，并设置拖拽效果为 move。
+   * @param {Event} e - 拖拽事件对象
+   */
   const onDragOver = (e) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
   }
+
+  /** 
+   * 拖拽事件处理函数：放下
+   * onDrop 获取拖拽来源的标签 ID（fromId）和目标标签 ID（toId），如果有效且不同，则调用 onReorder 回调来更新标签顺序，并重置 dragRef.current。
+   * @param {Event} e - 拖拽事件对象
+   * @param {string} toId - 放下目标的标签页 ID
+   */
   const onDrop = (e, toId) => {
     e.preventDefault()
     const fromId = dragRef.current
@@ -93,9 +107,19 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
     dragRef.current = null
   }
 
+  /** 
+   * 拖拽事件处理函数：结束拖拽
+   * onDragEnd 将 dragRef.current 重置为 null，并移除 dragging 类。
+   * @param {Event} e - 拖拽事件对象
+   */
+  const onDragEnd = (e) => {
+    e.currentTarget.classList.remove('dragging')
+    dragRef.current = null
+  }
+
   return (
     <div className="tabbar" onClick={ctxMenu ? closeCtx : undefined}>
-      <div className="tabbar-tabs" ref={tabsRef}>
+      <div className="tabbar-tabs" ref={tabsRef}>  {/* ref={tabsRef} 用于把这个 div 的真实 DOM 元素保存到 tabsRef.current */}
         {sessions.map((s, idx) => (
           <div
             key={s.id}
