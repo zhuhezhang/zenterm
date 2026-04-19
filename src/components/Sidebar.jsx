@@ -5,11 +5,19 @@ import '../styles/sidebar.css'
 const TYPE_ICONS  = { ssh: '⌨', telnet: '🔌', serial: '⚡' }
 const TYPE_COLORS = { ssh: '#58a6ff', telnet: '#3fb950', serial: '#ffa657' }
 
+/** sftp和会话分组展开/收起图标 */
 const Chevron = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
     <path d="M3 2l4 3-4 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 )
+
+/**
+ * 文件夹图标组件，根据是否展开显示不同的图标
+ * @param {object} props 组件属性
+ * @param {boolean} props.open 是否展开
+ * @returns {JSX.Element} 文件夹图标组件
+ */
 const FolderIcon = ({ open }) => (
   <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" opacity="0.85">
     {open
@@ -18,18 +26,29 @@ const FolderIcon = ({ open }) => (
   </svg>
 )
 
+/**
+ * 构建会话树结构，支持分组和未分组会话
+ * @param {array} savedSessions 已保存的会话列表，每个会话包含 id、label、group 等属性
+ * @param {array} groupPlaceholders 分组占位符列表
+ * @returns {array} 构建好的会话树结构
+ */
 function buildTree(savedSessions, groupPlaceholders) {
-  const groupMap = {}
+  const groupMap = {}  // 临时存储分组节点，key 是分组路径，value 是分组对象
+  /** 
+   * 获取或创建分组节点，如果不存在则创建一个新的分组节点并添加到 groupMap 中，同时处理父分组关系
+   * @param {string} path 分组路径，例如 "分组1/子分组A"
+   * @returns {object} 分组节点对象，包含 id、type、name、path 和 children 属性
+   */
   const getOrCreate = (path) => {
-    if (groupMap[path]) return groupMap[path]
-    const name = path.split('/').pop()
-    const node = { id: path, type: 'group', name, path, children: [] }
-    groupMap[path] = node
-    const parentPath = path.includes('/') ? path.split('/').slice(0, -1).join('/') : null
-    if (parentPath) getOrCreate(parentPath).children.push(node)
+    if (groupMap[path]) return groupMap[path]  // 如果分组节点已存在，直接返回
+    const name = path.split('/').pop()  // 取路径最后一段作为分组显示名，例如 prod/db => db
+    const node = { id: path, type: 'group', name, path, children: [] }  // 创建新的分组节点对象，id 和 path 都使用完整路径，name 使用最后一段
+    groupMap[path] = node  // 将节点缓存到 groupMap，后续可以直接复用
+    const parentPath = path.includes('/') ? path.split('/').slice(0, -1).join('/') : null  // 计算父分组路径，例如 prod/db => prod，单层分组则没有父分组
+    if (parentPath) getOrCreate(parentPath).children.push(node)  // 如果有父分组，递归获取或创建父分组节点，并将当前节点添加到父分组的 children 中，构建树形结构
     return node
   }
-  groupPlaceholders.forEach(g => getOrCreate(g))
+  groupPlaceholders.forEach(g => getOrCreate(g))  // 先处理分组占位符，确保所有分组节点都被创建，即使没有会话属于该分组
   savedSessions.forEach(s => { if (s.group) getOrCreate(s.group) })
   const ungrouped = []
   savedSessions.forEach(s => {
@@ -428,6 +447,14 @@ function TreeNode({ node, depth, isExp, togExp, openCtx, onConnectSaved,
   )
 }
 
+/**
+ * 侧边栏顶部：包含展开/收起按钮和设置按钮
+ *  @param {object} props 组件属性
+ *  @param {boolean} props.open 侧边栏是否展开
+ *  @param {function} props.onToggle 切换侧边栏展开/收起的回调函数
+ *  @param {function} props.onOpenSettings 打开设置界面的回调函数
+ *  @returns {JSX.Element} 侧边栏顶部组件
+ */
 function SidebarTop({ open, onToggle, onOpenSettings }) {
   return (
     <div className="sidebar-top">
