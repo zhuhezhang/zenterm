@@ -7,7 +7,7 @@ import ConnectDialog from './components/ConnectDialog.jsx'
 import SettingsDialog from './components/SettingsDialog.jsx'
 import {
   loadSavedSessions, addSavedSession, removeSavedSession, saveSessions, getGroups,
-  loadGroupPlaceholders, saveGroupPlaceholders
+  loadGroupPlaceholders, saveGroupPlaceholders, addGroupPlaceholder, prunePlaceholdersForOccupiedGroups
 } from './store/sessionStore.js'
 import { loadSettings } from './store/settingsStore.js'
 import './styles/app.css'
@@ -22,6 +22,22 @@ const getMaxSidebar = () => Math.floor(window.innerWidth * 0.90)
 /** 生成唯一会话 ID，格式为 sess-时间戳-随机字符串 */
 function generateId() {
   return `sess-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+}
+
+/**
+ * 编辑已保存会话后，若原分组路径上已无任何会话，返回该路径以便添加占位分组
+ * @param {Object|undefined} beforeSession 保存前的会话对象
+ * @param {Object} newConfig 本次提交的配置（含 group）
+ * @param {Array} nextSessions addSavedSession 之后的列表
+ * @returns {string|undefined} 需恢复为占位符的分组路径，不需要则 undefined
+ */
+function vacatedGroupPathIfEmpty(beforeSession, newConfig, nextSessions) {
+  if (!beforeSession) return undefined
+  const oldG = beforeSession.group
+  if (!oldG) return undefined
+  if ((oldG || '') === (newConfig.group || '')) return undefined
+  if (nextSessions.some(s => (s.group || '') === (oldG || ''))) return undefined
+  return oldG
 }
 
 /** 主应用组件 */
@@ -181,33 +197,58 @@ export default function App() {
   }, [sftpState, handleSftpNavigate])
 
   /**
-   * 更新已保存会话列表并持久化到 localStorage
+   * 更新已保存会话列表和分组占位符列表变量，并保存到本地localStorage
    * @param {Array} next 新的会话列表
+   * @param {{ placeholderForVacatedGroup?: string }} [options] 编辑会话导致原分组被腾空时，传入原分组路径以写入占位符
    */
-  const updateSaved = useCallback((next) => { setSavedSessions(next); saveSessions(next) }, [])
+  const updateSaved = useCallback((next, options) => {
+    setSavedSessions(next)
+    saveSessions(next)
+    setGroupPlaceholders(prev => {
+      let p = prunePlaceholdersForOccupiedGroups(next, prev)
+      if (options?.placeholderForVacatedGroup) {
+        p = addGroupPlaceholder(p, options.placeholderForVacatedGroup)
+      }
+      const changed =
+        p.length !== prev.length ||
+        p.some((g, i) => g !== prev[i])
+      if (changed) saveGroupPlaceholders(p)
+      return p
+    })
+  }, [])
   /**
-   * 更新分组占位符列表并持久化到 localStorage
+   * 更新分组占位符列表变量，并保存到localStorage
    * @param {Array} next 新的占位符列表
    */
   const updatePlaceholders = useCallback((next) => { setGroupPlaceholders(next); saveGroupPlaceholders(next) }, [])
 
   /**
-   * 仅保存会话（编辑/新建）：若 initialData 有 savedId，则编辑该会话；否则新建
+   * 仅保存会话（编辑/新建）：若 initialData 有 savedId，则编辑该会话；否则新建。同时检查是否需要添加占位分组
    * @param {Object} c 会话配置对象
    */
   const handleSaveOnly = useCallback((c) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
-    updateSaved(addSavedSession(savedSessions, config))
+    const before = dialogInitial?.savedId
+      ? savedSessions.find(s => s.savedId === dialogInitial.savedId)
+      : null
+    const next = addSavedSession(savedSessions, config)
+    const vacated = vacatedGroupPathIfEmpty(before, config, next)
+    updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
     setShowDialog(false)
   }, [savedSessions, updateSaved, dialogInitial])
 
   /**
-   * 保存并连接：先保存会话配置（编辑/新建），然后启动会话
+   * 保存并连接：先保存会话配置（编辑/新建），然后启动会话。同时检查是否需要添加占位分组
    * @param {Object} c 会话配置对象
    */
   const handleSaveAndConn = useCallback((c) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
-    updateSaved(addSavedSession(savedSessions, config))
+    const before = dialogInitial?.savedId
+      ? savedSessions.find(s => s.savedId === dialogInitial.savedId)
+      : null
+    const next = addSavedSession(savedSessions, config)
+    const vacated = vacatedGroupPathIfEmpty(before, config, next)
+    updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
     launchSession(c)
     setShowDialog(false)
   }, [savedSessions, updateSaved, launchSession, dialogInitial])
@@ -237,10 +278,26 @@ export default function App() {
   }, [launchSession])
 
   /**
-   * 删除已保存会话：从 savedSessions 中移除，并更新状态和 localStorage
+   * 删除已保存会话：从 savedSessions 变量中移除会话、考虑是否需要添加占位分组，然后保存到本地 localStorage
    * @param {string} id 会话 ID
    */
-  const handleDelSaved = useCallback((id) => updateSaved(removeSavedSession(savedSessions, id)), [savedSessions, updateSaved])
+  const handleDelSaved = useCallback((id) => {
+    const deleted = savedSessions.find(s => s.savedId === id)
+    const next = removeSavedSession(savedSessions, id)
+    const g = deleted?.group
+    const emptyGroup =
+      g && !next.some(s => (s.group || '') === (g || '')) ? g : null  // 如果原分组不为空且在新的会话列表中不存在，则需要添加占位分组
+    setSavedSessions(next)
+    setGroupPlaceholders(prev => {
+      let p = prunePlaceholdersForOccupiedGroups(next, prev)
+      if (emptyGroup) return addGroupPlaceholder(p, emptyGroup)
+      const changed =
+        p.length !== prev.length ||
+        p.some((name, i) => name !== prev[i])
+      if (changed) saveGroupPlaceholders(p)
+      return p
+    })
+  }, [savedSessions])
 
   /**
    * 处理标签页重新排序：接收拖动的会话 ID 和目标位置的会话 ID，更新 sessions 顺序

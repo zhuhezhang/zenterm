@@ -313,53 +313,6 @@
 }
 .sftp-crumb.active:hover { background: none; color: var(--text-primary); }
 
-/* context-menu 内嵌输入框 */
-.context-menu-input {
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 180px;
-}
-.context-menu-input-label {
-  font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-.context-menu-input-field {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-size: 12px;
-  padding: 4px 8px;
-  outline: none;
-  width: 100%;
-  box-sizing: border-box;
-}
-.context-menu-input-field:focus { border-color: var(--accent); }
-.context-menu-input-actions {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
-}
-.context-menu-input-actions button {
-  font-size: 11px;
-  padding: 3px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-.context-menu-input-actions button:hover { background: var(--bg-hover); color: var(--text-primary); }
-.context-menu-input-actions button.confirm {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border-color: var(--accent);
-}
-.context-menu-input-actions button.confirm:hover { background: var(--accent); color: #fff; }
-
 .sftp-tree-item {
   display: flex;
   align-items: center;
@@ -413,3 +366,52 @@
 .context-menu button.danger { color: var(--red); }
 .context-menu button.danger:hover { background: rgba(248,81,73,0.1); }
 .context-menu-divider { height: 1px; background: var(--border-subtle); margin: 3px 0; }
+
+/* context-menu 内嵌输入框 */
+.context-menu-input {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+.context-menu-input-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.context-menu-input-field {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 4px 8px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.context-menu-input-field:focus { border-color: var(--accent); }
+
+.context-menu-input-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.context-menu-input-actions button {
+  font-size: 13px;
+  padding: 3px 10px;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.context-menu-input-actions button:hover { background: var(--bg-hover); color: var(--text-primary); }
+.context-menu-input-actions button.confirm {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.context-menu-input-actions button.confirm:hover { background: var(--accent); color: #fff; }

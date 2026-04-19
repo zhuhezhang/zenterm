@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react'
-import { duplicateSavedSession, addGroupPlaceholder, uniqueLabelInGroup } from '../store/sessionStore.js'
+import { duplicateSavedSession, addGroupPlaceholder, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
 import '../styles/sidebar.css'
 
 const TYPE_ICONS  = { ssh: '⌨', telnet: '🔌', serial: '⚡' }
 const TYPE_COLORS = { ssh: '#58a6ff', telnet: '#3fb950', serial: '#ffa657' }
+/** 名称非法字符验证正则表达式 */
+const INVALID_LABEL_CHARS = /[\/\\:*?"\u003c\u003e|\x00]/
 
 /** sftp和会话分组展开/收起图标 */
 const Chevron = () => (
@@ -141,9 +143,6 @@ export default function Sidebar(props) {
     })
   }
 
-  // 名称非法字符验证
-  const INVALID_LABEL_CHARS = /[\/\\:*?"\u003c\u003e|\x00]/
-
   const renameGroup = (oldPath, newName) => {
     const trimmed = newName.trim()
     if (!trimmed) { setRenaming(null); return }
@@ -159,9 +158,31 @@ export default function Sidebar(props) {
       }, 0)
       return
     }
-    if (trimmed === oldPath.split('/').pop()) { setRenaming(null); return }
+    const oldName = oldPath.split('/').pop()
+    if (trimmed === oldName) { setRenaming(null); return }
     const parts = oldPath.split('/')
-    parts[parts.length - 1] = trimmed
+    const parentPath = parts.length > 1 ? parts.slice(0, -1).join('/') : ''
+    const usedSiblingNames = new Set()
+    const all = new Set([...groupPlaceholders, ...savedSessions.map(s => s.group).filter(Boolean)])
+    for (const p of all) {
+      if (p === oldPath || p.startsWith(oldPath + '/')) continue
+      if (parentPath) {
+        if (!p.startsWith(parentPath + '/')) continue
+        const rest = p.slice(parentPath.length + 1)
+        const child = rest.split('/')[0]
+        if (child) usedSiblingNames.add(child)
+      } else {
+        const child = p.split('/')[0]
+        if (child) usedSiblingNames.add(child)
+      }
+    }
+    let uniqueName = trimmed
+    if (usedSiblingNames.has(uniqueName)) {
+      let i = 1
+      while (usedSiblingNames.has(`${trimmed}(${i})`)) i++
+      uniqueName = `${trimmed}(${i})`
+    }
+    parts[parts.length - 1] = uniqueName
     const newPath = parts.join('/')
     onUpdateSessions(savedSessions.map(s =>
       s.group === oldPath ? { ...s, group: newPath } :
@@ -229,6 +250,30 @@ export default function Sidebar(props) {
   }
   const dLeave = (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(null) }
   const isDO = (id, zone) => dragOver?.id === id && dragOver?.zone === zone
+  const collectAllGroupPaths = () => {
+    const all = new Set(groupPlaceholders)
+    savedSessions.forEach(s => { if (s.group) all.add(s.group) })
+    return all
+  }
+  const uniqueGroupNameUnder = (parentPath, preferredName, movingGroupPath) => {
+    const used = new Set()
+    for (const p of collectAllGroupPaths()) {
+      if (p === movingGroupPath || p.startsWith(movingGroupPath + '/')) continue
+      if (parentPath) {
+        if (!p.startsWith(parentPath + '/')) continue
+        const rest = p.slice(parentPath.length + 1)
+        const child = rest.split('/')[0]
+        if (child) used.add(child)
+      } else {
+        const child = p.split('/')[0]
+        if (child) used.add(child)
+      }
+    }
+    if (!used.has(preferredName)) return preferredName
+    let i = 1
+    while (used.has(`${preferredName}(${i})`)) i++
+    return `${preferredName}(${i})`
+  }
 
   const dropOnGroup = (e, groupPath) => {
     e.preventDefault(); e.stopPropagation(); setDragOver(null)
@@ -245,15 +290,22 @@ export default function Sidebar(props) {
         while (used.has(`${movedSession.label}(${i})`)) i++
         newLabel = `${movedSession.label}(${i})`
       }
-      onUpdateSessions(savedSessions.map(s => s.savedId === src.id ? { ...s, group: groupPath, label: newLabel } : s))
+      const next = savedSessions.map(s => s.savedId === src.id ? { ...s, group: groupPath, label: newLabel } : s)
+      const v = vacatedNamedGroupIfEmpty(movedSession.group, next)
+      onUpdateSessions(next, v ? { placeholderForVacatedGroup: v } : undefined)
     } else if (src.type === 'group' && src.id !== groupPath && !groupPath.startsWith(src.id + '/')) {
-      const newPath = groupPath + '/' + src.id.split('/').pop()
+      const oldPath = src.id
+      const preferredName = oldPath.split('/').pop()
+      const targetName = uniqueGroupNameUnder(groupPath, preferredName, oldPath)
+      const newPath = groupPath + '/' + targetName
       onUpdateSessions(savedSessions.map(s =>
-        s.group === src.id ? { ...s, group: newPath } :
-        s.group?.startsWith(src.id + '/') ? { ...s, group: newPath + s.group.slice(src.id.length) } : s
+        s.group === oldPath ? { ...s, group: newPath } :
+        s.group?.startsWith(oldPath + '/') ? { ...s, group: newPath + s.group.slice(oldPath.length) } : s
       ))
-      let ph = groupPlaceholders.filter(g => g !== src.id && !g.startsWith(src.id + '/'))
-      onUpdatePlaceholders?.(addGroupPlaceholder(ph, newPath))
+      onUpdatePlaceholders?.(Array.from(new Set(groupPlaceholders.map(g =>
+        g === oldPath ? newPath :
+        g.startsWith(oldPath + '/') ? newPath + g.slice(oldPath.length) : g
+      ))))
     }
     dragRef.current = null
   }
@@ -275,13 +327,36 @@ export default function Sidebar(props) {
       movedItem.label = `${movedItem.label}(${i})`
     }
     arr.splice(ti, 0, movedItem)
-    onUpdateSessions(arr)
+    const v = vacatedNamedGroupIfEmpty(item.group, arr)
+    onUpdateSessions(arr, v ? { placeholderForVacatedGroup: v } : undefined)
     dragRef.current = null
   }
   const dropUngroup = (e) => {
     e.preventDefault(); setDragOver(null)
-    const src = dragRef.current; if (!src || src.type !== 'session') return
-    onUpdateSessions(savedSessions.map(s => s.savedId === src.id ? { ...s, group: '' } : s))
+    const src = dragRef.current
+    if (!src) return
+    if (src.type === 'session') {
+      const movedSession = savedSessions.find(s => s.savedId === src.id)
+      if (!movedSession) { dragRef.current = null; return }
+      const interim = savedSessions.map(s => s.savedId === src.id ? { ...s, group: '' } : s)
+      const newLabel = uniqueLabelInGroup(interim, '', movedSession.label, src.id)
+      const next = savedSessions.map(s => s.savedId === src.id ? { ...s, group: '', label: newLabel } : s)
+      const v = vacatedNamedGroupIfEmpty(movedSession.group, next)
+      onUpdateSessions(next, v ? { placeholderForVacatedGroup: v } : undefined)
+    } else if (src.type === 'group') {
+      const oldPath = src.id
+      const preferredName = oldPath.split('/').pop()
+      const targetName = uniqueGroupNameUnder('', preferredName, oldPath)
+      const newPath = targetName
+      onUpdateSessions(savedSessions.map(s =>
+        s.group === oldPath ? { ...s, group: newPath } :
+        s.group?.startsWith(oldPath + '/') ? { ...s, group: newPath + s.group.slice(oldPath.length) } : s
+      ))
+      onUpdatePlaceholders?.(Array.from(new Set(groupPlaceholders.map(g =>
+        g === oldPath ? newPath :
+        g.startsWith(oldPath + '/') ? newPath + g.slice(oldPath.length) : g
+      ))))
+    }
     dragRef.current = null
   }
 
@@ -473,17 +548,19 @@ function SidebarTop({ open, onToggle, onOpenSettings }) {
 function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, deleteSession, deleteGroup, setRenaming, setRenameVal, groupPlaceholders, onUpdatePlaceholders, expandAll, collapseAll, expandGroupAll, collapseGroupAll, setRenamingSession, setRenameSessionVal }) {
   const [subInput, setSubInput] = React.useState(null)
   const [newGroupInput, setNewGroupInput] = React.useState(null)
+  const subInputRef = useRef(null)
+  const newGroupInputRef = useRef(null)
   if (subInput !== null) {
     return (
       <div className="context-menu context-menu-input" style={{ top: ctx.y, left: ctx.x }} onClick={e => e.stopPropagation()}>
         <div className="context-menu-input-label">子分组名称：</div>
-        <input className="context-menu-input-field" value={subInput} autoFocus placeholder="输入名称..."
+        <input className="context-menu-input-field" value={subInput} autoFocus placeholder="输入名称..." ref={subInputRef}
           onChange={e => setSubInput(e.target.value)}
           onKeyDown={e => {
             if (e.key === 'Enter') {
               const trimmed = subInput.trim()
               if (!trimmed) { alert('分组名不能为空'); return }
-              if (trimmed.includes('/')) { alert('分组名不允许包含 "/"'); return }
+              if (INVALID_LABEL_CHARS.test(trimmed)) { alert('分组名不允许包含以下字符：/ \\ : * ? " < > |'); return }
               onUpdatePlaceholders?.(addGroupPlaceholder(groupPlaceholders, `${ctx.data}/${trimmed}`))
               setSubInput(null); closeCtx()
             }
@@ -493,8 +570,8 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
           <button onClick={() => { setSubInput(null); closeCtx() }}>取消</button>
           <button className="confirm" onClick={() => {
             const trimmed = subInput.trim()
-            if (!trimmed) { alert('分组名不能为空'); return }
-            if (trimmed.includes('/')) { alert('分组名不允许包含 "/"'); return }
+            if (!trimmed) { alert('分组名不能为空'); subInputRef.current?.focus(); return }
+            if (INVALID_LABEL_CHARS.test(trimmed)) { alert('分组名不允许包含以下字符：/ \\ : * ? " < > |'); subInputRef.current?.focus(); return }
             onUpdatePlaceholders?.(addGroupPlaceholder(groupPlaceholders, `${ctx.data}/${trimmed}`))
             setSubInput(null); closeCtx()
           }}>确定</button>
@@ -502,17 +579,18 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
       </div>
     )
   }
+
   if (newGroupInput !== null) {
     return (
       <div className="context-menu context-menu-input" style={{ top: ctx.y, left: ctx.x }} onClick={e => e.stopPropagation()}>
         <div className="context-menu-input-label">分组名称：</div>
-        <input className="context-menu-input-field" value={newGroupInput} autoFocus placeholder="输入名称..."
+        <input className="context-menu-input-field" value={newGroupInput} autoFocus placeholder="输入名称..." ref={newGroupInputRef}
           onChange={e => setNewGroupInput(e.target.value)}
           onKeyDown={e => {
             if (e.key === 'Enter') {
               const trimmed = newGroupInput.trim()
               if (!trimmed) { alert('分组名不能为空'); return }
-              if (trimmed.includes('/')) { alert('分组名不允许包含 "/"'); return }
+              if (INVALID_LABEL_CHARS.test(trimmed)) { alert('分组名不允许包含以下字符：/ \\ : * ? " < > |'); return }
               onUpdatePlaceholders?.(addGroupPlaceholder(groupPlaceholders, trimmed))
               setNewGroupInput(null); closeCtx()
             }
@@ -522,8 +600,8 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
           <button onClick={() => { setNewGroupInput(null); closeCtx() }}>取消</button>
           <button className="confirm" onClick={() => {
             const trimmed = newGroupInput.trim()
-            if (!trimmed) { alert('分组名不能为空'); return }
-            if (trimmed.includes('/')) { alert('分组名不允许包含 "/"'); return }
+            if (!trimmed) { alert('分组名不能为空'); newGroupInputRef.current?.focus(); return }
+            if (INVALID_LABEL_CHARS.test(trimmed)) { alert('分组名不允许包含以下字符：/ \\ : * ? " < > |'); newGroupInputRef.current?.focus(); return }
             onUpdatePlaceholders?.(addGroupPlaceholder(groupPlaceholders, trimmed))
             setNewGroupInput(null); closeCtx()
           }}>确定</button>

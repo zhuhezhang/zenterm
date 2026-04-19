@@ -82,7 +82,7 @@ export function duplicateSavedSession(sessions, savedId) {
 }
 
 /**
- * 删除已保存的会话
+ * 从本地存储中删除已保存的会话
  * @param {Array} sessions 当前会话列表
  * @param {string} savedId 要删除的会话 Id
  * @returns {Array} 更新后的会话列表
@@ -201,6 +201,32 @@ export function removeGroupPlaceholder(list, groupName) {
   const next = list.filter(g => g !== groupName)
   saveGroupPlaceholders(next)
   return next
+}
+
+/**
+ * 若某占位分组路径上已有已保存会话，则从占位列表中移除该项，使该分组表现为「已有会话」而非纯占位
+ * @param {Array} sessions 当前已保存会话列表
+ * @param {Array} placeholders 当前占位分组列表
+ * @returns {Array} 修剪后的占位分组列表
+ */
+export function prunePlaceholdersForOccupiedGroups(sessions, placeholders) {
+  const occupied = new Set()
+  for (const s of sessions) {
+    if (s.group) occupied.add(s.group)
+  }
+  return placeholders.filter(g => !occupied.has(g))
+}
+
+/**
+ * 会话从某命名分组移出后，若该分组上已无任何会话，返回该分组名称以便添加占位分组（根分组不处理）
+ * @param {string|undefined} oldGroup 移出前的分组名称
+ * @param {Array} nextSessions 移动完成后的会话列表
+ * @returns {string|undefined} 需恢复为占位符的分组名称，不需要则 undefined
+ */
+export function vacatedNamedGroupIfEmpty(oldGroup, nextSessions) {
+  if (!oldGroup) return undefined
+  if (nextSessions.some(s => (s.group || '') === (oldGroup || ''))) return undefined
+  return oldGroup
 }
 
 /**
