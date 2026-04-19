@@ -22,12 +22,12 @@ contextBridge.exposeInMainWorld('zterm', {  // 在渲染进程中通过window.zt
   ssh: {  // SSH 连接 API
     connect: (id, config) => ipcRenderer.invoke('ssh:connect', id, config),  // 连接 SSH，传入会话 ID 和配置对象，返回连接结果（异步）
     disconnect: (id) => ipcRenderer.invoke('ssh:disconnect', id),  // 断开 SSH 连接，传入会话 ID，返回断开结果（异步）
-    sendData: (id, data) => ipcRenderer.send('ssh:data', id, data),  // 发送数据到 SSH 会话，传入会话 ID 和数据
+    sendData: (id, data) => ipcRenderer.send('ssh:data', id, data),  // 渲染进程发送数据到主进程 SSH 会话，传入会话 ID 和数据
     resize: (id, cols, rows) => ipcRenderer.send('ssh:resize', id, cols, rows),  // 调整 SSH 会话窗口大小，传入会话 ID、列数和行数
     onData: (id, cb) => {  // 监听 SSH 会话数据输出，传入会话 ID 和回调函数
       const handler = (_, sessionId, data) => { if (sessionId === id) cb(data) }
       ipcRenderer.on('ssh:output', handler)
-      return () => ipcRenderer.removeListener('ssh:output', handler)
+      return () => ipcRenderer.removeListener('ssh:output', handler)  // 给渲染进程返回一个清理函数用于让渲染进程取消监听，避免内存泄漏或反复监听
     },
     onClose: (id, cb) => {  // 监听 SSH 会话关闭，传入会话 ID 和回调函数
       const handler = (_, sessionId) => { if (sessionId === id) cb() }
