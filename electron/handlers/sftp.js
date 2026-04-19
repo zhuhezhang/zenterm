@@ -1,5 +1,4 @@
 const { Client } = require('ssh2')
-const fs = require('fs')
 
 /** 存储所有 SFTP 会话信息的 Map */
 const sftpSessions = new Map()
@@ -10,17 +9,17 @@ const sftpSessions = new Map()
  * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息 
  */
 function setupSFTPHandlers(ipcMain, mainWindow) {
-  ipcMain.handle('sftp:connect', async (_event, id, config) => {
+  ipcMain.handle('sftp:connect', async (_event, id, config) => {  // 监听渲染进程 sftp 连接请求
     return new Promise((resolve, reject) => {
       const conn = new Client()
 
-      conn.on('ready', () => {
-        conn.sftp((err, sftp) => {
+      conn.on('ready', () => {  // 监听 ready 事件（SSH 认证成功后触发）
+        conn.sftp((err, sftp) => {  // 调用 conn.sftp() 获取 SFTP 会话
           if (err) {
             conn.end()
             return reject({ success: false, error: err.message })
           }
-          sftpSessions.set(id, { conn, sftp })
+          sftpSessions.set(id, { conn, sftp })  // 保存连接信息；没有单独的 SFTP 连接对象，直接在会话对象中保存 sftp 实例
           resolve({ success: true })
         })
       })
@@ -29,11 +28,12 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
         reject({ success: false, error: err.message })
       })
 
+      /** 构建连接配置对象，根据用户选择的认证方式（密码或私钥）设置相应的属性，并调用 conn.connect() 发起 SSH 连接请求 */
       const connectConfig = {
         host: config.host,
         port: config.port || 22,
         username: config.username,
-        readyTimeout: 20000,
+        readyTimeout: 20000,  // 连接超时20秒
       }
 
       if (config.authType === 'password') {
@@ -43,11 +43,15 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
         if (config.passphrase) connectConfig.passphrase = config.passphrase
       }
 
-      conn.connect(connectConfig)
+      try {
+        conn.connect(connectConfig)  // 发起 SSH 连接请求，连接结果将通过 ready 和 error 事件处理器处理
+      } catch (e) {
+        reject({ success: false, error: e.message })
+      }
     })
   })
 
-  ipcMain.handle('sftp:disconnect', async (_event, id) => {
+  ipcMain.handle('sftp:disconnect', async (_event, id) => {  // 监听渲染进程发送的 SFTP 断开连接请求
     const session = sftpSessions.get(id)
     if (session) {
       try { session.conn.end() } catch (e) {}
@@ -56,21 +60,21 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     return { success: true }
   })
 
-  ipcMain.handle('sftp:list', async (_event, id, remotePath) => {
+  ipcMain.handle('sftp:list', async (_event, id, remotePath) => {  // 监听渲染进程发送的 SFTP 列出文件（文件夹）请求，传入会话 ID 和远程路径
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
 
     return new Promise((resolve) => {
-      session.sftp.readdir(remotePath, (err, list) => {
+      session.sftp.readdir(remotePath, (err, list) => {  // 读取远程文件（文件夹），回调接收错误 err 和文件列表 list
         if (err) return resolve({ success: false, error: err.message })
-        const items = list.map(item => ({
+        const items = list.map(item => ({  // list.map：将每个文件项转换为对象，包含文件名、路径、是否为目录、大小、修改时间和权限信息
           name: item.filename,
           path: remotePath === '/' ? '/' + item.filename : remotePath + '/' + item.filename,
           isDir: item.attrs.isDirectory(),
           size: item.attrs.size,
           mtime: item.attrs.mtime * 1000,
           permissions: item.attrs.mode,
-        })).sort((a, b) => {
+        })).sort((a, b) => {  // 排序：目录优先，然后按名称排序
           if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
           return a.name.localeCompare(b.name)
         })
@@ -79,18 +83,13 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:download', async (_event, id, remotePath, localPath) => {
+  ipcMain.handle('sftp:download', async (_event, id, remotePath, localPath) => {  // 监听渲染进程发送的 SFTP 下载请求，传入会话 ID、要下载的远程服务器文件路径和本地保存路径
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
 
     return new Promise((resolve) => {
-      const total = { size: 0, transferred: 0 }
-      session.sftp.stat(remotePath, (err, stat) => {
-        if (!err) total.size = stat.size
-      })
-
-      session.sftp.fastGet(remotePath, localPath, {
-        step: (transferred, chunk, total_size) => {
+      session.sftp.fastGet(remotePath, localPath, {  // 调用 fastGet 开始下载远程文件到本地路径
+        step: (transferred, _chunk, total_size) => {  // fastGet 提供的回调：下载过程中每传输一个块就会调用一次，接收已传输字节数 transferred、当前块大小 chunk 和文件总大小 total_size
           mainWindow.webContents.send('sftp:progress', id, {
             type: 'download',
             file: remotePath,
@@ -99,21 +98,20 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
             percent: Math.round((transferred / total_size) * 100),
           })
         },
-      }, (err) => {
+      }, (err) => {  // fastGet 的最终回调，下载完成或失败时调用
         if (err) return resolve({ success: false, error: err.message })
         resolve({ success: true })
       })
     })
   })
 
-  ipcMain.handle('sftp:upload', async (_event, id, localPath, remotePath) => {
+  ipcMain.handle('sftp:upload', async (_event, id, localPath, remotePath) => {  // 监听渲染进程发送的 SFTP 上传请求，传入会话 ID、本地文件路径和远程服务器保存路径
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
 
     return new Promise((resolve) => {
-      const stat = fs.statSync(localPath)
       session.sftp.fastPut(localPath, remotePath, {
-        step: (transferred, chunk, total_size) => {
+        step: (transferred, _chunk, total_size) => {
           mainWindow.webContents.send('sftp:progress', id, {
             type: 'upload',
             file: localPath,
@@ -129,7 +127,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:mkdir', async (_event, id, remotePath) => {
+  ipcMain.handle('sftp:mkdir', async (_event, id, remotePath) => {  // 监听渲染进程发送的 SFTP 创建目录请求，传入会话 ID 和要创建的远程目录路径
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     return new Promise((resolve) => {
@@ -140,13 +138,13 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:delete', async (_event, id, remotePath) => {
+  ipcMain.handle('sftp:delete', async (_event, id, remotePath) => {  // 监听渲染进程发送的 SFTP 删除文件（目录）请求，传入会话 ID 和要删除的远程路径
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     return new Promise((resolve) => {
-      session.sftp.unlink(remotePath, (err) => {
+      session.sftp.unlink(remotePath, (err) => {  // 先尝试删除文件，如果失败可能是目录无法删除，再尝试删除目录
         if (err) {
-          session.sftp.rmdir(remotePath, (err2) => {
+          session.sftp.rmdir(remotePath, (err2) => {  // 如果 unlink 删除文件失败，尝试 rmdir 删除目录
             if (err2) return resolve({ success: false, error: err2.message })
             resolve({ success: true })
           })
@@ -157,7 +155,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:rename', async (_event, id, oldPath, newPath) => {
+  ipcMain.handle('sftp:rename', async (_event, id, oldPath, newPath) => {  // 监听渲染进程发送的 SFTP 重命名请求，传入会话 ID、旧路径和新路径
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     return new Promise((resolve) => {

@@ -58,7 +58,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
       }
 
       try {
-        conn.connect(connectConfig)
+        conn.connect(connectConfig)  // 发起 SSH 连接请求，连接结果将通过 ready 和 error 事件处理器处理
       } catch (e) {
         reject({ success: false, error: e.message })
       }
