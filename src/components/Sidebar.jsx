@@ -81,7 +81,31 @@ function buildTree(savedSessions, groupPlaceholders) {
   return sortNodes([...rootGroups, ...ungrouped])
 }
 
-
+/**
+ * 侧边栏组件
+ * @param {object} props 组件属性
+ * @param {boolean} props.open 侧边栏是否展开
+ * @param {function} props.onToggle 切换侧边栏展开/收起的回调函数
+ * @param {array} props.savedSessions 已保存的会话列表
+ * @param {function} props.onNewSession 新建会话的回调函数
+ * @param {function} props.onConnectSaved 连接会话的回调函数
+ * @param {function} props.onDeleteSaved 删除会话的回调函数
+ * @param {function} props.onUpdateSessions 更新会话的回调函数
+ * @param {string} props.activeSftpSessionId 当前活动的 SFTP 会话 ID
+ * @param {array} props.sftpFiles SFTP 文件列表
+ * @param {string} props.sftpPath SFTP 当前路径
+ * @param {boolean} props.sftpLoading SFTP 加载状态
+ * @param {function} props.onSftpNavigate SFTP 导航的回调函数
+ * @param {function} props.onSftpGoUp SFTP 上级的回调函数
+ * @param {function} props.onSftpJumpTo SFTP 跳转的回调函数
+ * @param {function} props.onSftpDrop SFTP 拖拽的回调函数
+ * @param {object} props.settings 设置
+ * @param {function} props.onOpenSettings 打开设置界面的回调函数
+ * @param {object} props.style 侧边栏样式
+ * @param {array} props.groupPlaceholders 分组占位符列表
+ * @param {function} props.onUpdatePlaceholders 更新分组占位符的回调函数
+ * @returns {JSX.Element} 侧边栏组件
+ */
 export default function Sidebar(props) {
   const {
     open, onToggle, savedSessions, onNewSession, onConnectSaved,
@@ -91,61 +115,82 @@ export default function Sidebar(props) {
     groupPlaceholders = [], onUpdatePlaceholders,
   } = props
 
-  // 启动时仅展开“保存的会话”根节点，一级分组及以下默认收起
-  const [expanded, setExpanded] = useState({})
-  const [sessionsCollapsed, setSessionsCollapsed] = useState(false)
-  const [contextMenu, setContextMenu] = useState(null)
-  const [renaming, setRenaming] = useState(null)
-  const [renameVal, setRenameVal] = useState('')
-  const [renamingSession, setRenamingSession] = useState(null)  // savedId
-  const [renameSessionVal, setRenameSessionVal] = useState('')
-  const [sftpExpanded, setSftpExpanded] = useState(true)
-  const [dragOver, setDragOver] = useState(null)
-  const dragRef = useRef(null)
-  const renameGroupInputRef = useRef(null)
-  const renameGroupAlertingRef = useRef(false)
-  const ignoreRenameGroupBlurRef = useRef(false)
-  const renameSessionInputRef = useRef(null)
-  const renameSessionAlertingRef = useRef(false)
-  const ignoreRenameSessionBlurRef = useRef(false)
+  const [expanded, setExpanded] = useState({})  // 展开状态，key 是分组路径，value 是是否展开
+  const [sessionsCollapsed, setSessionsCollapsed] = useState(false)  // 会话是否收起
+  const [contextMenu, setContextMenu] = useState(null)  // 上下文菜单状态，包含 x、y 坐标、类型和数据
+  const [renaming, setRenaming] = useState(null)  // 重命名状态，包含路径和新的名称
+  const [renameVal, setRenameVal] = useState('')  // 重命名输入值
+  const [renamingSession, setRenamingSession] = useState(null)  // 重命名会话状态，包含 savedId 和新的标签
+  const [renameSessionVal, setRenameSessionVal] = useState('')  // 重命名会话输入值
+  const [sftpExpanded, setSftpExpanded] = useState(true)  // SFTP 是否展开
+  const [dragOver, setDragOver] = useState(null)  // 拖拽状态，包含 id 和 zone
+  const dragRef = useRef(null)  // 拖拽引用
+  const renameGroupInputRef = useRef(null)  // 重命名分组输入引用
+  const renameGroupAlertingRef = useRef(false)  // 重命名分组警告引用
+  const ignoreRenameGroupBlurRef = useRef(false)  // 重命名分组忽略 blur 引用
+  const renameSessionInputRef = useRef(null)  // 重命名会话输入引用
+  const renameSessionAlertingRef = useRef(false)  // 重命名会话警告引用
+  const ignoreRenameSessionBlurRef = useRef(false)  // 重命名会话忽略 blur 引用
 
+  /**
+   * 是否展开
+   * @param {string} path 分组路径
+   * @returns {boolean} 是否展开
+   */
   const isExp = (path) => expanded[path] === true
+  /**
+   * 切换展开状态
+   * @param {string} path 分组路径
+   */
   const togExp = (path) => setExpanded(p => ({ ...p, [path]: !isExp(path) }))
+  /**
+   * 打开上下文菜单
+   * @param {Event} e 事件
+   * @param {string} type 类型
+   * @param {any} data 数据
+   */
   const openCtx = (e, type, data) => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, type, data }) }
+  /** 关闭上下文菜单 */
   const closeCtx = () => setContextMenu(null)
 
-  // 展开/收起所有分组
+  /** 展开所有分组 */
   const expandAll = () => {
-    const all = {}
+    const all = {}  // 展开状态，key 是分组路径，value 是是否展开
     const collectGroups = (nodes) => nodes.forEach(n => { if (n.type === 'group') { all[n.path] = true; collectGroups(n.children) } })
-    collectGroups(buildTree(savedSessions, groupPlaceholders))
-    setExpanded(all)
-    setSessionsCollapsed(false)
+    collectGroups(buildTree(savedSessions, groupPlaceholders))  // 收集所有分组路径
+    setExpanded(all)  // 设置展开状态
+    setSessionsCollapsed(false)  // 设置会话不收起
   }
+  /** 收起所有分组 */
   const collapseAll = () => {
-    setExpanded({})
-    setSessionsCollapsed(false)
+    setExpanded({})  // 设置展开状态为空
+    setSessionsCollapsed(false)  // 设置会话不收起
   }
 
+  /** 
+   * 展开该分组所有子项
+   * @param {string} groupPath 分组路径
+   */
   const expandGroupAll = (groupPath) => {
-    const all = {}
-    const collectGroups = (nodes) => nodes.forEach(n => { if (n.type === 'group') { all[n.path] = true; collectGroups(n.children) } })
-    const walk = (nodes) => {
+    const all = {}  // 展开状态，key 是分组路径，value 是是否展开
+    const collectGroups = (nodes) => nodes.forEach(n => { if (n.type === 'group') { all[n.path] = true; collectGroups(n.children) } })  // 收集所有分组路径
+    const walk = (nodes) => {  // 遍历所有分组，收集该分组及其子项的路径
       for (const n of nodes) {
         if (n.type !== 'group') continue
-        if (n.path === groupPath) {
+        if (n.path === groupPath) {  // 如果当前分组是目标分组，收集该分组及其子项
           collectGroups([n])
           return true
         }
-        if (walk(n.children)) return true
+        if (walk(n.children)) return true  // 递归收集子项
       }
       return false
     }
     walk(buildTree(savedSessions, groupPlaceholders))
-    setExpanded(prev => ({ ...prev, ...all }))
+    setExpanded(prev => ({ ...prev, ...all }))  // 设置展开状态
     setSessionsCollapsed(false)
   }
 
+  /** 收起该分组所有子项 */
   const collapseGroupAll = (groupPath) => {
     setExpanded(prev => {
       const next = { ...prev }
