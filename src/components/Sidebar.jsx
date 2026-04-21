@@ -32,7 +32,15 @@ const FolderIcon = ({ open }) => (
  * 构建会话树结构，支持分组和未分组会话
  * @param {array} savedSessions 已保存的会话列表，每个会话包含 id、label、group 等属性
  * @param {array} groupPlaceholders 分组占位符列表
- * @returns {array} 构建好的会话树结构
+ * @returns {array} 构建按照名称排序好的会话树结构（根层包含：顶级分组 + 未分组会话），每个节点包含 id、type、name、path 和 children 属性
+ * @example
+ * const tree = buildTree(savedSessions, groupPlaceholders)
+ * console.log(tree)
+ * // [
+ * //   { id: '这是顶级分组', type: 'group', name: '这是顶级分组', path: '这是顶级分组', children: [{未分组会话节点属性（id、type、name、path 和 session）}] },
+ * //   { id: 'group1', type: 'group', name: 'group1', path: 'group1', children: [{该顶级分组下的所有属性树结构（分组、会话）}] },
+ * //   { id: 'saved-1774879238543-ui6r', type: 'session', name: '会话名字', session: {session属性字段} }{
+ * // ]
  */
 function buildTree(savedSessions, groupPlaceholders) {
   const groupMap = {}  // 临时存储分组节点，key 是分组路径，value 是分组对象
@@ -40,6 +48,10 @@ function buildTree(savedSessions, groupPlaceholders) {
    * 获取或创建分组节点，如果不存在则创建一个新的分组节点并添加到 groupMap 中，同时处理父分组关系
    * @param {string} path 分组路径，例如 "分组1/子分组A"
    * @returns {object} 分组节点对象，包含 id、type、name、path 和 children 属性
+   * @example
+   * const node = getOrCreate('group1/subgroup1')
+   * console.log(node)
+   * // { id: 'group1/subgroup1', type: 'group', name: 'subgroup1', path: 'group1/subgroup1', children: [] }
    */
   const getOrCreate = (path) => {
     if (groupMap[path]) return groupMap[path]  // 如果分组节点已存在，直接返回
@@ -50,17 +62,17 @@ function buildTree(savedSessions, groupPlaceholders) {
     if (parentPath) getOrCreate(parentPath).children.push(node)  // 如果有父分组，递归获取或创建父分组节点，并将当前节点添加到父分组的 children 中，构建树形结构
     return node
   }
-  groupPlaceholders.forEach(g => getOrCreate(g))  // 先处理分组占位符，确保所有分组节点都被创建，即使没有会话属于该分组
-  savedSessions.forEach(s => { if (s.group) getOrCreate(s.group) })
+  groupPlaceholders.forEach(g => getOrCreate(g))  // 先处理分组占位符（没有会话属于该分组），确保所有占位分组节点都被创建
+  savedSessions.forEach(s => { if (s.group) getOrCreate(s.group) })  // 处理已保存的会话，确保所有已保存会话所属的分组节点都被创建
   const ungrouped = []
-  savedSessions.forEach(s => {
+  savedSessions.forEach(s => {  // 把会话挂到对应分组；无分组会话放到根
     const sessNode = { id: s.savedId, type: 'session', name: s.label || s.host || s.id, session: s }
-    if (s.group && groupMap[s.group]) groupMap[s.group].children.push(sessNode)
-    else ungrouped.push(sessNode)
+    if (s.group && groupMap[s.group]) groupMap[s.group].children.push(sessNode)  // 若 s.group 存在且对应分组节点存在 -> push 到该分组 children
+    else ungrouped.push(sessNode)  // 否则放进 ungrouped（根级未分组会话）
   })
-  const rootGroups = Object.values(groupMap).filter(n => !n.path.includes('/'))
-  // 分组和会话分别按名称排序
-  const sortNodes = (nodes) => {
+  const rootGroups = Object.values(groupMap).filter(n => !n.path.includes('/'))  // 拿到根分组：rootGroups = groupMap 中路径不含 / 的分组（顶级分组）
+
+  const sortNodes = (nodes) => {  // 分组和会话分别按名称排序
     const groups = nodes.filter(n => n.type === 'group').sort((a, b) => a.name.localeCompare(b.name))
     const sessions = nodes.filter(n => n.type === 'session').sort((a, b) => a.name.localeCompare(b.name))
     groups.forEach(g => { g.children = sortNodes(g.children) })
@@ -68,6 +80,7 @@ function buildTree(savedSessions, groupPlaceholders) {
   }
   return sortNodes([...rootGroups, ...ungrouped])
 }
+
 
 export default function Sidebar(props) {
   const {
