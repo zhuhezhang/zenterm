@@ -127,7 +127,7 @@ export default function Sidebar(props) {
   const dragRef = useRef(null)  // 拖拽引用
   const renameGroupInputRef = useRef(null)  // 重命名分组输入引用
   const renameGroupAlertingRef = useRef(false)  // 重命名分组警告引用
-  const ignoreRenameGroupBlurRef = useRef(false)  // 重命名分组忽略 blur 引用
+  const ignoreRenameGroupBlurRef = useRef(false)  // 重命名分组忽略 blur 引用（blur 事件也就是失去焦点事件）
   const renameSessionInputRef = useRef(null)  // 重命名会话输入引用
   const renameSessionAlertingRef = useRef(false)  // 重命名会话警告引用
   const ignoreRenameSessionBlurRef = useRef(false)  // 重命名会话忽略 blur 引用
@@ -190,7 +190,10 @@ export default function Sidebar(props) {
     setSessionsCollapsed(false)
   }
 
-  /** 收起该分组所有子项 */
+  /** 
+   * 收起该分组所有子项
+   * @param {string} groupPath 分组路径
+   */
   const collapseGroupAll = (groupPath) => {
     setExpanded(prev => {
       const next = { ...prev }
@@ -201,73 +204,101 @@ export default function Sidebar(props) {
     })
   }
 
+  /** 
+   * 重命名分组
+   * @param {string} oldPath 旧路径
+   * @param {string} newName 新名称
+   */
   const renameGroup = (oldPath, newName) => {
     const trimmed = newName.trim()
-    if (!trimmed) { setRenaming(null); return }
-    if (INVALID_LABEL_CHARS.test(trimmed)) {
+    if (!trimmed) { setRenaming(null); return }  // 如果新名称是空，取消编辑，不做任何重命名（也不弹提示）
+    if (INVALID_LABEL_CHARS.test(trimmed)) {  // 非法字符校验 + 弹窗后重新聚焦输入框
       if (renameGroupAlertingRef.current) return
-      renameGroupAlertingRef.current = true
-      ignoreRenameGroupBlurRef.current = true
+      renameGroupAlertingRef.current = true  // 设置警告状态，避免 alert 触发的事件链（blur/focus）导致重复弹窗
+      ignoreRenameGroupBlurRef.current = true  // 设置忽略 blur 状态（blur 事件也就是失去焦点事件）
       alert('分组名不允许包含以下字符：/ \\ : * ? " < > |')
       renameGroupAlertingRef.current = false
-      setTimeout(() => {
+      setTimeout(() => {  // 等当前调用栈结束后再 focus()，确保浏览器/React 状态稳定，焦点能正确回到输入框
         renameGroupInputRef.current?.focus()
         ignoreRenameGroupBlurRef.current = false
       }, 0)
       return
     }
+
     const oldName = oldPath.split('/').pop()
-    if (trimmed === oldName) { setRenaming(null); return }
-    const parts = oldPath.split('/')
-    const parentPath = parts.length > 1 ? parts.slice(0, -1).join('/') : ''
-    const usedSiblingNames = new Set()
-    const all = new Set([...groupPlaceholders, ...savedSessions.map(s => s.group).filter(Boolean)])
-    for (const p of all) {
-      if (p === oldPath || p.startsWith(oldPath + '/')) continue
-      if (parentPath) {
-        if (!p.startsWith(parentPath + '/')) continue
-        const rest = p.slice(parentPath.length + 1)
+    if (trimmed === oldName) { setRenaming(null); return }  // 如果新名称与旧名称相同，取消编辑，不做任何重命名
+    const parts = oldPath.split('/')  // 计算父路径（用于“同级”冲突检测）
+    const parentPath = parts.length > 1 ? parts.slice(0, -1).join('/') : ''  // 若 oldPath = "B/A"，父路径是 "B"；若 oldPath = "A"，父路径是空（代表根）
+    const usedSiblingNames = new Set()  // 同父分组下的所有子分组名字（不含自己这棵树）
+    const all = new Set([...groupPlaceholders, ...savedSessions.map(s => s.group).filter(Boolean)])  // 所有占位分组和会话的已用分组名称集合
+    for (const p of all) {  // 遍历所有已用分组名称，检查是否与新名称冲突
+      if (p === oldPath || p.startsWith(oldPath + '/')) continue  // 如果 p 是 oldPath 或 oldPath 的子路径，跳过
+      if (parentPath) {  // 如果父路径存在（非根分组）
+        if (!p.startsWith(parentPath + '/')) continue  // 只关心同一个父分组下面的路径
+        const rest = p.slice(parentPath.length + 1)  // 取父分组下第一段，得到“同级分组名”：例：p="B/A/xx" → rest="A/xx" → child="A"
         const child = rest.split('/')[0]
-        if (child) usedSiblingNames.add(child)
-      } else {
+        if (child) usedSiblingNames.add(child)  // 如果子名称存在，添加到集合中
+      } else {  // 如果父路径不存在（根分组）
         const child = p.split('/')[0]
         if (child) usedSiblingNames.add(child)
       }
     }
+
     let uniqueName = trimmed
-    if (usedSiblingNames.has(uniqueName)) {
+    if (usedSiblingNames.has(uniqueName)) {  // 如果新名称与已用名称冲突，则自动添加 (1)、(2) 等后缀
       let i = 1
       while (usedSiblingNames.has(`${trimmed}(${i})`)) i++
       uniqueName = `${trimmed}(${i})`
     }
     parts[parts.length - 1] = uniqueName
-    const newPath = parts.join('/')
+    const newPath = parts.join('/')  // 构建新的分组路径
     onUpdateSessions(savedSessions.map(s =>
       s.group === oldPath ? { ...s, group: newPath } :
       s.group?.startsWith(oldPath + '/') ? { ...s, group: newPath + s.group.slice(oldPath.length) } : s
-    ))
+    ))  // 批量更新所有会话的 group 路径（包含子树）
     onUpdatePlaceholders?.(groupPlaceholders.map(g =>
       g === oldPath ? newPath : g.startsWith(oldPath + '/') ? newPath + g.slice(oldPath.length) : g
-    ))
-    setRenaming(null)
+    ))  // 更新占位分组（用于下次新增分组时自动补全）
+    setRenaming(null)  // 清掉“当前正在重命名哪个分组”的状态，UI 回到正常显示
   }
 
+  /** 
+   * 删除分组
+   * @param {string} path 分组路径
+   */
   const deleteGroup = (path) => {
-    const w = settings?.deleteGroupWithSessions
-    const name = path.split('/').pop()
+    const w = settings?.deleteGroupWithSessions  // 是否删除分组时连带删除其下的所有会话
+    const name = path.split('/').pop()  // 获取分组名称
     const msg = w ? `删除分组「${name}」及其所有内容？` : `删除分组「${name}」？组内会话将变为未分组。`
-    if (settings?.confirmDeleteGroup !== false && !confirm(msg)) return
-    if (w) onUpdateSessions(savedSessions.filter(s => s.group !== path && !s.group?.startsWith(path + '/')))
-    else onUpdateSessions(savedSessions.map(s => (s.group === path || s.group?.startsWith(path + '/')) ? { ...s, group: '' } : s))
-    onUpdatePlaceholders?.(groupPlaceholders.filter(g => g !== path && !g.startsWith(path + '/')))
+    if (settings?.confirmDeleteGroup !== false && !confirm(msg)) return  // 如果配置了不确认删除，则不删除
+    if (w)  // 如果配置了删除分组时连带删除其下的所有会话，则删除所有会话
+      onUpdateSessions(savedSessions.filter(s => s.group !== path && !s.group?.startsWith(path + '/')))
+    else // 如果配置了不删除分组时连带删除其下的所有会话，则将所有会话的 group 路径设置为空
+      onUpdateSessions(savedSessions.map(s => (s.group === path || s.group?.startsWith(path + '/')) ? { ...s, group: '' } : s))
+    onUpdatePlaceholders?.(groupPlaceholders.filter(g => g !== path && !g.startsWith(path + '/')))  // 更新占位分组（用于下次新增分组时自动补全）
   }
 
+  /** 
+   * 删除会话
+   * @param {string} id 会话 ID
+   * @param {string} label 会话名称
+   */
   const deleteSession = (id, label) => {
-    if (settings?.confirmDeleteSession !== false && !confirm(`删除会话「${label}」？`)) return
+    if (settings?.confirmDeleteSession !== false && !confirm(`删除会话「${label}」？`)) return  // 如果配置了不确认删除，则不删除
     onDeleteSaved(id)
   }
+
+  /** 
+   * 复制会话
+   * @param {string} id 要复制的会话 ID
+   */
   const dupSession = (id) => onUpdateSessions(duplicateSavedSession(savedSessions, id))
 
+  /** 
+   * 重命名会话
+   * @param {string} savedId 会话 ID
+   * @param {string} newLabel 新名称
+   */
   const renameSession = (savedId, newLabel) => {
     const trimmed = newLabel.trim()
     if (!trimmed) {
