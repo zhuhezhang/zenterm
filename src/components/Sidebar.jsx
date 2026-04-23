@@ -123,8 +123,8 @@ export default function Sidebar(props) {
   const [renamingSession, setRenamingSession] = useState(null)  // 重命名会话状态，包含 savedId 和新的标签
   const [renameSessionVal, setRenameSessionVal] = useState('')  // 重命名会话输入值
   const [sftpExpanded, setSftpExpanded] = useState(true)  // SFTP 是否展开
-  const [dragOver, setDragOver] = useState(null)  // 拖拽状态，包含 id 和 zone
-  const dragRef = useRef(null)  // 拖拽引用
+  const [dragOver, setDragOver] = useState(null)  // 被拖拽对象所在实时位置，包含id和zone，也就是拖拽分组/会话时经过的分组路径或会话id和 zone（group/session/drop(表示被拖拽对象在根分组上方)）
+  const dragRef = useRef(null)  // 被拖拽分组/会话的分组路径或者会话id和type（group/session）
   const renameGroupInputRef = useRef(null)  // 重命名分组输入引用
   const renameGroupAlertingRef = useRef(false)  // 重命名分组警告引用
   const ignoreRenameGroupBlurRef = useRef(false)  // 重命名分组忽略 blur 引用（blur 事件也就是失去焦点事件）
@@ -296,23 +296,22 @@ export default function Sidebar(props) {
 
   /** 
    * 重命名会话
-   * @param {string} savedId 会话 ID
+   * @param {string} 要重命名的会话的savedId 会话 ID
    * @param {string} newLabel 新名称
    */
   const renameSession = (savedId, newLabel) => {
     const trimmed = newLabel.trim()
     if (!trimmed) {
-      // 空标签：恢复原标签，取消编辑
-      setRenamingSession(null)
+      setRenamingSession(null)  // 空标签：恢复原标签，不做任何重命名（也不弹提示）
       return
     }
-    if (INVALID_LABEL_CHARS.test(trimmed)) {
+    if (INVALID_LABEL_CHARS.test(trimmed)) {  // 非法字符校验 + 弹窗后重新聚焦输入框
       if (renameSessionAlertingRef.current) return
-      renameSessionAlertingRef.current = true
-      ignoreRenameSessionBlurRef.current = true
+      renameSessionAlertingRef.current = true  // 设置警告状态，避免 alert 触发的事件链（blur/focus）导致重复弹窗
+      ignoreRenameSessionBlurRef.current = true  // 设置忽略 blur 状态（blur 事件也就是失去焦点事件）
       alert('标签名不允许包含以下字符：/ \\ : * ? " < > |')
-      renameSessionAlertingRef.current = false
-      setTimeout(() => {
+      renameSessionAlertingRef.current = false  // 设置警告状态为 false，避免重复弹窗
+      setTimeout(() => {  // 等当前调用栈结束后再 focus()，确保浏览器/React 状态稳定，焦点能正确回到输入框
         renameSessionInputRef.current?.focus()
         ignoreRenameSessionBlurRef.current = false
       }, 0)
@@ -320,30 +319,58 @@ export default function Sidebar(props) {
     }
     const target = savedSessions.find(s => s.savedId === savedId)
     if (!target || trimmed === target.label) { setRenamingSession(null); return }
-    // 修改后：使用 uniqueLabelInGroup 确保唯一性
-    const uniqueLabel = uniqueLabelInGroup(savedSessions, target.group, trimmed, savedId)
+    const uniqueLabel = uniqueLabelInGroup(savedSessions, target.group, trimmed, savedId)  // 使用 uniqueLabelInGroup 确保唯一性
     onUpdateSessions(savedSessions.map(s => s.savedId === savedId ? { ...s, label: uniqueLabel } : s))
     setRenamingSession(null)
   }
 
+  /** 
+   * 开始拖拽
+   * @param {Event} e 事件
+   * @param {string} id 拖拽对象 ID
+   * @param {string} type 拖拽对象类型，'session' 或 'group'
+   */
   const dStart = (e, id, type) => {
     dragRef.current = { id, type }
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', id)
     e.stopPropagation()
   }
-  const dEnd = () => { dragRef.current = null; setDragOver(null) }
+  /**
+   * 拖拽经过
+   * @param {Event} e 事件
+   * @param {string} id 拖拽对象 ID
+   * @param {string} zone 拖拽区域，'group' 或 'session' 或 'ungroup'
+   */
   const dOver = (e, id, zone) => {
     e.preventDefault(); e.stopPropagation()
-    setDragOver(prev => (prev?.id === id && prev?.zone === zone) ? prev : { id, zone })
+    setDragOver(prev => (prev?.id === id && prev?.zone === zone) ? prev : { id, zone })  // 设置拖拽区域
   }
+  /**
+   * 拖拽离开
+   * @param {Event} e 事件
+   */
   const dLeave = (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(null) }
+  /** 结束拖拽 */
+  const dEnd = () => { dragRef.current = null; setDragOver(null) }
+  
+  /**
+   * 当前被拖拽对象是否在某个ID和拖拽区域
+   * @param {string} id 拖拽对象 ID
+   * @param {string} zone 拖拽区域，'group' 或 'session' 或 'ungroup'
+   */
   const isDO = (id, zone) => dragOver?.id === id && dragOver?.zone === zone
+  /**
+   * 收集所有分组路径
+   * @returns {Set<string>} 所有分组路径集合
+   */
   const collectAllGroupPaths = () => {
-    const all = new Set(groupPlaceholders)
-    savedSessions.forEach(s => { if (s.group) all.add(s.group) })
-    return all
+    const all = new Set(groupPlaceholders)  // 所有占位分组
+    savedSessions.forEach(s => { if (s.group) all.add(s.group) })  // 所有会话的 group 路径
+    return all  // 所有分组路径集合
   }
+  /** 
+   * 确保分组名称在父分组下唯一 */
   const uniqueGroupNameUnder = (parentPath, preferredName, movingGroupPath) => {
     const used = new Set()
     for (const p of collectAllGroupPaths()) {
