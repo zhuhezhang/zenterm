@@ -238,7 +238,7 @@ export default function Sidebar(props) {
         const rest = p.slice(parentPath.length + 1)  // 取父分组下第一段，得到“同级分组名”：例：p="B/A/xx" → rest="A/xx" → child="A"
         const child = rest.split('/')[0]
         if (child) usedSiblingNames.add(child)  // 如果子名称存在，添加到集合中
-      } else {  // 如果父路径不存在（根分组）
+      } else {  // 如果父路径不存在（根分组），获取所有分组路径下的根分组下的子分组名称
         const child = p.split('/')[0]
         if (child) usedSiblingNames.add(child)
       }
@@ -370,7 +370,12 @@ export default function Sidebar(props) {
     return all  // 所有分组路径集合
   }
   /** 
-   * 确保分组名称在父分组下唯一 */
+   * 确保分组名称在父分组下唯一
+   * @param {string} parentPath 父分组路径
+   * @param {string} preferredName 首选名称
+   * @param {string} movingGroupPath 移动中的分组路径
+   * @returns {string} 唯一名称，如果首选名称已存在，则返回首选名称(1)、(2) 等后缀
+   */
   const uniqueGroupNameUnder = (parentPath, preferredName, movingGroupPath) => {
     const used = new Set()
     for (const p of collectAllGroupPaths()) {
@@ -391,11 +396,15 @@ export default function Sidebar(props) {
     return `${preferredName}(${i})`
   }
 
+  /**
+   * 拖拽到分组
+   * @param {Event} e 事件
+   * @param {string} groupPath 目标分组路径
+   */
   const dropOnGroup = (e, groupPath) => {
     e.preventDefault(); e.stopPropagation(); setDragOver(null)
     const src = dragRef.current; if (!src) return
-    if (src.type === 'session') {
-      // 会话拖到分组，检查是否有同名会话
+    if (src.type === 'session') {  // 会话拖拽到分组，检查是否有同名会话
       const movedSession = savedSessions.find(s => s.savedId === src.id)
       if (!movedSession) return
       const siblings = savedSessions.filter(s => (s.group || '') === groupPath && s.savedId !== src.id)
@@ -406,78 +415,91 @@ export default function Sidebar(props) {
         while (used.has(`${movedSession.label}(${i})`)) i++
         newLabel = `${movedSession.label}(${i})`
       }
-      const next = savedSessions.map(s => s.savedId === src.id ? { ...s, group: groupPath, label: newLabel } : s)
+
+      const next = savedSessions.map(s => s.savedId === src.id ? { ...s, group: groupPath, label: newLabel } : s)  // 更新会话的 group 路径和标签名
       const v = vacatedNamedGroupIfEmpty(movedSession.group, next)
-      onUpdateSessions(next, v ? { placeholderForVacatedGroup: v } : undefined)
-    } else if (src.type === 'group' && src.id !== groupPath && !groupPath.startsWith(src.id + '/')) {
-      const oldPath = src.id
-      const preferredName = oldPath.split('/').pop()
-      const targetName = uniqueGroupNameUnder(groupPath, preferredName, oldPath)
-      const newPath = groupPath + '/' + targetName
+      onUpdateSessions(next, v ? { placeholderForVacatedGroup: v } : undefined)  // 更新会话列表，如果需要恢复为占位分组，则设置占位分组
+    } else if (src.type === 'group' && src.id !== groupPath && !groupPath.startsWith(src.id + '/')) {  // 分组拖拽到分组，检查是否有同名分组
+      const oldPath = src.id  // 获取源分组路径
+      const preferredName = oldPath.split('/').pop()  // 获取源分组名称
+      const targetName = uniqueGroupNameUnder(groupPath, preferredName, oldPath)  // 确保目标分组名称在父分组下唯一
+      const newPath = groupPath + '/' + targetName  // 构建新的分组路径
+
       onUpdateSessions(savedSessions.map(s =>
         s.group === oldPath ? { ...s, group: newPath } :
         s.group?.startsWith(oldPath + '/') ? { ...s, group: newPath + s.group.slice(oldPath.length) } : s
-      ))
+      ))  // 更新会话列表，更新会话的 group 路径（包含子树）
       onUpdatePlaceholders?.(Array.from(new Set(groupPlaceholders.map(g =>
         g === oldPath ? newPath :
         g.startsWith(oldPath + '/') ? newPath + g.slice(oldPath.length) : g
-      ))))
+      ))))  // 更新占位分组（用于下次新增分组时自动补全）
     }
     dragRef.current = null
   }
+
+  /**
+   * 拖拽到会话
+   * @param {Event} e 事件
+   * @param {string} sessId 目标会话 ID
+   * @param {string} groupPath 目标会话所属分组路径
+   */
   const dropOnSession = (e, sessId, groupPath) => {
     e.preventDefault(); e.stopPropagation(); setDragOver(null)
-    const src = dragRef.current; if (!src || src.type !== 'session' || src.id === sessId) return
-    const arr = savedSessions.slice()
-    const fi = arr.findIndex(s => s.savedId === src.id)
-    const ti = arr.findIndex(s => s.savedId === sessId)
-    if (fi < 0 || ti < 0) return
-    const [item] = arr.splice(fi, 1)
-    // 移动到新分组时，检查是否有同名会话，有则自动重命名
-    const movedItem = { ...item, group: groupPath }
-    const siblings = arr.filter(s => (s.group || '') === groupPath)
+    const src = dragRef.current; if (!src || src.type !== 'session' || src.id === sessId) return  // 如果源对象不是会话，或者源对象 ID 与目标会话 ID 相同，则不处理
+    const arr = savedSessions.slice()  // 获取会话列表副本
+    const fi = arr.findIndex(s => s.savedId === src.id)  // 获取源会话在会话列表中的索引
+    const ti = arr.findIndex(s => s.savedId === sessId)  // 获取目标会话在会话列表中的索引
+    if (fi < 0 || ti < 0) return  // 防御性检查，索引异常就退出
+    const [item] = arr.splice(fi, 1)  // 从原位置移除被拖拽会话，拿到 item
+    const movedItem = { ...item, group: groupPath }  // 准备移动后的会话对象：分组改成目标分组
+    const siblings = arr.filter(s => (s.group || '') === groupPath)  // 获取目标分组下的所有会话
     const used = new Set(siblings.map(s => s.label))
-    if (used.has(movedItem.label)) {
+    if (used.has(movedItem.label)) {  // 如果目标分组下有同名会话，则自动重命名
       let i = 1
       while (used.has(`${movedItem.label}(${i})`)) i++
-      movedItem.label = `${movedItem.label}(${i})`
+      movedItem.label = `${movedItem.label}(${i})`  // 自动添加后缀
     }
-    arr.splice(ti, 0, movedItem)
-    const v = vacatedNamedGroupIfEmpty(item.group, arr)
-    onUpdateSessions(arr, v ? { placeholderForVacatedGroup: v } : undefined)
+    arr.splice(ti, 0, movedItem)  // 将移动后的会话插入到目标位置
+    const v = vacatedNamedGroupIfEmpty(item.group, arr)  // 检查是否需要恢复为占位分组
+    onUpdateSessions(arr, v ? { placeholderForVacatedGroup: v } : undefined)  // 更新会话列表，如果需要恢复为占位分组，则设置占位分组
     dragRef.current = null
   }
+
+  /**
+   * 拖拽到无分组（根分组）区域
+   * @param {Event} e 事件
+   */
   const dropUngroup = (e) => {
     e.preventDefault(); setDragOver(null)
     const src = dragRef.current
     if (!src) return
-    if (src.type === 'session') {
-      const movedSession = savedSessions.find(s => s.savedId === src.id)
+    if (src.type === 'session') {  // 拖的是会话
+      const movedSession = savedSessions.find(s => s.savedId === src.id)  // 找源会话对象；找不到就退出并清理状态
       if (!movedSession) { dragRef.current = null; return }
-      const interim = savedSessions.map(s => s.savedId === src.id ? { ...s, group: '' } : s)
+      const interim = savedSessions.map(s => s.savedId === src.id ? { ...s, group: '' } : s)  // 构造一个临时会话列表，把源会话的 group 设置为空
       const newLabel = uniqueLabelInGroup(interim, '', movedSession.label, src.id)
       const next = savedSessions.map(s => s.savedId === src.id ? { ...s, group: '', label: newLabel } : s)
       const v = vacatedNamedGroupIfEmpty(movedSession.group, next)
-      onUpdateSessions(next, v ? { placeholderForVacatedGroup: v } : undefined)
-    } else if (src.type === 'group') {
+      onUpdateSessions(next, v ? { placeholderForVacatedGroup: v } : undefined)  // 更新会话列表，如果需要恢复为占位分组，则设置占位分组
+    } else if (src.type === 'group') {  // 拖的是分组
       const oldPath = src.id
-      const preferredName = oldPath.split('/').pop()
-      const targetName = uniqueGroupNameUnder('', preferredName, oldPath)
-      const newPath = targetName
+      const preferredName = oldPath.split('/').pop()  // 获取源分组名称
+      const targetName = uniqueGroupNameUnder('', preferredName, oldPath)  // 确保目标分组名称在父分组下唯一
+      const newPath = targetName  // 构建新的分组路径
       onUpdateSessions(savedSessions.map(s =>
         s.group === oldPath ? { ...s, group: newPath } :
         s.group?.startsWith(oldPath + '/') ? { ...s, group: newPath + s.group.slice(oldPath.length) } : s
-      ))
+      ))  // 更新会话列表，更新会话的 group 路径（包含子树）
       onUpdatePlaceholders?.(Array.from(new Set(groupPlaceholders.map(g =>
         g === oldPath ? newPath :
         g.startsWith(oldPath + '/') ? newPath + g.slice(oldPath.length) : g
-      ))))
+      ))))  // 对占位分组做同样的路径迁移
     }
     dragRef.current = null
   }
 
   const tree = buildTree(savedSessions, groupPlaceholders)
-  const hasSftp = !!activeSftpSessionId
+  const hasSftp = !!activeSftpSessionId  // !!(...) 把结果强制转换成布尔值
 
   return (
     <div className={`sidebar ${open ? 'open' : 'closed'}`} style={open ? style : undefined} onClick={closeCtx}>
