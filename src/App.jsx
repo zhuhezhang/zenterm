@@ -82,7 +82,6 @@ export default function App() {
   const [showSettings, setShowSettings]   = useState(false)  // 是否显示设置对话框
   const [dialogType, setDialogType]       = useState('ssh')  // 连接对话框类型：ssh/telnet/serial
   const [dialogInitial, setDialogInitial] = useState(null)  // 连接对话框初始数据（编辑已保存会话时传入）
-  const [sftpState, setSftpState]         = useState({})  // SFTP 状态，格式为 { [sessionId]: { files, path, loading } }
   const terminalExportersRef = useRef({})  // 保存每个会话导出终端文本的 getter
 
   /**
@@ -105,9 +104,6 @@ export default function App() {
   const savedGroups    = getGroups(savedSessions, groupPlaceholders)
   /** 当前活跃会话对象，如果 activeId 不存在于 sessions 中则为 null */
   const activeSession  = sessions.find(s => s.id === activeId) || null
-  /** ?.是可选链运算符，用于访问一个可能为空或者未定义的对象的属性，如果对象为空或者未定义，它会返回 undefined，而不会抛出错误
-  这里意思为：activeSession 存在且 sftpReady 为真时，返回 sftpState[activeId]；否则返回 null */
-  const activeSftpInfo = activeSession?.sftpReady ? sftpState[activeId] : null  // 当前活跃会话的 SFTP 状态信息，如果没有或未准备好则为 null
 
   /**
    * 打开连接对话框，设置类型和初始数据（这里使用 useCallback，主要是为了“把这函数做成稳定的、可重用的函数引用”，
@@ -144,7 +140,6 @@ export default function App() {
       setActiveId(cur => cur !== id ? cur : next[next.length - 1]?.id || null)  // 更新当前活跃会话 ID，如果被删除的会话是当前活跃的，则切换到新的最后一个会话，否则保持不变
       return next
     })
-    setSftpState(prev => { const n = { ...prev }; delete n[id]; return n })  // 删除对应会话的 SFTP 状态，保持 sftpState 与 sessions 同步，避免内存泄漏
     delete terminalExportersRef.current[id]
   }, [])
 
@@ -199,71 +194,6 @@ export default function App() {
       setSftpState(prev => { const n = { ...prev }; delete n[id]; return n })
     }
   }, [])
-
-  /**
-   * SFTP 就绪时：初始化状态，调用 Electron 主进程的 SFTP 列表 API，更新文件列表
-   * @param {string} sessionId 会话 ID
-   */
-  const onSftpReady = useCallback(async (sessionId) => {
-    setSftpState(prev => ({ ...prev, [sessionId]: { files: null, path: '/', loading: true } }))
-    try {
-      const res = await window.zterm.sftp.list(sessionId + '-sftp', '/')
-      setSftpState(prev => ({ ...prev, [sessionId]: { files: res.success ? res.items : [], path: '/', loading: false } }))
-    } catch {
-      setSftpState(prev => ({ ...prev, [sessionId]: { files: [], path: '/', loading: false } }))
-    }
-  }, [])
-
-  /**
-   * 导航到 SFTP 目录：设置加载状态，获取新路径的文件列表
-   * @param {string} sessionId 会话 ID
-   * @param {Object} item 目录项对象
-   */
-  const handleSftpNavigate = useCallback(async (sessionId, item) => {
-    setSftpState(prev => ({ ...prev, [sessionId]: { ...prev[sessionId], loading: true } }))
-    const res = await window.zterm.sftp.list(sessionId + '-sftp', item.path)
-    setSftpState(prev => ({
-      ...prev,
-      [sessionId]: res.success
-        ? { files: res.items, path: item.path, loading: false }
-        : { ...prev[sessionId], loading: false }
-    }))
-  }, [])
-
-  /**
-   * 返回上级目录：计算父路径，调用导航函数
-   * @param {string} sessionId 会话 ID
-   */
-  const handleSftpGoUp = useCallback(async (sessionId) => {
-    const cur = sftpState[sessionId]
-    if (!cur || cur.path === '/') return
-    const parent = cur.path.split('/').slice(0, -1).join('/') || '/'
-    handleSftpNavigate(sessionId, { path: parent })
-  }, [sftpState, handleSftpNavigate])
-
-  /**
-   * 跳转到指定路径：直接调用导航函数
-   * @param {string} sessionId 会话 ID
-   * @param {string} path 目标路径
-   */
-  const handleSftpJumpTo = useCallback(async (sessionId, path) => {
-    handleSftpNavigate(sessionId, { path })
-  }, [handleSftpNavigate])
-
-  /**
-   * 处理 SFTP 文件拖放上传：遍历本地文件列表，调用 Electron 主进程的 SFTP 上传 API，上传完成后刷新当前目录
-   * @param {string} sessionId 会话 ID
-   * @param {Array} localFiles 本地文件列表
-   * @param {Object|null} targetItem 目标目录项对象
-   */
-  const handleSftpDrop = useCallback(async (sessionId, localFiles, targetItem) => {
-    for (const file of localFiles) {
-      const remotePath = (targetItem?.path || '/') + '/' + file.name
-      await window.zterm.sftp.upload(sessionId + '-sftp', file.path, remotePath)
-    }
-    const cur = sftpState[sessionId]
-    if (cur) handleSftpNavigate(sessionId, { path: cur.path })
-  }, [sftpState, handleSftpNavigate])
 
   /**
    * 更新已保存会话列表和分组占位符列表变量，并保存到本地localStorage
@@ -399,14 +329,7 @@ export default function App() {
           onUpdateSessions={updateSaved}
           groupPlaceholders={groupPlaceholders}
           onUpdatePlaceholders={updatePlaceholders}
-          activeSftpSessionId={activeSession?.sftpReady ? activeId : null}
-          sftpFiles={activeSftpInfo?.files}
-          sftpPath={activeSftpInfo?.path}
-          sftpLoading={activeSftpInfo?.loading}
-          onSftpNavigate={(item) => handleSftpNavigate(activeId, item)}
-          onSftpGoUp={() => handleSftpGoUp(activeId)}
-          onSftpJumpTo={(path) => handleSftpJumpTo(activeId, path)}
-          onSftpDrop={(files, t) => handleSftpDrop(activeId, files, t)}
+          activeSession={activeSession}
           settings={settings}
           onOpenSettings={() => setShowSettings(true)}
           style={sidebarOpen ? { width: sidebarWidth } : undefined}
@@ -426,7 +349,7 @@ export default function App() {
                 : sessions.map(s => (
                   <TerminalPanel key={s.id} session={s} active={s.id === activeId}
                     settings={settings} onRegisterExport={registerTerminalExporter}
-                    onUpdate={(upd) => { updateSession(s.id, upd); if (upd.sftpReady) onSftpReady(s.id) }}
+                    onUpdate={(upd) => { updateSession(s.id, upd) }}
                   />
                 ))
               }

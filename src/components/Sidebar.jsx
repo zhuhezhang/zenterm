@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { duplicateSavedSession, addGroupPlaceholder, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
+import SftpPanel from './SftpPanel.jsx'
 import '../styles/sidebar.css'
 
 const TYPE_ICONS  = { ssh: '⌨', telnet: '🔌', serial: '⚡' }
@@ -91,14 +92,7 @@ function buildTree(savedSessions, groupPlaceholders) {
  * @param {function} props.onConnectSaved 连接会话的回调函数
  * @param {function} props.onDeleteSaved 删除会话的回调函数
  * @param {function} props.onUpdateSessions 更新会话的回调函数
- * @param {string} props.activeSftpSessionId 当前活动的 SFTP 会话 ID
- * @param {array} props.sftpFiles SFTP 文件列表
- * @param {string} props.sftpPath SFTP 当前路径
- * @param {boolean} props.sftpLoading SFTP 加载状态
- * @param {function} props.onSftpNavigate SFTP 导航的回调函数
- * @param {function} props.onSftpGoUp SFTP 上级的回调函数
- * @param {function} props.onSftpJumpTo SFTP 跳转的回调函数
- * @param {function} props.onSftpDrop SFTP 拖拽的回调函数
+ * @param {object|null} props.activeSession 当前活动会话对象（用于 SFTP 面板）
  * @param {object} props.settings 设置
  * @param {function} props.onOpenSettings 打开设置界面的回调函数
  * @param {object} props.style 侧边栏样式
@@ -108,11 +102,8 @@ function buildTree(savedSessions, groupPlaceholders) {
  */
 export default function Sidebar(props) {
   const {
-    open, onToggle, savedSessions, onNewSession, onConnectSaved,
-    onDeleteSaved, onUpdateSessions, activeSftpSessionId,
-    sftpFiles, sftpPath, sftpLoading, onSftpNavigate, onSftpGoUp,
-    onSftpJumpTo, onSftpDrop, settings, onOpenSettings, style,
-    groupPlaceholders = [], onUpdatePlaceholders,
+    open, onToggle, savedSessions, onNewSession, onConnectSaved, onDeleteSaved, onUpdateSessions, activeSession,
+    settings, onOpenSettings, style, groupPlaceholders = [], onUpdatePlaceholders,
   } = props
 
   const [expanded, setExpanded] = useState({})  // 展开状态，key 是分组路径，value 是是否展开
@@ -499,7 +490,7 @@ export default function Sidebar(props) {
   }
 
   const tree = buildTree(savedSessions, groupPlaceholders)
-  const hasSftp = !!activeSftpSessionId  // !!(...) 把结果强制转换成布尔值
+  const hasSftp = !!activeSession?.sftpReady  // !!(...) 把结果强制转换成布尔值
 
   return (
     <div className={`sidebar ${open ? 'open' : 'closed'}`} style={open ? style : undefined} onClick={closeCtx}>
@@ -511,10 +502,8 @@ export default function Sidebar(props) {
               <div className="sb-section-row" onClick={() => setSftpExpanded(v => !v)}>
                 <span className={`sb-chevron${sftpExpanded ? ' open' : ''}`}><Chevron /></span>
                 <span className="sb-section-label">远程文件</span>
-                {sftpLoading && <span className="sb-loading">…</span>}
               </div>
-              {sftpExpanded && <SftpTree items={sftpFiles} currentPath={sftpPath}
-                onNavigate={onSftpNavigate} onGoUp={onSftpGoUp} onJumpTo={onSftpJumpTo} onDrop={onSftpDrop} />}
+              {sftpExpanded && <SftpPanel session={activeSession} />}
             </div>
           )}
           <div className={`sb-section-row sessions-header${isDO('__sessions_header__', 'drop') ? ' drop-target' : ''}`}
@@ -828,55 +817,6 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
         <button onClick={() => { collapseGroupAll(ctx.data); closeCtx() }}>收起该分组所有子项</button>
         <button className="danger" onClick={() => { deleteGroup(ctx.data); closeCtx() }}>删除分组</button>
       </>)}
-    </div>
-  )
-}
-
-/**
- * SFTP 树组件：显示 SFTP 文件列表，支持拖拽、上层导航、跳转、拖拽上传/下载文件
- * @param {object} props 组件属性
- * @param {array} props.items SFTP 文件列表：包含文件名、路径、是否是目录、大小、修改时间
- * @param {string} props.currentPath 当前路径：当前所在目录路径
- * @param {function} props.onNavigate 导航回调函数：点击目录时调用，参数是目录项对象
- * @param {function} props.onGoUp 上层导航回调函数：点击上层目录时调用
- * @param {function} props.onJumpTo 跳转回调函数：点击面包屑时调用，参数是目录路径
- * @param {function} props.onDrop 拖拽回调函数：拖拽文件时调用，参数是文件列表和目标目录项对象
- * @returns {JSX.Element} 显示 SFTP 文件列表的组件
- */
-function SftpTree({ items, currentPath, onNavigate, onGoUp, onJumpTo, onDrop }) {
-  const canGoUp = currentPath && currentPath !== '/'  // 是否可以上层导航
-  const hDragOver = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' }  // 拖拽覆盖事件处理函数
-  const hDrop = (e, item) => { e.preventDefault(); const f = Array.from(e.dataTransfer.files); if (f.length > 0 && onDrop) onDrop(f, item) }  // 拖拽放下事件处理函数
-  const segments = currentPath ? currentPath.split('/').filter(Boolean) : []  // 当前路径的段数组
-  return (
-    <div className="sftp-tree">
-      <div className="sftp-tree-breadcrumb" title={currentPath || '/'}>
-        <span className={`sftp-crumb${segments.length === 0 ? ' active' : ''}`} onClick={() => onJumpTo?.('/')}>/</span>
-        {segments.map((seg, i) => {
-          const path = '/' + segments.slice(0, i + 1).join('/')
-          return (  // 面包屑组
-            <span key={path} className="sftp-crumb-group">
-              <span className="sftp-crumb-sep">›</span>
-              <span className={`sftp-crumb${i === segments.length - 1 ? ' active' : ''}`} onClick={() => onJumpTo?.(path)}>{seg}</span>
-            </span>
-          )
-        })}
-      </div>
-      {canGoUp && <div className="sftp-tree-item dir go-up" onClick={onGoUp}><span className="sftp-tree-icon">↩</span><span className="sftp-tree-name">..</span></div>}
-      {!items && <div className="sidebar-loading-text">加载中...</div>}
-      {items && items.length === 0 && <div className="sidebar-empty-dir">（空目录）</div>}
-      {items && items.map(item => (
-        <div key={item.path} className={`sftp-tree-item ${item.isDir ? 'dir' : 'file'}`}
-          onClick={() => item.isDir && onNavigate(item)}
-          onDragOver={item.isDir ? hDragOver : undefined}
-          onDrop={item.isDir ? e => hDrop(e, item) : undefined}
-          draggable={!item.isDir}
-          onDragStart={!item.isDir ? e => e.dataTransfer.setData('text/plain', item.path) : undefined}
-          title={item.path}>
-          <span className="sftp-tree-icon">{item.isDir ? '📁' : '📄'}</span>
-          <span className="sftp-tree-name">{item.name}</span>
-        </div>
-      ))}
     </div>
   )
 }

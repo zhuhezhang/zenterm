@@ -1,13 +1,13 @@
 .sftp-panel {
-  width: 360px;
-  min-width: 280px;
-  max-width: 480px;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
   display: flex;
   flex-direction: column;
   background: var(--bg-secondary);
   border-left: 1px solid var(--border-subtle);
   overflow: hidden;
-  flex-shrink: 0;
+  flex: 1 1 auto;
 }
 
 .sftp-header {
@@ -47,20 +47,6 @@
   white-space: nowrap;
 }
 .sftp-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-
-.sftp-close {
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  border-radius: 4px;
-  color: var(--text-secondary);
-  transition: background 0.15s, color 0.15s;
-  flex-shrink: 0;
-}
-.sftp-close:hover { background: var(--red); color: #fff; }
 
 .sftp-breadcrumb {
   display: flex;
@@ -181,20 +167,29 @@
 
 .sftp-item-date {
   width: 110px;
+  margin-left: auto;
   text-align: right;
   color: var(--text-muted);
   font-size: 10px;
   flex-shrink: 0;
+  transition: margin-right 0.15s ease;
 }
 
 .sftp-item-actions {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   gap: 2px;
   opacity: 0;
   transition: opacity 0.15s;
   flex-shrink: 0;
+  pointer-events: none;
 }
-.sftp-item:hover .sftp-item-actions { opacity: 1; }
+.sftp-item:hover .sftp-item-actions { opacity: 1; pointer-events: auto; }
+.sftp-item.sftp-item-dir:hover .sftp-item-date { margin-right: 50px; }
+.sftp-item.sftp-item-file:hover .sftp-item-date { margin-right: 74px; }
 
 .sftp-action-btn {
   width: 22px;
@@ -219,4 +214,25 @@
   border-radius: 3px;
   color: var(--text-primary);
   outline: none;
+}
+
+/* 窄侧边栏下响应式优化 */
+@media (max-width: 420px) {
+  .sftp-header { padding: 0 8px; gap: 6px; }
+  .sftp-title { font-size: 11px; }
+  .sftp-btn { padding: 2px 6px; font-size: 10px; }
+  .sftp-item { padding: 6px 8px; gap: 6px; }
+  .sftp-item-date { width: 88px; font-size: 10px; }
+}
+
+@media (max-width: 360px) {
+  .sftp-item-date { display: none; }
+  .sftp-item-size { width: 52px; font-size: 10px; }
+  .sftp-item-actions { opacity: 1; }
+}
+
+@media (max-width: 320px) {
+  .sftp-item-size { display: none; }
+  .sftp-item { padding: 6px; }
+  .sftp-action-btn { width: 20px; height: 20px; font-size: 11px; }
 }
