@@ -25,8 +25,9 @@ function binaryToUtf8(binary) {
  * @param {Boolean} props.active 是否为当前活跃标签页
  * @param {Function} props.onUpdate 会话状态更新回调函数
  * @param {Object} props.settings 全局设置对象，包含用户偏好设置
+ * @param {Function} props.onRegisterExport 注册导出终端输出函数的回调，参数为 (sessionId, getter|null)
  */
-export default function TerminalPanel({ session, active, onUpdate, settings }) {
+export default function TerminalPanel({ session, active, onUpdate, settings, onRegisterExport }) {
   /** 终端容器的 DOM 引用，用于挂载 xterm 实例 */
   const containerRef = useRef(null)
   /** Terminal 实例引用，保存对 xterm 实例的访问以便在不同函数中使用 */
@@ -78,6 +79,12 @@ export default function TerminalPanel({ session, active, onUpdate, settings }) {
     }
   }, [active])
 
+  useEffect(() => {  // 注册导出终端输出函数：当组件挂载时，注册导出终端输出函数，当组件卸载时，卸载导出终端输出函数
+    const getter = () => exportTerminalBuffer(termRef.current)
+    onRegisterExport?.(session.id, getter)
+    return () => onRegisterExport?.(session.id, null)
+  }, [session.id, onRegisterExport])
+
   useEffect(() => {  // 监听按键事件：当连接断开时，按 R 键触发重连逻辑，重新连接会话并设置相关事件监听器
     const term = termRef.current
     if (!term) return
@@ -102,6 +109,23 @@ export default function TerminalPanel({ session, active, onUpdate, settings }) {
       <div ref={containerRef} className="terminal-container" />
     </div>
   )
+}
+
+/**
+ * 导出终端缓冲区中的所有可见文本（包含滚动历史）
+ * @param {Terminal|null} term xterm 终端实例
+ * @returns {string} 终端纯文本内容
+ */
+function exportTerminalBuffer(term) {
+  if (!term) return ''
+  const buf = term.buffer.active
+  const lines = []
+  for (let i = 0; i < buf.length; i++) {
+    const line = buf.getLine(i)
+    if (!line) continue
+    lines.push(line.translateToString(true).replace(/\u00a0/g, ' '))
+  }
+  return lines.join('\n').trimEnd()
 }
 
 /**

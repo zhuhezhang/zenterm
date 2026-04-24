@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import TitleBar from './components/TitleBar.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -40,6 +40,33 @@ function vacatedGroupPathIfEmpty(beforeSession, newConfig, nextSessions) {
   return oldG
 }
 
+/**
+ * 生成 YYYYMMDD_HHMMSS 格式时间戳
+ * @returns {string}
+ */
+function fileTimestamp() {
+  const now = new Date()
+  return now.getFullYear() +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0') + '_' +
+    String(now.getHours()).padStart(2, '0') +
+    String(now.getMinutes()).padStart(2, '0') +
+    String(now.getSeconds()).padStart(2, '0')
+}
+
+/**
+ * 过滤文件名非法字符，保留可读标签
+ * @param {string} raw 原始文件名
+ * @returns {string} 安全文件名
+ */
+function safeFileToken(raw) {
+  return (raw || 'session')
+    .replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/^[._]+|[._]+$/g, '')
+    .trim() || 'session'
+}
+
 /** 主应用组件 */
 export default function App() {
   // 局部变量无法在多次渲染中持久保存、更改局部变量不会触发渲染，因此使用 useState 来管理组件状态，
@@ -56,6 +83,7 @@ export default function App() {
   const [dialogType, setDialogType]       = useState('ssh')  // 连接对话框类型：ssh/telnet/serial
   const [dialogInitial, setDialogInitial] = useState(null)  // 连接对话框初始数据（编辑已保存会话时传入）
   const [sftpState, setSftpState]         = useState({})  // SFTP 状态，格式为 { [sessionId]: { files, path, loading } }
+  const terminalExportersRef = useRef({})  // 保存每个会话导出终端文本的 getter
 
   /**
    * 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听器
@@ -117,7 +145,48 @@ export default function App() {
       return next
     })
     setSftpState(prev => { const n = { ...prev }; delete n[id]; return n })  // 删除对应会话的 SFTP 状态，保持 sftpState 与 sessions 同步，避免内存泄漏
+    delete terminalExportersRef.current[id]
   }, [])
+
+  /**
+   * 注册/卸载某个会话的终端导出函数
+   * @param {string} sessionId 会话 ID
+   * @param {Function|null} getter 导出函数，传 null 表示卸载
+   */
+  const registerTerminalExporter = useCallback((sessionId, getter) => {
+    if (!getter) {
+      delete terminalExportersRef.current[sessionId]
+      return
+    }
+    terminalExportersRef.current[sessionId] = getter
+  }, [])
+
+  /**
+   * 保存某个标签页的终端输出到文本文件
+   * @param {string} sessionId 会话 ID
+   */
+  const handleSaveTabOutput = useCallback((sessionId) => {
+    const getter = terminalExportersRef.current[sessionId]
+    if (!getter) {
+      alert('当前标签页尚未准备好终端输出。')
+      return
+    }
+    const text = getter()
+    if (!text?.length) {
+      alert('当前标签页暂无可保存的终端输出。')
+      return
+    }
+    const s = sessions.find(v => v.id === sessionId)
+    const label = s?.label || `${s?.type?.toUpperCase?.() || 'SESSION'}_${s?.host || s?.path || s?.id || sessionId}`
+    const filename = `${fileTimestamp()}_${safeFileToken(label)}.txt`
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [sessions])
 
   /**
    * 更新会话：应用更新，如果断连则清除 SFTP 状态
@@ -348,14 +417,16 @@ export default function App() {
         )}
 
         <div className="main-area">
-          <TabBar sessions={sessions} activeId={activeId} onSelect={setActiveId} onClose={removeSession} onNew={() => openDialog('ssh')} onReorder={handleTabReorder} />
+          <TabBar sessions={sessions} activeId={activeId} onSelect={setActiveId} onClose={removeSession}
+            onNew={() => openDialog('ssh')} onReorder={handleTabReorder} onSaveOutput={handleSaveTabOutput} />
           <div className="content-area">
             <div className="terminal-area">
               {sessions.length === 0
                 ? <WelcomeScreen onNewSession={openDialog} />
                 : sessions.map(s => (
                   <TerminalPanel key={s.id} session={s} active={s.id === activeId}
-                    settings={settings} onUpdate={(upd) => { updateSession(s.id, upd); if (upd.sftpReady) onSftpReady(s.id) }}
+                    settings={settings} onRegisterExport={registerTerminalExporter}
+                    onUpdate={(upd) => { updateSession(s.id, upd); if (upd.sftpReady) onSftpReady(s.id) }}
                   />
                 ))
               }

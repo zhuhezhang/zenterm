@@ -70,7 +70,7 @@
 .sidebar-sftp-section {
   border-bottom: 1px solid var(--border-subtle);
   margin-bottom: 2px;
-  padding-bottom: 2px;
+  padding-bottom: 4px;
 }
 
 /* ── VS Code 风格 section header ── */
@@ -84,7 +84,12 @@
   gap: 2px;
 }
 .sb-section-row:hover { background: var(--bg-hover); }
-.sb-section-row.sessions-header { margin-top: 4px; }
+.sb-section-row.sessions-header { margin-top: 2px; }
+.sb-section-row.sessions-header.drop-target {
+  background: var(--accent-dim);
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
 
 .sb-chevron {
   width: 16px;

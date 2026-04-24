@@ -517,9 +517,12 @@ export default function Sidebar(props) {
                 onNavigate={onSftpNavigate} onGoUp={onSftpGoUp} onJumpTo={onSftpJumpTo} onDrop={onSftpDrop} />}
             </div>
           )}
-          <div className="sb-section-row sessions-header" 
+          <div className={`sb-section-row sessions-header${isDO('__sessions_header__', 'drop') ? ' drop-target' : ''}`}
             onClick={() => setSessionsCollapsed(v => !v)}
-            onContextMenu={e => openCtx(e, 'sessions-header', null)}>
+            onContextMenu={e => openCtx(e, 'sessions-header', null)}
+            onDragOver={e => dOver(e, '__sessions_header__', 'drop')}
+            onDragLeave={dLeave}
+            onDrop={dropUngroup}>
             <span className={`sb-chevron${sessionsCollapsed ? '' : ' open'}`}><Chevron /></span>
             <span className="sb-section-label">保存的会话</span>
           </div>
