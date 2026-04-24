@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { duplicateSavedSession, addGroupPlaceholder, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
 import '../styles/sidebar.css'
 
@@ -568,6 +568,38 @@ export default function Sidebar(props) {
   )
 }
 
+/**
+ * 树节点组件：显示分组或会话的树节点，支持重命名、拖拽、上下文菜单等操作
+ * @param {object} props 组件属性
+ * @param {object} props.node 节点对象：包含 id、type、name、path 和 children 属性
+ * @param {number} props.depth 节点深度：节点所在的层级
+ * @param {function} props.isExp 是否展开的回调函数：点击展开时调用，参数是路径
+ * @param {function} props.togExp 切换展开状态的回调函数：点击展开时调用，参数是路径
+ * @param {function} props.openCtx 打开上下文菜单的回调函数：点击上下文菜单时调用，参数是事件和路径
+ * @param {function} props.onConnectSaved 连接会话的回调函数：点击连接会话时调用，参数是会话对象
+ * @param {function} props.renaming 重命名状态：包含路径和新的名称
+ * @param {function} props.renameVal 重命名值：新的名称
+ * @param {function} props.setRenameVal 设置重命名值的回调函数：点击重命名时调用，参数是新的名称
+ * @param {function} props.setRenaming 设置重命名状态的回调函数：点击重命名时调用，参数是路径和新的名称
+ * @param {function} props.renameGroup 重命名分组的回调函数：点击重命名时调用，参数是路径和新的名称
+ * @param {function} props.renameGroupInputRef 重命名分组输入引用
+ * @param {function} props.ignoreRenameGroupBlurRef 重命名分组忽略 blur 引用（blur 事件也就是失去焦点事件）
+ * @param {function} props.renamingSession 重命名会话状态：包含 savedId 和新的名称
+ * @param {function} props.renameSessionVal 重命名会话值：新的名称
+ * @param {function} props.setRenamingSession 设置重命名会话状态的回调函数：点击重命名会话时调用，参数是会话 ID 和新的名称
+ * @param {function} props.setRenameSessionVal 设置重命名会话值的回调函数：点击重命名会话时调用，参数是新的名称
+ * @param {function} props.renameSession 重命名会话的回调函数：点击重命名会话时调用，参数是会话 ID 和新的名称
+ * @param {function} props.renameSessionInputRef 重命名会话输入引用
+ * @param {function} props.ignoreRenameSessionBlurRef 重命名会话忽略 blur 引用（blur 事件也就是失去焦点事件）
+ * @param {function} props.dStart 拖拽开始事件处理函数：点击拖拽时调用，参数是事件和路径
+ * @param {function} props.dEnd 拖拽结束事件处理函数：点击拖拽时调用，参数是事件和路径
+ * @param {function} props.dOver 拖拽覆盖事件处理函数：点击拖拽时调用，参数是事件和路径
+ * @param {function} props.dLeave 拖拽离开事件处理函数：点击拖拽时调用，参数是事件和路径
+ * @param {function} props.dropOnGroup 拖拽到分组的回调函数：点击拖拽时调用，参数是事件和路径
+ * @param {function} props.dropOnSession 拖拽到会话的回调函数：点击拖拽时调用，参数是事件和路径
+ * @param {function} props.isDO 是否是拖拽目标的回调函数：点击拖拽时调用，参数是路径和类型
+ * @returns {JSX.Element} 树节点组件
+ */
 function TreeNode({ node, depth, isExp, togExp, openCtx, onConnectSaved,
   renaming, renameVal, setRenameVal, setRenaming, renameGroup,
   renameGroupInputRef, ignoreRenameGroupBlurRef,
@@ -576,8 +608,8 @@ function TreeNode({ node, depth, isExp, togExp, openCtx, onConnectSaved,
   dStart, dEnd, dOver, dLeave, dropOnGroup, dropOnSession, isDO }) {
   const indent = depth * 14 + 6
   if (node.type === 'group') {
-    const open = isExp(node.path)
-    const isDropTarget = isDO(node.id, 'group')
+    const open = isExp(node.path)  // 是否展开
+    const isDropTarget = isDO(node.id, 'group')  // 是否是拖拽目标
     return (
       <div className="sb-node-group">
         <div
@@ -683,11 +715,33 @@ function SidebarTop({ open, onToggle, onOpenSettings }) {
   )
 }
 
+/**
+ * 上下文菜单组件：显示会话、分组、子分组、新分组等操作的上下文菜单
+ * @param {object} props 组件属性
+ * @param {object} props.ctx 上下文菜单数据：包含 x、y 坐标、类型和数据
+ * @param {function} props.closeCtx 关闭上下文菜单的回调函数
+ * @param {function} props.onConnectSaved 连接会话的回调函数：点击连接会话时调用，参数是会话对象
+ * @param {function} props.onNewSession 新建会话的回调函数：点击新建会话时调用，参数是会话类型和会话对象
+ * @param {function} props.dupSession 复制会话的回调函数：点击复制会话时调用，参数是会话 ID
+ * @param {function} props.deleteSession 删除会话的回调函数：点击删除会话时调用，参数是会话 ID 和会话名称
+ * @param {function} props.deleteGroup 删除分组的回调函数：点击删除分组时调用，参数是分组路径
+ * @param {function} props.setRenaming 设置重命名状态的回调函数：点击重命名时调用，参数是路径和新的名称
+ * @param {function} props.setRenameVal 设置重命名值的回调函数：点击重命名时调用，参数是新的名称
+ * @param {array} props.groupPlaceholders 占位分组列表：包含分组路径
+ * @param {function} props.onUpdatePlaceholders 更新占位分组的回调函数：点击更新占位分组时调用，参数是分组路径
+ * @param {function} props.expandAll 展开所有分组的回调函数：点击展开所有时调用
+ * @param {function} props.collapseAll 收起所有分组的回调函数：点击收起所有时调用
+ * @param {function} props.expandGroupAll 展开该分组所有子项的回调函数：点击展开该分组所有子项时调用，参数是分组路径
+ * @param {function} props.collapseGroupAll 收起该分组所有子项的回调函数：点击收起该分组所有子项时调用，参数是分组路径
+ * @param {function} props.setRenamingSession 设置重命名会话状态的回调函数：点击重命名会话时调用，参数是会话 ID 和新的名称
+ * @param {function} props.setRenameSessionVal 设置重命名会话值的回调函数：点击重命名会话时调用，参数是新的名称
+ * @returns {JSX.Element} 上下文菜单组件
+ */
 function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, deleteSession, deleteGroup, setRenaming, setRenameVal, groupPlaceholders, onUpdatePlaceholders, expandAll, collapseAll, expandGroupAll, collapseGroupAll, setRenamingSession, setRenameSessionVal }) {
-  const [subInput, setSubInput] = React.useState(null)
-  const [newGroupInput, setNewGroupInput] = React.useState(null)
-  const subInputRef = useRef(null)
-  const newGroupInputRef = useRef(null)
+  const [subInput, setSubInput] = useState(null)  // 子分组名称输入值
+  const [newGroupInput, setNewGroupInput] = useState(null)  // 新分组名称输入值
+  const subInputRef = useRef(null)  // 子分组名称输入引用
+  const newGroupInputRef = useRef(null)  // 新分组名称输入引用
   if (subInput !== null) {
     return (
       <div className="context-menu context-menu-input" style={{ top: ctx.y, left: ctx.x }} onClick={e => e.stopPropagation()}>
@@ -775,18 +829,29 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
   )
 }
 
+/**
+ * SFTP 树组件：显示 SFTP 文件列表，支持拖拽、上层导航、跳转、拖拽上传/下载文件
+ * @param {object} props 组件属性
+ * @param {array} props.items SFTP 文件列表：包含文件名、路径、是否是目录、大小、修改时间
+ * @param {string} props.currentPath 当前路径：当前所在目录路径
+ * @param {function} props.onNavigate 导航回调函数：点击目录时调用，参数是目录项对象
+ * @param {function} props.onGoUp 上层导航回调函数：点击上层目录时调用
+ * @param {function} props.onJumpTo 跳转回调函数：点击面包屑时调用，参数是目录路径
+ * @param {function} props.onDrop 拖拽回调函数：拖拽文件时调用，参数是文件列表和目标目录项对象
+ * @returns {JSX.Element} 显示 SFTP 文件列表的组件
+ */
 function SftpTree({ items, currentPath, onNavigate, onGoUp, onJumpTo, onDrop }) {
-  const canGoUp = currentPath && currentPath !== '/'
-  const hDragOver = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' }
-  const hDrop = (e, item) => { e.preventDefault(); const f = Array.from(e.dataTransfer.files); if (f.length > 0 && onDrop) onDrop(f, item) }
-  const segments = currentPath ? currentPath.split('/').filter(Boolean) : []
+  const canGoUp = currentPath && currentPath !== '/'  // 是否可以上层导航
+  const hDragOver = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' }  // 拖拽覆盖事件处理函数
+  const hDrop = (e, item) => { e.preventDefault(); const f = Array.from(e.dataTransfer.files); if (f.length > 0 && onDrop) onDrop(f, item) }  // 拖拽放下事件处理函数
+  const segments = currentPath ? currentPath.split('/').filter(Boolean) : []  // 当前路径的段数组
   return (
     <div className="sftp-tree">
       <div className="sftp-tree-breadcrumb" title={currentPath || '/'}>
         <span className={`sftp-crumb${segments.length === 0 ? ' active' : ''}`} onClick={() => onJumpTo?.('/')}>/</span>
         {segments.map((seg, i) => {
           const path = '/' + segments.slice(0, i + 1).join('/')
-          return (
+          return (  // 面包屑组
             <span key={path} className="sftp-crumb-group">
               <span className="sftp-crumb-sep">›</span>
               <span className={`sftp-crumb${i === segments.length - 1 ? ' active' : ''}`} onClick={() => onJumpTo?.(path)}>{seg}</span>
