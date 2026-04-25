@@ -51,12 +51,15 @@
 .sftp-breadcrumb {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   padding: 6px 12px;
   background: var(--bg-tertiary);
   border-bottom: 1px solid var(--border-subtle);
   min-height: 32px;
   flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
 }
 
 .sftp-sep {
@@ -149,8 +152,7 @@
 
 .sftp-item-name {
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 90px;
   white-space: nowrap;
   color: var(--text-primary);
 }
@@ -187,9 +189,11 @@
   flex-shrink: 0;
   pointer-events: none;
 }
-.sftp-item:hover .sftp-item-actions { opacity: 1; pointer-events: auto; }
-.sftp-item.sftp-item-dir:hover .sftp-item-date { margin-right: 50px; }
-.sftp-item.sftp-item-file:hover .sftp-item-date { margin-right: 74px; }
+.sftp-item:not(.renaming):hover .sftp-item-actions { opacity: 1; pointer-events: auto; }
+.sftp-item.sftp-item-dir:not(.renaming):hover .sftp-item-date { margin-right: 50px; }
+.sftp-item.sftp-item-file:not(.renaming):hover .sftp-item-date { margin-right: 74px; }
+.sftp-item.renaming .sftp-item-actions { opacity: 0; pointer-events: none; }
+.sftp-item.renaming .sftp-item-date { margin-right: 0; }
 
 .sftp-action-btn {
   width: 22px;
@@ -209,6 +213,7 @@
   flex: 1;
   padding: 2px 6px;
   font-size: 12px;
+  min-width: 90px;
   background: var(--bg-primary);
   border: 1px solid var(--accent);
   border-radius: 3px;

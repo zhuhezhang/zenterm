@@ -207,7 +207,7 @@ export default function SftpPanel({ session }) {
         {!loading && items.map(item => (
           <div
             key={item.path}
-            className={`sftp-item ${item.isDir ? 'sftp-item-dir' : 'sftp-item-file'} ${selected?.path === item.path ? 'selected' : ''}`}
+            className={`sftp-item ${item.isDir ? 'sftp-item-dir' : 'sftp-item-file'} ${selected?.path === item.path ? 'selected' : ''} ${renaming?.path === item.path ? 'renaming' : ''}`}
             onClick={() => handleItemClick(item)}
           >
             <span className="sftp-item-icon">{item.isDir ? '📁' : '📄'}</span>
