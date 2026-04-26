@@ -40,8 +40,8 @@ contextBridge.exposeInMainWorld('zterm', {  // 在渲染进程中通过window.zt
     connect: (id, config) => ipcRenderer.invoke('sftp:connect', id, config),
     disconnect: (id) => ipcRenderer.invoke('sftp:disconnect', id),
     list: (id, remotePath) => ipcRenderer.invoke('sftp:list', id, remotePath),
-    download: (id, remotePath, localPath) => ipcRenderer.invoke('sftp:download', id, remotePath, localPath),
-    downloadDir: (id, remoteDir, localDir) => ipcRenderer.invoke('sftp:downloadDir', id, remoteDir, localDir),
+    download: (id, remotePath, localPath) => ipcRenderer.invoke('sftp:download', id, remotePath, localPath),  // 下载单个文件
+    downloadDir: (id, remoteDir, localDir) => ipcRenderer.invoke('sftp:downloadDir', id, remoteDir, localDir),  // 下载目录
     upload: (id, localPath, remotePath) => ipcRenderer.invoke('sftp:upload', id, localPath, remotePath),
     mkdir: (id, remotePath) => ipcRenderer.invoke('sftp:mkdir', id, remotePath),
     delete: (id, remotePath) => ipcRenderer.invoke('sftp:delete', id, remotePath),
