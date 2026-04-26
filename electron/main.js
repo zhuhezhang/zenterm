@@ -64,13 +64,13 @@ function createWindow() {
     return result.canceled ? null : result.filePaths[0]
   })
 
-  ipcMain.on('log:write', (_e, logDir, sessionId, data) => {  // 日志写入：参数为日志路径、日志文件名、日志内容
+  ipcMain.on('log:write', (_e, logDir, logFileName, data) => {  // 日志写入：参数为日志路径、日志文件名、日志内容
     try {
       if (!logDir) return
       fs.mkdirSync(logDir, { recursive: true })  // 确保日志目录存在（recursive可以创建多级目录）
-      const safeId = String(sessionId).replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '_').trim() || 'session'  // 只过滤真正的文件名非法字符，保留汉字等 Unicode 字符
-      const filePath = path.join(logDir, `${safeId}.log`)
-      fs.appendFileSync(filePath, data, 'utf8')
+      const safeFileName = String(logFileName).replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '_').trim() || 'session'  // 只过滤真正的文件名非法字符，保留汉字等 Unicode 字符
+      const filePath = path.join(logDir, `${safeFileName}.log`)
+      fs.writeFileSync(filePath, data, 'utf8')
     } catch (err) {
       console.error('log:write error', err)
     }

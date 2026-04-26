@@ -36,7 +36,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, onR
   const fitAddonRef  = useRef(null)
   /** 清理函数列表引用，用于存储连接相关的清理函数（如事件监听器、连接断开函数等），组件卸载时调用这些函数进行清理 */
   const cleanupRef   = useRef([])
-  /** 日志写入函数引用，保持对当前日志写入函数的访问以便在连接过程中记录日志 */
+  /** 日志同步函数引用，用于把终端当前可见内容同步到日志文件 */
   const logFileRef   = useRef(null)
   /** 断连状态引用，标记当前连接是否已断开，用于在按键监听中判断是否允许重连 */
   const disconnectedRef = useRef(false)
@@ -56,7 +56,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, onR
     fitAddonRef.current = fitAddon
 
     applyTerminalSettings(term, settingsRef)
-    setupLogging(session, settings, logFileRef, cleanupRef)
+    setupLogging(session, settings, term, logFileRef, cleanupRef)
 
     let cancelled = false
     connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, () => cancelled, logFileRef)
@@ -97,7 +97,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, onR
         ro.observe(containerRef.current)
         cleanupRef.current.push(() => ro.disconnect())
         term.writeln('\r\x1b[33mReconnecting...\x1b[0m')
-        setupLogging(session, settingsRef.current, logFileRef, cleanupRef)  // 重连时重新初始化日志（追加到同一文件）
+        setupLogging(session, settingsRef.current, term, logFileRef, cleanupRef)  // 重连时重新初始化日志
         connectSession(term, fitAddonRef.current, session, onUpdate, cleanupRef, disconnectedRef, null, logFileRef)
       }
     })
@@ -182,33 +182,14 @@ function applyTerminalSettings(term, settingsRef) {
 }
 
 /**
- * 去除字符串中的 ANSI 转义序列，保留可读文本
- * @param {string} str 可能包含 ANSI 转义序列的字符串
- * @returns {string} 去除 ANSI 序列后的纯文本字符串
- */
-function stripAnsi(str) {
-  return str
-    // CSI 序列：ESC [ ... 最终字节
-    .replace(/\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]/g, '')
-    // OSC 序列：ESC ] ... BEL 或 ST
-    .replace(/\x1b\][^\x07\x1b]*(\x07|\x1b\\)/g, '')
-    // 其他双字节 ESC 序列
-    .replace(/\x1b[\x20-\x2f][\x20-\x7e]/g, '')
-    .replace(/\x1b[\x40-\x5f\x60-\x7e]/g, '')
-    // 控制字符（保留 \t \n \r）
-    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
-    // 末尾空格
-    .replace(/ +$/gm, '')
-}
-
-/**
  * 设置日志记录：根据用户设置启用日志功能，生成日志文件名，并将日志写入函数存储在 logFileRef 中以供连接过程中使用
  * @param {Object} session 会话对象
  * @param {Object} settings 设置对象
+ * @param {Terminal} term xterm 终端实例
  * @param {Object} logFileRef 日志文件引用
  * @param {Object} cleanupRef 清理函数引用
  */
-function setupLogging(session, settings, logFileRef, cleanupRef) {
+function setupLogging(session, settings, term, logFileRef, cleanupRef) {
   if (!settings?.enableLogging) return
   const logDir = settings?.logPath || window.zterm?.getDownloadsPath?.()
   if (!logDir) return
@@ -228,11 +209,27 @@ function setupLogging(session, settings, logFileRef, cleanupRef) {
     .replace(/^[._]+|[._]+$/g, '')                // 去掉首尾的点和下划线
     .trim() || 'session'
   const logFileName = `${timestamp}_${sessionName}`
-  logFileRef.current = (data) => {  // 日志写入函数：接收原始数据，去除 ANSI 序列和末尾空格后写入日志文件，避免日志中包含控制字符和多余空格
-    const clean = stripAnsi(data)
-    if (clean.trim()) window.zterm?.log?.write(logDir, logFileName, clean)
+
+  let timer = null
+  const flushSnapshot = () => {
+    timer = null  // 先把 timer 置空（表示这次节流窗口结束）
+    const snapshot = exportTerminalBuffer(term)  // 导出终端缓冲区中的所有可见文本（包含滚动历史）
+    window.zterm?.log?.write(logDir, logFileName, snapshot)  // 写入日志文件
   }
-  cleanupRef.current.push(() => { logFileRef.current = null })  // 将一个清理函数加入 cleanupRef.current，当组件卸载时会调用这个函数来清理日志写入引用，防止后续连接尝试写入日志时访问到已卸载组件的引用导致错误
+  logFileRef.current = () => {  // 节流同步，避免频繁全量写文件
+    if (timer != null) return  // 如果已有 timer，直接返回（避免高频触发时每次都写磁盘）
+    timer = window.setTimeout(flushSnapshot, 80)  // 设置定时器，80ms 后执行 flushSnapshot 函数
+  }
+  logFileRef.current()  // 第一次调用，立即执行 flushSnapshot 函数
+
+  cleanupRef.current.push(() => {  // 清理：清除定时器，退出前再同步一次，确保日志与最终终端内容一致
+    if (timer != null) {
+      window.clearTimeout(timer)
+      timer = null
+    }
+    window.zterm?.log?.write(logDir, logFileName, exportTerminalBuffer(term))
+    logFileRef.current = null
+  })
 }
 
 /**
@@ -269,8 +266,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
    */
   const recv = (data) => {
     const decoded = binaryToUtf8(data)
-    term.write(decoded)
-    logFileRef.current?.(decoded)
+    term.write(decoded, () => logFileRef.current?.())
   }
 
   if (type === 'ssh') {
@@ -286,9 +282,9 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
 
       const r1 = window.zterm.ssh.onData(id, recv)  // 注册 SSH 数据接收事件监听器，使用 recv 函数处理数据
       const r2 = window.zterm.ssh.onClose(id, () => onDisconnect('\r\nConnection closed.'))  // 注册 SSH 关闭事件监听器，调用 onDisconnect 处理断开
-      const d1 = term.onData((data) => {  // 注册终端数据事件监听器，用户输入时发送数据到 SSH 会话，并记录日志
+      const d1 = term.onData((data) => {  // 注册终端数据事件监听器，用户输入时发送数据到 SSH 会话，并同步日志快照
         window.zterm.ssh.sendData(id, data)
-        logFileRef.current?.(data)
+        logFileRef.current?.()
       })
       const d2 = term.onResize(({ cols, rows }) => window.zterm.ssh.resize(id, cols, rows))  // 注册终端尺寸变化事件监听器，调整 SSH 连接尺寸
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => d2.dispose(), () => window.zterm.ssh.disconnect(id))  // 将所有清理函数添加到 cleanupRef 列表，包括移除监听器和断开连接
@@ -321,7 +317,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const r2 = window.zterm.telnet.onClose(id, () => onDisconnect('\r\nConnection closed.'))
       const d1 = term.onData((data) => {
         window.zterm.telnet.sendData(id, data)
-        logFileRef.current?.(data)
+        logFileRef.current?.()
       })
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.telnet.disconnect(id))
     } catch (e) {
@@ -342,7 +338,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const r2 = window.zterm.serial.onClose(id, () => onDisconnect('\r\nPort closed.'))
       const d1 = term.onData((data) => {
         window.zterm.serial.sendData(id, data)
-        logFileRef.current?.(data)
+        logFileRef.current?.()
       })
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.serial.disconnect(id))
     } catch (e) {
