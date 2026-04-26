@@ -10,6 +10,10 @@
   padding-left: 80px; /* space for macOS traffic lights */
 }
 
+.titlebar.is-not-mac {
+  padding-left: 0;
+}
+
 .titlebar-drag {
   flex: 1;
   display: flex;

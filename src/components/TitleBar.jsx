@@ -21,7 +21,7 @@ export default function TitleBar() {
   }, [])
 
   return (
-    <div className="titlebar">
+    <div className={`titlebar ${IS_MAC ? 'is-mac' : 'is-not-mac'}`}>
       <div className="titlebar-drag">
         <div className="titlebar-logo">⚡ ZTerm</div>
       </div>
