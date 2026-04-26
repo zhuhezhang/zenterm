@@ -1,4 +1,6 @@
 const { Client } = require('ssh2')
+const fs = require('fs')
+const path = require('path')
 
 /** 存储所有 SFTP 会话信息的 Map */
 const sftpSessions = new Map()
@@ -9,6 +11,69 @@ const sftpSessions = new Map()
  * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息 
  */
 function setupSFTPHandlers(ipcMain, mainWindow) {
+  const ensureDirSync = (p) => fs.mkdirSync(p, { recursive: true })
+  const sendProgress = (id, progress) => mainWindow.webContents.send('sftp:progress', id, progress)
+
+  const sftpReaddir = (session, remotePath) => new Promise((resolve, reject) => {
+    session.sftp.readdir(remotePath, (err, list) => (err ? reject(err) : resolve(list)))
+  })
+  const sftpUnlink = (session, remotePath) => new Promise((resolve, reject) => {
+    session.sftp.unlink(remotePath, (err) => (err ? reject(err) : resolve()))
+  })
+  const sftpRmdir = (session, remotePath) => new Promise((resolve, reject) => {
+    session.sftp.rmdir(remotePath, (err) => (err ? reject(err) : resolve()))
+  })
+
+  const deleteRecursive = async (session, remotePath) => {
+    try {
+      await sftpUnlink(session, remotePath)
+      return
+    } catch (e) {
+      // not a file, maybe a dir
+    }
+    let list
+    try {
+      list = await sftpReaddir(session, remotePath)
+    } catch (e) {
+      // if cannot readdir, try rmdir directly (may still succeed for empty dir)
+      await sftpRmdir(session, remotePath)
+      return
+    }
+    for (const item of list) {
+      const name = item.filename
+      const child = remotePath === '/' ? '/' + name : remotePath + '/' + name
+      if (item.attrs.isDirectory()) await deleteRecursive(session, child)
+      else await sftpUnlink(session, child)
+    }
+    await sftpRmdir(session, remotePath)
+  }
+
+  const downloadDirRecursive = async (session, id, remoteDir, localDir) => {
+    ensureDirSync(localDir)
+    const list = await sftpReaddir(session, remoteDir)
+    for (const item of list) {
+      const name = item.filename
+      const remotePath = remoteDir === '/' ? '/' + name : remoteDir + '/' + name
+      const localPath = path.join(localDir, name)
+      if (item.attrs.isDirectory()) {
+        await downloadDirRecursive(session, id, remotePath, localPath)
+      } else {
+        await new Promise((resolve, reject) => {
+          session.sftp.fastGet(remotePath, localPath, {
+            step: (transferred, _chunk, total_size) => {
+              sendProgress(id, {
+                type: 'download',
+                file: remotePath,
+                transferred,
+                total: total_size,
+                percent: total_size ? Math.round((transferred / total_size) * 100) : 0,
+              })
+            },
+          }, (err) => (err ? reject(err) : resolve()))
+        })
+      }
+    }
+  }
   ipcMain.handle('sftp:connect', async (_event, id, config) => {  // 监听渲染进程 sftp 连接请求
     return new Promise((resolve, reject) => {
       const conn = new Client()
@@ -105,6 +170,17 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
+  ipcMain.handle('sftp:downloadDir', async (_event, id, remoteDir, localDir) => {
+    const session = sftpSessions.get(id)
+    if (!session) return { success: false, error: 'No SFTP session' }
+    try {
+      await downloadDirRecursive(session, id, remoteDir, localDir)
+      return { success: true }
+    } catch (e) {
+      return { success: false, error: e?.message || String(e) }
+    }
+  })
+
   ipcMain.handle('sftp:upload', async (_event, id, localPath, remotePath) => {  // 监听渲染进程发送的 SFTP 上传请求，传入会话 ID、本地文件路径和远程服务器保存路径
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
@@ -141,18 +217,12 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
   ipcMain.handle('sftp:delete', async (_event, id, remotePath) => {  // 监听渲染进程发送的 SFTP 删除文件（目录）请求，传入会话 ID 和要删除的远程路径
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
-    return new Promise((resolve) => {
-      session.sftp.unlink(remotePath, (err) => {  // 先尝试删除文件，如果失败可能是目录无法删除，再尝试删除目录
-        if (err) {
-          session.sftp.rmdir(remotePath, (err2) => {  // 如果 unlink 删除文件失败，尝试 rmdir 删除目录
-            if (err2) return resolve({ success: false, error: err2.message })
-            resolve({ success: true })
-          })
-          return
-        }
-        resolve({ success: true })
-      })
-    })
+    try {
+      await deleteRecursive(session, remotePath)
+      return { success: true }
+    } catch (e) {
+      return { success: false, error: e?.message || String(e) }
+    }
   })
 
   ipcMain.handle('sftp:rename', async (_event, id, oldPath, newPath) => {  // 监听渲染进程发送的 SFTP 重命名请求，传入会话 ID、旧路径和新路径

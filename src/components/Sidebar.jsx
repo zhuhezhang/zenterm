@@ -22,7 +22,7 @@ const Chevron = () => (
  * @returns {JSX.Element} 文件夹图标组件
  */
 const FolderIcon = ({ open }) => (
-  <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" opacity="0.85">
+  <svg width="18" height="23" viewBox="0 0 16 16" fill="currentColor" opacity="0.85">
     {open
       ? <path d="M1.5 3A1.5 1.5 0 000 4.5v8A1.5 1.5 0 001.5 14h13a1.5 1.5 0 001.5-1.5v-7A1.5 1.5 0 0014.5 4H7.707L6.354 2.646A.5.5 0 006 2.5H1.5z"/>
       : <path d="M.5 3l.04-.87a1.99 1.99 0 011.96-1.13H6a2 2 0 011.998 1.858L8 3h5.5A1.5 1.5 0 0115 4.5v8a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5v-9A.5.5 0 00.5 3z"/>}
@@ -501,48 +501,52 @@ export default function Sidebar(props) {
             <div className="sidebar-sftp-section">
               <div className="sb-section-row" onClick={() => setSftpExpanded(v => !v)}>
                 <span className={`sb-chevron${sftpExpanded ? ' open' : ''}`}><Chevron /></span>
+                <span className="sftp-item-icon">📁</span>
                 <span className="sb-section-label">远程文件</span>
               </div>
               {sftpExpanded && <SftpPanel session={activeSession} />}
             </div>
           )}
-          <div className={`sb-section-row sessions-header${isDO('__sessions_header__', 'drop') ? ' drop-target' : ''}`}
-            onClick={() => setSessionsCollapsed(v => !v)}
-            onContextMenu={e => openCtx(e, 'sessions-header', null)}
-            onDragOver={e => dOver(e, '__sessions_header__', 'drop')}
-            onDragLeave={dLeave}
-            onDrop={dropUngroup}>
-            <span className={`sb-chevron${sessionsCollapsed ? '' : ' open'}`}><Chevron /></span>
-            <span className="sb-section-label">保存的会话</span>
-          </div>
-          {!sessionsCollapsed && (
-            <div
-              className={`sb-tree${isDO('__root__', 'drop') ? ' drop-target' : ''}`}
-              onDragOver={e => dOver(e, '__root__', 'drop')}
+          <div className="sb-sessions-scroll">
+            <div className={`sb-section-row sessions-header${isDO('__sessions_header__', 'drop') ? ' drop-target' : ''}`}
+              onClick={() => setSessionsCollapsed(v => !v)}
+              onContextMenu={e => openCtx(e, 'sessions-header', null)}
+              onDragOver={e => dOver(e, '__sessions_header__', 'drop')}
               onDragLeave={dLeave}
               onDrop={dropUngroup}>
-              {tree.length === 0 && (
-                <div className="sb-empty">
-                  <span>暂无保存的会话</span>
-                  <button className="sb-link" onClick={() => onNewSession('ssh')}>新建连接</button>
-                </div>
-              )}
-              {tree.map(node => (
-                <TreeNode key={node.id} node={node} depth={0}
-                  isExp={isExp} togExp={togExp} openCtx={openCtx} onConnectSaved={onConnectSaved}
-                  renaming={renaming} renameVal={renameVal} setRenameVal={setRenameVal}
-                  setRenaming={setRenaming} renameGroup={renameGroup}
-                  renameGroupInputRef={renameGroupInputRef} ignoreRenameGroupBlurRef={ignoreRenameGroupBlurRef}
-                  renamingSession={renamingSession} renameSessionVal={renameSessionVal}
-                  setRenamingSession={setRenamingSession} setRenameSessionVal={setRenameSessionVal}
-                  renameSession={renameSession} renameSessionInputRef={renameSessionInputRef}
-                  ignoreRenameSessionBlurRef={ignoreRenameSessionBlurRef}
-                  dStart={dStart} dEnd={dEnd} dOver={dOver} dLeave={dLeave}
-                  dropOnGroup={dropOnGroup} dropOnSession={dropOnSession} isDO={isDO}
-                />
-              ))}
+              <span className={`sb-chevron${sessionsCollapsed ? '' : ' open'}`}><Chevron /></span>
+              <span className="sftp-item-icon sb-folder-icon" style={{ color: !sessionsCollapsed ? '#e8bf6a' : '#c4a35a' }}><FolderIcon open={open} /></span>
+              <span className="sb-section-label">保存的会话</span>
             </div>
-          )}
+            {!sessionsCollapsed && (
+              <div
+                className={`sb-tree${isDO('__root__', 'drop') ? ' drop-target' : ''}`}
+                onDragOver={e => dOver(e, '__root__', 'drop')}
+                onDragLeave={dLeave}
+                onDrop={dropUngroup}>
+                {tree.length === 0 && (
+                  <div className="sb-empty">
+                    <span>暂无保存的会话</span>
+                    <button className="sb-link" onClick={() => onNewSession('ssh')}>新建连接</button>
+                  </div>
+                )}
+                {tree.map(node => (
+                  <TreeNode key={node.id} node={node} depth={0}
+                    isExp={isExp} togExp={togExp} openCtx={openCtx} onConnectSaved={onConnectSaved}
+                    renaming={renaming} renameVal={renameVal} setRenameVal={setRenameVal}
+                    setRenaming={setRenaming} renameGroup={renameGroup}
+                    renameGroupInputRef={renameGroupInputRef} ignoreRenameGroupBlurRef={ignoreRenameGroupBlurRef}
+                    renamingSession={renamingSession} renameSessionVal={renameSessionVal}
+                    setRenamingSession={setRenamingSession} setRenameSessionVal={setRenameSessionVal}
+                    renameSession={renameSession} renameSessionInputRef={renameSessionInputRef}
+                    ignoreRenameSessionBlurRef={ignoreRenameSessionBlurRef}
+                    dStart={dStart} dEnd={dEnd} dOver={dOver} dLeave={dLeave}
+                    dropOnGroup={dropOnGroup} dropOnSession={dropOnSession} isDO={isDO}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
       {contextMenu && (
@@ -598,7 +602,7 @@ function TreeNode({ node, depth, isExp, togExp, openCtx, onConnectSaved,
   renamingSession, renameSessionVal, setRenamingSession, setRenameSessionVal, renameSession, renameSessionInputRef,
   ignoreRenameSessionBlurRef,
   dStart, dEnd, dOver, dLeave, dropOnGroup, dropOnSession, isDO }) {
-  const indent = depth * 14 + 6
+  const indent = depth * 14 + 14
   if (node.type === 'group') {
     const open = isExp(node.path)  // 是否展开
     const isDropTarget = isDO(node.id, 'group')  // 是否是拖拽目标

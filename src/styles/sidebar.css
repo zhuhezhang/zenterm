@@ -5,6 +5,8 @@
   overflow: hidden;
   flex-shrink: 0;
   position: relative;
+  container-type: inline-size;
+  container-name: sidebar;
   /* 宽度由 App.jsx 动态控制，closed 时固定 40px */
 }
 .sidebar.closed { width: 40px !important; }
@@ -71,6 +73,9 @@
   border-bottom: 1px solid var(--border-subtle);
   margin-bottom: 2px;
   padding-bottom: 4px;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── VS Code 风格 section header ── */
@@ -105,7 +110,7 @@
 .sb-chevron.open { transform: rotate(90deg); }
 
 .sb-section-label {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.8px;
   text-transform: uppercase;
@@ -133,6 +138,33 @@
   background: rgba(88,166,255,0.04);
   outline: 1px dashed rgba(88,166,255,0.3);
   outline-offset: -2px;
+}
+
+/* sessions-header + tree 的公共滚动容器（同一条水平滚动条） */
+.sb-sessions-scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sb-sessions-scroll .sb-section-row.sessions-header,
+.sb-sessions-scroll .sb-tree {
+  min-width: max-content;
+}
+
+.sb-sessions-scroll .sb-section-label {
+  flex: 0 0 auto;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.sb-sessions-scroll .sb-row {
+  overflow: visible;
+  min-width: max-content;
 }
 
 /* ── 通用行 ── */
@@ -241,6 +273,7 @@
 
 /* ── SFTP 文件树 ── */
 .sftp-tree { display: flex; flex-direction: column; }
+.sftp-item-icon { font-size: 14px; flex-shrink: 0; padding-right: 6px; }
 
 /* SFTP 面包屑路径 */
 .sftp-tree-breadcrumb {

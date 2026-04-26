@@ -103,14 +103,18 @@ export default function SftpPanel({ session }) {
   }
 
   const commitRename = async () => {
-    if (!renaming || !renameValue.trim()) { setRenaming(null); return }
-    if (INVALID_NAME_CHARS.test(renameValue.trim())) {
+    if (!renaming) { setRenaming(null); return }
+    const nextName = renameValue.trim()
+    const prevName = (renaming?.name ?? '').trim()
+    if (!nextName) { setRenaming(null); return }
+    if (nextName === prevName) { setRenaming(null); return }
+    if (INVALID_NAME_CHARS.test(nextName)) {
       setError('名称不允许包含以下字符：/ \\ : * ? " < > |')
       return
     }
     const dir = path === '/' ? '' : path
     const oldPath = renaming.path
-    const newPath = dir + '/' + renameValue.trim()
+    const newPath = dir + '/' + nextName
     setRenaming(null)
     const res = await window.zterm.sftp.rename(sftpSessionId, oldPath, newPath)
     if (res.success) loadDir(path)
@@ -119,28 +123,83 @@ export default function SftpPanel({ session }) {
 
   const handleDownload = async (item, e) => {
     e.stopPropagation()
-    if (item.isDir) return
     const dir = await window.zterm?.chooseDirectory?.()
     if (!dir) return
-    const localPath = dir.endsWith('/') ? `${dir}${item.name}` : `${dir}/${item.name}`
-    const res = await window.zterm.sftp.download(sftpSessionId, item.path, localPath)
+    const localBase = dir.endsWith('/') ? dir.slice(0, -1) : dir
+    const localPath = `${localBase}/${item.name}`
+    const res = item.isDir
+      ? await window.zterm.sftp.downloadDir(sftpSessionId, item.path, localPath)
+      : await window.zterm.sftp.download(sftpSessionId, item.path, localPath)
     if (!res?.success) setError(res?.error || '下载失败')
+  }
+
+  const ensureRemoteDir = async (remoteDir, cache) => {
+    if (!remoteDir || remoteDir === '/') return true
+    if (cache.has(remoteDir)) return true
+    const parent = remoteDir.includes('/') ? remoteDir.split('/').slice(0, -1).join('/') || '/' : '/'
+    await ensureRemoteDir(parent, cache)
+    const res = await window.zterm.sftp.mkdir(sftpSessionId, remoteDir)
+    if (res?.success) { cache.add(remoteDir); return true }
+    const msg = String(res?.error || '')
+    if (/exist|exists|failure/i.test(msg)) { cache.add(remoteDir); return true }
+    throw new Error(res?.error || `mkdir失败: ${remoteDir}`)
+  }
+
+  const traverseEntry = async (entry, relBase = '') => {
+    if (!entry) return []
+    if (entry.isFile) {
+      const file = await new Promise((resolve) => entry.file(resolve))
+      return [{ file, relPath: relBase + file.name }]
+    }
+    if (entry.isDirectory) {
+      const reader = entry.createReader()
+      const entries = await new Promise((resolve) => reader.readEntries(resolve))
+      const out = []
+      for (const child of entries) {
+        out.push(...await traverseEntry(child, relBase + entry.name + '/'))
+      }
+      return out
+    }
+    return []
   }
 
   const handleDropUpload = async (e) => {
     e.preventDefault()
-    const files = Array.from(e.dataTransfer?.files || []).filter(f => f?.path)
-    if (!files.length) return
     setError('')
-    for (const f of files) {
-      const remotePath = (path === '/' ? '' : path) + '/' + f.name
-      const res = await window.zterm.sftp.upload(sftpSessionId, f.path, remotePath)
-      if (!res?.success) {
-        setError(res?.error || `上传失败: ${f.name}`)
-        break
+    try {
+      const cache = new Set()
+      const items = Array.from(e.dataTransfer?.items || [])
+      const hasEntries = items.some(it => typeof it.webkitGetAsEntry === 'function')
+      if (hasEntries) {
+        const entries = items.map(it => it.webkitGetAsEntry?.()).filter(Boolean)
+        const filesToUpload = []
+        for (const ent of entries) filesToUpload.push(...await traverseEntry(ent, ''))
+        if (!filesToUpload.length) return
+
+        for (const { file, relPath } of filesToUpload) {
+          if (!file?.path) continue
+          const remoteBase = (path === '/' ? '' : path) + '/'
+          const remotePath = remoteBase + relPath
+          const remoteDir = remotePath.split('/').slice(0, -1).join('/') || '/'
+          await ensureRemoteDir(remoteDir, cache)
+          const res = await window.zterm.sftp.upload(sftpSessionId, file.path, remotePath)
+          if (!res?.success) throw new Error(res?.error || `上传失败: ${relPath}`)
+        }
+        loadDir(path)
+        return
       }
+
+      const files = Array.from(e.dataTransfer?.files || []).filter(f => f?.path)
+      if (!files.length) return
+      for (const f of files) {
+        const remotePath = (path === '/' ? '' : path) + '/' + f.name
+        const res = await window.zterm.sftp.upload(sftpSessionId, f.path, remotePath)
+        if (!res?.success) throw new Error(res?.error || `上传失败: ${f.name}`)
+      }
+      loadDir(path)
+    } catch (err) {
+      setError(err?.message || String(err))
     }
-    loadDir(path)
   }
 
   const breadcrumbs = path === '/' ? ['/'] : ['/', ...path.split('/').filter(Boolean)]
@@ -148,10 +207,10 @@ export default function SftpPanel({ session }) {
   return (
     <div className="sftp-panel">
       <div className="sftp-header">
-        <span className="sftp-title">📁 SFTP — {session.host}</span>
+        <span className="sftp-title">SFTP — {session.host}</span>
         <div className="sftp-toolbar">
           <button className="sftp-btn" onClick={startCreateDir} title="新建文件夹">+ 文件夹</button>
-          <button className="sftp-btn" onClick={() => loadDir(path)} title="刷新">↻ 刷新</button>
+          <button className="sftp-btn" onClick={() => { loadDir(path); setProgress(null) }} title="刷新">↻ 刷新</button>
         </div>
       </div>
       {creatingDir && (
@@ -167,8 +226,8 @@ export default function SftpPanel({ session }) {
               if (e.key === 'Escape') { setCreatingDir(false); setCreateDirName('') }
             }}
           />
-          <button className="sftp-btn" onClick={commitCreateDir}>创建</button>
-          <button className="sftp-btn" onClick={() => { setCreatingDir(false); setCreateDirName('') }}>取消</button>
+          <button id="sftp-create-dir-btn" className="sftp-btn" onClick={commitCreateDir}>创建</button>
+          <button id="sftp-cancel-dir-btn" className="sftp-btn" onClick={() => { setCreatingDir(false); setCreateDirName('') }}>取消</button>
         </div>
       )}
 
@@ -227,7 +286,7 @@ export default function SftpPanel({ session }) {
             <span className="sftp-item-size">{item.isDir ? '' : formatSize(item.size)}</span>
             <span className="sftp-item-date">{formatDate(item.mtime)}</span>
             <div className="sftp-item-actions">
-              {!item.isDir && <button className="sftp-action-btn" onClick={(e) => handleDownload(item, e)} title="下载">⭳</button>}
+              <button className="sftp-action-btn" onClick={(e) => handleDownload(item, e)} title="下载">⭳</button>
               <button className="sftp-action-btn" onClick={(e) => startRename(item, e)} title="重命名">✏</button>
               <button className="sftp-action-btn danger" onClick={(e) => handleDelete(item, e)} title="删除">🗑</button>
             </div>
