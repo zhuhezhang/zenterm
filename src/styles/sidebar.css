@@ -64,8 +64,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 4px 0 8px;
-  display: flex;
-  flex-direction: column;
+  display: block;
 }
 
 /* ── SFTP 区域 ── */
@@ -74,8 +73,9 @@
   margin-bottom: 2px;
   padding-bottom: 4px;
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  max-height: none;
 }
 
 /* ── VS Code 风格 section header ── */
@@ -132,7 +132,7 @@
 
 /* ── 树容器 ── */
 .sb-tree {
-  flex: 1;
+  flex: 0 0 auto;
 }
 .sb-tree.drop-target {
   background: rgba(88,166,255,0.04);
@@ -142,13 +142,14 @@
 
 /* sessions-header + tree 的公共滚动容器（同一条水平滚动条） */
 .sb-sessions-scroll {
-  flex: 1;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
+  max-height: none;
 }
 
 .sb-sessions-scroll .sb-section-row.sessions-header,
