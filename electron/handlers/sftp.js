@@ -11,45 +11,67 @@ const sftpSessions = new Map()
  * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息 
  */
 function setupSFTPHandlers(ipcMain, mainWindow) {
-  const ensureDirSync = (p) => fs.mkdirSync(p, { recursive: true })
-  const sendProgress = (id, progress) => mainWindow.webContents.send('sftp:progress', id, progress)
-
+  /** 
+   * 读取远程服务器目录
+   * @param {Object} session SFTP 会话对象
+   * @param {string} remotePath 远程服务器目录路径
+   */
   const sftpReaddir = (session, remotePath) => new Promise((resolve, reject) => {
     session.sftp.readdir(remotePath, (err, list) => (err ? reject(err) : resolve(list)))
   })
+  /** 
+   * 删除远程服务器文件
+   * @param {Object} session SFTP 会话对象
+   * @param {string} remotePath 远程服务器文件路径
+   */
   const sftpUnlink = (session, remotePath) => new Promise((resolve, reject) => {
     session.sftp.unlink(remotePath, (err) => (err ? reject(err) : resolve()))
   })
+  /** 
+   * 删除远程服务器目录
+   * @param {Object} session SFTP 会话对象
+   * @param {string} remotePath 远程服务器目录路径
+   */
   const sftpRmdir = (session, remotePath) => new Promise((resolve, reject) => {
     session.sftp.rmdir(remotePath, (err) => (err ? reject(err) : resolve()))
   })
 
+  /** 
+   * 递归删除远程服务器文件（目录）
+   * @param {Object} session SFTP 会话对象
+   * @param {string} remotePath 远程服务器文件（目录）路径
+   */
   const deleteRecursive = async (session, remotePath) => {
     try {
       await sftpUnlink(session, remotePath)
       return
-    } catch (e) {
-      // not a file, maybe a dir
+    } catch (e) {  // 不是文件，可能是目录，尝试删除目录
     }
     let list
     try {
       list = await sftpReaddir(session, remotePath)
     } catch (e) {
-      // if cannot readdir, try rmdir directly (may still succeed for empty dir)
-      await sftpRmdir(session, remotePath)
+      await sftpRmdir(session, remotePath)  // 如果无法读取目录，尝试直接删除目录
       return
     }
-    for (const item of list) {
+    for (const item of list) {  // 递归删除远程服务器文件（目录）
       const name = item.filename
       const child = remotePath === '/' ? '/' + name : remotePath + '/' + name
-      if (item.attrs.isDirectory()) await deleteRecursive(session, child)
-      else await sftpUnlink(session, child)
+      if (item.attrs.isDirectory()) await deleteRecursive(session, child)  // 如果是目录，递归删除
+      else await sftpUnlink(session, child)  // 如果是文件，删除文件
     }
     await sftpRmdir(session, remotePath)
   }
 
+  /** 
+   * 递归下载远程服务器目录到本地目录
+   * @param {Object} session SFTP 会话对象
+   * @param {string} id 会话 ID
+   * @param {string} remoteDir 远程服务器目录路径
+   * @param {string} localDir 本地保存目录路径
+   */
   const downloadDirRecursive = async (session, id, remoteDir, localDir) => {
-    ensureDirSync(localDir)
+    fs.mkdirSync(localDir, { recursive: true })  // 确保本地目录存在（recursive可以创建多级目录）
     const list = await sftpReaddir(session, remoteDir)
     for (const item of list) {
       const name = item.filename
@@ -61,7 +83,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
         await new Promise((resolve, reject) => {
           session.sftp.fastGet(remotePath, localPath, {
             step: (transferred, _chunk, total_size) => {
-              sendProgress(id, {
+              mainWindow.webContents.send('sftp:progress', id, {
                 type: 'download',
                 file: remotePath,
                 transferred,
@@ -170,14 +192,14 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:downloadDir', async (_event, id, remoteDir, localDir) => {
+  ipcMain.handle('sftp:downloadDir', async (_event, id, remoteDir, localDir) => {  // 监听渲染进程发送的 SFTP 下载目录请求，传入会话 ID、要下载的远程服务器目录路径和本地保存目录路径
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     try {
-      await downloadDirRecursive(session, id, remoteDir, localDir)
+      await downloadDirRecursive(session, id, remoteDir, localDir)  // 递归下载远程服务器目录到本地目录
       return { success: true }
     } catch (e) {
-      return { success: false, error: e?.message || String(e) }
+      return { success: false, error: e?.message || String(e) }  // 下载失败，返回错误信息
     }
   })
 

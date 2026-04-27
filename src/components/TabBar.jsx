@@ -157,6 +157,8 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
           <button onClick={() => { onSaveOutput?.(ctxMenu.id); closeCtx() }}>保存终端输出</button>
           <div className="tab-ctx-divider" />
           <button className="danger" onClick={closeAll}>关闭全部标签页</button>
+          <div className="tab-ctx-divider" />
+          <button onClick={() => { closeCtx() }}>关闭上下文菜单</button>
         </div>
       )}
     </div>

@@ -805,6 +805,8 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
         <div className="context-menu-divider" />
         <button onClick={() => { expandAll(); closeCtx() }}>展开所有</button>
         <button onClick={() => { collapseAll(); closeCtx() }}>收起所有</button>
+        <div className="context-menu-divider" />
+        <button onClick={() => { closeCtx() }}>关闭上下文菜单</button>
       </>)}
       {ctx.type === 'session' && (<>
         <button onClick={() => { onConnectSaved(ctx.data); closeCtx() }}>连接</button>
@@ -812,14 +814,19 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
         <button onClick={() => { setRenamingSession(ctx.data.savedId); setRenameSessionVal(ctx.data.label || ''); closeCtx() }}>重命名</button>
         <button onClick={() => { dupSession(ctx.data.savedId); closeCtx() }}>复制</button>
         <button className="danger" onClick={() => { deleteSession(ctx.data.savedId, ctx.data.label); closeCtx() }}>删除</button>
+        <div className="context-menu-divider" />
+        <button onClick={() => { closeCtx() }}>关闭上下文菜单</button>
       </>)}
       {ctx.type === 'group' && (<>
         <button onClick={() => { onNewSession('ssh', { group: ctx.data }); closeCtx() }}>新建会话</button>
-        <button onClick={() => { setRenaming(ctx.data); setRenameVal(ctx.data.split('/').pop()); closeCtx() }}>重命名</button>
+        <button onClick={() => { setRenaming(ctx.data); setRenameVal(ctx.data.split('/').pop()); closeCtx() }}>重命名分组</button>
         <button onClick={() => setSubInput('')}>新建子分组</button>
         <button onClick={() => { expandGroupAll(ctx.data); closeCtx() }}>展开该分组所有子项</button>
         <button onClick={() => { collapseGroupAll(ctx.data); closeCtx() }}>收起该分组所有子项</button>
+        <div className="context-menu-divider" />
         <button className="danger" onClick={() => { deleteGroup(ctx.data); closeCtx() }}>删除分组</button>
+        <div className="context-menu-divider" />
+        <button onClick={() => { closeCtx() }}>关闭上下文菜单</button>
       </>)}
     </div>
   )
