@@ -33,6 +33,16 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
     prevCountRef.current = sessions.length
   }, [sessions.length])
 
+  useEffect(() => {  // 右键菜单打开后，点击菜单外区域自动关闭
+    if (!ctxMenu) return
+    const onDocMouseDown = (e) => {
+      if (e.target?.closest?.('.tab-context-menu')) return
+      closeCtx()
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [ctxMenu])
+
   /** 
    * 右键菜单操作函数，分别用于关闭当前标签页、关闭其他标签页、关闭左侧标签页、关闭右侧标签页和关闭全部标签页。
    * 每个函数调用对应的 onClose 回调来关闭指定的标签页，并调用 closeCtx 来关闭右键菜单
@@ -157,8 +167,6 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
           <button onClick={() => { onSaveOutput?.(ctxMenu.id); closeCtx() }}>保存终端输出</button>
           <div className="tab-ctx-divider" />
           <button className="danger" onClick={closeAll}>关闭全部标签页</button>
-          <div className="tab-ctx-divider" />
-          <button onClick={() => { closeCtx() }}>关闭上下文菜单</button>
         </div>
       )}
     </div>

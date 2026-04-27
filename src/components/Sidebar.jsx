@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { duplicateSavedSession, addGroupPlaceholder, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
 import SftpPanel from './SftpPanel.jsx'
 import '../styles/sidebar.css'
@@ -143,6 +144,16 @@ export default function Sidebar(props) {
   const openCtx = (e, type, data) => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, type, data }) }
   /** 关闭上下文菜单 */
   const closeCtx = () => setContextMenu(null)
+
+  useEffect(() => {  // 右键菜单打开后，点击菜单外区域自动关闭
+    if (!contextMenu) return
+    const onDocMouseDown = (e) => {
+      if (e.target?.closest?.('.context-menu')) return
+      closeCtx()
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [contextMenu])
 
   /** 展开所有分组 */
   const expandAll = () => {
@@ -738,9 +749,28 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
   const [newGroupInput, setNewGroupInput] = useState(null)  // 新分组名称输入值
   const subInputRef = useRef(null)  // 子分组名称输入引用
   const newGroupInputRef = useRef(null)  // 新分组名称输入引用
+  const menuRef = useRef(null)  // 上下文菜单引用
+  const [menuPos, setMenuPos] = useState({ x: ctx.x, y: ctx.y })  // 上下文菜单位置
+
+  useLayoutEffect(() => {  // 根据视口边界动态修正菜单位置，避免底部/右侧被遮挡
+    const menuEl = menuRef.current
+    if (!menuEl) return
+    const margin = 8
+    const maxX = Math.max(margin, window.innerWidth - menuEl.offsetWidth - margin)
+    const maxY = Math.max(margin, window.innerHeight - menuEl.offsetHeight - margin)
+    const nextX = Math.max(margin, Math.min(ctx.x, maxX))
+    const nextY = Math.max(margin, Math.min(ctx.y, maxY))
+    setMenuPos((prev) => (prev.x === nextX && prev.y === nextY ? prev : { x: nextX, y: nextY }))
+  }, [ctx.x, ctx.y, subInput, newGroupInput])
+
+  const renderInBody = (node) => {  // 把侧边栏右键菜单改成 Portal 渲染到 document.body，不再受 sb-sessions-scroll 或侧边栏容器裁剪影响可视范围
+    if (!document?.body) return null
+    return createPortal(node, document.body)
+  }
+
   if (subInput !== null) {
-    return (
-      <div className="context-menu context-menu-input" style={{ top: ctx.y, left: ctx.x }} onClick={e => e.stopPropagation()}>
+    return renderInBody(
+      <div ref={menuRef} className="context-menu context-menu-input" style={{ top: menuPos.y, left: menuPos.x }} onClick={e => e.stopPropagation()}>
         <div className="context-menu-input-label">子分组名称：</div>
         <input className="context-menu-input-field" value={subInput} autoFocus placeholder="输入名称..." ref={subInputRef}
           onChange={e => setSubInput(e.target.value)}
@@ -769,8 +799,8 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
   }
 
   if (newGroupInput !== null) {
-    return (
-      <div className="context-menu context-menu-input" style={{ top: ctx.y, left: ctx.x }} onClick={e => e.stopPropagation()}>
+    return renderInBody(
+      <div ref={menuRef} className="context-menu context-menu-input" style={{ top: menuPos.y, left: menuPos.x }} onClick={e => e.stopPropagation()}>
         <div className="context-menu-input-label">分组名称：</div>
         <input className="context-menu-input-field" value={newGroupInput} autoFocus placeholder="输入名称..." ref={newGroupInputRef}
           onChange={e => setNewGroupInput(e.target.value)}
@@ -797,16 +827,14 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
       </div>
     )
   }
-  return (
-    <div className="context-menu" style={{ top: ctx.y, left: ctx.x }} onClick={e => e.stopPropagation()}>
+  return renderInBody(
+    <div ref={menuRef} className="context-menu" style={{ top: menuPos.y, left: menuPos.x }} onClick={e => e.stopPropagation()}>
       {ctx.type === 'sessions-header' && (<>
         <button onClick={() => { onNewSession('ssh'); closeCtx() }}>新建连接</button>
         <button onClick={() => setNewGroupInput('')}>新建分组</button>
         <div className="context-menu-divider" />
         <button onClick={() => { expandAll(); closeCtx() }}>展开所有</button>
         <button onClick={() => { collapseAll(); closeCtx() }}>收起所有</button>
-        <div className="context-menu-divider" />
-        <button onClick={() => { closeCtx() }}>关闭上下文菜单</button>
       </>)}
       {ctx.type === 'session' && (<>
         <button onClick={() => { onConnectSaved(ctx.data); closeCtx() }}>连接</button>
@@ -814,19 +842,16 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
         <button onClick={() => { setRenamingSession(ctx.data.savedId); setRenameSessionVal(ctx.data.label || ''); closeCtx() }}>重命名</button>
         <button onClick={() => { dupSession(ctx.data.savedId); closeCtx() }}>复制</button>
         <button className="danger" onClick={() => { deleteSession(ctx.data.savedId, ctx.data.label); closeCtx() }}>删除</button>
-        <div className="context-menu-divider" />
-        <button onClick={() => { closeCtx() }}>关闭上下文菜单</button>
       </>)}
       {ctx.type === 'group' && (<>
         <button onClick={() => { onNewSession('ssh', { group: ctx.data }); closeCtx() }}>新建会话</button>
         <button onClick={() => { setRenaming(ctx.data); setRenameVal(ctx.data.split('/').pop()); closeCtx() }}>重命名分组</button>
         <button onClick={() => setSubInput('')}>新建子分组</button>
+        <div className="context-menu-divider" />
         <button onClick={() => { expandGroupAll(ctx.data); closeCtx() }}>展开该分组所有子项</button>
         <button onClick={() => { collapseGroupAll(ctx.data); closeCtx() }}>收起该分组所有子项</button>
         <div className="context-menu-divider" />
         <button className="danger" onClick={() => { deleteGroup(ctx.data); closeCtx() }}>删除分组</button>
-        <div className="context-menu-divider" />
-        <button onClick={() => { closeCtx() }}>关闭上下文菜单</button>
       </>)}
     </div>
   )
