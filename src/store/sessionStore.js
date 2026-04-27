@@ -1,6 +1,33 @@
 /** 本地存储会话的键名 */
 const STORAGE_KEY = 'zterm_saved_sessions'
 
+/** 各会话类型允许持久化的字段（不含 label/group/savedId/savedAt 这些公共字段） */
+const TYPE_FIELDS = {
+  ssh: ['host', 'port', 'username', 'password', 'privateKey', 'passphrase', 'authType', 'enableSftp'],
+  telnet: ['host', 'port', 'username', 'password'],
+  serial: ['path', 'baudRate', 'dataBits', 'stopBits', 'parity'],
+}
+
+/**
+ * 按会话类型裁剪配置字段，避免持久化无关参数
+ * @param {Object} config 原始会话配置
+ * @returns {Object} 裁剪后的会话配置
+ */
+function normalizeSessionForStorage(config) {
+  const type = config?.type
+  const allowed = TYPE_FIELDS[type] || []
+  const picked = {}
+  for (const key of allowed) {
+    if (config[key] !== undefined) picked[key] = config[key]
+  }
+  return {
+    type,
+    label: config.label,
+    group: config.group,
+    ...picked,
+  }
+}
+
 /**
  * 从本地存储中加载已保存的会话（JSON数组）
  * @returns {Array} 会话列表，如果没有数据或解析失败则返回空数组
@@ -47,10 +74,11 @@ export function uniqueLabelInGroup(sessions, group, label, excludeSavedId) {
  * @returns {Array} 更新后的会话列表
  */
 export function addSavedSession(sessions, config) {
+  const normalized = normalizeSessionForStorage(config)
   const now = Date.now()
   const sid = config.savedId || ('saved-' + now + '-' + Math.random().toString(36).slice(2, 6))  // 不存在则生产新的 savedId，格式为 saved-时间戳-随机字符串
-  const label = uniqueLabelInGroup(sessions, config.group, config.label, sid)
-  const newSession = { ...config, label, savedId: sid, savedAt: now }
+  const label = uniqueLabelInGroup(sessions, normalized.group, normalized.label, sid)
+  const newSession = { ...normalized, label, savedId: sid, savedAt: now }
 
   if (config.savedId) {  // 如果有 savedId，说明是编辑操作，直接替换该会话
     const next = sessions.map(s => s.savedId === config.savedId ? newSession : s)
@@ -130,7 +158,12 @@ export function exportSessions(sessions) {
   const url = URL.createObjectURL(blob)  // 生成一个本地可访问的临时 URL，指向这个内存中的文件内容
   const a = document.createElement('a')  // 创建一个隐藏的 <a> 元素，用于触发下载
   a.href = url
-  a.download = `zterm-sessions-${new Date().toISOString().slice(0,10)}.json`
+  const now = new Date()
+  const date = now.toISOString().slice(0, 10)
+  const hh = String(now.getHours()).padStart(2, '0')
+  const mm = String(now.getMinutes()).padStart(2, '0')
+  const ss = String(now.getSeconds()).padStart(2, '0')
+  a.download = `zterm-sessions-${date}-${hh}${mm}${ss}.json`
   a.click()  // 程序性地“点击”这个链接，启动浏览器下载流程
   URL.revokeObjectURL(url)  // 释放创建的临时 URL，避免内存泄漏
 }

@@ -101,7 +101,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
    * @returns {Object} 配置对象
    */
   const buildConfig = () => ({
-    type: tab, ...form,
+    ...form, type: tab,
     port: parseInt(form.port) || undefined,
     baudRate: parseInt(form.baudRate) || 9600,
     dataBits: parseInt(form.dataBits) || 8,
