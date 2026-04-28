@@ -22,9 +22,10 @@ function createWindow() {
     backgroundColor: '#0d1117',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),  // 预加载脚本，安全地暴露 IPC 接口
-      nodeIntegration: false,  // 渲染进程禁用 Node.js 直接访问
-      contextIsolation: true,  // 启用上下文隔离，增强安全性
-      sandbox: false,  // 关闭沙箱模式（允许 preload 使用 Node）
+      contextIsolation: true, // 启用上下文隔离
+      nodeIntegration: false, // 禁用 Node.js 集成
+      enableRemoteModule: false, // 禁用 remote 模块
+      sandbox: true, // 启用沙盒模式
     },
   })
 
