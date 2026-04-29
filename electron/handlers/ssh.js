@@ -130,7 +130,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
     const session = sshSessions.get(id)
     if (session) {
       try {
-        if (typeof session.stream.close === 'function') {  // 先关闭 channel，再稍后结束底层连接，避免关闭竞态
+        if (typeof session.stream.close === 'function') {  // 先关闭 channel，再稍后结束底层连接，避免关闭竞态(主进程抛了 Invalid Zlib instance 错误)
           session.stream.close()
         } else {
           session.stream.end()
