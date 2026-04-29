@@ -296,12 +296,15 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
           if (sr.success) {
             onUpdate({ status: 'connected', sftpReady: true })
             cleanupRef.current.push(() => window.zterm.sftp.disconnect(id + '-sftp'))
+          } else {
+            writeError(`SFTP connection failed: ${sr.error}`)
           }
-        } catch (e) { onUpdate({ sftpReady: false }) }
+        } catch (e) { onUpdate({ sftpReady: false })}
       }
     } catch (e) {
       if (isCancelled?.()) return
-      writeError(`Connection failed: ${e.message || e.error}`)
+      // writeError('SFTP connection failed, press Enter to continue SSH session without SFTP.')
+      writeError(`SSH connection failed: ${e.error || e.message}`)
       onUpdate({ status: 'error' })
     }
 
@@ -322,7 +325,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.telnet.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
-      writeError(`Connection failed: ${e.message || e.error}`)
+      writeError(`Telnet connection failed: ${e.message || e.error}`)
       onUpdate({ status: 'error' })
     }
 
@@ -343,7 +346,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.serial.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
-      writeError(`Failed to open port: ${e.message || e.error}`)
+      writeError(`Serial connection failed: ${e.message || e.error}`)
       onUpdate({ status: 'error' })
     }
   }

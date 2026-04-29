@@ -48,6 +48,34 @@ function setupSSHHandlers(ipcMain, mainWindow) {
         username: config.username,
         readyTimeout: 20000,  // 连接超时20秒
         keepaliveInterval: 10000,  // 发送 keepalive 消息的间隔时间（10秒）
+        // algorithms: {
+        //   kex: [
+        //     'diffie-hellman-group-exchange-sha1',
+        //     'diffie-hellman-group14-sha1',
+        //     'curve25519-sha256',
+        //     'curve25519-sha256@libssh.org',
+        //     'diffie-hellman-group-exchange-sha256',
+        //     'diffie-hellman-group14-sha256',
+        //     'diffie-hellman-group16-sha512',
+        //     'diffie-hellman-group18-sha512',
+        //   ],
+        //   serverHostKey: [
+        //     'ssh-ed25519',
+        //     'rsa-sha2-512',
+        //     'rsa-sha2-256',
+        //     'ssh-rsa'
+        //   ],
+        //   cipher: [
+        //     'aes128-ctr',
+        //     'aes192-ctr',
+        //     'aes256-ctr'
+        //   ],
+        //   hmac: [
+        //     'hmac-sha1',
+        //     'hmac-sha2-256',
+        //     'hmac-sha2-512'
+        //   ]
+        // }
       }
 
       if (config.authType === 'password') {
