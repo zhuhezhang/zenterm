@@ -14,6 +14,7 @@ export const DEFAULT_SETTINGS = {
   confirmDeleteGroup: true,
   deleteGroupWithSessions: false,
   terminalInteract: true,   // 选中复制 + 右键粘贴
+  backspaceMode: 'auto',    // 退格键模式：auto / del / bs
   enableLogging: false,
   logPath: DEFAULT_LOG_PATH,
 }
@@ -59,6 +60,17 @@ export const SETTINGS_SCHEMA = [
     section: '终端行为',
     items: [
       { key: 'terminalInteract', label: '选中复制 / 右键粘贴', type: 'boolean', desc: '选中终端文本自动复制，右键单击粘贴剪贴板内容' },
+      {
+        key: 'backspaceMode',
+        label: '退格键模式',
+        type: 'select',
+        desc: '设置发送给设备的退格编码。Auto: SSH 用 DEL，Telnet/Serial 用 BS',
+        options: [
+          { value: 'auto', label: 'Auto' },
+          { value: 'del', label: 'DEL (0x7F)' },
+          { value: 'bs', label: 'BS (0x08)' },
+        ],
+      },
     ]
   },
   {

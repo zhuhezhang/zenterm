@@ -145,7 +145,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, onR
     setupLogging(session, settings, term, logFileRef, cleanupRef)
 
     let cancelled = false
-    connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, () => cancelled, logFileRef)
+    connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, () => cancelled, logFileRef, settingsRef)
 
     const ro = new ResizeObserver(() => { try { fitAddon.fit() } catch (e) {} })  // 监听容器尺寸变化，调整终端尺寸以适应新的容器大小
     ro.observe(containerRef.current)
@@ -184,7 +184,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, onR
         cleanupRef.current.push(() => ro.disconnect())
         term.writeln('\r\x1b[33mReconnecting...\x1b[0m')
         setupLogging(session, settingsRef.current, term, logFileRef, cleanupRef)  // 重连时重新初始化日志
-        connectSession(term, fitAddonRef.current, session, onUpdate, cleanupRef, disconnectedRef, null, logFileRef)
+        connectSession(term, fitAddonRef.current, session, onUpdate, cleanupRef, disconnectedRef, null, logFileRef, settingsRef)
       }
     })
     return () => d.dispose()
@@ -212,6 +212,24 @@ function exportTerminalBuffer(term) {
     lines.push(line.translateToString(true).replace(/\u00a0/g, ' '))
   }
   return lines.join('\n').trimEnd()
+}
+
+/**
+ * 规范化用户输入，兼容部分设备对退格键的不同解释
+ * - 一些设备将 DEL(0x7f) 解释为“向前删除”，会导致必须先左移光标才能删除字符
+ * - 对 Telnet/Serial 会话把 DEL 转为 BS(0x08)，更符合设备控制台习惯
+ * @param {'ssh'|'telnet'|'serial'} type 会话类型
+ * @param {string} data xterm 原始输入数据
+ * @param {{ current?: { backspaceMode?: string } } | null} settingsRef 设置引用
+ * @returns {string} 规范化后的数据
+ */
+function normalizeInputData(type, data, settingsRef) {
+  const mode = (settingsRef?.current?.backspaceMode || 'auto').toLowerCase()
+  if (mode === 'del') return data.replace(/\x08/g, '\x7f')
+  if (mode === 'bs') return data.replace(/\x7f/g, '\x08')
+  // Auto：SSH 默认保留 DEL；Telnet/Serial 默认转为 BS，兼容更多设备
+  if (type === 'telnet' || type === 'serial') return data.replace(/\x7f/g, '\x08')
+  return data
 }
 
 /**
@@ -328,8 +346,9 @@ function setupLogging(session, settings, term, logFileRef, cleanupRef) {
  * @param {Object} disconnectedRef 断连状态引用，用于标记当前连接是否已断开
  * @param {Function} isCancelled 可选的取消函数，组件卸载时返回 true，连接过程中定期调用以判断是否应放弃后续操作
  * @param {Object} logFileRef 日志写入函数引用，用于记录连接过程中的日志
+ * @param {Object} settingsRef 设置引用，用于读取实时终端行为设置
  */
-async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, isCancelled, logFileRef) {
+async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, isCancelled, logFileRef, settingsRef) {
   const { id, type } = session  // 从会话对象中提取会话 ID 和类型（SSH/Telnet/Serial）
   const writeInfo    = (m) => term.writeln(`\r\x1b[33m${m}\x1b[0m`)  // 在终端写入黄色信息消息（使用 ANSI 转义码）
   const writeError   = (m) => term.writeln(`\r\x1b[31m${m}\x1b[0m`)  // 在终端写入红色错误消息
@@ -369,7 +388,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const r1 = window.zterm.ssh.onData(id, recv)  // 注册 SSH 数据接收事件监听器，使用 recv 函数处理数据
       const r2 = window.zterm.ssh.onClose(id, () => onDisconnect('\r\nConnection closed.'))  // 注册 SSH 关闭事件监听器，调用 onDisconnect 处理断开
       const d1 = term.onData((data) => {  // 注册终端数据事件监听器，用户输入时发送数据到 SSH 会话，并同步日志快照
-        window.zterm.ssh.sendData(id, data)
+        window.zterm.ssh.sendData(id, normalizeInputData(type, data, settingsRef))
         logFileRef.current?.()
       })
       const d2 = term.onResize(({ cols, rows }) => window.zterm.ssh.resize(id, cols, rows))  // 注册终端尺寸变化事件监听器，调整 SSH 连接尺寸
@@ -404,7 +423,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const r1 = window.zterm.telnet.onData(id, recv)
       const r2 = window.zterm.telnet.onClose(id, () => onDisconnect('\r\nConnection closed.'))
       const d1 = term.onData((data) => {
-        window.zterm.telnet.sendData(id, data)
+        window.zterm.telnet.sendData(id, normalizeInputData(type, data, settingsRef))
         logFileRef.current?.()
       })
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.telnet.disconnect(id))
@@ -425,7 +444,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const r1 = window.zterm.serial.onData(id, recv)
       const r2 = window.zterm.serial.onClose(id, () => onDisconnect('\r\nPort closed.'))
       const d1 = term.onData((data) => {
-        window.zterm.serial.sendData(id, data)
+        window.zterm.serial.sendData(id, normalizeInputData(type, data, settingsRef))
         logFileRef.current?.()
       })
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.serial.disconnect(id))

@@ -127,6 +127,17 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                         >↺</button>
                       </div>
                     )}
+                    {item.type === 'select' && (
+                      <select
+                        className="settings-select"
+                        value={form[item.key] ?? item.options?.[0]?.value ?? ''}
+                        onChange={(e) => set(item.key, e.target.value)}
+                      >
+                        {(item.options || []).map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 ))}
               </div>
