@@ -10,35 +10,40 @@ const sshSessions = new Map()
  */
 function setupSSHHandlers(ipcMain, mainWindow) {
   ipcMain.handle('ssh:connect', async (_event, id, config) => {  // 监听渲染进程 ssh 连接请求，传入会话 ID 和连接配置，返回一个 Promise 以便在渲染进程使用 async/await 处理连接结果
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const conn = new Client()
       
       conn.on('ready', () => {  // 监听 ready 事件（SSH 认证成功后触发）
         conn.shell({ term: 'xterm-256color' }, (err, stream) => {  // 调用 conn.shell() 启动交互式 shell，指定终端类型为 xterm-256color
           if (err) {  // 如果启动 shell 失败，关闭连接并返回错误信息
             conn.end()
-            return reject({ success: false, error: err.message })
+            return resolve({ success: false, error: err.message })
           }
 
           // 保存连接信息；监听数据输出和连接关闭事件，并通过 mainWindow.webContents.send 向渲染进程发送对应的 IPC 消息
-          sshSessions.set(id, { conn, stream })
+          const session = { conn, stream, isClosed: false }
+          const closeSessionOnce = () => {
+            if (session.isClosed) return
+            session.isClosed = true
+            sshSessions.delete(id)
+            mainWindow.webContents.send('ssh:closed', id)
+          }
+
+          sshSessions.set(id, session)
           stream.on('data', (data) => {
             mainWindow.webContents.send('ssh:output', id, data.toString('binary'))
           })
           stream.stderr.on('data', (data) => {
             mainWindow.webContents.send('ssh:output', id, data.toString('binary'))
           })
-          stream.on('close', () => {
-            sshSessions.delete(id)
-            mainWindow.webContents.send('ssh:closed', id)
-          })
+          stream.on('close', closeSessionOnce)
+          conn.on('close', closeSessionOnce)
 
           resolve({ success: true })  // 连接成功后，解析 Promise
         })
       })
-
       conn.on('error', (err) => {
-        reject({ success: false, error: err.message })  // 连接错误时，拒绝 Promise 并返回错误信息
+        resolve({ success: false, error: err.message })  // 连接错误时，返回失败结果给渲染进程
       })
 
       /** 构建连接配置对象，根据用户选择的认证方式（密码或私钥）设置相应的属性，并调用 conn.connect() 发起 SSH 连接请求 */
@@ -48,34 +53,48 @@ function setupSSHHandlers(ipcMain, mainWindow) {
         username: config.username,
         readyTimeout: 20000,  // 连接超时20秒
         keepaliveInterval: 10000,  // 发送 keepalive 消息的间隔时间（10秒）
-        // algorithms: {
-        //   kex: [
-        //     'diffie-hellman-group-exchange-sha1',
-        //     'diffie-hellman-group14-sha1',
-        //     'curve25519-sha256',
-        //     'curve25519-sha256@libssh.org',
-        //     'diffie-hellman-group-exchange-sha256',
-        //     'diffie-hellman-group14-sha256',
-        //     'diffie-hellman-group16-sha512',
-        //     'diffie-hellman-group18-sha512',
-        //   ],
-        //   serverHostKey: [
-        //     'ssh-ed25519',
-        //     'rsa-sha2-512',
-        //     'rsa-sha2-256',
-        //     'ssh-rsa'
-        //   ],
-        //   cipher: [
-        //     'aes128-ctr',
-        //     'aes192-ctr',
-        //     'aes256-ctr'
-        //   ],
-        //   hmac: [
-        //     'hmac-sha1',
-        //     'hmac-sha2-256',
-        //     'hmac-sha2-512'
-        //   ]
-        // }
+        algorithms: {
+          kex: [  // 密钥交换(非对称加密，用于客户端和服务器之间协商对称加密算法等密钥)：新算法优先，兜底老旧DH
+            'curve25519-sha256',
+            'curve25519-sha256@libssh.org',
+            'ecdh-sha2-nistp256',
+            'ecdh-sha2-nistp384',
+            'diffie-hellman-group14-sha256',
+            'diffie-hellman-group14-sha1',
+            'diffie-hellman-group-exchange-sha256'
+          ],
+          serverHostKey: [  // 主机密钥算法(用于验证服务器身份)：新版优先，强制兜底 ssh-rsa 老设备
+            'ssh-ed25519',
+            'ecdsa-sha2-nistp256',
+            'ecdsa-sha2-nistp384',
+            'rsa-sha2-256',
+            'rsa-sha2-512',
+            'ssh-rsa'
+          ],
+          cipher: [  // 加密算法(用于加密传输数据)：GCM安全优先，兜底老旧AES/3DES
+            'aes128-gcm',
+            'aes256-gcm',
+            'aes128-ctr',
+            'aes192-ctr',
+            'aes256-ctr',
+            'aes128-cbc',
+            'aes192-cbc',
+            'aes256-cbc',
+            '3des-cbc'
+          ],
+          hmac: [  // 校验算法(用于验证数据完整性)：ETM安全优先，兜底老旧sha1
+            'hmac-sha2-256-etm@openssh.com',
+            'hmac-sha2-512-etm@openssh.com',
+            'hmac-sha2-256',
+            'hmac-sha2-512',
+            'hmac-sha1'
+          ],
+          compress: [  // 压缩(用于压缩传输数据)：先尝试压缩，不行就不压缩
+            'zlib@openssh.com',
+            'zlib',
+            'none'
+          ]  // 避免 zlib 在关闭阶段竞态触发 Invalid Zlib instance
+        }
       }
 
       if (config.authType === 'password') {
@@ -88,7 +107,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
       try {
         conn.connect(connectConfig)  // 发起 SSH 连接请求，连接结果将通过 ready 和 error 事件处理器处理
       } catch (e) {
-        reject({ success: false, error: e.message })
+        resolve({ success: false, error: e.message })
       }
     })
   })
@@ -111,10 +130,15 @@ function setupSSHHandlers(ipcMain, mainWindow) {
     const session = sshSessions.get(id)
     if (session) {
       try {
-        session.stream.end()
-        session.conn.end()
+        if (typeof session.stream.close === 'function') {  // 先关闭 channel，再稍后结束底层连接，避免关闭竞态
+          session.stream.close()
+        } else {
+          session.stream.end()
+        }
+        setTimeout(() => {
+          try { session.conn.end() } catch (e) {}
+        }, 50)
       } catch (e) {}
-      sshSessions.delete(id)
     }
     return { success: true }
   })

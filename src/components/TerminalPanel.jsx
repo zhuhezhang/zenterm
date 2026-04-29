@@ -19,6 +19,92 @@ function binaryToUtf8(binary) {
 }
 
 /**
+ * 标准化错误对象，提取原始错误文本
+ * @param {unknown} err 错误对象
+ * @returns {{ raw: string, lower: string }} 标准化的错误对象
+ */
+function normalizeError(err) {
+  const raw = String(err?.message || err?.error || err || '').trim()
+  return { raw, lower: raw.toLowerCase() }
+}
+/**
+ * 将友好提示与原始错误拼接，便于用户理解和排障
+ * @param {string} friendly 友好提示
+ * @param {string} raw 原始错误文本
+ * @returns {string} 拼接后的错误提示
+ */
+function withRawDetail(friendly, raw) {
+  return raw ? `${friendly}(${raw})` : friendly
+}
+
+/**
+ * 映射 SSH 连接错误
+ * @param {unknown} err 错误对象
+ * @returns {string} 映射后的错误提示
+ */
+function mapSshError(err) {
+  const { raw, lower } = normalizeError(err)
+  if (!raw) return 'SSH 连接失败：未知错误。'
+  if (lower.includes('all configured authentication methods failed') || lower.includes('permission denied')) {
+    return withRawDetail('SSH 认证失败：用户名或密码错误(或认证方式不匹配)。', raw)
+  }
+  if (lower.includes('timed out while waiting for handshake') || lower.includes('etimedout')) {
+    return withRawDetail('SSH 连接超时：服务器无响应，请检查网络、主机和端口。', raw)
+  }
+  if (lower.includes('econnrefused')) {
+    return withRawDetail('SSH 连接被拒绝：目标端口未开启 SSH 服务。', raw)
+  }
+  if (lower.includes('enotfound') || lower.includes('getaddrinfo')) {
+    return withRawDetail('SSH 主机不可达：地址无法解析，请检查主机名或 IP。', raw)
+  }
+  if (lower.includes('ehostunreach') || lower.includes('enetunreach')) {
+    return withRawDetail('SSH 主机不可达：网络路由不可达，请检查网络连通性。', raw)
+  }
+  return withRawDetail('SSH 连接失败：请检查连接参数和网络状态。', raw)
+}
+/**
+ * 映射 Telnet 连接错误
+ * @param {unknown} err 错误对象
+ * @returns {string} 映射后的错误提示
+ */
+function mapTelnetError(err) {
+  const { raw, lower } = normalizeError(err)
+  if (!raw) return 'Telnet 连接失败：未知错误。'
+  if (lower.includes('connection timeout') || lower.includes('etimedout')) {
+    return withRawDetail('Telnet 连接超时：服务器无响应，请检查网络、主机和端口。', raw)
+  }
+  if (lower.includes('econnrefused')) {
+    return withRawDetail('Telnet 连接被拒绝：目标端口未开启 Telnet 服务。', raw)
+  }
+  if (lower.includes('enotfound') || lower.includes('getaddrinfo')) {
+    return withRawDetail('Telnet 主机不可达：地址无法解析，请检查主机名或 IP。', raw)
+  }
+  if (lower.includes('ehostunreach') || lower.includes('enetunreach')) {
+    return withRawDetail('Telnet 主机不可达：网络路由不可达，请检查网络连通性。', raw)
+  }
+  return withRawDetail('Telnet 连接失败：请检查连接参数和网络状态。', raw)
+}
+/**
+ * 映射串口连接错误
+ * @param {unknown} err 错误对象
+ * @returns {string} 映射后的错误提示
+ */
+function mapSerialError(err) {
+  const { raw, lower } = normalizeError(err)
+  if (!raw) return '串口连接失败：未知错误。'
+  if (lower.includes('cannot open') || lower.includes('access denied') || lower.includes('eperm') || lower.includes('eacces')) {
+    return withRawDetail('串口打开失败：端口被占用或权限不足。', raw)
+  }
+  if (lower.includes('no such file') || lower.includes('enoent')) {
+    return withRawDetail('串口不存在：请检查端口路径是否正确。', raw)
+  }
+  if (lower.includes('baud')) {
+    return withRawDetail('串口参数错误：请检查波特率等配置。', raw)
+  }
+  return withRawDetail('串口连接失败：请检查端口状态和连接参数。', raw)
+}
+
+/**
  * TerminalPanel 组件：负责渲染终端界面、管理终端实例和连接会话
  * @param {Object} props 组件属性
  * @param {Object} props.session 会话对象，包含连接信息和状态
@@ -303,8 +389,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       }
     } catch (e) {
       if (isCancelled?.()) return
-      // writeError('SFTP connection failed, press Enter to continue SSH session without SFTP.')
-      writeError(`SSH connection failed: ${e.error || e.message}`)
+      writeError(mapSshError(e))
       onUpdate({ status: 'error' })
     }
 
@@ -325,7 +410,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.telnet.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
-      writeError(`Telnet connection failed: ${e.message || e.error}`)
+      writeError(mapTelnetError(e))
       onUpdate({ status: 'error' })
     }
 
@@ -346,7 +431,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.serial.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
-      writeError(`Serial connection failed: ${e.message || e.error}`)
+      writeError(mapSerialError(e))
       onUpdate({ status: 'error' })
     }
   }

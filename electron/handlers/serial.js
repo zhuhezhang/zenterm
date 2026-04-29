@@ -29,14 +29,19 @@ function setupSerialHandlers(ipcMain, mainWindow) {
     if (!SerialPort) return { success: false, error: 'serialport module not available' }
 
     return new Promise((resolve) => {
-      const port = new SerialPort({
-        path: config.path,  // 端口号/端口路径
-        baudRate: config.baudRate || 9600,  // 波特率，默认9600
-        dataBits: config.dataBits || 8,  // 数据位，默认8
-        stopBits: config.stopBits || 1,  // 停止位，默认1
-        parity: config.parity || 'none',  // 校验位，默认无
-        autoOpen: false,  // 不自动打开，手动调用 port.open() 来打开连接，以便在打开时处理错误
-      })
+      let port
+      try {
+        port = new SerialPort({
+          path: config.path,  // 端口号/端口路径
+          baudRate: config.baudRate || 9600,  // 波特率，默认9600
+          dataBits: config.dataBits || 8,  // 数据位，默认8
+          stopBits: config.stopBits || 1,  // 停止位，默认1
+          parity: config.parity || 'none',  // 校验位，默认无
+          autoOpen: false,  // 不自动打开，手动调用 port.open() 来打开连接，以便在打开时处理错误
+        })
+      } catch (e) {
+        return resolve({ success: false, error: e.message })
+      }
 
       port.open((err) => {  // 打开串口连接，回调接收错误信息 err
         if (err) return resolve({ success: false, error: err.message })

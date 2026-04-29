@@ -49,17 +49,25 @@ function processTelnetData(data) {
  */
 function setupTelnetHandlers(ipcMain, mainWindow) {
   ipcMain.handle('telnet:connect', async (_event, id, config) => {  // 监听渲染进程 telnet 连接请求，传入会话 ID 和连接配置
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const socket = new net.Socket()
+      let connected = false
+      let settled = false
+      const resolveOnce = (payload) => {  // 确保只解析一次 Promise，避免重复解析
+        if (settled) return
+        settled = true
+        resolve(payload)
+      }
       const timeout = setTimeout(() => {  // 连接超时（10s）处理，销毁 socket 并返回错误信息
         socket.destroy()
-        reject({ success: false, error: 'Connection timeout' })
+        resolveOnce({ success: false, error: 'Connection timeout' })
       }, 10000)
 
       socket.connect(config.port || 23, config.host, () => {  // 连接到主机和端口（默认 23），成功后存储会话并解析 Promise
         clearTimeout(timeout)  // 连接成功，清除超时定时器
+        connected = true
         telnetSessions.set(id, socket)
-        resolve({ success: true })
+        resolveOnce({ success: true })
       })
 
       socket.on('data', (data) => {  // 监听从服务器接收的数据，处理 Telnet 协议命令并发送纯数据到渲染进程
@@ -77,8 +85,8 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
       socket.on('error', (err) => {  // 监听服务器错误信息，清理并根据连接状态拒绝或通知
         clearTimeout(timeout)
         telnetSessions.delete(id)
-        if (!resolve.called) {
-          reject({ success: false, error: err.message })
+        if (!connected) {
+          resolveOnce({ success: false, error: err.message })
         } else {
           mainWindow.webContents.send('telnet:closed', id)
         }
