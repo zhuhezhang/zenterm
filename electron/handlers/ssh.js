@@ -93,7 +93,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
             'zlib@openssh.com',
             'zlib',
             'none'
-          ]  // 避免 zlib 在关闭阶段竞态触发 Invalid Zlib instance
+          ]
         }
       }
 
