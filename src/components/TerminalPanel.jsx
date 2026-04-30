@@ -34,7 +34,7 @@ function normalizeError(err) {
  * @returns {string} 拼接后的错误提示
  */
 function withRawDetail(friendly, raw) {
-  return raw ? `${friendly}(${raw})` : friendly
+  return raw ? `${friendly}（${raw}）` : `${friendly}`
 }
 
 /**
@@ -44,23 +44,39 @@ function withRawDetail(friendly, raw) {
  */
 function mapSshError(err) {
   const { raw, lower } = normalizeError(err)
-  if (!raw) return 'SSH 连接失败：未知错误。'
+  if (!raw) return 'SSH 连接失败：未知错误'
   if (lower.includes('all configured authentication methods failed') || lower.includes('permission denied')) {
-    return withRawDetail('SSH 认证失败：用户名或密码错误(或认证方式不匹配)。', raw)
+    return withRawDetail('SSH 认证失败：用户名或密码错误(或认证方式不匹配)', raw)
   }
   if (lower.includes('timed out while waiting for handshake') || lower.includes('etimedout')) {
-    return withRawDetail('SSH 连接超时：服务器无响应，请检查网络、主机和端口。', raw)
+    return withRawDetail('SSH 连接超时：服务器无响应，请检查网络、主机和端口', raw)
   }
   if (lower.includes('econnrefused')) {
-    return withRawDetail('SSH 连接被拒绝：目标端口未开启 SSH 服务。', raw)
+    return withRawDetail('SSH 连接被拒绝：目标端口未开启 SSH 服务', raw)
   }
   if (lower.includes('enotfound') || lower.includes('getaddrinfo')) {
-    return withRawDetail('SSH 主机不可达：地址无法解析，请检查主机名或 IP。', raw)
+    return withRawDetail('SSH 主机不可达：地址无法解析，请检查主机名或 IP', raw)
   }
   if (lower.includes('ehostunreach') || lower.includes('enetunreach')) {
-    return withRawDetail('SSH 主机不可达：网络路由不可达，请检查网络连通性。', raw)
+    return withRawDetail('SSH 主机不可达：网络路由不可达，请检查网络连通性', raw)
   }
-  return withRawDetail('SSH 连接失败：请检查连接参数和网络状态。', raw)
+  return withRawDetail('SSH 连接失败：请检查连接参数和网络状态', raw)
+}
+/**
+ * 映射 SFTP 连接错误
+ * @param {unknown} err 错误对象
+ * @returns {string} 映射后的错误提示
+ */
+function mapSftpError(err) {
+  const { raw, lower } = normalizeError(err)
+  if (!raw) return 'SFTP 连接失败：未知错误'
+  if (lower.includes('no matching key exchange algorithm')) {
+    return withRawDetail('SFTP 连接失败：没有匹配的密钥交换算法', raw)
+  }
+  if (lower.includes('start subsystem') || lower.includes('sftp')) {
+    return withRawDetail('SFTP 连接失败：不支持打开 SFTP 子系统', raw)
+  }
+  return withRawDetail('SFTP 连接失败：请检查连接参数、网络状态、服务器配置等', raw)
 }
 /**
  * 映射 Telnet 连接错误
@@ -69,20 +85,20 @@ function mapSshError(err) {
  */
 function mapTelnetError(err) {
   const { raw, lower } = normalizeError(err)
-  if (!raw) return 'Telnet 连接失败：未知错误。'
+  if (!raw) return 'Telnet 连接失败：未知错误'
   if (lower.includes('connection timeout') || lower.includes('etimedout')) {
-    return withRawDetail('Telnet 连接超时：服务器无响应，请检查网络、主机和端口。', raw)
+    return withRawDetail('Telnet 连接超时：服务器无响应，请检查网络、主机和端口', raw)
   }
   if (lower.includes('econnrefused')) {
-    return withRawDetail('Telnet 连接被拒绝：目标端口未开启 Telnet 服务。', raw)
+    return withRawDetail('Telnet 连接被拒绝：目标端口未开启 Telnet 服务', raw)
   }
   if (lower.includes('enotfound') || lower.includes('getaddrinfo')) {
-    return withRawDetail('Telnet 主机不可达：地址无法解析，请检查主机名或 IP。', raw)
+    return withRawDetail('Telnet 主机不可达：地址无法解析，请检查主机名或 IP', raw)
   }
   if (lower.includes('ehostunreach') || lower.includes('enetunreach')) {
-    return withRawDetail('Telnet 主机不可达：网络路由不可达，请检查网络连通性。', raw)
+    return withRawDetail('Telnet 主机不可达：网络路由不可达，请检查网络连通性', raw)
   }
-  return withRawDetail('Telnet 连接失败：请检查连接参数和网络状态。', raw)
+  return withRawDetail('Telnet 连接失败：请检查连接参数和网络状态', raw)
 }
 /**
  * 映射串口连接错误
@@ -91,17 +107,17 @@ function mapTelnetError(err) {
  */
 function mapSerialError(err) {
   const { raw, lower } = normalizeError(err)
-  if (!raw) return '串口连接失败：未知错误。'
+  if (!raw) return '串口连接失败：未知错误'
   if (lower.includes('cannot open') || lower.includes('access denied') || lower.includes('eperm') || lower.includes('eacces')) {
-    return withRawDetail('串口打开失败：端口被占用或权限不足。', raw)
+    return withRawDetail('串口打开失败：端口被占用或权限不足', raw)
   }
   if (lower.includes('no such file') || lower.includes('enoent')) {
-    return withRawDetail('串口不存在：请检查端口路径是否正确。', raw)
+    return withRawDetail('串口不存在：请检查端口路径是否正确', raw)
   }
   if (lower.includes('baud')) {
-    return withRawDetail('串口参数错误：请检查波特率等配置。', raw)
+    return withRawDetail('串口参数错误：请检查波特率等配置', raw)
   }
-  return withRawDetail('串口连接失败：请检查端口状态和连接参数。', raw)
+  return withRawDetail('串口连接失败：请检查端口状态和连接参数', raw)
 }
 
 /**
@@ -402,9 +418,13 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
             onUpdate({ status: 'connected', sftpReady: true })
             cleanupRef.current.push(() => window.zterm.sftp.disconnect(id + '-sftp'))
           } else {
-            writeError(`SFTP connection failed: ${sr.error}`)
+            throw new Error(sr.error)
           }
-        } catch (e) { onUpdate({ sftpReady: false })}
+        } catch (e) { 
+          writeError(mapSftpError(e))
+          window.zterm.ssh.sendData(id, '\n')
+          onUpdate({ sftpReady: false })
+        }
       }
     } catch (e) {
       if (isCancelled?.()) return

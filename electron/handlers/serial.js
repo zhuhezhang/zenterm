@@ -28,7 +28,7 @@ function setupSerialHandlers(ipcMain, mainWindow) {
   ipcMain.handle('serial:connect', async (_event, id, config) => {  // 监听渲染进程发送的 Serial 连接请求，传入会话 ID 和连接配置
     if (!SerialPort) return { success: false, error: 'serialport module not available' }
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, _reject) => {
       let port
       try {
         port = new SerialPort({

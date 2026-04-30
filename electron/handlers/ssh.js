@@ -10,7 +10,7 @@ const sshSessions = new Map()
  */
 function setupSSHHandlers(ipcMain, mainWindow) {
   ipcMain.handle('ssh:connect', async (_event, id, config) => {  // 监听渲染进程 ssh 连接请求，传入会话 ID 和连接配置，返回一个 Promise 以便在渲染进程使用 async/await 处理连接结果
-    return new Promise((resolve) => {
+    return new Promise((resolve, _reject) => {
       const conn = new Client()
       
       conn.on('ready', () => {  // 监听 ready 事件（SSH 认证成功后触发）

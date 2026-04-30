@@ -49,7 +49,7 @@ function processTelnetData(data) {
  */
 function setupTelnetHandlers(ipcMain, mainWindow) {
   ipcMain.handle('telnet:connect', async (_event, id, config) => {  // 监听渲染进程 telnet 连接请求，传入会话 ID 和连接配置
-    return new Promise((resolve) => {
+    return new Promise((resolve, _reject) => {
       const socket = new net.Socket()
       let connected = false
       let settled = false

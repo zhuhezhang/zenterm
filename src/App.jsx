@@ -184,15 +184,12 @@ export default function App() {
   }, [sessions])
 
   /**
-   * 更新会话：应用更新，如果断连则清除 SFTP 状态
+   * 更新会话属性
    * @param {string} id 会话 ID
    * @param {Object} updates 要更新的属性
    */
   const updateSession = useCallback((id, updates) => {
     setSessions(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
-    if (updates.sftpReady === false || updates.status === 'disconnected') {
-      setSftpState(prev => { const n = { ...prev }; delete n[id]; return n })
-    }
   }, [])
 
   /**
