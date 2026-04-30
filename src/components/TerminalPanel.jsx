@@ -46,7 +46,7 @@ function mapSshError(err) {
   const { raw, lower } = normalizeError(err)
   if (!raw) return 'SSH 连接失败：未知错误'
   if (lower.includes('all configured authentication methods failed') || lower.includes('permission denied')) {
-    return withRawDetail('SSH 认证失败：用户名或密码错误(或认证方式不匹配)', raw)
+    return withRawDetail('SSH 认证失败：用户名或密码错误', raw)
   }
   if (lower.includes('timed out while waiting for handshake') || lower.includes('etimedout')) {
     return withRawDetail('SSH 连接超时：服务器无响应，请检查网络、主机和端口', raw)
