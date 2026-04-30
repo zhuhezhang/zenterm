@@ -1,5 +1,5 @@
-const { Client } = require('ssh2')
-const algorithms = require('./common.js')
+import { Client } from 'ssh2'
+import algorithms from './common.js'
 
 /** 存储所有 SSH 会话信息的 Map */
 const sshSessions = new Map()
@@ -104,4 +104,4 @@ function setupSSHHandlers(ipcMain, mainWindow) {
   })
 }
 
-module.exports = { setupSSHHandlers }
+export { setupSSHHandlers }

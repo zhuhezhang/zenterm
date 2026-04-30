@@ -1,4 +1,4 @@
-const net = require('net')
+import net from 'net'
 
 /** 存储所有 Telnet 会话信息的 Map，键为会话 ID，值为 net.Socket 实例 */
 const telnetSessions = new Map()
@@ -111,4 +111,4 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
   })
 }
 
-module.exports = { setupTelnetHandlers }
+export { setupTelnetHandlers }

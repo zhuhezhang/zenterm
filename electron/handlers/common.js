@@ -43,4 +43,4 @@ const algorithms =
     ]
 }
 
-module.exports = algorithms
+export default algorithms

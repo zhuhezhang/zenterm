@@ -1,6 +1,6 @@
 let SerialPort
 try {
-  const serialport = require('serialport')
+  const serialport = await import('serialport')
   SerialPort = serialport.SerialPort
 } catch (e) {
   console.warn('serialport not available:', e.message)
@@ -85,4 +85,4 @@ function setupSerialHandlers(ipcMain, mainWindow) {
   })
 }
 
-module.exports = { setupSerialHandlers }  // 导出 setupSerialHandlers 函数，以便在 main.js 中引入并调用设置 Serial 相关的 IPC 处理函数
+export { setupSerialHandlers }

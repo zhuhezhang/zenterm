@@ -1,10 +1,13 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron')
-const path = require('path')
-const fs = require('fs')
-const { setupSSHHandlers } = require('./handlers/ssh')
-const { setupSFTPHandlers } = require('./handlers/sftp')
-const { setupTelnetHandlers } = require('./handlers/telnet')
-const { setupSerialHandlers } = require('./handlers/serial')
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import path from 'path'
+import fs from 'fs'
+import { fileURLToPath } from 'url'
+import { setupSSHHandlers } from './handlers/ssh.js'
+import { setupSFTPHandlers } from './handlers/sftp.js'
+import { setupTelnetHandlers } from './handlers/telnet.js'
+import { setupSerialHandlers } from './handlers/serial.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged  // 兼容开发环境和生产环境的判断(通过环境变量和是否打包判读)
 let mainWindow
@@ -21,7 +24,7 @@ function createWindow() {
     trafficLightPosition: { x: 16, y: 14 },  // macOS 左上角按钮位置调整
     backgroundColor: '#0d1117',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),  // 预加载脚本，安全地暴露 IPC 接口
+      preload: path.join(__dirname, 'preload.cjs'),  // 预加载脚本，安全地暴露 IPC 接口
       contextIsolation: true, // 启用上下文隔离
       nodeIntegration: false, // 禁用 Node.js 集成
       enableRemoteModule: false, // 禁用 remote 模块

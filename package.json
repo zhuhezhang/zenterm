@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "author": "zhuhezhang",
   "description": "A terminal emulator with SSH, SFTP, Telnet and Serial support",
+  "type": "module",
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",

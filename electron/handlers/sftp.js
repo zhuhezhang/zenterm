@@ -1,7 +1,7 @@
-const { Client } = require('ssh2')
-const fs = require('fs')
-const path = require('path')
-const algorithms = require('./common.js')
+import { Client } from 'ssh2'
+import fs from 'fs'
+import path from 'path'
+import algorithms from './common.js'
 
 /** 存储所有 SFTP 会话信息的 Map */
 const sftpSessions = new Map()
@@ -261,4 +261,4 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
   })
 }
 
-module.exports = { setupSFTPHandlers }
+export { setupSFTPHandlers }
