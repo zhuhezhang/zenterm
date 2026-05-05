@@ -1,5 +1,5 @@
 import { Client } from 'ssh2'
-import algorithms from './common.js'
+import ALGORITHMS from './common.js'
 
 /** 存储所有 SSH 会话信息的 Map */
 const sshSessions = new Map()
@@ -54,7 +54,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
         username: config.username,
         readyTimeout: 20000,  // 连接超时20秒
         keepaliveInterval: 10000,  // 发送 keepalive 消息的间隔时间（10秒）
-        algorithms: algorithms
+        algorithms: ALGORITHMS
       }
 
       if (config.authType === 'password') {

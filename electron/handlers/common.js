@@ -1,5 +1,5 @@
 /** ssh/sftp连接参数-密钥、压缩算法 */
-const algorithms =
+const ALGORITHMS =
 {
     kex: [  // 密钥交换(非对称加密，用于客户端和服务器之间协商对称加密算法等密钥)：新算法优先，兜底老旧DH
         'curve25519-sha256',
@@ -43,4 +43,4 @@ const algorithms =
     ]
 }
 
-export default algorithms
+export default ALGORITHMS

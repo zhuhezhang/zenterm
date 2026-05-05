@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
+import ConnectionTypeIcon from './common.jsx'
 import '../styles/tabbar.css'
 
-const TYPE_ICONS = { ssh: '⌨', telnet: '🔌', serial: '⚡' }
 const STATUS_DOT = { connecting: '●', connected: '●', disconnected: '○', error: '●' }
 const STATUS_CLS = { connecting: 'connecting', connected: 'connected', disconnected: 'disconnected', error: 'error' }
 
@@ -143,7 +143,7 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
             onDragOver={onDragOver}
             onDrop={(e) => onDrop(e, s.id)}
           >
-            <span className="tab-icon">{TYPE_ICONS[s.type] || '⌨'}</span>
+            <span className="tab-icon">{ConnectionTypeIcon[s.type] || '⌨'}</span>
             <span className={`tab-status ${STATUS_CLS[s.status] || ''}`}>{STATUS_DOT[s.status] || '○'}</span>
             <span className="tab-label">{s.label || `${s.type?.toUpperCase()} ${s.host || s.path || ''}`}</span>
             {s.sftpReady && <span className="tab-sftp-badge" title="SFTP 已就绪">⇅</span>}

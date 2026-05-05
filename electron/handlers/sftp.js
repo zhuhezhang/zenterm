@@ -1,7 +1,7 @@
 import { Client } from 'ssh2'
 import fs from 'fs'
 import path from 'path'
-import algorithms from './common.js'
+import ALGORITHMS from './common.js'
 
 /** 存储所有 SFTP 会话信息的 Map */
 const sftpSessions = new Map()
@@ -122,7 +122,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
         port: config.port || 22,
         username: config.username,
         readyTimeout: 20000,  // 连接超时20秒
-        algorithms: algorithms
+        algorithms: ALGORITHMS
       }
 
       if (config.authType === 'password') {

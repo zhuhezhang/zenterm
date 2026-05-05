@@ -2,9 +2,9 @@ import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { duplicateSavedSession, addGroupPlaceholder, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
 import SftpPanel from './SftpPanel.jsx'
+import ConnectionTypeIcon from './common.jsx'
 import '../styles/sidebar.css'
 
-const TYPE_ICONS  = { ssh: '⌨', telnet: '🔌', serial: '⚡' }
 const TYPE_COLORS = { ssh: '#58a6ff', telnet: '#3fb950', serial: '#ffa657' }
 /** 名称非法字符验证正则表达式 */
 const INVALID_LABEL_CHARS = /[\/\\:*?"\u003c\u003e|\x00]/
@@ -678,7 +678,7 @@ function TreeNode({ node, depth, isExp, togExp, openCtx, onConnectSaved,
       onClick={() => !isRenamingThis && onConnectSaved(s)}
       onContextMenu={e => openCtx(e, 'session', s)}
       title={`${s.type?.toUpperCase()} ${s.host || s.path || ''}`}>
-      <span className="sb-session-icon" style={{ color: TYPE_COLORS[s.type] }}>{TYPE_ICONS[s.type]}</span>
+      <span className="sb-session-icon" style={{ color: TYPE_COLORS[s.type] }}>{ConnectionTypeIcon[s.type]}</span>
       {isRenamingThis ? (
         <input className="sb-rename-input" value={renameSessionVal} autoFocus ref={renameSessionInputRef}
           onClick={e => e.stopPropagation()}

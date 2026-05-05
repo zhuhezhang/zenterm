@@ -5,6 +5,7 @@ import TabBar from './components/TabBar.jsx'
 import TerminalPanel from './components/TerminalPanel.jsx'
 import ConnectDialog from './components/ConnectDialog.jsx'
 import SettingsDialog from './components/SettingsDialog.jsx'
+import ConnectionTypeIcon from './components/common.jsx'
 import {
   loadSavedSessions, addSavedSession, removeSavedSession, saveSessions, getGroups,
   loadGroupPlaceholders, saveGroupPlaceholders, addGroupPlaceholder, prunePlaceholdersForOccupiedGroups
@@ -399,9 +400,9 @@ function WelcomeScreen({ onNewSession }) {
         <span className="welcome-sub">Terminal Emulator</span>
       </div>
       <div className="welcome-actions">
-        {[{type:'ssh',icon:'⌨',label:'SSH',desc:'Secure Shell'},
-          {type:'telnet',icon:'🔌',label:'Telnet',desc:'Telnet Protocol'},
-          {type:'serial',icon:'⚡',label:'Serial',desc:'Serial Port'}].map(b => (
+        {[{type:'ssh',icon:ConnectionTypeIcon.ssh,label:'SSH',desc:'Secure Shell'},
+          {type:'telnet',icon:ConnectionTypeIcon.telnet,label:'Telnet',desc:'Telnet Protocol'},
+          {type:'serial',icon:ConnectionTypeIcon.serial,label:'Serial',desc:'Serial Port'}].map(b => (
           <button key={b.type} className="welcome-btn" onClick={() => onNewSession(b.type)}>
             <span className="welcome-btn-icon">{b.icon}</span>
             <span className="welcome-btn-label">{b.label}</span>
