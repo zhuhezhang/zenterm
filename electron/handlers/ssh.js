@@ -54,7 +54,21 @@ function setupSSHHandlers(ipcMain, mainWindow) {
         username: config.username,
         readyTimeout: 20000,  // 连接超时20秒
         keepaliveInterval: 10000,  // 发送 keepalive 消息的间隔时间（10秒）
-        algorithms: ALGORITHMS
+      }
+
+      if (config.algorithms && typeof config.algorithms === 'object') {
+        const filtered = {}
+        for (const key of ['kex', 'serverHostKey', 'cipher', 'hmac', 'compress']) {
+          if (Array.isArray(config.algorithms[key]) && config.algorithms[key].length) {
+            filtered[key] = config.algorithms[key]
+          }
+        }
+        if (Object.keys(filtered).length) {
+          connectConfig.algorithms = filtered
+        }
+      }
+      if (!connectConfig.algorithms) {
+        connectConfig.algorithms = ALGORITHMS
       }
 
       if (config.authType === 'password') {

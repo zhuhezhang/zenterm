@@ -228,6 +228,64 @@
 .settings-item:last-child { border-bottom: none; }
 .settings-item:hover { background: var(--bg-tertiary); }
 
+.settings-algo-block {
+  padding: 0 24px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-algo-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.settings-algo-row:last-child {
+  border-bottom: none;
+}
+
+.settings-algo-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.settings-algo-label input {
+  width: 14px;
+  height: 14px;
+}
+
+.settings-algo-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.settings-algo-btn {
+  min-width: 32px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-weight: 600;
+}
+.settings-algo-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.settings-algo-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding-left: 2px;
+}
+
 .settings-item-info {
   display: flex;
   flex-direction: column;

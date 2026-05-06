@@ -8,6 +8,50 @@ export const DEFAULT_LOG_PATH = (() => {
   } catch { return '' }
 })()
 
+/** SSH/SFTP 算法默认顺序与可选值 */
+export const DEFAULT_ALGORITHM_PREFERENCES = {
+  kex: [
+    'curve25519-sha256',
+    'curve25519-sha256@libssh.org',
+    'ecdh-sha2-nistp256',
+    'ecdh-sha2-nistp384',
+    'diffie-hellman-group14-sha256',
+    'diffie-hellman-group14-sha1',
+    'diffie-hellman-group-exchange-sha256',
+  ],
+  serverHostKey: [
+    'ssh-ed25519',
+    'ecdsa-sha2-nistp256',
+    'ecdsa-sha2-nistp384',
+    'rsa-sha2-256',
+    'rsa-sha2-512',
+    'ssh-rsa',
+  ],
+  cipher: [
+    'aes128-gcm',
+    'aes256-gcm',
+    'aes128-ctr',
+    'aes192-ctr',
+    'aes256-ctr',
+    'aes128-cbc',
+    'aes192-cbc',
+    'aes256-cbc',
+    '3des-cbc',
+  ],
+  hmac: [
+    'hmac-sha2-256-etm@openssh.com',
+    'hmac-sha2-512-etm@openssh.com',
+    'hmac-sha2-256',
+    'hmac-sha2-512',
+    'hmac-sha1',
+  ],
+  compress: [
+    'zlib@openssh.com',
+    'zlib',
+    'none',
+  ],
+}
+
 /** 默认设置项 */
 export const DEFAULT_SETTINGS = {
   confirmDeleteSession: true,
@@ -21,6 +65,7 @@ export const DEFAULT_SETTINGS = {
     { id: 'error',   enabled: true,  useRegex: true, pattern: 'error|failed|denied|unauthorized', color: '#ff6b6b' },
     { id: 'success', enabled: true,  useRegex: true, pattern: 'success|connected|ready|ok',    color: '#4ade80' },
   ],
+  algorithmPreferences: DEFAULT_ALGORITHM_PREFERENCES,
 }
 
 /**
@@ -35,6 +80,12 @@ export function loadSettings() {
       saved.terminalInteract = !!(saved.copyOnSelect ?? saved.rightClickPaste ?? true)  // !!(...) 把结果强制转换成布尔值；?? 是空值合并运算符，表示如果 copyOnSelect 不为 null 或 undefined 则使用它，否则使用 rightClickPaste，如果 rightClickPaste 也不为 null 或 undefined 则使用它，否则默认 true  
       delete saved.copyOnSelect
       delete saved.rightClickPaste
+    }
+    if (saved.algorithmPreferences && typeof saved.algorithmPreferences === 'object') {
+      saved.algorithmPreferences = {
+        ...DEFAULT_ALGORITHM_PREFERENCES,
+        ...saved.algorithmPreferences,
+      }
     }
     return { ...DEFAULT_SETTINGS, ...saved }  // saved 中的值会覆盖默认设置
   } catch (e) {

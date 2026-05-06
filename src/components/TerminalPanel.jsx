@@ -437,7 +437,11 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
   if (type === 'ssh') {
     writeInfo(`Connecting to ${session.host}:${session.port || 22}...`)
     try {
-      const res = await window.zterm.ssh.connect(id, session)
+      const connectPayload = {
+        ...session,
+        algorithms: settingsRef.current?.algorithmPreferences,
+      }
+      const res = await window.zterm.ssh.connect(id, connectPayload)
       if (isCancelled?.()) return   // 组件已卸载，放弃后续注册
       if (!res.success) throw new Error(res.error)  // 连接失败，抛出错误
       writeSuccess('Connected!')
@@ -456,7 +460,11 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
 
       if (session.enableSftp) {  // 如果会话配置启用 SFTP，则尝试连接 SFTP，并在连接成功后更新会话状态以显示 SFTP 功能
         try {
-          const sr = await window.zterm.sftp.connect(id + '-sftp', session)
+          const sftpPayload = {
+            ...session,
+            algorithms: settingsRef.current?.algorithmPreferences,
+          }
+          const sr = await window.zterm.sftp.connect(id + '-sftp', sftpPayload)
           if (isCancelled?.()) return
           if (sr.success) {
             onUpdate({ status: 'connected', sftpReady: true })

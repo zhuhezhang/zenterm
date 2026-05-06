@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { SETTINGS_SCHEMA, saveSettings, exportSettings, importSettings, DEFAULT_LOG_PATH } from '../store/settingsStore.js'
+import { SETTINGS_SCHEMA, saveSettings, exportSettings, importSettings, DEFAULT_LOG_PATH, DEFAULT_ALGORITHM_PREFERENCES } from '../store/settingsStore.js'
 import { exportSessions, importSessions, saveSessions } from '../store/sessionStore.js'
 import '../styles/dialog.css'
 import '../styles/settings.css'
@@ -19,6 +19,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   const [form, setForm] = useState({
     ...settings,
     highlightRules: settings.highlightRules ? [...settings.highlightRules] : [],
+    algorithmPreferences: settings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
   })
   const importRef = useRef(null)  // 和useState类似，但它返回一个可变的ref对象，其.current属性被初始化为传入的参数（initialValue）。返回的ref对象在组件的整个生命周期内保持不变，因此它不会触发重新渲染
   const importSettingsRef = useRef(null)  // 用于导入设置的文件输入引用
@@ -26,6 +27,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   const tabs = [
     { key: '操作确认', label: '操作确认' },
     { key: '终端行为', label: '终端行为' },
+    { key: 'SSH/SFTP 算法', label: 'SSH/SFTP 算法' },
     { key: '日志', label: '日志' },
     { key: '终端输出高亮', label: '终端输出高亮' },
     { key: '会话设置管理', label: '会话设置管理' },
@@ -85,6 +87,121 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
    */
   const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }))  // [key] 表示“用这个变量的值作为属性名”
 
+  const algorithmSections = [
+    { key: 'kex', label: '密钥交换 (kex)', desc: '用于协商 SSH 连接的密钥交换算法。' },
+    { key: 'serverHostKey', label: '主机密钥 (serverHostKey)', desc: '用于验证服务器身份的主机密钥算法。' },
+    { key: 'cipher', label: '加密算法 (cipher)', desc: '用于加密传输数据的对称加密算法。' },
+    { key: 'hmac', label: '消息认证码 (hmac)', desc: '用于验证 SSH 数据完整性的哈希算法。' },
+    { key: 'compress', label: '压缩算法 (compress)', desc: '用于 SSH 连接压缩传输数据的算法。' },
+  ]
+  const [activeAlgoSection, setActiveAlgoSection] = useState('kex')
+
+  const toggleAlgorithmOption = (type, value) => {
+    setForm(prev => {
+      const selected = prev.algorithmPreferences?.[type] || []
+      const exists = selected.includes(value)
+      const next = exists ? selected.filter(item => item !== value) : [...selected, value]
+      return {
+        ...prev,
+        algorithmPreferences: {
+          ...prev.algorithmPreferences,
+          [type]: next,
+        },
+      }
+    })
+  }
+
+  const moveAlgorithmOption = (type, value, direction) => {
+    setForm(prev => {
+      const selected = prev.algorithmPreferences?.[type] || []
+      const index = selected.indexOf(value)
+      if (index < 0) return prev
+      const nextIndex = index + direction
+      if (nextIndex < 0 || nextIndex >= selected.length) return prev
+      const next = [...selected]
+      ;[next[index], next[nextIndex]] = [next[nextIndex], next[index]]
+      return {
+        ...prev,
+        algorithmPreferences: {
+          ...prev.algorithmPreferences,
+          [type]: next,
+        },
+      }
+    })
+  }
+
+  const resetAlgorithmPreferences = () => set('algorithmPreferences', DEFAULT_ALGORITHM_PREFERENCES)
+
+  const renderAlgorithmTab = () => {
+    const section = algorithmSections.find(item => item.key === activeAlgoSection) || algorithmSections[0]
+    const selected = form.algorithmPreferences?.[section.key] || []
+    const options = DEFAULT_ALGORITHM_PREFERENCES[section.key] || []
+    return (
+      <div className="settings-section">
+        <div className="settings-section-title">SSH/SFTP 算法</div>
+        <div className="settings-items">
+          <div className="settings-item">
+            <div className="settings-item-info">
+              <span className="settings-item-label">SSH/SFTP 算法</span>
+              <span className="settings-item-desc">选择一个算法类别，然后配置该类别下要传入 SSH/SFTP 连接的算法及优先顺序。</span>
+            </div>
+            <button className="settings-action-btn" onClick={resetAlgorithmPreferences}>重置默认</button>
+          </div>
+          <div className="settings-item">
+            <div className="settings-item-info">
+              <span className="settings-item-label">算法类别</span>
+              <span className="settings-item-desc">先从下拉列表中选择要配置的算法类别。</span>
+            </div>
+            <select className="settings-select" value={activeAlgoSection} onChange={(e) => setActiveAlgoSection(e.target.value)}>
+              {algorithmSections.map(item => (
+                <option key={item.key} value={item.key}>{item.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="settings-algo-block">
+            <div className="settings-item">
+              <div className="settings-item-info">
+                <span className="settings-item-label">{section.label}</span>
+                <span className="settings-item-desc">{section.desc}</span>
+              </div>
+            </div>
+            {options.map(value => {
+              const checked = selected.includes(value)
+              const orderIndex = selected.indexOf(value)
+              return (
+                <div key={value} className="settings-algo-row">
+                  <label className="settings-algo-label">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleAlgorithmOption(section.key, value)}
+                    />
+                    <span>{value}</span>
+                  </label>
+                  <div className="settings-algo-actions">
+                    <button
+                      className="settings-algo-btn"
+                      type="button"
+                      disabled={!checked || orderIndex <= 0}
+                      onClick={() => moveAlgorithmOption(section.key, value, -1)}
+                    >↑</button>
+                    <button
+                      className="settings-algo-btn"
+                      type="button"
+                      disabled={!checked || orderIndex === -1 || orderIndex === selected.length - 1}
+                      onClick={() => moveAlgorithmOption(section.key, value, 1)}
+                    >↓</button>
+                  </div>
+                </div>
+              )
+            })}
+            <div className="settings-algo-hint">已选顺序：{selected.length ? selected.join(' → ') : '未选择任何算法'}</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   /** 处理保存设置的操作，将当前表单数据保存到设置中，并调用 onSave 回调函数传递新的设置对象，最后调用 onClose 关闭对话框 */
   const handleSave = () => {
     saveSettings(form)
@@ -130,6 +247,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
       setForm({
         ...importedSettings,
         highlightRules: importedSettings.highlightRules ? [...importedSettings.highlightRules] : [],
+        algorithmPreferences: importedSettings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
       })  // 更新表单状态
       alert('设置已导入，请点击"保存"按钮应用更改')
     } catch (err) {
@@ -344,7 +462,8 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
           </div>
 
           <div className="settings-tab-panels">
-            {activeTab !== '终端输出高亮' && activeTab !== '会话设置管理' && (
+            {activeTab === 'SSH/SFTP 算法' && renderAlgorithmTab()}
+            {activeTab !== '终端输出高亮' && activeTab !== '会话设置管理' && activeTab !== 'SSH/SFTP 算法' && (
               renderSection(SETTINGS_SCHEMA.find(section => section.section === activeTab) || SETTINGS_SCHEMA[0])
             )}
             {activeTab === '终端输出高亮' && renderHighlightTab()}
