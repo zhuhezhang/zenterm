@@ -159,7 +159,7 @@ export function exportSessions(sessions) {
   const a = document.createElement('a')  // 创建一个隐藏的 <a> 元素，用于触发下载
   a.href = url
   const now = new Date()
-  const date = now.toISOString().slice(0, 10)
+  const date = now.toISOString().slice(0, 10).replace(/-/g, '')
   const hh = String(now.getHours()).padStart(2, '0')
   const mm = String(now.getMinutes()).padStart(2, '0')
   const ss = String(now.getSeconds()).padStart(2, '0')

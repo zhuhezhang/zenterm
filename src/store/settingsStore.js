@@ -17,6 +17,10 @@ export const DEFAULT_SETTINGS = {
   backspaceMode: 'auto',    // 退格键模式：auto / del / bs
   enableLogging: false,
   logPath: DEFAULT_LOG_PATH,
+  highlightRules: [
+    { id: 'error',   enabled: true,  useRegex: true, pattern: 'error|failed|denied|unauthorized', color: '#ff6b6b' },
+    { id: 'success', enabled: true,  useRegex: true, pattern: 'success|connected|ready|ok',    color: '#4ade80' },
+  ],
 }
 
 /**
@@ -44,6 +48,46 @@ export function loadSettings() {
  */
 export function saveSettings(settings) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)) } catch (e) {}
+}
+
+/**
+ * 导设置项为 JSON 文件，文件名包含当前日期
+ * @param {Object} settings 要导出的设置对象
+ */
+export function exportSettings(settings) {
+  const data = JSON.stringify(settings, null, 2)  // null, 2 表示美化缩进为 2 个空格，方便文件阅读
+  const blob = new Blob([data], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)  // 生成一个本地可访问的临时 URL，指向这个内存中的文件内容
+  const a = document.createElement('a')  // 创建一个隐藏的 <a> 元素，用于触发下载
+  a.href = url
+  const now = new Date()
+  const date = now.toISOString().slice(0, 10).replace(/-/g, '')
+  const hh = String(now.getHours()).padStart(2, '0')
+  const mm = String(now.getMinutes()).padStart(2, '0')
+  const ss = String(now.getSeconds()).padStart(2, '0')
+  a.download = `zterm-settings-${date}-${hh}${mm}${ss}.json`
+  a.click()  // 程序性地"点击"这个链接，启动浏览器下载流程
+  URL.revokeObjectURL(url)  // 释放创建的临时 URL，避免内存泄漏
+}
+
+/**
+ * 从 JSON 文件中导入设置项，返回一个 Promise，解析成功则返回设置对象，失败则抛出错误
+ * @param {File} file 用户选择的 JSON 文件对象
+ * @returns {Promise<Object>} 解析后的设置对象
+ */
+export function importSettings(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()  // 使用浏览器提供的 FileReader API 来读取用户选中的文件内容
+    reader.onload = (e) => {  // 绑定事件：文件读取后触发
+      try {
+        const imported = JSON.parse(e.target.result)  // e.target.result 是读取到的文本内容，尝试解析为 JSON 对象
+        if (typeof imported !== 'object' || imported === null) throw new Error('格式错误')
+        resolve(imported)
+      } catch (err) { reject(err) }
+    }
+    reader.onerror = reject
+    reader.readAsText(file) // 以文本形式读取文件内容，触发 onload 或 onerror 事件
+  })
 }
 
 /** 设置项的定义和描述，用于在设置界面动态生成表单 */

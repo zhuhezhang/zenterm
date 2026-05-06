@@ -249,6 +249,49 @@ function normalizeInputData(type, data, settingsRef) {
 }
 
 /**
+ * 解析十六进制颜色字符串，支持 #RGB 和 #RRGGBB 格式，返回 RGB 数组
+ * @param {string} hex 十六进制颜色字符串
+ * @returns {[number, number, number]} RGB 数组，如果输入无效则返回黄色 [255, 255, 0] 作为默认值
+ */
+function parseHexColor(hex) {
+  if (!hex || typeof hex !== 'string') return [255, 255, 0]
+  let raw = hex.trim()
+  if (raw.startsWith('#')) raw = raw.slice(1)
+  if (raw.length === 3) raw = raw.split('').map(ch => ch + ch).join('')
+  if (raw.length !== 6) return [255, 255, 0]
+  const value = parseInt(raw, 16)
+  if (Number.isNaN(value)) return [255, 255, 0]
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255]
+}
+
+/**
+ * 应用高亮规则
+ * @param {string} text 要应用高亮规则的文本
+ * @param {Object} settings 设置对象
+ * @returns {string} 应用高亮规则后的文本
+ */
+function applyHighlightRules(text, settings) {
+  if (!text || !settings?.highlightRules?.length) return text
+  let output = text
+  for (const rule of settings.highlightRules) {
+    if (!rule?.enabled || !rule.pattern?.trim()) continue
+    let regex
+    try {
+      const pattern = rule.useRegex === false
+        ? String(rule.pattern).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')
+        : rule.pattern
+      regex = new RegExp(pattern, 'gi')
+    } catch (e) {
+      continue
+    }
+    const [r, g, b] = parseHexColor(rule.color)
+    const ansi = `\x1b[38;2;${r};${g};${b}m`
+    output = output.replace(regex, (match) => `${ansi}${match}\x1b[0m`)
+  }
+  return output
+}
+
+/**
  * 创建并配置 xterm 终端实例
  * @returns {Terminal} 配置好的 Terminal 实例
  */
@@ -387,7 +430,8 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
    */
   const recv = (data) => {
     const decoded = binaryToUtf8(data)
-    term.write(decoded, () => logFileRef.current?.())
+    const highlighted = applyHighlightRules(decoded, settingsRef.current)
+    term.write(highlighted, () => logFileRef.current?.())
   }
 
   if (type === 'ssh') {
