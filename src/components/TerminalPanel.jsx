@@ -278,7 +278,7 @@ function applyHighlightRules(text, settings) {
     let regex
     try {
       const pattern = rule.useRegex === false
-        ? String(rule.pattern).replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')
+        ? String(rule.pattern).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
         : rule.pattern
       regex = new RegExp(pattern, 'gi')
     } catch (e) {

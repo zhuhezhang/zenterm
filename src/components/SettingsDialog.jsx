@@ -233,7 +233,8 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
         </div>
         {(form.highlightRules || []).map((rule, idx) => (
           <div key={rule.id} className="settings-rule-item">
-            <div className="settings-rule-row">
+            <div className="settings-rule-desc">
+              <span>规则 {idx + 1}</span>
               <button
                 className={`settings-toggle ${rule.enabled ? 'on' : 'off'}`}
                 onClick={() => updateHighlightRule(rule.id, { enabled: !rule.enabled })}
@@ -241,12 +242,21 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
               >
                 <span className="settings-toggle-knob" />
               </button>
+            </div>
+            <div className="settings-rule-row">
+              <button className="settings-action-btn danger" onClick={() => removeHighlightRule(rule.id)}>删除</button>
               <input
                 className="settings-rule-pattern"
                 type="text"
                 value={rule.pattern}
                 placeholder="正则表达式，例如 error|failed"
                 onChange={(e) => updateHighlightRule(rule.id, { pattern: e.target.value })}
+              />
+              <input
+                className="settings-rule-color"
+                type="color"
+                value={rule.color || '#ffcc00'}
+                onChange={(e) => updateHighlightRule(rule.id, { color: e.target.value })}
               />
               <label className="settings-rule-regex">
                 <input
@@ -256,17 +266,6 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                 />
                 正则
               </label>
-              <input
-                className="settings-rule-color"
-                type="color"
-                value={rule.color || '#ffcc00'}
-                onChange={(e) => updateHighlightRule(rule.id, { color: e.target.value })}
-              />
-              <button className="settings-action-btn danger" onClick={() => removeHighlightRule(rule.id)}>删除</button>
-            </div>
-            <div className="settings-rule-desc">
-              <span>规则 {idx + 1}</span>
-              <span>{rule.enabled ? '启用' : '禁用'}</span>
             </div>
           </div>
         ))}
