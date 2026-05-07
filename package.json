@@ -8,6 +8,19 @@
   "scripts": {
     "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
     "build": "vite build && electron-builder",
+    "build:win": "vite build && electron-builder --win",
+    "build:win:x64": "vite build && electron-builder --win --x64",
+    "build:win:ia32": "vite build && electron-builder --win --ia32",
+    "build:win:portable": "vite build && electron-builder --win --x64 portable",
+    "build:linux": "vite build && electron-builder --linux",
+    "build:linux:x64": "vite build && electron-builder --linux --x64",
+    "build:linux:ia32": "vite build && electron-builder --linux --ia32",
+    "build:linux:appimage": "vite build && electron-builder --linux --target AppImage",
+    "build:mac": "vite build && electron-builder --mac",
+    "build:mac:x64": "vite build && electron-builder --mac --x64",
+    "build:mac:arm64": "vite build && electron-builder --mac --arm64",
+    "build:mac:universal": "vite build && electron-builder --mac --universal",
+    "build:linux-appimage-win-portable-nsis": "vite build && electron-builder --win portable nsis --linux AppImage",
     "vite": "vite",
     "electron": "electron .",
     "dev:renderer": "vite",
@@ -42,6 +55,38 @@
     "files": [
       "dist/**/*",
       "electron/**/*"
-    ]
+    ],
+    "win": {
+      "target": ["nsis", "portable", "zip"],
+      "sign": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": ["AppImage", "deb", "tar.gz"],
+      "category": "Utility"
+    },
+    "mac": {
+      "target": ["dmg", "zip"]
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220,
+          "type": "file"
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
   }
 }

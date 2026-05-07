@@ -159,43 +159,54 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
             </select>
           </div>
           <div className="settings-algo-block">
-            <div className="settings-item">
+            <div className="settings-algo-desc">
               <div className="settings-item-info">
                 <span className="settings-item-label">{section.label}</span>
                 <span className="settings-item-desc">{section.desc}</span>
               </div>
             </div>
-            {options.map(value => {
-              const checked = selected.includes(value)
-              const orderIndex = selected.indexOf(value)
-              return (
-                <div key={value} className="settings-algo-row">
-                  <label className="settings-algo-label">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleAlgorithmOption(section.key, value)}
-                    />
-                    <span>{value}</span>
-                  </label>
-                  <div className="settings-algo-actions">
-                    <button
-                      className="settings-algo-btn"
-                      type="button"
-                      disabled={!checked || orderIndex <= 0}
-                      onClick={() => moveAlgorithmOption(section.key, value, -1)}
-                    >↑</button>
-                    <button
-                      className="settings-algo-btn"
-                      type="button"
-                      disabled={!checked || orderIndex === -1 || orderIndex === selected.length - 1}
-                      onClick={() => moveAlgorithmOption(section.key, value, 1)}
-                    >↓</button>
-                  </div>
+            {selected.map((value, index) => (
+              <div key={value} className="settings-algo-row">
+                <label className="settings-algo-label">
+                  <input
+                    type="checkbox"
+                    checked={true}
+                    onChange={() => toggleAlgorithmOption(section.key, value)}
+                  />
+                  <span>{value}</span>
+                </label>
+                <div className="settings-algo-actions">
+                  <button
+                    className="settings-algo-btn"
+                    type="button"
+                    disabled={index <= 0}
+                    onClick={() => moveAlgorithmOption(section.key, value, -1)}
+                  >↑</button>
+                  <button
+                    className="settings-algo-btn"
+                    type="button"
+                    disabled={index === selected.length - 1}
+                    onClick={() => moveAlgorithmOption(section.key, value, 1)}
+                  >↓</button>
                 </div>
-              )
-            })}
-            <div className="settings-algo-hint">已选顺序：{selected.length ? selected.join(' → ') : '未选择任何算法'}</div>
+              </div>
+            ))}
+            {options.filter(value => !selected.includes(value)).map(value => (
+              <div key={value} className="settings-algo-row">
+                <label className="settings-algo-label">
+                  <input
+                    type="checkbox"
+                    checked={false}
+                    onChange={() => toggleAlgorithmOption(section.key, value)}
+                  />
+                  <span>{value}</span>
+                </label>
+                <div className="settings-algo-actions">
+                  {/* 未选算法无顺序按钮 */}
+                </div>
+              </div>
+            ))}
+            {/* 移除已选顺序提示 */}
           </div>
         </div>
       </div>
