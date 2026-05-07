@@ -1,5 +1,5 @@
 import { Client } from 'ssh2'
-import ALGORITHMS from './common.js'
+import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
 
 /** 存储所有 SSH 会话信息的 Map */
 const sshSessions = new Map()
@@ -58,7 +58,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
 
       if (config.algorithms && typeof config.algorithms === 'object') {
         const filtered = {}
-        for (const key of ['kex', 'serverHostKey', 'cipher', 'hmac', 'compress']) {
+        for (const key in DEFAULT_ALGORITHM_PREFERENCES) {  // 遍历默认算法偏好设置，只保留用户配置中存在的算法类别
           if (Array.isArray(config.algorithms[key]) && config.algorithms[key].length) {
             filtered[key] = config.algorithms[key]
           }
@@ -68,7 +68,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
         }
       }
       if (!connectConfig.algorithms) {
-        connectConfig.algorithms = ALGORITHMS
+        connectConfig.algorithms = DEFAULT_ALGORITHM_PREFERENCES
       }
 
       if (config.authType === 'password') {

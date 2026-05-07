@@ -87,39 +87,51 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
    */
   const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }))  // [key] 表示“用这个变量的值作为属性名”
 
+  /** 算法类别列表 */
   const algorithmSections = [
-    { key: 'kex', label: '密钥交换 (kex)', desc: '用于协商 SSH 连接的密钥交换算法。' },
-    { key: 'serverHostKey', label: '主机密钥 (serverHostKey)', desc: '用于验证服务器身份的主机密钥算法。' },
-    { key: 'cipher', label: '加密算法 (cipher)', desc: '用于加密传输数据的对称加密算法。' },
-    { key: 'hmac', label: '消息认证码 (hmac)', desc: '用于验证 SSH 数据完整性的哈希算法。' },
-    { key: 'compress', label: '压缩算法 (compress)', desc: '用于 SSH 连接压缩传输数据的算法。' },
+    { key: 'kex', label: '密钥交换 (kex)', desc: '用于协商 SSH 连接的密钥交换算法' },
+    { key: 'serverHostKey', label: '主机密钥 (serverHostKey)', desc: '用于验证服务器身份的主机密钥算法' },
+    { key: 'cipher', label: '加密算法 (cipher)', desc: '用于加密传输数据的对称加密算法' },
+    { key: 'hmac', label: '消息认证码 (hmac)', desc: '用于验证 SSH 数据完整性的哈希算法' },
+    { key: 'compress', label: '压缩算法 (compress)', desc: '用于 SSH 连接压缩传输数据的算法' },
   ]
-  const [activeAlgoSection, setActiveAlgoSection] = useState('kex')
+  const [activeAlgoSection, setActiveAlgoSection] = useState('kex')  // 默认选中密钥交换算法类别
 
+  /**
+   * 切换算法选项，根据算法类别和选项值更新表单中的算法偏好设置
+   * @param {string} type 算法类别，例如 'kex'、'serverHostKey'、'cipher'、'hmac'、'compress'
+   * @param {string} value 要切换的算法选项值，例如 'curve25519-sha256'、'ssh-ed25519'、'aes128-gcm'、'hmac-sha2-256'、'zlib'
+   */
   const toggleAlgorithmOption = (type, value) => {
     setForm(prev => {
-      const selected = prev.algorithmPreferences?.[type] || []
-      const exists = selected.includes(value)
-      const next = exists ? selected.filter(item => item !== value) : [...selected, value]
+      const selected = prev.algorithmPreferences?.[type] || []  // 获取当前选中的算法选项列表，如果没有则返回空数组
+      const exists = selected.includes(value)  // 检查要切换的算法选项是否已经选中
+      const next = exists ? selected.filter(item => item !== value) : [...selected, value]  // 如果已经选中，则移除该选项，否则添加该选项
       return {
-        ...prev,
+        ...prev,  // 复制当前表单数据
         algorithmPreferences: {
-          ...prev.algorithmPreferences,
+          ...prev.algorithmPreferences,  // 复制当前算法偏好设置
           [type]: next,
-        },
+        },  // 更新指定算法类别的选项列表
       }
     })
   }
 
+  /**
+   * 移动算法选项，根据算法类别和选项值更新表单中的算法偏好设置
+   * @param {string} type 算法类别，例如 'kex'、'serverHostKey'、'cipher'、'hmac'、'compress'
+   * @param {string} value 要移动的算法选项值，例如 'curve25519-sha256'、'ssh-ed25519'、'aes128-gcm'、'hmac-sha2-256'、'zlib'
+   * @param {number} direction 移动方向，-1 表示向上移动，1 表示向下移动
+   */
   const moveAlgorithmOption = (type, value, direction) => {
     setForm(prev => {
-      const selected = prev.algorithmPreferences?.[type] || []
-      const index = selected.indexOf(value)
-      if (index < 0) return prev
-      const nextIndex = index + direction
-      if (nextIndex < 0 || nextIndex >= selected.length) return prev
+      const selected = prev.algorithmPreferences?.[type] || []  // 获取当前选中的算法选项列表，如果没有则返回空数组
+      const index = selected.indexOf(value)  // 获取要移动的算法选项在列表中的索引
+      if (index < 0) return prev  // 如果索引小于0，则返回当前表单数据
+      const nextIndex = index + direction  // 计算移动后的索引
+      if (nextIndex < 0 || nextIndex >= selected.length) return prev  // 如果移动后的索引小于0或大于等于列表长度，则返回当前表单数据
       const next = [...selected]
-      ;[next[index], next[nextIndex]] = [next[nextIndex], next[index]]
+      ;[next[index], next[nextIndex]] = [next[nextIndex], next[index]]  // 交换两个索引位置的值
       return {
         ...prev,
         algorithmPreferences: {
@@ -130,12 +142,30 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     })
   }
 
+  /** 重置算法偏好设置，将表单中的算法偏好设置恢复为默认值 */
   const resetAlgorithmPreferences = () => set('algorithmPreferences', DEFAULT_ALGORITHM_PREFERENCES)
 
+  /** 仅将某一算法类别恢复为内置默认顺序与勾选集合 */
+  const resetAlgorithmSection = (type) => {
+    const defaults = DEFAULT_ALGORITHM_PREFERENCES[type]
+    if (!defaults) return
+    setForm(prev => ({
+      ...prev,
+      algorithmPreferences: {
+        ...prev.algorithmPreferences,
+        [type]: [...defaults],
+      },
+    }))
+  }
+
+  /**
+   * 渲染算法标签页的内容，根据当前选中的算法类别显示对应的算法选项列表
+   * @returns {JSX.Element} 渲染后的算法标签页内容
+   */
   const renderAlgorithmTab = () => {
-    const section = algorithmSections.find(item => item.key === activeAlgoSection) || algorithmSections[0]
-    const selected = form.algorithmPreferences?.[section.key] || []
-    const options = DEFAULT_ALGORITHM_PREFERENCES[section.key] || []
+    const section = algorithmSections.find(item => item.key === activeAlgoSection) || algorithmSections[0]  // 获取当前选中的算法类别，如果没有则使用第一个算法类别
+    const selected = form.algorithmPreferences?.[section.key] || []  // 获取当前选中的算法选项列表，如果没有则返回空数组
+    const options = DEFAULT_ALGORITHM_PREFERENCES[section.key] || []  // 获取默认的算法选项列表，如果没有则返回空数组
     return (
       <div className="settings-section">
         <div className="settings-section-title">SSH/SFTP 算法</div>
@@ -143,14 +173,14 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
           <div className="settings-item">
             <div className="settings-item-info">
               <span className="settings-item-label">SSH/SFTP 算法</span>
-              <span className="settings-item-desc">选择一个算法类别，然后配置该类别下要传入 SSH/SFTP 连接的算法及优先顺序。</span>
+              <span className="settings-item-desc">选择一个算法类别，然后配置该类别下要传入 SSH/SFTP 连接的算法及优先顺序</span>
             </div>
             <button className="settings-action-btn" onClick={resetAlgorithmPreferences}>重置默认</button>
           </div>
           <div className="settings-item">
             <div className="settings-item-info">
               <span className="settings-item-label">算法类别</span>
-              <span className="settings-item-desc">先从下拉列表中选择要配置的算法类别。</span>
+              <span className="settings-item-desc">先从下拉列表中选择要配置的算法类别</span>
             </div>
             <select className="settings-select" value={activeAlgoSection} onChange={(e) => setActiveAlgoSection(e.target.value)}>
               {algorithmSections.map(item => (
@@ -161,9 +191,15 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
           <div className="settings-algo-block">
             <div className="settings-algo-desc">
               <div className="settings-item-info">
-                <span className="settings-item-label">{section.label}</span>
                 <span className="settings-item-desc">{section.desc}</span>
               </div>
+              <button
+                type="button"
+                className="settings-action-btn"
+                onClick={() => resetAlgorithmSection(section.key)}
+              >
+                重置本类默认
+              </button>
             </div>
             {selected.map((value, index) => (
               <div key={value} className="settings-algo-row">
@@ -202,19 +238,25 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                   <span>{value}</span>
                 </label>
                 <div className="settings-algo-actions">
-                  {/* 未选算法无顺序按钮 */}
+                  <button className="settings-algo-btn" type="button" disabled>↑</button>
+                  <button className="settings-algo-btn" type="button" disabled>↓</button>
                 </div>
               </div>
             ))}
-            {/* 移除已选顺序提示 */}
           </div>
         </div>
       </div>
     )
   }
 
-  /** 处理保存设置的操作，将当前表单数据保存到设置中，并调用 onSave 回调函数传递新的设置对象，最后调用 onClose 关闭对话框 */
+  /** 处理保存设置的操作，将当前表单数据保存到设置中，并调用 onSave 回调函数传递新的设置对象 */
   const handleSave = () => {
+    saveSettings(form)
+    onSave(form)
+  }
+
+  /** 保存设置后关闭对话框 */
+  const handleSaveAndClose = () => {
     saveSettings(form)
     onSave(form)
     onClose()
@@ -460,11 +502,12 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
         </div>
 
         <div className="settings-body">
-          <div className="settings-tabs">
+          <div className="dialog-tabs settings-dialog-tabs">
             {tabs.map(tab => (
               <button
                 key={tab.key}
-                className={`settings-tab ${activeTab === tab.key ? 'active' : ''}`}
+                type="button"
+                className={`dialog-tab ${activeTab === tab.key ? 'active' : ''}`}
                 onClick={() => setActiveTab(tab.key)}
               >
                 {tab.label}
@@ -483,8 +526,9 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
         </div>
 
         <div className="dialog-footer">
-          <button className="btn-cancel" onClick={onClose}>取消</button>
-          <button className="btn-connect" onClick={handleSave}>保存</button>
+          <button type="button" className="btn-cancel" onClick={onClose}>取消</button>
+          <button type="button" className="btn-save" onClick={handleSave}>保存</button>
+          <button type="button" className="btn-connect" onClick={handleSaveAndClose}>保存并关闭</button>
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { Client } from 'ssh2'
 import fs from 'fs'
 import path from 'path'
-import ALGORITHMS from './common.js'
+import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
 
 /** 存储所有 SFTP 会话信息的 Map */
 const sftpSessions = new Map()
@@ -136,7 +136,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
         }
       }
       if (!connectConfig.algorithms) {
-        connectConfig.algorithms = ALGORITHMS
+        connectConfig.algorithms = DEFAULT_ALGORITHM_PREFERENCES
       }
 
       if (config.authType === 'password') {

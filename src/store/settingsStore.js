@@ -8,49 +8,9 @@ export const DEFAULT_LOG_PATH = (() => {
   } catch { return '' }
 })()
 
-/** SSH/SFTP 算法默认顺序与可选值 */
-export const DEFAULT_ALGORITHM_PREFERENCES = {
-  kex: [
-    'curve25519-sha256',
-    'curve25519-sha256@libssh.org',
-    'ecdh-sha2-nistp256',
-    'ecdh-sha2-nistp384',
-    'diffie-hellman-group14-sha256',
-    'diffie-hellman-group14-sha1',
-    'diffie-hellman-group-exchange-sha256',
-  ],
-  serverHostKey: [
-    'ssh-ed25519',
-    'ecdsa-sha2-nistp256',
-    'ecdsa-sha2-nistp384',
-    'rsa-sha2-256',
-    'rsa-sha2-512',
-    'ssh-rsa',
-  ],
-  cipher: [
-    'aes128-gcm',
-    'aes256-gcm',
-    'aes128-ctr',
-    'aes192-ctr',
-    'aes256-ctr',
-    'aes128-cbc',
-    'aes192-cbc',
-    'aes256-cbc',
-    '3des-cbc',
-  ],
-  hmac: [
-    'hmac-sha2-256-etm@openssh.com',
-    'hmac-sha2-512-etm@openssh.com',
-    'hmac-sha2-256',
-    'hmac-sha2-512',
-    'hmac-sha1',
-  ],
-  compress: [
-    'zlib@openssh.com',
-    'zlib',
-    'none',
-  ],
-}
+import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
+
+export { DEFAULT_ALGORITHM_PREFERENCES }
 
 /** 默认设置项 */
 export const DEFAULT_SETTINGS = {

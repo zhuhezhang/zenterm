@@ -197,7 +197,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
         <div className="dialog-header">
           <div className="dialog-tabs">
             {['ssh', 'telnet', 'serial'].map(t => (
-              <button key={t} className={`dialog-tab ${tab===t?'active':''}`} onClick={() => switchTab(t)}>
+              <button key={t} type="button" className={`dialog-tab ${tab===t?'active':''}`} onClick={() => switchTab(t)}>
                 {t === 'ssh' ? 'SSH' : t === 'telnet' ? 'Telnet' : 'Serial'}
               </button>
             ))}
