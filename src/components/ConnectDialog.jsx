@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { fetchSessionSecrets } from '../store/credentialsBridge.js'
 import '../styles/dialog.css'
 
@@ -7,6 +7,23 @@ const TELNET_DEFAULT = { host: '', port: '23', label: '', group: '' }
 const SERIAL_DEFAULT = { path: '', baudRate: '9600', dataBits: '8', stopBits: '1', parity: 'none', label: '', group: '' }
 const BAUD_RATES = ['110','300','600','1200','2400','4800','9600','14400','19200','38400','57600','115200','128000','256000']
 const PARITIES = ['none','even','odd','mark','space']
+
+/**
+ * 串口路径是否与 listPorts 结果一致（与主进程 serial.js 判定对齐；Windows 上对 COM 路径不区分大小写）
+ * @param {string} requestedPath
+ * @param {Array<{ path?: string }>} ports
+ */
+function isSerialPathInEnumeratedList(requestedPath, ports) {
+  const req = String(requestedPath ?? '').trim()
+  if (!req) return false
+  const paths = (ports || []).map((p) => p?.path).filter(Boolean)
+  const win = typeof process !== 'undefined' && process.platform === 'win32'
+  if (win) {
+    const rl = req.toLowerCase()
+    return paths.some((p) => p.toLowerCase() === rl)
+  }
+  return paths.includes(req)
+}
 
 /**
  * 获取默认配置
@@ -67,13 +84,19 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
     setError('')
   }
 
-  // 监听tab变化，当tab切换且协议类型为 Serial 时，获取可用串口列表并更新状态（useEffect允许将组件与外部系统同步）
+  // 刷新串口列表，用于串口连接时选择串口设备
+  const refreshSerialPorts = useCallback(() => {
+    window.zterm?.serial.listPorts().then((res) => {
+      if (res?.success) setPorts(res.ports)
+      else setPorts([])
+    })
+  }, [])
+
+  // 监听 tab：切换到 Serial 时枚举串口
   useEffect(() => {
     setError('')
-    if (tab === 'serial') {
-      window.zterm?.serial.listPorts().then(res => { if (res?.success) setPorts(res.ports) })
-    }
-  }, [tab])
+    if (tab === 'serial') refreshSerialPorts()
+  }, [tab, refreshSerialPorts])
 
   /** 编辑已保存会话时从主进程 vault 拉取敏感字段合并到表单 */
   useEffect(() => {
@@ -104,7 +127,12 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
   const validate = () => {
     if (tab === 'ssh' && !form.host?.trim()) return '请填写主机地址'
     if (tab === 'telnet' && !form.host?.trim()) return '请填写主机地址'
-    if (tab === 'serial' && !form.path?.trim()) return '请选择或输入串口路径'
+    if (tab === 'serial') {
+      if (!form.path?.trim()) return '请选择串口设备'
+      if (!isSerialPathInEnumeratedList(form.path, ports)) {
+        return '串口路径须来自当前枚举列表；请点击「刷新」更新设备列表后，从列表中选择路径'
+      }
+    }
     if (form.group?.startsWith('/')) return '分组不允许为以"/"开头'
     if (form.group?.endsWith('/')) return '分组不允许为以"/"结尾，会导致分组名为空'
     if (form.group && /[\\:*?"\u003c\u003e|\x00]/.test(form.group)) return '分组不允许包含以下字符：\\ : * ? " < > |'
@@ -265,7 +293,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
           <div className="dialog-divider" />
           <SshForm form={form} set={set} visible={tab==='ssh'} />
           <TelnetForm form={form} set={set} visible={tab==='telnet'} />
-          <SerialForm form={form} set={set} ports={ports} visible={tab==='serial'} />
+          <SerialForm form={form} set={set} ports={ports} visible={tab === 'serial'} onRefreshPorts={refreshSerialPorts} />
           {error && <div className="dialog-error">{error}</div>}
         </div>
 
@@ -365,19 +393,24 @@ function TelnetForm({ form, set, visible }) {
  * @param {Function} set 设置表单数据的函数
  * @param {Array} ports 可用串口列表，用于 datalist 自动补全
  * @param {boolean} visible 是否可见
+ * @param {Function} onRefreshPorts 重新枚举串口（路径必须与枚举结果一致方可连接）
  * @returns {JSX.Element} Serial 表单
  */
-function SerialForm({ form, set, ports, visible }) {
+function SerialForm({ form, set, ports, visible, onRefreshPorts }) {
   if (!visible) return null
   return (
     <>
       <FormRow label="串口">
-        <input 
-          placeholder="选择或输入串口路径" 
-          value={form.path} 
+        <input
+          className="dialog-serial-path-input"
+          placeholder="从列表选择（须先枚举）"
+          value={form.path}
           onChange={e => set('path', e.target.value)}
           list="port-list"
         />
+        <button type="button" className="dialog-serial-refresh-btn" onClick={onRefreshPorts}>
+          刷新
+        </button>
         <datalist id="port-list">
           {ports.map(p => <option key={p.path} value={p.path}>{p.path}{p.manufacturer ? ` (${p.manufacturer})` : ''}</option>)}
         </datalist>

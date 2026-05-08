@@ -2,8 +2,6 @@
 2. SSH 主机密钥未校验（MITM 风险）
 electron/handlers/ssh.js / sftp.js 里连接配置只有 host/port/用户名/认证等，没有 knownHosts、hostVerifier 或等价逻辑。ssh2 在未严格校验时，用户连到被劫持的 IP 可能无法发现中间人。
 建议：维护 known_hosts（或按主机指纹首次确认 + 持久化），对指纹变更给出明确告警或拒绝连接。
-5. 串口 path 未与枚举结果绑定
-serial:connect 直接使用 config.path。更稳妥的是只允许 serial:listPorts 返回列表中的设备路径，避免异常或恶意路径（取决于 OS 对串口设备的权限模型）。
 7. 开发与 CSP
 开发环境 loadURL('http://localhost:5173') 且 openDevTools()，并注入 http://localhost:8097 的 React DevTools，属于正常开发体验，但会放大 XSS/误点恶意页面的后果；发布包应继续走 loadFile 的静态资源。
 index.html 里 CSP 含 'unsafe-inline'，对 XSS 的防护有限；在 build 后尽量收紧（nonce/hash）、并明确 connect-src 等，需要与 Vite 产物结构一起设计。

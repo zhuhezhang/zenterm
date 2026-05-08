@@ -107,6 +107,27 @@
   gap: 8px;
 }
 
+.dialog-serial-path-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dialog-serial-refresh-btn {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.dialog-serial-refresh-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
 .dialog-error {
   background: rgba(248, 81, 73, 0.1);
   border: 1px solid rgba(248, 81, 73, 0.3);

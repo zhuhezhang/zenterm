@@ -10,6 +10,22 @@ try {
 const serialSessions = new Map()
 
 /**
+ * 请求的路径是否在当前枚举到的串口列表中（降低任意路径打开设备的风险）
+ * @param {string} requestedPath
+ * @param {Array<{ path?: string }>} ports SerialPort.list() 结果
+ */
+function isSerialPathInEnumeratedList(requestedPath, ports) {
+  const req = String(requestedPath ?? '').trim()
+  if (!req) return false
+  const paths = ports.map((p) => p?.path).filter(Boolean)
+  if (process.platform === 'win32') {
+    const rl = req.toLowerCase()
+    return paths.some((p) => p.toLowerCase() === rl)
+  }
+  return paths.includes(req)
+}
+
+/**
  * 设置 Serial 相关的 IPC 处理函数，传入 ipcMain 和 mainWindow 以便在处理函数中使用 IPC 和窗口通信
  * @param {Electron.IpcMain} ipcMain Electron 的 IPC 主进程模块，用于监听和处理来自渲染进程的 IPC 消息
  * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息
@@ -27,6 +43,20 @@ function setupSerialHandlers(ipcMain, mainWindow) {
 
   ipcMain.handle('serial:connect', async (_event, id, config) => {  // 监听渲染进程发送的 Serial 连接请求，传入会话 ID 和连接配置
     if (!SerialPort) return { success: false, error: 'serialport module not available' }
+
+    let enumerated
+    try {
+      enumerated = await SerialPort.list()
+    } catch (e) {
+      return { success: false, error: e.message || '无法枚举串口设备' }
+    }
+    if (!isSerialPathInEnumeratedList(config?.path, enumerated)) {
+      return {
+        success: false,
+        error:
+          '串口路径必须是当前系统枚举到的设备。请在连接对话框中刷新或重新打开串口页签后，从列表中选择设备路径。',
+      }
+    }
 
     return new Promise((resolve, _reject) => {
       let port

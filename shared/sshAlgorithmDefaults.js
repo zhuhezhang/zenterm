@@ -58,16 +58,12 @@ export const SSH_ALGORITHM_OPTION_POOL = Object.fromEntries(
   ])
 )
 
-/** 遗留/较弱算法分类：用于设置 UI 提示 */
-const WEAK_BY_CATEGORY = Object.fromEntries(
-  Object.entries(LEGACY_ALGORITHMS_BY_CATEGORY).map(([k, arr]) => [k, new Set(arr)])
-)
-
 /**
  * 是否属于遗留/较弱算法（用于设置 UI 提示）
  * @param {string} category kex | serverHostKey | cipher | hmac | compress
  * @param {string} name 算法名
  */
 export function isWeakSshAlgorithm(category, name) {
-  return WEAK_BY_CATEGORY[category]?.has(name) ?? false
+  const arr = LEGACY_ALGORITHMS_BY_CATEGORY[category]
+  return Array.isArray(arr) && arr.includes(name)
 }
