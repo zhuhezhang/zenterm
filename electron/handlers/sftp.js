@@ -1,6 +1,5 @@
 import { Client } from 'ssh2'
 import fs from 'fs'
-import path from 'path'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
 import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
 import {
@@ -8,6 +7,7 @@ import {
   assertSftpLocalDirAllowed,
   safeJoinLocalDownloadPath,
 } from '../lib/localPathPolicy.js'
+import { createSshHostVerifier } from '../lib/sshKnownHosts.js'
 
 /** 存储所有 SFTP 会话信息的 Map */
 const sftpSessions = new Map()
@@ -153,6 +153,12 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
         connectConfig.privateKey = config.privateKey
         if (config.passphrase) connectConfig.passphrase = config.passphrase
       }
+
+      connectConfig.hostVerifier = createSshHostVerifier(
+        mainWindow,
+        config.host,
+        connectConfig.port
+      )
 
       try {
         conn.connect(connectConfig)  // 发起 SSH 连接请求，连接结果将通过 ready 和 error 事件处理器处理

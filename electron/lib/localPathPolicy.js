@@ -93,7 +93,7 @@ export function assertSftpLocalDirAllowed(localDir, kind = 'SFTP') {
  * 在已校验的父目录下拼接远程条目名，防止 `../` 跳出；并对结果再次做根校验。
  * @param {string} parentDir 已解析的本地父目录
  * @param {string} remoteEntryName 远程文件名（可能含路径分隔符）
- * @param {string} kind
+ * @param {string} kind 错误前缀，如「下载」「上传」
  * @returns {string} 解析后的本地路径
  */
 export function safeJoinLocalDownloadPath(parentDir, remoteEntryName, kind = '下载') {

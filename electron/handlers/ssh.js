@@ -1,6 +1,7 @@
 import { Client } from 'ssh2'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
 import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
+import { createSshHostVerifier } from '../lib/sshKnownHosts.js'
 
 /** 存储所有 SSH 会话信息的 Map */
 const sshSessions = new Map()
@@ -79,6 +80,12 @@ function setupSSHHandlers(ipcMain, mainWindow) {
         connectConfig.privateKey = config.privateKey
         if (config.passphrase) connectConfig.passphrase = config.passphrase
       }
+
+      connectConfig.hostVerifier = createSshHostVerifier(
+        mainWindow,
+        config.host,
+        connectConfig.port
+      )
 
       try {
         conn.connect(connectConfig)  // 发起 SSH 连接请求，连接结果将通过 ready 和 error 事件处理器处理
