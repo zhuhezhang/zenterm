@@ -1,4 +1,5 @@
 import net from 'net'
+import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
 
 /** 存储所有 Telnet 会话信息的 Map，键为会话 ID，值为 net.Socket 实例 */
 const telnetSessions = new Map()
@@ -48,7 +49,8 @@ function processTelnetData(data) {
  * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息 
  */
 function setupTelnetHandlers(ipcMain, mainWindow) {
-  ipcMain.handle('telnet:connect', async (_event, id, config) => {  // 监听渲染进程 telnet 连接请求，传入会话 ID 和连接配置
+  ipcMain.handle('telnet:connect', async (event, id, config) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     return new Promise((resolve, _reject) => {
       const socket = new net.Socket()
       let connected = false
@@ -94,14 +96,16 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('telnet:data', (_event, id, data) => {  // 监听来自渲染进程的数据，将数据写入套接字（发送至服务器）
+  ipcMain.on('telnet:data', (event, id, data) => {
+    if (!isTrustedIpcSender(event.sender)) return
     const socket = telnetSessions.get(id)
     if (socket) {
       socket.write(data)
     }
   })
 
-  ipcMain.handle('telnet:disconnect', async (_event, id) => {  // 监听来自渲染进程的断开连接请求，销毁套接字并清理会话
+  ipcMain.handle('telnet:disconnect', async (event, id) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const socket = telnetSessions.get(id)
     if (socket) {
       try { socket.destroy() } catch (e) {}

@@ -8,6 +8,11 @@ import { setupTelnetHandlers } from './handlers/telnet.js'
 import { setupSerialHandlers } from './handlers/serial.js'
 import { setupCredentialHandlers } from './handlers/credentials.js'
 import { assertLogWriteDirectoryAllowed } from './lib/localPathPolicy.js'
+import {
+  setTrustedRendererWebContents,
+  clearTrustedRendererWebContents,
+  isTrustedIpcSender,
+} from './lib/trustedSender.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -41,28 +46,42 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))  // 生产环境加载打包后的静态文件
   }
 
+  setTrustedRendererWebContents(mainWindow.webContents)
+  mainWindow.on('closed', () => clearTrustedRendererWebContents())
+
   // 监听渲染进程发送的窗口操作指令（最小化、最大化、关闭）
-  ipcMain.on('window:minimize', () => mainWindow.minimize())  // 监听渲染进程通过通道window:minimize传入的最小化指令
-  ipcMain.on('window:maximize', () => {
-    if (mainWindow.isMaximized()) {
-      mainWindow.unmaximize()
-    } else {
-      mainWindow.maximize()
-    }
+  ipcMain.on('window:minimize', (e) => {
+    if (!isTrustedIpcSender(e.sender)) return
+    mainWindow.minimize()
   })
-  ipcMain.on('window:close', () => mainWindow.close())
-  // 每当渲染进程通过 window:isMaximized 通道发送 ipcRender.invoke 消息时，该函数就会作为回调函数来处理这个消息，然后将返回值送回到最初的 invoke 调用
-  ipcMain.handle('window:isMaximized', () => mainWindow.isMaximized())
+  ipcMain.on('window:maximize', (e) => {
+    if (!isTrustedIpcSender(e.sender)) return
+    if (mainWindow.isMaximized()) mainWindow.unmaximize()
+    else mainWindow.maximize()
+  })
+  ipcMain.on('window:close', (e) => {
+    if (!isTrustedIpcSender(e.sender)) return
+    mainWindow.close()
+  })
+  ipcMain.handle('window:isMaximized', (e) => {
+    if (!isTrustedIpcSender(e.sender)) return false
+    return mainWindow.isMaximized()
+  })
 
   mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized', true))  // 当窗口被最大化时，向渲染进程发送 window:maximized 消息
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximized', false))
 
 
   ipcMain.on('app:getDownloadsPath', (e) => {
-    e.returnValue = app.getPath('downloads')  // 同步返回下载目录路径
+    if (!isTrustedIpcSender(e.sender)) {
+      e.returnValue = ''
+      return
+    }
+    e.returnValue = app.getPath('downloads')
   })
 
-  ipcMain.handle('app:chooseDirectory', async () => {  // 弹出目录选择框，返回选中的目录路径
+  ipcMain.handle('app:chooseDirectory', async (event) => {
+    if (!isTrustedIpcSender(event.sender)) return null
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory', 'createDirectory'],
       title: '选择日志保存目录',
@@ -70,8 +89,9 @@ function createWindow() {
     return result.canceled ? null : result.filePaths[0]
   })
 
-  ipcMain.on('log:write', (_e, logDir, logFileName, data) => {  // 日志写入：参数为日志路径、日志文件名、日志内容
+  ipcMain.on('log:write', (e, logDir, logFileName, data) => {
     try {
+      if (!isTrustedIpcSender(e.sender)) return
       if (!logDir) return
       assertLogWriteDirectoryAllowed(logDir)
       fs.mkdirSync(logDir, { recursive: true })  // 确保日志目录存在（recursive可以创建多级目录）

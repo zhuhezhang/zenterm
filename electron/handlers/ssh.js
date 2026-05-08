@@ -1,5 +1,6 @@
 import { Client } from 'ssh2'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
+import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
 
 /** 存储所有 SSH 会话信息的 Map */
 const sshSessions = new Map()
@@ -10,7 +11,8 @@ const sshSessions = new Map()
  * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息 
  */
 function setupSSHHandlers(ipcMain, mainWindow) {
-  ipcMain.handle('ssh:connect', async (_event, id, config) => {  // 监听渲染进程 ssh 连接请求，传入会话 ID 和连接配置，返回一个 Promise 以便在渲染进程使用 async/await 处理连接结果
+  ipcMain.handle('ssh:connect', async (event, id, config) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     return new Promise((resolve, _reject) => {
       const conn = new Client()
       
@@ -86,21 +88,24 @@ function setupSSHHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('ssh:data', (_event, id, data) => {  // 监听渲染进程发送的 SSH 数据并写入 ssh:data 消息，传入会话 ID 和数据内容
+  ipcMain.on('ssh:data', (event, id, data) => {
+    if (!isTrustedIpcSender(event.sender)) return
     const session = sshSessions.get(id)
     if (session && session.stream) {
       session.stream.write(data)
     }
   })
 
-  ipcMain.on('ssh:resize', (_event, id, cols, rows) => {  // 监听渲染进程发送的 SSH 窗口调整消息，传入会话 ID、列数和行数
+  ipcMain.on('ssh:resize', (event, id, cols, rows) => {
+    if (!isTrustedIpcSender(event.sender)) return
     const session = sshSessions.get(id)
     if (session && session.stream) {
       session.stream.setWindow(rows, cols)
     }
   })
 
-  ipcMain.handle('ssh:disconnect', async (_event, id) => {  // 监听渲染进程发送的 SSH 断开连接请求，传入会话 ID，返回一个 Promise 以便在渲染进程使用 async/await 处理断开结果
+  ipcMain.handle('ssh:disconnect', async (event, id) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sshSessions.get(id)
     if (session) {
       try {

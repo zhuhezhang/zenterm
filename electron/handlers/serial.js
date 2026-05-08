@@ -1,3 +1,5 @@
+import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
+
 let SerialPort
 try {
   const serialport = await import('serialport')
@@ -31,7 +33,8 @@ function isSerialPathInEnumeratedList(requestedPath, ports) {
  * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息
  */
 function setupSerialHandlers(ipcMain, mainWindow) {
-  ipcMain.handle('serial:listPorts', async () => {  // 监听渲染进程发送的列出串口请求
+  ipcMain.handle('serial:listPorts', async (event) => {
+    if (!isTrustedIpcSender(event.sender)) return { success: false, error: IPC_UNAUTHORIZED.error, ports: [] }
     if (!SerialPort) return { success: false, error: 'serialport module not available', ports: [] }
     try {
       const ports = await SerialPort.list()
@@ -41,7 +44,8 @@ function setupSerialHandlers(ipcMain, mainWindow) {
     }
   })
 
-  ipcMain.handle('serial:connect', async (_event, id, config) => {  // 监听渲染进程发送的 Serial 连接请求，传入会话 ID 和连接配置
+  ipcMain.handle('serial:connect', async (event, id, config) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     if (!SerialPort) return { success: false, error: 'serialport module not available' }
 
     let enumerated
@@ -96,14 +100,16 @@ function setupSerialHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('serial:data', (_event, id, data) => {  // 监听来自渲染进程的数据，并写入串口
+  ipcMain.on('serial:data', (event, id, data) => {
+    if (!isTrustedIpcSender(event.sender)) return
     const port = serialSessions.get(id)
     if (port && port.isOpen) {
       port.write(data)
     }
   })
 
-  ipcMain.handle('serial:disconnect', async (_event, id) => {  // 监听 serial:disconnect，关闭端口并清理会话
+  ipcMain.handle('serial:disconnect', async (event, id) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const port = serialSessions.get(id)
     if (port) {
       try {

@@ -2,6 +2,7 @@ import { Client } from 'ssh2'
 import fs from 'fs'
 import path from 'path'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
+import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
 import {
   assertSftpLocalFilePathAllowed,
   assertSftpLocalDirAllowed,
@@ -103,7 +104,8 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
       }
     }
   }
-  ipcMain.handle('sftp:connect', async (_event, id, config) => {  // 监听渲染进程 sftp 连接请求
+  ipcMain.handle('sftp:connect', async (event, id, config) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     return new Promise((resolve, _reject) => {
       const conn = new Client()
 
@@ -160,7 +162,8 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:disconnect', async (_event, id) => {  // 监听渲染进程发送的 SFTP 断开连接请求
+  ipcMain.handle('sftp:disconnect', async (event, id) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (session) {
       try { session.conn.end() } catch (e) {}
@@ -169,7 +172,8 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     return { success: true }
   })
 
-  ipcMain.handle('sftp:list', async (_event, id, remotePath) => {  // 监听渲染进程发送的 SFTP 列出文件（文件夹）请求，传入会话 ID 和远程路径
+  ipcMain.handle('sftp:list', async (event, id, remotePath) => {
+    if (!isTrustedIpcSender(event.sender)) return { success: false, error: IPC_UNAUTHORIZED.error }
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
 
@@ -192,7 +196,8 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:download', async (_event, id, remotePath, localPath) => {  // 监听渲染进程发送的 SFTP 下载请求，传入会话 ID、要下载的远程服务器文件路径和本地保存路径
+  ipcMain.handle('sftp:download', async (event, id, remotePath, localPath) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     try {
@@ -219,7 +224,8 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:downloadDir', async (_event, id, remoteDir, localDir) => {  // 监听渲染进程发送的 SFTP 下载目录请求，传入会话 ID、要下载的远程服务器目录路径和本地保存目录路径
+  ipcMain.handle('sftp:downloadDir', async (event, id, remoteDir, localDir) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     try {
@@ -235,7 +241,8 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     }
   })
 
-  ipcMain.handle('sftp:upload', async (_event, id, localPath, remotePath) => {  // 监听渲染进程发送的 SFTP 上传请求，传入会话 ID、本地文件路径和远程服务器保存路径
+  ipcMain.handle('sftp:upload', async (event, id, localPath, remotePath) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     try {
@@ -262,7 +269,8 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:mkdir', async (_event, id, remotePath) => {  // 监听渲染进程发送的 SFTP 创建目录请求，传入会话 ID 和要创建的远程目录路径
+  ipcMain.handle('sftp:mkdir', async (event, id, remotePath) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     return new Promise((resolve) => {
@@ -273,7 +281,8 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:delete', async (_event, id, remotePath) => {  // 监听渲染进程发送的 SFTP 删除文件（目录）请求，传入会话 ID 和要删除的远程路径
+  ipcMain.handle('sftp:delete', async (event, id, remotePath) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     try {
@@ -284,7 +293,8 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     }
   })
 
-  ipcMain.handle('sftp:rename', async (_event, id, oldPath, newPath) => {  // 监听渲染进程发送的 SFTP 重命名请求，传入会话 ID、旧路径和新路径
+  ipcMain.handle('sftp:rename', async (event, id, oldPath, newPath) => {
+    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     return new Promise((resolve) => {
