@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, Fragment } from 'react'
 import {
   SETTINGS_SCHEMA, saveSettings, exportSettings, importSettings, DEFAULT_LOG_PATH,
   DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
@@ -27,17 +27,14 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   })
   const importRef = useRef(null)  // 和useState类似，但它返回一个可变的ref对象，其.current属性被初始化为传入的参数（initialValue）。返回的ref对象在组件的整个生命周期内保持不变，因此它不会触发重新渲染
   const importSettingsRef = useRef(null)  // 用于导入设置的文件输入引用
-  /** 定义设置界面中的标签页，每个标签页对应一个设置分类 */
+  /** 合并后的标签页：常规 / SSH 与终端 / 数据与安全（功能与原先 7 个 tab 一致） */
+  const GENERAL_SECTION_KEYS = ['操作确认', '终端行为', '日志']
   const tabs = [
-    { key: '操作确认', label: '操作确认' },
-    { key: '终端行为', label: '终端行为' },
-    { key: 'SSH/SFTP 算法', label: 'SSH/SFTP 算法' },
-    { key: '日志', label: '日志' },
-    { key: '终端输出高亮', label: '终端输出高亮' },
-    { key: '会话设置管理', label: '会话设置管理' },
-    { key: '凭据存储', label: '凭据存储' },
+    { key: 'general', label: '常规' },
+    { key: 'ssh-terminal', label: 'SSH 与终端' },
+    { key: 'data-security', label: '数据与安全' },
   ]
-  const [activeTab, setActiveTab] = useState(tabs[0].key)
+  const [activeTab, setActiveTab] = useState('general')
 
 
   /** 创建一个新的高亮规则对象，包含唯一的 ID、启用状态、是否使用正则表达式、匹配模式和颜色 */
@@ -574,13 +571,22 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
           </div>
 
           <div className="settings-tab-panels">
-            {activeTab === 'SSH/SFTP 算法' && renderAlgorithmTab()}
-            {activeTab === '凭据存储' && renderCredentialsTab()}
-            {activeTab !== '终端输出高亮' && activeTab !== '会话设置管理' && activeTab !== 'SSH/SFTP 算法' && activeTab !== '凭据存储' && (
-              renderSection(SETTINGS_SCHEMA.find(section => section.section === activeTab) || SETTINGS_SCHEMA[0])
+            {activeTab === 'general' && GENERAL_SECTION_KEYS.map((name) => {
+              const section = SETTINGS_SCHEMA.find((s) => s.section === name)
+              return section ? <Fragment key={name}>{renderSection(section)}</Fragment> : null
+            })}
+            {activeTab === 'ssh-terminal' && (
+              <>
+                {renderAlgorithmTab()}
+                {renderHighlightTab()}
+              </>
             )}
-            {activeTab === '终端输出高亮' && renderHighlightTab()}
-            {activeTab === '会话设置管理' && renderSessionTab()}
+            {activeTab === 'data-security' && (
+              <>
+                {renderSessionTab()}
+                {renderCredentialsTab()}
+              </>
+            )}
           </div>
         </div>
 
