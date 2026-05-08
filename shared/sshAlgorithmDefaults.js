@@ -1,7 +1,10 @@
 /**
- * SSH/SFTP 算法默认顺序与可选值（与 ssh2 `algorithms` 字段结构一致）。
- * 主进程连接与子进程设置 UI 共用，避免两处漂移。
+ * SSH/SFTP 算法配置（与 ssh2 `algorithms` 字段结构一致）。
+ * - DEFAULT_ALGORITHM_PREFERENCES：新建与「重置默认」使用的现代默认套件（不含已知弱算法）。
+ * - SSH_ALGORITHM_OPTION_POOL：设置界面可选的全部算法（默认项在前，遗留项在后，用户可按需勾选）。
  */
+
+/** 连接与设置的默认偏好：优先 AEAD、EtM MAC、现代 KEX/主机密钥；不含 CBC、SHA-1 HMAC、ssh-rsa、DH-group14-sha1 等 */
 export const DEFAULT_ALGORITHM_PREFERENCES = {
   kex: [  // 密钥交换算法：用于协商 SSH 连接的密钥交换算法
     'curve25519-sha256',
@@ -9,7 +12,6 @@ export const DEFAULT_ALGORITHM_PREFERENCES = {
     'ecdh-sha2-nistp256',
     'ecdh-sha2-nistp384',
     'diffie-hellman-group14-sha256',
-    'diffie-hellman-group14-sha1',
     'diffie-hellman-group-exchange-sha256',
   ],
   serverHostKey: [  // 主机密钥算法：用于验证服务器身份的主机密钥算法
@@ -18,7 +20,6 @@ export const DEFAULT_ALGORITHM_PREFERENCES = {
     'ecdsa-sha2-nistp384',
     'rsa-sha2-256',
     'rsa-sha2-512',
-    'ssh-rsa',
   ],
   cipher: [  // 加密算法：用于加密传输数据的对称加密算法
     'aes128-gcm',
@@ -26,21 +27,47 @@ export const DEFAULT_ALGORITHM_PREFERENCES = {
     'aes128-ctr',
     'aes192-ctr',
     'aes256-ctr',
-    'aes128-cbc',
-    'aes192-cbc',
-    'aes256-cbc',
-    '3des-cbc',
   ],
   hmac: [  // 消息认证码算法：用于验证 SSH 数据完整性的哈希算法
     'hmac-sha2-256-etm@openssh.com',
     'hmac-sha2-512-etm@openssh.com',
     'hmac-sha2-256',
     'hmac-sha2-512',
-    'hmac-sha1',
   ],
-  compress: [  // 压缩算法：用于压缩传输数据的压缩算法
+  compress: [  // 压缩算法：用于 SSH 连接压缩传输数据的算法
     'zlib@openssh.com',
     'zlib',
     'none',
   ],
+}
+
+/** 可与老旧 SSH 服务端兼容的遗留算法（单一数据源：选项池 = 默认 + 遗留；弱算法判定亦来源于此） */
+const LEGACY_ALGORITHMS_BY_CATEGORY = {
+  kex: ['diffie-hellman-group14-sha1'],
+  serverHostKey: ['ssh-rsa'],
+  cipher: ['aes128-cbc', 'aes192-cbc', 'aes256-cbc', '3des-cbc'],
+  hmac: ['hmac-sha1'],
+  compress: [],
+}
+
+/** 设置页可选算法全集：在默认套件之后追加遗留算法 */
+export const SSH_ALGORITHM_OPTION_POOL = Object.fromEntries(
+  Object.keys(DEFAULT_ALGORITHM_PREFERENCES).map((key) => [
+    key,
+    [...DEFAULT_ALGORITHM_PREFERENCES[key], ...(LEGACY_ALGORITHMS_BY_CATEGORY[key] || [])],
+  ])
+)
+
+/** 遗留/较弱算法分类：用于设置 UI 提示 */
+const WEAK_BY_CATEGORY = Object.fromEntries(
+  Object.entries(LEGACY_ALGORITHMS_BY_CATEGORY).map(([k, arr]) => [k, new Set(arr)])
+)
+
+/**
+ * 是否属于遗留/较弱算法（用于设置 UI 提示）
+ * @param {string} category kex | serverHostKey | cipher | hmac | compress
+ * @param {string} name 算法名
+ */
+export function isWeakSshAlgorithm(category, name) {
+  return WEAK_BY_CATEGORY[category]?.has(name) ?? false
 }

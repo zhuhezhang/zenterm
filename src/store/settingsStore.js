@@ -8,9 +8,13 @@ export const DEFAULT_LOG_PATH = (() => {
   } catch { return '' }
 })()
 
-import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
+import {
+  DEFAULT_ALGORITHM_PREFERENCES,
+  SSH_ALGORITHM_OPTION_POOL,
+  isWeakSshAlgorithm,
+} from '../../shared/sshAlgorithmDefaults.js'
 
-export { DEFAULT_ALGORITHM_PREFERENCES }
+export { DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm }
 
 /** 默认设置项 */
 export const DEFAULT_SETTINGS = {
@@ -28,26 +32,6 @@ export const DEFAULT_SETTINGS = {
   algorithmPreferences: DEFAULT_ALGORITHM_PREFERENCES,
   /** 为 true 且系统支持加密时，保存 SSH/Telnet 会话会把密码、私钥与 passphrase 等写入主进程 vault（safeStorage），不写入 localStorage */
   saveSecretsToVault: false,
-}
-
-/** 旧版四个凭据开关 */
-const LEGACY_SAVE_SECRET_KEYS = [
-  'saveSecretsSshPassword',
-  'saveSecretsSshPrivateKey',
-  'saveSecretsSshPassphrase',
-  'saveSecretsTelnetPassword',
-]
-
-/**
- * 将旧版四个凭据开关合并为 saveSecretsToVault（就地修改 saved）
- * @param {Object} saved 从 localStorage 解析出的设置对象
- */
-export function normalizeCredentialSettingsKeys(saved) {
-  if (!saved || typeof saved !== 'object') return
-  if (LEGACY_SAVE_SECRET_KEYS.some((k) => k in saved)) {
-    saved.saveSecretsToVault = LEGACY_SAVE_SECRET_KEYS.some((k) => !!saved[k])
-    for (const k of LEGACY_SAVE_SECRET_KEYS) delete saved[k]
-  }
 }
 
 /**
@@ -69,7 +53,6 @@ export function loadSettings() {
         ...saved.algorithmPreferences,
       }
     }
-    normalizeCredentialSettingsKeys(saved)
     return { ...DEFAULT_SETTINGS, ...saved }  // saved 中的值会覆盖默认设置
   } catch (e) {
     return { ...DEFAULT_SETTINGS }

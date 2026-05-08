@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import {
   SETTINGS_SCHEMA, saveSettings, exportSettings, importSettings, DEFAULT_LOG_PATH,
-  DEFAULT_ALGORITHM_PREFERENCES, normalizeCredentialSettingsKeys,
+  DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
 } from '../store/settingsStore.js'
 import { exportSessions, importSessions, saveSessions } from '../store/sessionStore.js'
 import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
@@ -20,14 +20,10 @@ import '../styles/settings.css'
  * @param {Function} props.onSave 保存设置的回调函数，参数为新的设置对象
  */
 export default function SettingsDialog({ settings, savedSessions, onUpdateSessions, onUpdatePlaceholders, onClose, onSave }) {
-  const [form, setForm] = useState(() => {
-    const merged = { ...settings }
-    normalizeCredentialSettingsKeys(merged)
-    return {
-      ...merged,
-      highlightRules: merged.highlightRules ? [...merged.highlightRules] : [],
-      algorithmPreferences: merged.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
-    }
+  const [form, setForm] = useState({
+    ...settings,
+    highlightRules: settings.highlightRules ? [...settings.highlightRules] : [],
+    algorithmPreferences: settings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
   })
   const importRef = useRef(null)  // 和useState类似，但它返回一个可变的ref对象，其.current属性被初始化为传入的参数（initialValue）。返回的ref对象在组件的整个生命周期内保持不变，因此它不会触发重新渲染
   const importSettingsRef = useRef(null)  // 用于导入设置的文件输入引用
@@ -174,7 +170,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   const renderAlgorithmTab = () => {
     const section = algorithmSections.find(item => item.key === activeAlgoSection) || algorithmSections[0]  // 获取当前选中的算法类别，如果没有则使用第一个算法类别
     const selected = form.algorithmPreferences?.[section.key] || []  // 获取当前选中的算法选项列表，如果没有则返回空数组
-    const options = DEFAULT_ALGORITHM_PREFERENCES[section.key] || []  // 获取默认的算法选项列表，如果没有则返回空数组
+    const options = SSH_ALGORITHM_OPTION_POOL[section.key] || []  // 可选全集（含遗留算法）；默认套件见 DEFAULT_ALGORITHM_PREFERENCES
     return (
       <div className="settings-section">
         <div className="settings-section-title">SSH/SFTP 算法</div>
@@ -182,7 +178,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
           <div className="settings-item">
             <div className="settings-item-info">
               <span className="settings-item-label">SSH/SFTP 算法</span>
-              <span className="settings-item-desc">选择一个算法类别，然后配置该类别下要传入 SSH/SFTP 连接的算法及优先顺序</span>
+              <span className="settings-item-desc">默认仅启用现代算法；若须连接老旧设备，可在下方勾选标记为「遗留」的算法（会降低协商强度）</span>
             </div>
             <button className="settings-action-btn" onClick={resetAlgorithmPreferences}>重置默认</button>
           </div>
@@ -219,6 +215,9 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                     onChange={() => toggleAlgorithmOption(section.key, value)}
                   />
                   <span>{value}</span>
+                  {isWeakSshAlgorithm(section.key, value) && (
+                    <span className="settings-algo-weak-badge" title="遗留或较弱算法，仅在为兼容老旧 SSH 服务端时启用">遗留</span>
+                  )}
                 </label>
                 <div className="settings-algo-actions">
                   <button
@@ -245,6 +244,9 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                     onChange={() => toggleAlgorithmOption(section.key, value)}
                   />
                   <span>{value}</span>
+                  {isWeakSshAlgorithm(section.key, value) && (
+                    <span className="settings-algo-weak-badge" title="遗留或较弱算法，仅在为兼容老旧 SSH 服务端时启用">遗留</span>
+                  )}
                 </label>
                 <div className="settings-algo-actions">
                   <button className="settings-algo-btn" type="button" disabled>↑</button>
@@ -309,7 +311,6 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     if (!file) return
     try {
       const importedSettings = await importSettings(file)
-      normalizeCredentialSettingsKeys(importedSettings)
       setForm({
         ...importedSettings,
         highlightRules: importedSettings.highlightRules ? [...importedSettings.highlightRules] : [],
