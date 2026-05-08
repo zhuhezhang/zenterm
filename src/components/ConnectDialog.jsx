@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fetchSessionSecrets } from '../store/credentialsBridge.js'
 import '../styles/dialog.css'
 
 const SSH_DEFAULT = { host: '', port: '22', username: '', password: '', privateKey: '', passphrase: '', authType: 'password', label: '', group: '', enableSftp: false }
@@ -74,6 +75,21 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
     }
   }, [tab])
 
+  /** 编辑已保存会话时从主进程 vault 拉取敏感字段合并到表单 */
+  useEffect(() => {
+    let cancelled = false
+    const sid = initialData?.savedId
+    if (!sid) return
+    void (async () => {
+      const sec = await fetchSessionSecrets(sid)
+      if (cancelled) return
+      const t = initialData.type || type || 'ssh'
+      setTab(t)
+      setForm({ ...getDefault(t, initialData), ...sec })
+    })()
+    return () => { cancelled = true }
+  }, [initialData?.savedId, initialData?.type, type])
+
   /** 
    * 更新表单数据的通用函数。接收一个键和值，使用 setForm 更新对应的表单字段，同时保留其他字段不变
    * @param {string} key 设置项的键
@@ -115,8 +131,15 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
    * @returns {boolean} 是否需要输入凭证
    */
   const needsCredentials = (config) => {
-    return (config.type === 'ssh' || config.type === 'telnet') && 
-           (!config.username?.trim() || !config.password?.trim())
+    if (config.type === 'telnet') {
+      return !config.username?.trim() || !config.password?.trim()
+    }
+    if (config.type === 'ssh') {
+      if (!config.username?.trim()) return true
+      if (config.authType === 'privateKey') return !config.privateKey?.trim()
+      return !config.password?.trim()
+    }
+    return false
   }
 
   /**
@@ -132,9 +155,11 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
 
     if (requireCreds && needsCredentials(config)) {  // 只有在 requireCreds=true 时才检查凭证（保存会话时不检查）
       setCredDialog({
-        username: config.username || '', 
+        username: config.username || '',
         password: config.password || '',
-        callback: fn 
+        privateKey: config.privateKey || '',
+        passphrase: config.passphrase || '',
+        callback: fn,
       })
       return  // 当在ssh或telnet连接界面不输入用户名连接时，由于上面setCredDialog会触发重新渲染，此时credDialog不再是null，就会渲染输入凭证组件。
     }
@@ -142,11 +167,26 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
   }
 
   if (credDialog) {  // 如果 credDialog 不为 null，则渲染凭证输入对话框，传入初始用户名、密码和连接回调函数
-    const { username, password, callback } = credDialog
+    const { username, password, privateKey, passphrase, callback } = credDialog
+    const cfg = buildConfig()
+    const keyAuth = cfg.type === 'ssh' && cfg.authType === 'privateKey'
     const hasUsername = username?.trim()
     const hasPassword = password?.trim()
+    const hasPkey = privateKey?.trim()
     const autoFocusUsername = !hasUsername
-    
+    /**
+     * 应用凭证函数。根据当前协议类型和表单数据生成一个完整的配置对象，进行必要的类型转换和默认值处理，
+     * 同时生成标签名称（如果未指定标签则根据协议和主机信息生成）。该配置对象将作为连接或保存的参数传递给回调函数，然后关闭凭证输入对话框
+     * @returns {Object} 配置对象
+     */
+    const applyCred = () => {
+      const config = keyAuth
+        ? { ...buildConfig(), username, privateKey, passphrase }
+        : { ...buildConfig(), username, password }
+      setCredDialog(null)
+      callback(config)
+    }
+
     return (
       <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && setCredDialog(null)}>
         <div className="dialog">
@@ -158,33 +198,40 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
             <FormRow label="用户名">
               <input placeholder="用户名" value={username} autoFocus={autoFocusUsername}
                 onChange={e => setCredDialog(prev => ({ ...prev, username: e.target.value }))}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    const config = { ...buildConfig(), username, password }
-                    setCredDialog(null)
-                    callback(config)
-                  }
-                }} />
+                onKeyDown={e => e.key === 'Enter' && applyCred()} />
             </FormRow>
-            <FormRow label="密码">
-              <input type="password" placeholder="密码" value={password} autoFocus={!autoFocusUsername && !hasPassword}
-                onChange={e => setCredDialog(prev => ({ ...prev, password: e.target.value }))}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    const config = { ...buildConfig(), username, password }
-                    setCredDialog(null)
-                    callback(config)
-                  }
-                }} />
-            </FormRow>
+            {keyAuth ? (
+              <>
+                <FormRow label="私钥路径">
+                  <input
+                    placeholder="/path/to/id_rsa"
+                    value={privateKey}
+                    autoFocus={hasUsername && !hasPkey}
+                    onChange={e => setCredDialog(prev => ({ ...prev, privateKey: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && applyCred()}
+                  />
+                </FormRow>
+                <FormRow label="私钥密码短语">
+                  <input
+                    type="password"
+                    placeholder="可选"
+                    value={passphrase}
+                    onChange={e => setCredDialog(prev => ({ ...prev, passphrase: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && applyCred()}
+                  />
+                </FormRow>
+              </>
+            ) : (
+              <FormRow label="密码">
+                <input type="password" placeholder="密码" value={password} autoFocus={!autoFocusUsername && !hasPassword}
+                  onChange={e => setCredDialog(prev => ({ ...prev, password: e.target.value }))}
+                  onKeyDown={e => e.key === 'Enter' && applyCred()} />
+              </FormRow>
+            )}
           </div>
           <div className="dialog-footer">
             <button className="btn-cancel" onClick={() => setCredDialog(null)}>取消</button>
-            <button className="btn-connect" onClick={() => {
-              const config = { ...buildConfig(), username, password }
-              setCredDialog(null)
-              callback(config)
-            }}>连接</button>
+            <button className="btn-connect" onClick={applyCred}>连接</button>
           </div>
         </div>
       </div>
@@ -224,9 +271,9 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
 
         <div className="dialog-footer">
           <button className="btn-cancel" onClick={onClose}>取消</button>
-          <button className="btn-save" onClick={() => act(onSaveOnly, false)}>保存会话</button>
-          <button className="btn-save-connect" onClick={() => act(onSaveAndConnect, true)}>保存并连接</button>
+          <button className="btn-save" onClick={() => act(onSaveOnly, false)}>保存</button>
           <button className="btn-connect" onClick={() => act(onConnect, true)}>直接连接</button>
+          <button className="btn-save-connect" onClick={() => act(onSaveAndConnect, true)}>保存并连接</button>
         </div>
       </div>
     </div>

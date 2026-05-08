@@ -2,6 +2,11 @@ import { Client } from 'ssh2'
 import fs from 'fs'
 import path from 'path'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
+import {
+  assertSftpLocalFilePathAllowed,
+  assertSftpLocalDirAllowed,
+  safeJoinLocalDownloadPath,
+} from '../lib/localPathPolicy.js'
 
 /** 存储所有 SFTP 会话信息的 Map */
 const sftpSessions = new Map()
@@ -72,12 +77,13 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
    * @param {string} localDir 本地保存目录路径
    */
   const downloadDirRecursive = async (session, id, remoteDir, localDir) => {
+    assertSftpLocalDirAllowed(localDir, '下载')
     fs.mkdirSync(localDir, { recursive: true })  // 确保本地目录存在（recursive可以创建多级目录）
     const list = await sftpReaddir(session, remoteDir)
     for (const item of list) {
       const name = item.filename
       const remotePath = remoteDir === '/' ? '/' + name : remoteDir + '/' + name
-      const localPath = path.join(localDir, name)
+      const localPath = safeJoinLocalDownloadPath(localDir, name, '下载')
       if (item.attrs.isDirectory()) {
         await downloadDirRecursive(session, id, remotePath, localPath)
       } else {
@@ -189,6 +195,11 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
   ipcMain.handle('sftp:download', async (_event, id, remotePath, localPath) => {  // 监听渲染进程发送的 SFTP 下载请求，传入会话 ID、要下载的远程服务器文件路径和本地保存路径
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
+    try {
+      assertSftpLocalFilePathAllowed(localPath, '下载')
+    } catch (e) {
+      return { success: false, error: e.message }
+    }
 
     return new Promise((resolve) => {
       session.sftp.fastGet(remotePath, localPath, {  // 调用 fastGet 开始下载远程文件到本地路径
@@ -212,6 +223,11 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     try {
+      assertSftpLocalDirAllowed(localDir, '下载')
+    } catch (e) {
+      return { success: false, error: e.message }
+    }
+    try {
       await downloadDirRecursive(session, id, remoteDir, localDir)  // 递归下载远程服务器目录到本地目录
       return { success: true }
     } catch (e) {
@@ -222,6 +238,11 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
   ipcMain.handle('sftp:upload', async (_event, id, localPath, remotePath) => {  // 监听渲染进程发送的 SFTP 上传请求，传入会话 ID、本地文件路径和远程服务器保存路径
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
+    try {
+      assertSftpLocalFilePathAllowed(localPath, '上传')
+    } catch (e) {
+      return { success: false, error: e.message }
+    }
 
     return new Promise((resolve) => {
       session.sftp.fastPut(localPath, remotePath, {

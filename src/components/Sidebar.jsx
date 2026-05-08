@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { duplicateSavedSession, addGroupPlaceholder, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
+import { addGroupPlaceholder, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
 import SftpPanel from './SftpPanel.jsx'
 import ConnectionTypeIcon from './common.jsx'
 import '../styles/sidebar.css'
@@ -93,6 +93,7 @@ function buildTree(savedSessions, groupPlaceholders) {
  * @param {function} props.onConnectSaved 连接会话的回调函数
  * @param {function} props.onDeleteSaved 删除会话的回调函数
  * @param {function} props.onUpdateSessions 更新会话的回调函数
+ * @param {function} props.onDuplicateSaved 复制已保存会话（含主进程加密凭据）的回调，参数为 savedId
  * @param {object|null} props.activeSession 当前活动会话对象（用于 SFTP 面板）
  * @param {object} props.settings 设置
  * @param {function} props.onOpenSettings 打开设置界面的回调函数
@@ -103,8 +104,9 @@ function buildTree(savedSessions, groupPlaceholders) {
  */
 export default function Sidebar(props) {
   const {
-    open, onToggle, savedSessions, onNewSession, onConnectSaved, onDeleteSaved, onUpdateSessions, activeSession,
-    settings, onOpenSettings, style, groupPlaceholders = [], onUpdatePlaceholders,
+    open, onToggle, savedSessions, onNewSession, onConnectSaved, onDeleteSaved, onUpdateSessions,
+    onDuplicateSaved = () => {},
+    activeSession, settings, onOpenSettings, style, groupPlaceholders = [], onUpdatePlaceholders,
   } = props
 
   const [expanded, setExpanded] = useState({})  // 展开状态，key 是分组路径，value 是是否展开
@@ -294,7 +296,7 @@ export default function Sidebar(props) {
    * 复制会话
    * @param {string} id 要复制的会话 ID
    */
-  const dupSession = (id) => onUpdateSessions(duplicateSavedSession(savedSessions, id))
+  const dupSession = (id) => onDuplicateSaved(id)
 
   /** 
    * 重命名会话

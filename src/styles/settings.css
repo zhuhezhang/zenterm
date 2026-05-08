@@ -2,6 +2,14 @@
   width: 500px;
 }
 
+.settings-credentials-intro {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  margin: 0 0 14px 0;
+  padding: 0 24px;
+}
+
 .settings-path-col {
   display: flex;
   flex-direction: column;
@@ -339,7 +347,7 @@
 /* 与新建连接对话框共用 .dialog-tabs / .dialog-tab；此处仅补充设置页内边距与多 tab 横向滚动 */
 .settings-dialog-tabs {
   flex: none;
-  padding: 0 24px 8px;
+  padding: 0 16px 8px;
   overflow-x: auto;
   white-space: nowrap;
   scrollbar-width: thin;

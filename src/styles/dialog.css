@@ -153,7 +153,7 @@
 }
 .btn-save:hover { background: var(--bg-hover); color: var(--green); border-color: var(--green); }
 
-.btn-save-connect {
+.btn-connect {
   padding: 6px 14px;
   border-radius: var(--radius-sm);
   font-size: 12px;
@@ -164,9 +164,26 @@
   transition: background 0.15s, box-shadow 0.15s;
   cursor: pointer;
 }
-.btn-save-connect:hover { background: rgba(63,185,80,0.2); box-shadow: 0 0 8px rgba(63,185,80,0.3); }
+.btn-connect:hover { background: rgba(63,185,80,0.2); box-shadow: 0 0 8px rgba(63,185,80,0.3); }
+.btn-connect:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.btn-connect:disabled:hover { background: rgba(63,185,80,0.1); }
 
-.btn-connect {
+.cred-dialog-hint {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  margin: 10px 0 0 0;
+  padding: 8px 10px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.btn-save-connect {
   padding: 6px 16px;
   border-radius: var(--radius-sm);
   font-size: 12px;
@@ -177,7 +194,7 @@
   transition: background 0.15s, box-shadow 0.15s;
   cursor: pointer;
 }
-.btn-connect:hover { background: var(--accent-hover); box-shadow: 0 0 12px rgba(88,166,255,0.4); }
+.btn-save-connect:hover { background: var(--accent-hover); box-shadow: 0 0 12px rgba(88,166,255,0.4); }
 
 .dialog-divider {
   height: 1px;

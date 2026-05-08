@@ -4,6 +4,15 @@ contextBridge.exposeInMainWorld('zterm', {  // 在渲染进程中通过window.zt
   getDownloadsPath: () => ipcRenderer.sendSync('app:getDownloadsPath'),  // 同步调用主进程获取下载目录路径
   chooseDirectory: () => ipcRenderer.invoke('app:chooseDirectory'),  // 弹出目录选择框，返回选中的目录路径（异步）
 
+  credentials: {  // 凭据 API
+    isAvailable: () => ipcRenderer.invoke('credentials:isAvailable'),  // 检查系统是否支持加密存储
+    get: (savedId) => ipcRenderer.invoke('credentials:get', savedId),  // 获取指定会话的凭据
+    sync: (savedId, partial) => ipcRenderer.invoke('credentials:sync', savedId, partial),  // 同步会话凭据到加密存储
+    remove: (savedId) => ipcRenderer.invoke('credentials:remove', savedId),  // 删除指定会话的凭据
+    duplicate: (fromId, toId) => ipcRenderer.invoke('credentials:duplicate', fromId, toId),  // 复制指定会话的凭据到另一个会话
+    clearAll: () => ipcRenderer.invoke('credentials:clearAll'),  // 清除所有会话的凭据
+  },
+
   log: {  // 日志写入
     write: (logDir, sessionId, data) => ipcRenderer.send('log:write', logDir, sessionId, data),
   },

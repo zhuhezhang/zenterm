@@ -7,9 +7,17 @@ import ConnectDialog from './components/ConnectDialog.jsx'
 import SettingsDialog from './components/SettingsDialog.jsx'
 import ConnectionTypeIcon from './components/common.jsx'
 import {
-  loadSavedSessions, addSavedSession, removeSavedSession, saveSessions, getGroups,
+  loadSavedSessions, addSavedSession, removeSavedSession, duplicateSavedSession, saveSessions, getGroups,
   loadGroupPlaceholders, saveGroupPlaceholders, addGroupPlaceholder, prunePlaceholdersForOccupiedGroups
 } from './store/sessionStore.js'
+import {
+  syncSessionSecretsToVault,
+  resolveAffectedSavedId,
+  mergeSessionWithVaultSecrets,
+  removeVaultEntry,
+  duplicateVaultEntry,
+  reapplyVaultPoliciesForAllSessions,
+} from './store/credentialsBridge.js'
 import { loadSettings } from './store/settingsStore.js'
 import './styles/app.css'
 
@@ -223,7 +231,7 @@ export default function App() {
    * 仅保存会话（编辑/新建）：若 initialData 有 savedId，则编辑该会话；否则新建。同时检查是否需要添加占位分组
    * @param {Object} c 会话配置对象
    */
-  const handleSaveOnly = useCallback((c) => {
+  const handleSaveOnly = useCallback(async (c) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
     const before = dialogInitial?.savedId
       ? savedSessions.find(s => s.savedId === dialogInitial.savedId)
@@ -231,14 +239,17 @@ export default function App() {
     const next = addSavedSession(savedSessions, config)
     const vacated = vacatedGroupPathIfEmpty(before, config, next)
     updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
+    const sid = resolveAffectedSavedId(savedSessions, next, config)
+    const r = await syncSessionSecretsToVault(sid, config, settings)
+    if (!r.ok && r.error) alert(r.error)
     setShowDialog(false)
-  }, [savedSessions, updateSaved, dialogInitial])
+  }, [savedSessions, updateSaved, dialogInitial, settings])
 
   /**
    * 保存并连接：先保存会话配置（编辑/新建），然后启动会话。同时检查是否需要添加占位分组
    * @param {Object} c 会话配置对象
    */
-  const handleSaveAndConn = useCallback((c) => {
+  const handleSaveAndConn = useCallback(async (c) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
     const before = dialogInitial?.savedId
       ? savedSessions.find(s => s.savedId === dialogInitial.savedId)
@@ -246,32 +257,93 @@ export default function App() {
     const next = addSavedSession(savedSessions, config)
     const vacated = vacatedGroupPathIfEmpty(before, config, next)
     updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
+    const sid = resolveAffectedSavedId(savedSessions, next, config)
+    const r = await syncSessionSecretsToVault(sid, config, settings)
+    if (!r.ok && r.error) alert(r.error)
     launchSession(c)
     setShowDialog(false)
-  }, [savedSessions, updateSaved, launchSession, dialogInitial])
+  }, [savedSessions, updateSaved, launchSession, dialogInitial, settings])
 
   /**
    * 直接连接：不保存会话配置，直接启动会话
    * @param {Object} c 会话配置对象
    */
   const handleConnect = useCallback((c) => { launchSession(c); setShowDialog(false) }, [launchSession])
-  const [credDialogState, setCredDialogState] = useState(null)  // 凭证对话框状态，包含 session、username、password 和 callback 属性，用于在连接已保存会话时弹出输入凭证的对话框
-  
+  const [credDialogState, setCredDialogState] = useState(null)  // 凭证对话框：已合并 vault 的 session + 表单初值（无 callback，由下方专用 handler 处理）
+
+  /**
+   * 凭证对话框「保存并连接」：更新已保存会话；仅当 saveSecretsToVault 为 true 时把密码/私钥等写入加密库
+   * @param {Object} config 含 savedId 的完整连接配置
+   */
+  const handleCredentialSaveAndConnect = useCallback(async (config) => {
+    if (!config?.savedId) {
+      launchSession(config)
+      return
+    }
+    const before = savedSessions.find((s) => s.savedId === config.savedId)
+    const next = addSavedSession(savedSessions, config)
+    const vacated = vacatedGroupPathIfEmpty(before, config, next)
+    updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
+    // 与「保存会话」一致：始终按当前设置同步 vault；仅 saveSecretsToVault 为 true 时才会把本次敏感字段写入加密库，否则写入 null 并清除该会话在库中的旧凭据
+    const r = await syncSessionSecretsToVault(config.savedId, config, settings)
+    if (!r.ok && r.error) alert(r.error)
+    launchSession(config)
+  }, [savedSessions, updateSaved, settings, launchSession])
+
   /**
    * 连接已保存会话：如果是 SSH/Telnet 且缺少用户名或密码，弹出凭证对话框；否则直接启动会话
    * @param {Object} s 会话配置对象
    */
   const handleConnSaved = useCallback((s) => {
-    if ((s.type === 'ssh' || s.type === 'telnet') && (!s.username?.trim() || !s.password?.trim())) {
-      setCredDialogState({
-        session: s,
-        username: s.username || '',
-        password: s.password || '',
-        callback: (config) => launchSession(config)
-      })
-      return
-    }
-    launchSession(s)
+    void (async () => {
+      const merged = await mergeSessionWithVaultSecrets(s)
+      if (merged.type === 'telnet') {
+        if (!merged.username?.trim() || !merged.password?.trim()) {
+          setCredDialogState({
+            session: merged,
+            username: merged.username || '',
+            password: merged.password || '',
+          })
+          return
+        }
+        launchSession(merged)
+        return
+      }
+      if (merged.type === 'ssh') {
+        if (!merged.username?.trim()) {
+          setCredDialogState({
+            session: merged,
+            username: merged.username || '',
+            password: merged.password || '',
+            privateKey: merged.privateKey || '',
+            passphrase: merged.passphrase || '',
+          })
+          return
+        }
+        if (merged.authType === 'privateKey') {
+          if (!merged.privateKey?.trim()) {
+            setCredDialogState({
+              session: merged,
+              username: merged.username || '',
+              password: merged.password || '',
+              privateKey: merged.privateKey || '',
+              passphrase: merged.passphrase || '',
+            })
+            return
+          }
+        } else if (!merged.password?.trim()) {
+          setCredDialogState({
+            session: merged,
+            username: merged.username || '',
+            password: merged.password || '',
+            privateKey: merged.privateKey || '',
+            passphrase: merged.passphrase || '',
+          })
+          return
+        }
+        launchSession(merged)
+      }
+    })()
   }, [launchSession])
 
   /**
@@ -280,6 +352,7 @@ export default function App() {
    */
   const handleDelSaved = useCallback((id) => {
     const deleted = savedSessions.find(s => s.savedId === id)
+    void removeVaultEntry(id)
     const next = removeSavedSession(savedSessions, id)
     const g = deleted?.group
     const emptyGroup =
@@ -295,6 +368,18 @@ export default function App() {
       return p
     })
   }, [savedSessions])
+
+  /**
+   * 处理标签页重新排序：接收拖动的会话 ID 和目标位置的会话 ID，更新 sessions 顺序
+   * @param {string} fromId 被拖动的会话 ID
+   * @param {string} toId 目标位置的会话 ID
+   */
+  const handleDuplicateSaved = useCallback(async (savedId) => {
+    const next = duplicateSavedSession(savedSessions, savedId)
+    const added = next.find((s) => !savedSessions.some((o) => o.savedId === s.savedId))
+    if (added?.savedId) await duplicateVaultEntry(savedId, added.savedId)
+    updateSaved(next)
+  }, [savedSessions, updateSaved])
 
   /**
    * 处理标签页重新排序：接收拖动的会话 ID 和目标位置的会话 ID，更新 sessions 顺序
@@ -325,6 +410,7 @@ export default function App() {
           onConnectSaved={handleConnSaved}
           onDeleteSaved={handleDelSaved}
           onUpdateSessions={updateSaved}
+          onDuplicateSaved={handleDuplicateSaved}
           groupPlaceholders={groupPlaceholders}
           onUpdatePlaceholders={updatePlaceholders}
           activeSession={activeSession}
@@ -357,18 +443,46 @@ export default function App() {
       </div>
 
       {showDialog && (
-        <ConnectDialog type={dialogType} initialData={dialogInitial} savedGroups={savedGroups}
-          onConnect={handleConnect} onSaveAndConnect={handleSaveAndConn}
-          onSaveOnly={handleSaveOnly}  onClose={() => setShowDialog(false)}/>
+        <ConnectDialog
+          key={`${dialogType}-${dialogInitial?.savedId || 'new'}`}
+          type={dialogType}
+          initialData={dialogInitial}
+          savedGroups={savedGroups}
+          onConnect={handleConnect}
+          onSaveAndConnect={handleSaveAndConn}
+          onSaveOnly={handleSaveOnly}
+          onClose={() => setShowDialog(false)}
+        />
       )}
       {credDialogState && (
         <CredentialDialog
           username={credDialogState.username}
           password={credDialogState.password}
-          onConnect={(username, password) => {
-            const config = { ...credDialogState.session, username, password }
+          privateKey={credDialogState.privateKey}
+          passphrase={credDialogState.passphrase}
+          session={credDialogState.session}
+          saveSecretsToVault={!!settings.saveSecretsToVault}
+          onConnect={(username, password, privateKey, passphrase) => {
+            const config = {
+              ...credDialogState.session,
+              username,
+              password,
+              privateKey: privateKey ?? credDialogState.session.privateKey,
+              passphrase: passphrase ?? credDialogState.session.passphrase,
+            }
             setCredDialogState(null)
-            credDialogState.callback(config)
+            launchSession(config)
+          }}
+          onSaveAndConnect={async (username, password, privateKey, passphrase) => {
+            const config = {
+              ...credDialogState.session,
+              username,
+              password,
+              privateKey: privateKey ?? credDialogState.session.privateKey,
+              passphrase: passphrase ?? credDialogState.session.passphrase,
+            }
+            setCredDialogState(null)
+            await handleCredentialSaveAndConnect(config)
           }}
           onClose={() => setCredDialogState(null)}
         />
@@ -380,7 +494,10 @@ export default function App() {
           onUpdateSessions={updateSaved}
           onUpdatePlaceholders={(ph) => { setGroupPlaceholders(ph); saveGroupPlaceholders(ph) }}
           onClose={() => setShowSettings(false)}
-          onSave={(s) => setSettings(s)}
+          onSave={(s) => {
+            setSettings(s)
+            void reapplyVaultPoliciesForAllSessions(savedSessions, s)
+          }}
         />
       )}
     </div>
@@ -415,22 +532,30 @@ function WelcomeScreen({ onNewSession }) {
 }
 
 /**
- * 凭证输入对话框组件
- * 在连接已保存会话时，如果缺少用户名或密码，弹出该对话框让用户输入凭证
- * @param {string} username 初始用户名
- * @param {string} password 初始密码
- * @param {Function} onConnect 连接的回调函数，参数为包含用户名和密码的配置对象
- * @param {Function} onClose 关闭对话框的回调函数
+ * 连接已保存会话时补充缺失的认证信息（用户名、密码或私钥路径等）
+ * @param {boolean} saveSecretsToVault 设置中是否开启「保存敏感凭据到加密存储」
+ * @param {Function} onConnect 仅连接，不把本次输入的敏感信息写入加密库
+ * @param {Function} onSaveAndConnect 更新已保存会话并连接；仅当 saveSecretsToVault 为 true 时由上层把敏感信息写入 vault
  */
-function CredentialDialog({ username, password, onConnect, onClose }) {
-  const [user, setUser] = useState(username)
-  const [pass, setPass] = useState(password)
+function CredentialDialog({
+  username, password, privateKey, passphrase, session,
+  saveSecretsToVault, onConnect, onSaveAndConnect, onClose,
+}) {
+  const [user, setUser] = useState(username || '')
+  const [pass, setPass] = useState(password || '')
+  const [pkey, setPkey] = useState(privateKey || '')
+  const [pphrase, setPphrase] = useState(passphrase || '')
+  const keyAuth = session?.authType === 'privateKey'
   const hasUser = user?.trim()
   const hasPass = pass?.trim()
+  const hasPkey = pkey?.trim()
   const autoFocusUser = !hasUser
-  
+  const canSave = !!session?.savedId
+  const submitConnect = () => onConnect(user, pass, pkey, pphrase)
+  const submitSaveAndConnect = () => void onSaveAndConnect(user, pass, pkey, pphrase)
+
   return (
-    <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && onClose()}>  {/* e.target：实际点击的元素; e.currentTarget：事件绑定的元素（这里是整个 dialog-overlay），当点击“遮罩层”时关闭对话框 */}
+    <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="dialog">
         <div className="dialog-header">
           <div className="dialog-tabs">输入凭证</div>
@@ -440,31 +565,69 @@ function CredentialDialog({ username, password, onConnect, onClose }) {
           <div className="form-row">
             <label className="form-label">用户名</label>
             <div className="form-control">
-              <input placeholder="用户名" value={user} autoFocus={autoFocusUser/* 当没有用户名时自动聚焦用户名输入框 */}
+              <input
+                placeholder="用户名"
+                value={user}
+                autoFocus={autoFocusUser}
                 onChange={e => setUser(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    onConnect(user, pass)
-                  }
-                }} />
+                onKeyDown={e => e.key === 'Enter' && submitSaveAndConnect()}
+              />
             </div>
           </div>
-          <div className="form-row">
-            <label className="form-label">密码</label>
-            <div className="form-control">
-              <input type="password" placeholder="密码" value={pass} autoFocus={!autoFocusUser && !hasPass}
-                onChange={e => setPass(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    onConnect(user, pass)
-                  }
-                }} />
+          {keyAuth ? (
+            <>
+              <div className="form-row">
+                <label className="form-label">私钥路径</label>
+                <div className="form-control">
+                  <input
+                    placeholder="/path/to/id_rsa"
+                    value={pkey}
+                    autoFocus={hasUser && !hasPkey}
+                    onChange={e => setPkey(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && submitSaveAndConnect()}
+                  />
+                </div>
+              </div>
+              <div className="form-row">
+                <label className="form-label">私钥密码短语</label>
+                <div className="form-control">
+                  <input
+                    type="password"
+                    placeholder="可选"
+                    value={pphrase}
+                    onChange={e => setPphrase(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && submitSaveAndConnect()}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="form-row">
+              <label className="form-label">密码</label>
+              <div className="form-control">
+                <input
+                  type="password"
+                  placeholder="密码"
+                  value={pass}
+                  autoFocus={!autoFocusUser && !hasPass}
+                  onChange={e => setPass(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && submitSaveAndConnect()}
+                />
+              </div>
             </div>
-          </div>
+          )}
+          {canSave && (
+            <p className="cred-dialog-hint">
+              {saveSecretsToVault
+                ? '「保存并连接」会将用户名和敏感信息写入加密存储（与设置中的「保存敏感凭据到加密存储」一致）。「连接」不写库。'
+                : '当前未开启「保存敏感凭据到加密存储」。「保存并连接」仅更新已保存会话中的用户名；「连接」不写库。'}
+            </p>
+          )}
         </div>
         <div className="dialog-footer">
-          <button className="btn-cancel" onClick={onClose}>取消</button>
-          <button className="btn-connect" onClick={() => onConnect(user, pass)}>连接</button>
+          <button type="button" className="btn-cancel" onClick={onClose}>取消</button>
+          <button type="button" className="btn-connect" onClick={submitConnect}>连接</button>
+          <button type="button" className="btn-save-connect" disabled={!canSave} onClick={submitSaveAndConnect} title={canSave ? '' : '非已保存会话'}>保存并连接</button>
         </div>
       </div>
     </div>

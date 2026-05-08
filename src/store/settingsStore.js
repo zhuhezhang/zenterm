@@ -26,6 +26,28 @@ export const DEFAULT_SETTINGS = {
     { id: 'success', enabled: true,  useRegex: true, pattern: 'success|connected|ready|ok',    color: '#4ade80' },
   ],
   algorithmPreferences: DEFAULT_ALGORITHM_PREFERENCES,
+  /** 为 true 且系统支持加密时，保存 SSH/Telnet 会话会把密码、私钥与 passphrase 等写入主进程 vault（safeStorage），不写入 localStorage */
+  saveSecretsToVault: false,
+}
+
+/** 旧版四个凭据开关 */
+const LEGACY_SAVE_SECRET_KEYS = [
+  'saveSecretsSshPassword',
+  'saveSecretsSshPrivateKey',
+  'saveSecretsSshPassphrase',
+  'saveSecretsTelnetPassword',
+]
+
+/**
+ * 将旧版四个凭据开关合并为 saveSecretsToVault（就地修改 saved）
+ * @param {Object} saved 从 localStorage 解析出的设置对象
+ */
+export function normalizeCredentialSettingsKeys(saved) {
+  if (!saved || typeof saved !== 'object') return
+  if (LEGACY_SAVE_SECRET_KEYS.some((k) => k in saved)) {
+    saved.saveSecretsToVault = LEGACY_SAVE_SECRET_KEYS.some((k) => !!saved[k])
+    for (const k of LEGACY_SAVE_SECRET_KEYS) delete saved[k]
+  }
 }
 
 /**
@@ -47,6 +69,7 @@ export function loadSettings() {
         ...saved.algorithmPreferences,
       }
     }
+    normalizeCredentialSettingsKeys(saved)
     return { ...DEFAULT_SETTINGS, ...saved }  // saved 中的值会覆盖默认设置
   } catch (e) {
     return { ...DEFAULT_SETTINGS }
@@ -132,7 +155,7 @@ export const SETTINGS_SCHEMA = [
     section: '日志',
     items: [
       { key: 'enableLogging', label: '开启终端 I/O 日志', type: 'boolean', desc: '将每个会话的输入输出记录到独立日志文件' },
-      { key: 'logPath',       label: '日志保存目录',      type: 'path',    desc: '留空则保存至系统下载目录，每个会话一个 .log 文件' },
+      { key: 'logPath',       label: '日志保存目录',      type: 'path',    desc: '留空则保存至系统下载目录。须选主目录/文稿/下载/桌面等用户目录下路径，否则写入会被主进程拒绝' },
     ]
   },
 ]

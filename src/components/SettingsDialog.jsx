@@ -1,6 +1,10 @@
 import { useState, useRef } from 'react'
-import { SETTINGS_SCHEMA, saveSettings, exportSettings, importSettings, DEFAULT_LOG_PATH, DEFAULT_ALGORITHM_PREFERENCES } from '../store/settingsStore.js'
+import {
+  SETTINGS_SCHEMA, saveSettings, exportSettings, importSettings, DEFAULT_LOG_PATH,
+  DEFAULT_ALGORITHM_PREFERENCES, normalizeCredentialSettingsKeys,
+} from '../store/settingsStore.js'
 import { exportSessions, importSessions, saveSessions } from '../store/sessionStore.js'
+import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import '../styles/dialog.css'
 import '../styles/settings.css'
 
@@ -16,10 +20,14 @@ import '../styles/settings.css'
  * @param {Function} props.onSave 保存设置的回调函数，参数为新的设置对象
  */
 export default function SettingsDialog({ settings, savedSessions, onUpdateSessions, onUpdatePlaceholders, onClose, onSave }) {
-  const [form, setForm] = useState({
-    ...settings,
-    highlightRules: settings.highlightRules ? [...settings.highlightRules] : [],
-    algorithmPreferences: settings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
+  const [form, setForm] = useState(() => {
+    const merged = { ...settings }
+    normalizeCredentialSettingsKeys(merged)
+    return {
+      ...merged,
+      highlightRules: merged.highlightRules ? [...merged.highlightRules] : [],
+      algorithmPreferences: merged.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
+    }
   })
   const importRef = useRef(null)  // 和useState类似，但它返回一个可变的ref对象，其.current属性被初始化为传入的参数（initialValue）。返回的ref对象在组件的整个生命周期内保持不变，因此它不会触发重新渲染
   const importSettingsRef = useRef(null)  // 用于导入设置的文件输入引用
@@ -31,6 +39,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     { key: '日志', label: '日志' },
     { key: '终端输出高亮', label: '终端输出高亮' },
     { key: '会话设置管理', label: '会话设置管理' },
+    { key: '凭据存储', label: '凭据存储' },
   ]
   const [activeTab, setActiveTab] = useState(tabs[0].key)
 
@@ -269,11 +278,13 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   const handleImport = async (e) => {
     const file = e.target.files[0]; if (!file) return
     try {
+      const beforeCount = savedSessions.length
       const imported = await importSessions(file)
       const merged = [...savedSessions]
       imported.forEach(s => { if (!merged.find(m => m.savedId === s.savedId) && !merged.find(m => m.label === s.label)) merged.push(s) })
-      onUpdateSessions(merged)
-      alert(`已导入 ${merged.length - savedSessions.length} 个新会话，相同 ID 或名称的会话已被忽略`)
+      const sanitized = await absorbPlaintextSecretsFromImportedSessions(merged)
+      onUpdateSessions(sanitized)
+      alert(`已导入 ${sanitized.length - beforeCount} 个新会话，相同 ID 或名称的会话已被忽略`)
     } catch (err) { alert('导入失败：' + err.message) }
     e.target.value = ''
   }
@@ -282,6 +293,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   const handleClearAll = () => {
     if (!confirm('确定要清除所有保存的会话和分组吗？\n此操作不可恢复！')) return
     if (!confirm('再次确认：将删除全部会话数据，确定继续？')) return
+    void clearAllVaultEntries()
     onUpdateSessions([])
     saveSessions([])
     onUpdatePlaceholders?.([])  // 同时清除所有分组占位符
@@ -297,6 +309,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     if (!file) return
     try {
       const importedSettings = await importSettings(file)
+      normalizeCredentialSettingsKeys(importedSettings)
       setForm({
         ...importedSettings,
         highlightRules: importedSettings.highlightRules ? [...importedSettings.highlightRules] : [],
@@ -444,7 +457,51 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     </div>
   )
 
-  /** 渲染会话管理标签页的内容，提供导出、导入和清除会话的功能，允许用户备份和恢复会话数据，以及清空所有会话数据 */
+  /** 清空主进程加密库中的全部敏感凭据（不删除已保存会话条目） */
+  const handleClearAllVaultSecrets = async () => {
+    if (!confirm('确定清空全部已加密保存的敏感信息？\n已保存的会话列表仍会保留，但 SSH/Telnet 的密码、私钥与 passphrase 需重新输入或重新保存。')) return
+    if (!confirm('再次确认：此操作不可恢复。')) return
+    try {
+      await clearAllVaultEntries()
+      alert('已清空全部敏感信息')
+    } catch (e) {
+      alert('清空失败：' + (e?.message || String(e)))
+    }
+  }
+
+  /** 凭据存储：单一总开关 + 清空加密库 */
+  const renderCredentialsTab = () => (
+    <div className="settings-section">
+      <div className="settings-section-title">凭据存储</div>
+      <p className="settings-credentials-intro">
+        开启后，保存 SSH/Telnet 会话时会把密码、私钥路径或 PEM、私钥 passphrase 等一并写入系统加密存储。
+        关闭并保存设置后，会按会话从加密库中移除这些字段；若系统不支持加密，保存会话时会提示且不会把明文写入磁盘。
+      </p>
+      <div className="settings-items">
+        <div className="settings-item">
+          <div className="settings-item-info">
+            <span className="settings-item-label">保存敏感凭据到加密存储</span>
+            <span className="settings-item-desc">涵盖 SSH 密码、私钥与 passphrase、Telnet 密码（Telnet 传输本身非加密，请仅在可信网络使用）</span>
+          </div>
+          <button
+            type="button"
+            className={`settings-toggle ${form.saveSecretsToVault ? 'on' : 'off'}`}
+            onClick={() => set('saveSecretsToVault', !form.saveSecretsToVault)}
+          >
+            <span className="settings-toggle-knob" />
+          </button>
+        </div>
+        <div className="settings-item">
+          <div className="settings-item-info">
+            <span className="settings-item-label">清空全部已保存的敏感信息</span>
+            <span className="settings-item-desc">立即删除加密库中所有凭据；不影响会话列表与本地设置</span>
+          </div>
+          <button type="button" className="settings-action-btn danger" onClick={handleClearAllVaultSecrets}>清空</button>
+        </div>
+      </div>
+    </div>
+  )
+
   const renderSessionTab = () => (
     <div className="settings-section">
       <div className="settings-section-title">会话管理</div>
@@ -517,7 +574,8 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
           <div className="settings-tab-panels">
             {activeTab === 'SSH/SFTP 算法' && renderAlgorithmTab()}
-            {activeTab !== '终端输出高亮' && activeTab !== '会话设置管理' && activeTab !== 'SSH/SFTP 算法' && (
+            {activeTab === '凭据存储' && renderCredentialsTab()}
+            {activeTab !== '终端输出高亮' && activeTab !== '会话设置管理' && activeTab !== 'SSH/SFTP 算法' && activeTab !== '凭据存储' && (
               renderSection(SETTINGS_SCHEMA.find(section => section.section === activeTab) || SETTINGS_SCHEMA[0])
             )}
             {activeTab === '终端输出高亮' && renderHighlightTab()}
@@ -528,7 +586,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
         <div className="dialog-footer">
           <button type="button" className="btn-cancel" onClick={onClose}>取消</button>
           <button type="button" className="btn-save" onClick={handleSave}>保存</button>
-          <button type="button" className="btn-connect" onClick={handleSaveAndClose}>保存并关闭</button>
+          <button type="button" className="btn-save-connect" onClick={handleSaveAndClose}>保存并关闭</button>
         </div>
       </div>
     </div>

@@ -6,6 +6,8 @@ import { setupSSHHandlers } from './handlers/ssh.js'
 import { setupSFTPHandlers } from './handlers/sftp.js'
 import { setupTelnetHandlers } from './handlers/telnet.js'
 import { setupSerialHandlers } from './handlers/serial.js'
+import { setupCredentialHandlers } from './handlers/credentials.js'
+import { assertLogWriteDirectoryAllowed } from './lib/localPathPolicy.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -71,6 +73,7 @@ function createWindow() {
   ipcMain.on('log:write', (_e, logDir, logFileName, data) => {  // 日志写入：参数为日志路径、日志文件名、日志内容
     try {
       if (!logDir) return
+      assertLogWriteDirectoryAllowed(logDir)
       fs.mkdirSync(logDir, { recursive: true })  // 确保日志目录存在（recursive可以创建多级目录）
       const safeFileName = String(logFileName).replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '_').trim() || 'session'  // 只过滤真正的文件名非法字符，保留汉字等 Unicode 字符
       const filePath = path.join(logDir, `${safeFileName}.log`)
@@ -87,6 +90,7 @@ app.whenReady().then(async () => {
   setupSFTPHandlers(ipcMain, mainWindow)
   setupTelnetHandlers(ipcMain, mainWindow)
   setupSerialHandlers(ipcMain, mainWindow)
+  setupCredentialHandlers(ipcMain)
 
   app.on('activate', () => {  // macOS 机制：点击 Dock 图标时若无窗口则重新创建窗口
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
