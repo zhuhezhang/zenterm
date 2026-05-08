@@ -56,8 +56,7 @@
       "shared/**/*"
     ],
     "win": {
-      "target": ["nsis", "portable", "zip"],
-      "sign": false
+      "target": ["nsis", "portable", "zip"]
     },
     "nsis": {
       "oneClick": false,
