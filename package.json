@@ -6,6 +6,7 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev:silent": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron:silent\"",
     "build": "vite build && electron-builder",
     "build:win": "vite build && electron-builder --win",
     "build:win:x64": "vite build && electron-builder --win --x64",
@@ -21,7 +22,8 @@
     "vite": "vite",
     "electron": "electron .",
     "dev:renderer": "vite",
-    "dev:electron": "wait-on tcp:5173 && nodemon --watch electron --ext js,json --exec \"electron .\""
+    "dev:electron": "wait-on tcp:5173 && nodemon --watch electron --ext js,json --exec \"electron .\"",
+    "dev:electron:silent": "wait-on tcp:5173 && nodemon --watch electron --ext js,json --exec \"cross-env ELECTRON_DISABLE_SECURITY_WARNINGS=1 electron .\""
   },
   "dependencies": {
     "serialport": "^12.0.0",
@@ -33,12 +35,13 @@
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
     "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1",
     "electron-devtools-installer": "^4.0.0",
-    "react-devtools": "^7.0.1",
     "nodemon": "^3.1.14",
     "react": "^18.2.0",
+    "react-devtools": "^7.0.1",
     "react-dom": "^18.2.0",
     "vite": "^5.0.8",
     "wait-on": "^7.2.0"
@@ -55,7 +58,11 @@
       "shared/**/*"
     ],
     "win": {
-      "target": ["nsis", "portable", "zip"]
+      "target": [
+        "nsis",
+        "portable",
+        "zip"
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -64,11 +71,18 @@
       "allowToChangeInstallationDirectory": true
     },
     "linux": {
-      "target": ["AppImage", "deb", "tar.gz"],
+      "target": [
+        "AppImage",
+        "deb",
+        "tar.gz"
+      ],
       "category": "Utility"
     },
     "mac": {
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     },
     "dmg": {
       "contents": [
@@ -89,7 +103,10 @@
   "author": {
     "name": "zhuhezhang",
     "email": "zhuhezhang@qq.com",
-    "url": ["https://github.com/zhuhezhang", "https://gitee.com/zhuhezhang"]
+    "url": [
+      "https://github.com/zhuhezhang",
+      "https://gitee.com/zhuhezhang"
+    ]
   },
   "license": "MIT"
 }
