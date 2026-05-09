@@ -17,6 +17,7 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged  // 兼容开发环境和生产环境的判断(通过环境变量和是否打包判读)
+// const isDev = false  // 强制生产环境用于测试
 let mainWindow
 
 /** 创建主窗口，设置窗口属性和事件处理 */
@@ -36,6 +37,7 @@ function createWindow() {
       nodeIntegration: false, // 禁用 Node.js 集成
       enableRemoteModule: false, // 禁用 remote 模块
       sandbox: true, // 启用沙盒模式
+      devTools: isDev, // 生产环境禁用开发者工具
     },
   })
 

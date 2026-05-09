@@ -28,7 +28,6 @@ function storePath() {
  */
 function loadStore() {
   try {
-    console.log('loadStore', storePath())
     const raw = fs.readFileSync(storePath(), 'utf8')
     const data = JSON.parse(raw)
     return data && typeof data === 'object' && !Array.isArray(data) ? data : {}
