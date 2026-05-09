@@ -54,9 +54,9 @@ export const DEFAULT_ALGORITHM_PREFERENCES = {
 /** 可与老旧 SSH 服务端兼容的遗留算法（单一数据源：选项池 = 默认 + 遗留；弱算法判定亦来源于此） */
 const LEGACY_ALGORITHMS_BY_CATEGORY = {
   kex: [
-    'diffie-hellman-group-exchange-sha1',
+    'diffie-hellman-group1-sha1',
     'diffie-hellman-group14-sha1',
-    'diffie-hellman-group1-sha1'
+    'diffie-hellman-group-exchange-sha1'
   ],
   serverHostKey: [
     'ssh-rsa',
