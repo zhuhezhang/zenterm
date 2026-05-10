@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { addGroupPlaceholder, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
 import SftpPanel from './SftpPanel.jsx'
@@ -6,6 +6,8 @@ import ConnectionTypeIcon from './common.jsx'
 import '../styles/sidebar.css'
 
 const TYPE_COLORS = { ssh: '#58a6ff', telnet: '#3fb950', serial: '#ffa657' }
+/** 搜索时 buildTree 不注入占位分组，避免无匹配会话下出现空分组树 */
+const NO_GROUP_PLACEHOLDERS = []
 /** 名称非法字符验证正则表达式 */
 const INVALID_LABEL_CHARS = /[\/\\:*?"\u003c\u003e|\x00]/
 
@@ -117,6 +119,7 @@ export default function Sidebar(props) {
   const [renamingSession, setRenamingSession] = useState(null)  // 重命名会话状态，包含 savedId 和新的标签
   const [renameSessionVal, setRenameSessionVal] = useState('')  // 重命名会话输入值
   const [sftpExpanded, setSftpExpanded] = useState(true)  // SFTP 是否展开
+  const [sessionSearchQuery, setSessionSearchQuery] = useState('')  // 会话搜索查询(按会话名、主机或串口路径搜索已保存会话)
   const [dragOver, setDragOver] = useState(null)  // 被拖拽对象所在实时位置，包含id和zone，也就是拖拽分组/会话时经过的分组路径或会话id和 zone（group/session/drop(表示被拖拽对象在根分组上方)）
   const dragRef = useRef(null)  // 被拖拽分组/会话的分组路径或者会话id和type（group/session）
   const renameGroupInputRef = useRef(null)  // 重命名分组输入引用
@@ -502,7 +505,48 @@ export default function Sidebar(props) {
     dragRef.current = null
   }
 
-  const tree = buildTree(savedSessions, groupPlaceholders)
+  const searchTrim = sessionSearchQuery.trim()
+  const searchLower = searchTrim.toLowerCase()
+  /** 按保存的会话名（及主机）筛选侧边栏列表 */
+  const filteredSavedSessions = useMemo(() => {  // useMemo：记忆化计算，缓存结果，避免重复计算。当savedSessions/searchLower变化时重新计算
+    if (!searchLower) return savedSessions
+    return savedSessions.filter((s) => {
+      const label = (s.label || '').toLowerCase()
+      const host = (s.host || '').toLowerCase()
+      const serialPath = (s.path || '').toLowerCase()
+      return label.includes(searchLower) || host.includes(searchLower) || serialPath.includes(searchLower)
+    })
+  }, [savedSessions, searchLower])
+
+  /** 搜索时 buildTree 不注入占位分组，避免无匹配会话下出现空分组树 */
+  const treePlaceholders = searchTrim ? NO_GROUP_PLACEHOLDERS : groupPlaceholders
+
+  /** 构建会话树结构，支持分组和未分组会话 */
+  const tree = useMemo(
+    () => buildTree(filteredSavedSessions, treePlaceholders),
+    [filteredSavedSessions, treePlaceholders],
+  )
+
+  /** 有筛选关键词时自动展开匹配会话所在分组 */
+  useEffect(() => {
+    if (!searchTrim) return
+    const paths = new Set()
+    for (const s of filteredSavedSessions) {
+      if (!s.group) continue
+      let acc = ''
+      for (const seg of s.group.split('/')) {
+        acc = acc ? `${acc}/${seg}` : seg
+        paths.add(acc)
+      }
+    }
+    if (paths.size === 0) return
+    setExpanded((prev) => {
+      const next = { ...prev }
+      for (const p of paths) next[p] = true
+      return next
+    })
+  }, [searchTrim, filteredSavedSessions])
+
   const hasSftp = !!activeSession?.sftpReady  // !!(...) 把结果强制转换成布尔值
 
   return (
@@ -532,15 +576,37 @@ export default function Sidebar(props) {
               <span className="sb-section-label">保存的会话</span>
             </div>
             {!sessionsCollapsed && (
-              <div
-                className={`sb-tree${isDO('__root__', 'drop') ? ' drop-target' : ''}`}
-                onDragOver={e => dOver(e, '__root__', 'drop')}
-                onDragLeave={dLeave}
-                onDrop={dropUngroup}>
+              <>
+                <div className="sb-session-search-wrap">
+                  <input
+                    type="search"
+                    className="sb-session-search"
+                    placeholder="搜索会话名、主机或串口路径…"
+                    value={sessionSearchQuery}
+                    onChange={(e) => setSessionSearchQuery(e.target.value)}
+                    aria-label="按会话名、主机或串口路径搜索已保存会话"
+                  />
+                </div>
+                <div
+                  className={`sb-tree${isDO('__root__', 'drop') ? ' drop-target' : ''}`}
+                  onDragOver={e => dOver(e, '__root__', 'drop')}
+                  onDragLeave={dLeave}
+                  onDrop={dropUngroup}>
                 {tree.length === 0 && (
                   <div className="sb-empty">
-                    <span>暂无保存的会话</span>
-                    <button className="sb-link" onClick={() => onNewSession('ssh')}>新建连接</button>
+                    {savedSessions.length === 0 ? (
+                      <>
+                        <span>暂无保存的会话</span>
+                        <button type="button" className="sb-link" onClick={() => onNewSession('ssh')}>新建连接</button>
+                      </>
+                    ) : searchTrim ? (
+                      <>
+                        <span>无匹配的会话</span>
+                        <button type="button" className="sb-link" onClick={() => setSessionSearchQuery('')}>清除搜索</button>
+                      </>
+                    ) : (
+                      <span>暂无展示项</span>
+                    )}
                   </div>
                 )}
                 {tree.map(node => (
@@ -557,7 +623,8 @@ export default function Sidebar(props) {
                     dropOnGroup={dropOnGroup} dropOnSession={dropOnSession} isDO={isDO}
                   />
                 ))}
-              </div>
+                </div>
+              </>
             )}
           </div>
         </div>
