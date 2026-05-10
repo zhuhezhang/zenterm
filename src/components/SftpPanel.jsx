@@ -1,5 +1,45 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import '../styles/sftp.css'
+
+/**
+ * 沙盒渲染进程不提供 File.path，须通过 preload 的 webUtils.getPathForFile。
+ * @param {File} file 文件对象
+ * @returns {string} 文件路径
+ */
+function getLocalFilePath(file) {
+  if (!file) return ''
+  const bridge = window.zterm?.getPathForFile
+  if (typeof bridge === 'function') {
+    try {
+      const p = bridge(file)
+      if (p) return p
+    } catch {
+      /* 非磁盘文件等 */
+    }
+  }
+  return file.path || ''
+}
+
+/** 
+ * 读满目录项（readEntries 单次最多约 100 条，须循环）
+ * @param {DirectoryReader} reader 目录读取器
+ * @returns {Promise<Array<FileEntry>>} 目录项列表
+ */
+function readAllDirEntries(reader) {
+  return new Promise((resolve) => {
+    const all = []
+    const step = () => {
+      reader.readEntries((batch) => {
+        if (!batch.length) resolve(all)
+        else {
+          all.push(...batch)
+          step()
+        }
+      })
+    }
+    step()
+  })
+}
 
 /** 非法文件名字符 */
 const INVALID_NAME_CHARS = /[\/\\:*?"\u003c\u003e|\x00]/
@@ -44,6 +84,9 @@ export default function SftpPanel({ session }) {
   const [creatingDir, setCreatingDir] = useState(false)  // 是否正在创建文件夹
   const [createDirName, setCreateDirName] = useState('')  // 创建文件夹输入值
   const [progress, setProgress] = useState(null)  // 进度信息
+  const fileUploadInputRef = useRef(null) // 文件上传输入框引用
+  const folderUploadInputRef = useRef(null) // 文件夹上传输入框引用
+  const uploadDetailsRef = useRef(null) // 上传详情引用
 
   /** 
    * 加载目录
@@ -206,7 +249,7 @@ export default function SftpPanel({ session }) {
     if (entry.isDirectory) {  // 如果是目录
       const currentDir = relBase + entry.name  // 获取当前目录
       const reader = entry.createReader()
-      const entries = await new Promise((resolve) => reader.readEntries(resolve))  // 读取目录项
+      const entries = await readAllDirEntries(reader)
       const files = []
       const dirs = [currentDir]
       for (const child of entries) {  // 遍历目录项，递归收集子目录项
@@ -217,6 +260,63 @@ export default function SftpPanel({ session }) {
       return { files, dirs }
     }
     return { files: [], dirs: [] }
+  }
+
+
+  /** 
+   * 通过选择框上传多个顶层文件（无目录结构） 
+   * @param {FileList} fileList 文件列表
+   * @returns {Promise<void>} 是否成功
+   */
+  const handlePickFilesUpload = async (fileList) => {
+    setError('')
+    try {
+      const files = Array.from(fileList || []).filter((f) => getLocalFilePath(f))
+      if (!files.length) return
+      for (const f of files) {
+        const remotePath = (path === '/' ? '' : path) + '/' + f.name
+        const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
+        if (!res?.success) throw new Error(res?.error || `上传失败: ${f.name}`)
+      }
+      loadDir(path)
+    } catch (err) {
+      setError(err?.message || String(err))
+    }
+  }
+
+  /** 
+   * 通过选择框上传文件夹（保留 webkitRelativePath 目录结构）
+   * @param {FileList} fileList 文件列表
+   * @returns {Promise<void>} 是否成功
+   */
+  const handlePickFolderUpload = async (fileList) => {
+    setError('')
+    try {
+      const files = Array.from(fileList || []).filter((f) => getLocalFilePath(f) && f.webkitRelativePath)
+      if (!files.length) return
+      const cache = new Set()
+      const dirsToCreate = new Set()
+      for (const f of files) {
+        const segments = f.webkitRelativePath.split('/')
+        for (let i = 1; i < segments.length; i++) {
+          dirsToCreate.add(segments.slice(0, i).join('/'))
+        }
+      }
+      const remoteBase = (path === '/' ? '' : path) + '/'
+      for (const relDir of Array.from(dirsToCreate).sort((a, b) => a.length - b.length)) {
+        await ensureRemoteDir(remoteBase + relDir, cache)
+      }
+      for (const f of files) {
+        const remotePath = remoteBase + f.webkitRelativePath
+        const remoteDir = remotePath.split('/').slice(0, -1).join('/') || '/'
+        await ensureRemoteDir(remoteDir, cache)
+        const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
+        if (!res?.success) throw new Error(res?.error || `上传失败: ${f.webkitRelativePath}`)
+      }
+      loadDir(path)
+    } catch (err) {
+      setError(err?.message || String(err))
+    }
   }
 
   /** 
@@ -248,22 +348,23 @@ export default function SftpPanel({ session }) {
         }
 
         for (const { file, relPath } of filesToUpload) {  // 遍历要上传的文件列表
-          if (!file?.path) continue
+          const localPath = getLocalFilePath(file)
+          if (!localPath) continue
           const remotePath = remoteBase + relPath
           const remoteDir = remotePath.split('/').slice(0, -1).join('/') || '/' // 获取远程目录
           await ensureRemoteDir(remoteDir, cache) // 确保远程目录存在
-          const res = await window.zterm.sftp.upload(sftpSessionId, file.path, remotePath) // 上传文件
+          const res = await window.zterm.sftp.upload(sftpSessionId, localPath, remotePath) // 上传文件
           if (!res?.success) throw new Error(res?.error || `上传失败: ${relPath}`) // 如果上传失败，抛出错误
         }
         loadDir(path)
         return
       }
 
-      const files = Array.from(e.dataTransfer?.files || []).filter(f => f?.path)  // 获取拖拽的文件列表
+      const files = Array.from(e.dataTransfer?.files || []).filter((f) => getLocalFilePath(f))  // 获取拖拽的文件列表
       if (!files.length) return
       for (const f of files) {  // 遍历要上传的文件列表
         const remotePath = (path === '/' ? '' : path) + '/' + f.name // 获取远程路径
-        const res = await window.zterm.sftp.upload(sftpSessionId, f.path, remotePath) // 上传文件
+        const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath) // 上传文件
         if (!res?.success) throw new Error(res?.error || `上传失败: ${f.name}`) // 如果上传失败，抛出错误
       }
       loadDir(path) // 刷新目录
@@ -279,6 +380,53 @@ export default function SftpPanel({ session }) {
       <div className="sftp-header">
         <span className="sftp-title">SFTP — {session.host}</span>
         <div className="sftp-toolbar">
+          <details ref={uploadDetailsRef} className="sftp-upload-details">
+            <summary className="sftp-btn sftp-upload-summary" title="上传到当前目录">↑ 上传</summary>
+            <div className="sftp-upload-menu" role="menu">
+              <button
+                type="button"
+                className="sftp-upload-menu-item"
+                onClick={() => {
+                  uploadDetailsRef.current?.removeAttribute('open')
+                  fileUploadInputRef.current?.click()
+                }}
+              >
+                选择文件…
+              </button>
+              <button
+                type="button"
+                className="sftp-upload-menu-item"
+                onClick={() => {
+                  uploadDetailsRef.current?.removeAttribute('open')
+                  folderUploadInputRef.current?.click()
+                }}
+              >
+                选择文件夹…
+              </button>
+            </div>
+          </details>
+          <input
+            ref={fileUploadInputRef}
+            type="file"
+            multiple
+            className="sftp-hidden-input"
+            onChange={(e) => {
+              handlePickFilesUpload(e.target.files)
+              e.target.value = ''
+            }}
+          />
+          <input
+            ref={folderUploadInputRef}
+            type="file"
+            className="sftp-hidden-input"
+            webkitdirectory=""
+            directory=""
+            multiple
+            onChange={(e) => {
+              handlePickFolderUpload(e.target.files)
+              e.target.value = ''
+            }}
+          />
           <button className="sftp-btn" onClick={startCreateDir} title="新建文件夹">+ 文件夹</button>
           <button className="sftp-btn" onClick={() => { loadDir(path); setProgress(null) }} title="刷新">↻ 刷新</button>
         </div>

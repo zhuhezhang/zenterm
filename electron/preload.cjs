@@ -1,8 +1,17 @@
-const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer, webUtils } = require('electron')
 
 contextBridge.exposeInMainWorld('zterm', {  // 在渲染进程中通过window.zterm访问暴露的API
   getDownloadsPath: () => ipcRenderer.sendSync('app:getDownloadsPath'),  // 同步调用主进程获取下载目录路径
   chooseDirectory: () => ipcRenderer.invoke('app:chooseDirectory'),  // 弹出目录选择框，返回选中的目录路径（异步）
+  /** 沙盒渲染进程无 File.path，上传/拖拽需用此取磁盘绝对路径 */
+  getPathForFile: (file) => {
+    if (!file || typeof file !== 'object') return ''
+    try {
+      return webUtils.getPathForFile(file)
+    } catch {
+      return ''
+    }
+  },
 
   credentials: {  // 凭据 API
     isAvailable: () => ipcRenderer.invoke('credentials:isAvailable'),  // 检查系统是否支持加密存储

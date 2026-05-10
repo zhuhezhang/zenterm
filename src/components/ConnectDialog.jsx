@@ -403,7 +403,7 @@ function SerialForm({ form, set, ports, visible, onRefreshPorts }) {
       <FormRow label="串口">
         <input
           className="dialog-serial-path-input"
-          placeholder="从列表选择（须先枚举）"
+          placeholder="请从列表选择"
           value={form.path}
           onChange={e => set('path', e.target.value)}
           list="port-list"
