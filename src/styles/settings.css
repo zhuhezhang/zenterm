@@ -64,7 +64,7 @@
 .settings-path-btn.reset:hover { color: var(--accent); border-color: var(--accent); }
 
 .settings-select {
-  width: 190px;
+  width: auto;
   padding: 5px 8px;
   border-radius: var(--radius-sm);
   font-size: 12px;
@@ -106,31 +106,82 @@
   border: 1px solid var(--border);
   background: var(--bg-primary);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   outline: none;
 }
 
-.settings-rule-regex {
-  display: inline-flex;
+.settings-rule-icon-toggles {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
   align-items: center;
-  font-size: 12px;
-  color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
-.settings-rule-regex input {
-  width: 14px;
-  height: 14px;
-  margin-right: 2px;
+.settings-icon-toggle {
+  box-sizing: border-box;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.settings-icon-toggle svg {
+  pointer-events: none;
+}
+
+.settings-icon-toggle:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.settings-icon-toggle.active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.settings-icon-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* 设置弹窗：悬停/聚焦说明（fixed，避免被 .dialog overflow 与 Electron 原生 title 限制） */
+.settings-hover-tip {
+  position: fixed;
+  z-index: 10001;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 7px 11px;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-line;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 8px));
+}
+
+.settings-toggle .settings-toggle-knob {
+  pointer-events: none;
 }
 
 .settings-rule-color {
-  width: 40px;
-  height: 34px;
-  border: none;
-  border-radius: none;
+  height: 31px;
   padding: 0;
   background: transparent;
   cursor: pointer;
+  border-radius: var(--radius-sm);
 }
 
 .settings-rule-desc {
@@ -300,6 +351,7 @@
   border: 1px solid rgba(210, 153, 34, 0.35);
   flex-shrink: 0;
   letter-spacing: 0.02em;
+  cursor: help;
 }
 
 .settings-algo-actions {

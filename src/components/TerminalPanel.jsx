@@ -280,7 +280,8 @@ function applyHighlightRules(text, settings) {
       const pattern = rule.useRegex === false
         ? String(rule.pattern).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
         : rule.pattern
-      regex = new RegExp(pattern, 'gi')
+      const flags = rule.caseSensitive === true ? 'g' : 'gi'
+      regex = new RegExp(pattern, flags)
     } catch (e) {
       continue
     }

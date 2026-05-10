@@ -115,6 +115,7 @@
 .dialog-serial-refresh-btn {
   flex-shrink: 0;
   padding: 6px 14px;
+  height: 30px;
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;

@@ -33,7 +33,6 @@ export const DEFAULT_ALGORITHM_PREFERENCES = {
     'aes128-ctr',
     'aes192-ctr',
     'aes256-ctr',
-    'chacha20-poly1305@openssh.com',
     'aes128-gcm',
     'aes256-gcm'
   ],

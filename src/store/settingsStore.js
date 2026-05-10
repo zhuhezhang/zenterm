@@ -26,8 +26,10 @@ export const DEFAULT_SETTINGS = {
   enableLogging: false,
   logPath: DEFAULT_LOG_PATH,
   highlightRules: [
-    { id: 'error',   enabled: true,  useRegex: true, pattern: 'error|failed|denied|unauthorized', color: '#ff6b6b' },
-    { id: 'success', enabled: true,  useRegex: true, pattern: 'success|connected|ready|ok',    color: '#4ade80' },
+    { id: 'default1_error',   enabled: true,  useRegex: true, caseSensitive: false,  pattern: '(\\berror\\b)|(\\bfailed\\b)|(\\bdenied\\b)|(\\bunauthorized\\b)|(\\bdown\\b)', color: '#f1250e' },
+    { id: 'default2_success', enabled: true,  useRegex: true, caseSensitive: false, pattern: '(\\bsuccess\\b)|(\\bconnected\\b)|(\\bready\\b)|(\\bok\\b)|(\\bup\\b)', color: '#4ade80' },
+    { id: 'default3_warning', enabled: true,  useRegex: true, caseSensitive: false, pattern: '(\\bwarning\\b)|(\\bnotice\\b)|(\\binfo\\b)|(\\bdebug\\b)|(\\bdisabled\\b)', color: '#f1c40f' },
+    { id: 'default4_ip', enabled: true,  useRegex: true, caseSensitive: false, pattern: '\\b(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\b', color: '#c717d3' },
   ],
   algorithmPreferences: DEFAULT_ALGORITHM_PREFERENCES,
   /** 为 true 且系统支持加密时，保存 SSH/Telnet 会话会把密码、私钥与 passphrase 等写入主进程 vault（safeStorage），不写入 localStorage */
