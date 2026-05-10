@@ -22,14 +22,11 @@
 }
 
 .sftp-title {
-  flex: 1 0 auto;
-  min-width: max-content;
+  flex: 0 0 auto;
   font-size: 12px;
   font-weight: 700;
   color: var(--text-secondary);
   white-space: nowrap;
-  overflow: visible;
-  text-overflow: clip;
 }
 
 .sftp-toolbar {
@@ -37,7 +34,6 @@
   gap: 4px;
   align-items: center;
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .sftp-upload-details {
