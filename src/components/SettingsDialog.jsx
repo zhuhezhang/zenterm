@@ -8,6 +8,14 @@ import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from
 import '../styles/dialog.css'
 import '../styles/settings.css'
 
+/** 保存前：规则名为空则按顺序设为「未命名规则1」… */
+function normalizeHighlightRulesForSave(rules) {
+  return (rules || []).map((rule, i) => {
+    const name = String(rule?.name ?? '').trim()
+    return { ...rule, name: name || `未命名规则${i + 1}` }
+  })
+}
+
 /** 高亮规则：正则模式（.* 字形图标） */
 function HighlightRegexIcon() {
   return (
@@ -117,6 +125,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   /** 创建一个新的高亮规则对象，包含唯一的 ID、启用状态、是否使用正则表达式、匹配模式和颜色 */
   const createHighlightRule = () => ({
     id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    name: '',
     enabled: true,
     useRegex: true,
     caseSensitive: false,
@@ -158,6 +167,13 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
       ...prev,
       highlightRules: (prev.highlightRules || []).filter(rule => rule.id !== id),
     }))
+  }
+
+  /** 将高亮规则列表恢复为应用内置默认（仅更新表单，需再点「保存」写入本地） */
+  const handleResetHighlightRules = () => {
+    if (!confirm('确定将高亮规则重置为内置默认列表吗？\n当前列表中的规则会被全部替换；重置后请点击「保存」或「保存并关闭」写入本地。')) return
+    const defaults = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.highlightRules))
+    setForm(prev => ({ ...prev, highlightRules: defaults }))
   }
 
   /**
@@ -293,9 +309,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                   {isWeakSshAlgorithm(section.key, value) && (
                     <span
                       className="settings-algo-weak-badge"
-                      onMouseEnter={(e) =>
-                        showSettingsHoverTip(e, '遗留或较弱的算法，可能存在安全风险，仅在为兼容老旧 SSH 服务端时启用')
-                      }
+                      onMouseEnter={(e) => showSettingsHoverTip(e, '遗留或较弱的算法，可能存在安全风险，仅在为兼容老旧 SSH 服务端时启用')}
                       onMouseLeave={hideSettingsHoverTip}
                     >
                       不安全
@@ -330,9 +344,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                   {isWeakSshAlgorithm(section.key, value) && (
                     <span
                       className="settings-algo-weak-badge"
-                      onMouseEnter={(e) =>
-                        showSettingsHoverTip(e, '遗留或较弱的算法，可能存在安全风险，仅在为兼容老旧 SSH 服务端时启用')
-                      }
+                      onMouseEnter={(e) => showSettingsHoverTip(e, '遗留或较弱的算法，可能存在安全风险，仅在为兼容老旧 SSH 服务端时启用')}
                       onMouseLeave={hideSettingsHoverTip}
                     >
                       不安全
@@ -353,14 +365,18 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 处理保存设置的操作，将当前表单数据保存到设置中，并调用 onSave 回调函数传递新的设置对象 */
   const handleSave = () => {
-    saveSettings(form)
-    onSave(form)
+    const next = { ...form, highlightRules: normalizeHighlightRulesForSave(form.highlightRules) }
+    setForm(next)
+    saveSettings(next)
+    onSave(next)
   }
 
   /** 保存设置后关闭对话框 */
   const handleSaveAndClose = () => {
-    saveSettings(form)
-    onSave(form)
+    const next = { ...form, highlightRules: normalizeHighlightRulesForSave(form.highlightRules) }
+    setForm(next)
+    saveSettings(next)
+    onSave(next)
     onClose()
   }
 
@@ -480,19 +496,9 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                   placeholder={DEFAULT_LOG_PATH || '选择目录'}
                   readOnly
                   aria-label={`${item.label}：当前路径`}
-                  onMouseEnter={(e) =>
-                    showSettingsHoverTip(
-                      e,
-                      `当前日志目录：\n${form[item.key] || DEFAULT_LOG_PATH || '系统下载目录（默认）'}`,
-                    )
-                  }
+                  onMouseEnter={(e) => showSettingsHoverTip(e, `当前日志目录：\n${form[item.key] || DEFAULT_LOG_PATH || '系统下载目录（默认）'}`)}
                   onMouseLeave={hideSettingsHoverTip}
-                  onFocus={(e) =>
-                    showSettingsHoverTip(
-                      e,
-                      `当前日志目录：\n${form[item.key] || DEFAULT_LOG_PATH || '系统下载目录（默认）'}`,
-                    )
-                  }
+                  onFocus={(e) => showSettingsHoverTip(e, `当前日志目录：\n${form[item.key] || DEFAULT_LOG_PATH || '系统下载目录（默认）'}`)}
                   onBlur={hideSettingsHoverTip}
                 />
                 <button className="settings-path-btn" onClick={handleChooseLogPath}>选择</button>
@@ -501,19 +507,9 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                   className="settings-path-btn reset"
                   aria-label="恢复默认日志目录"
                   onClick={handleResetLogPath}
-                  onMouseEnter={(e) =>
-                    showSettingsHoverTip(
-                      e,
-                      `恢复默认目录为：\n${DEFAULT_LOG_PATH || '系统下载目录'}`,
-                    )
-                  }
+                  onMouseEnter={(e) => showSettingsHoverTip(e, `恢复默认目录为：\n${DEFAULT_LOG_PATH || '系统下载目录'}`)}
                   onMouseLeave={hideSettingsHoverTip}
-                  onFocus={(e) =>
-                    showSettingsHoverTip(
-                      e,
-                      `恢复默认目录为：\n${DEFAULT_LOG_PATH || '系统下载目录'}`,
-                    )
-                  }
+                  onFocus={(e) => showSettingsHoverTip(e, `恢复默认目录为：\n${DEFAULT_LOG_PATH || '系统下载目录'}`)}
                   onBlur={hideSettingsHoverTip}
                 >
                   ↺
@@ -547,33 +543,33 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
             <span className="settings-item-label">高亮规则</span>
             <span className="settings-item-desc">为终端输出文本定义匹配表达式和高亮颜色</span>
           </div>
-          <button className="settings-action-btn" onClick={addHighlightRule}>新增规则</button>
+          <div className="settings-item-actions">
+            <button type="button" className="settings-action-btn" onClick={handleResetHighlightRules}>重置规则</button>
+            <button type="button" className="settings-action-btn" onClick={addHighlightRule}>新增规则</button>
+          </div>
         </div>
         {(form.highlightRules || []).map((rule, idx) => (
           <div key={rule.id} className="settings-rule-item">
-            <div className="settings-rule-desc">
-              <span>规则 {idx + 1}</span>
+            <div className="settings-rule-top">
+              <span className="settings-rule-index">规则 {idx + 1}</span>
+              <input
+                className="settings-rule-name-input"
+                type="text"
+                value={rule.name ?? ''}
+                placeholder="请输入规则名字"
+                aria-label="规则名称"
+                onMouseEnter={(e) => showSettingsHoverTip(e, '规则名称')}
+                onMouseLeave={hideSettingsHoverTip}
+                onChange={(e) => updateHighlightRule(rule.id, { name: e.target.value })}
+              />
+              <span className="settings-rule-grid-placeholder" aria-hidden="true" />
               <button
                 type="button"
                 className={`settings-toggle ${rule.enabled ? 'on' : 'off'}`}
-                aria-label={`规则 ${idx + 1}：${rule.enabled ? '已启用' : '已禁用'}`}
-                onMouseEnter={(e) =>
-                  showSettingsHoverTip(
-                    e,
-                    rule.enabled
-                      ? '规则已启用'
-                      : '规则已禁用',
-                  )
-                }
+                aria-label={`${(rule.name || '').trim() || `未命名规则${idx + 1}`}：${rule.enabled ? '已启用' : '已禁用'}`}
+                onMouseEnter={(e) => showSettingsHoverTip(e, rule.enabled ? '规则已启用' : '规则已禁用')}
                 onMouseLeave={hideSettingsHoverTip}
-                onFocus={(e) =>
-                  showSettingsHoverTip(
-                    e,
-                    rule.enabled
-                      ? '规则已启用'
-                      : '规则已禁用',
-                  )
-                }
+                onFocus={(e) => showSettingsHoverTip(e, rule.enabled ? '规则已启用' : '规则已禁用')}
                 onBlur={hideSettingsHoverTip}
                 onClick={() => updateHighlightRule(rule.id, { enabled: !rule.enabled })}
               >
@@ -581,12 +577,14 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
               </button>
             </div>
             <div className="settings-rule-row">
-              <button className="settings-action-btn danger" onClick={() => removeHighlightRule(rule.id)}>删除</button>
+              <button type="button" className="settings-action-btn danger" onClick={() => removeHighlightRule(rule.id)}>删除</button>
               <input
                 className="settings-rule-pattern"
                 type="text"
                 value={rule.pattern}
                 placeholder="请输入匹配规则"
+                onMouseEnter={(e) => showSettingsHoverTip(e, '匹配高亮文本规则')}
+                onMouseLeave={hideSettingsHoverTip}
                 onChange={(e) => updateHighlightRule(rule.id, { pattern: e.target.value })}
               />
               <input
@@ -594,19 +592,9 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                 type="color"
                 value={rule.color || '#ffcc00'}
                 aria-label="高亮颜色"
-                onMouseEnter={(e) =>
-                  showSettingsHoverTip(
-                    e,
-                    '点击选择匹配成功时终端里显示的高亮颜色',
-                  )
-                }
+                onMouseEnter={(e) => showSettingsHoverTip(e, '点击选择匹配成功时终端里显示的高亮颜色')}
                 onMouseLeave={hideSettingsHoverTip}
-                onFocus={(e) =>
-                  showSettingsHoverTip(
-                    e,
-                    '点击选择匹配成功时终端里显示的高亮颜色',
-                  )
-                }
+                onFocus={(e) => showSettingsHoverTip(e, '点击选择匹配成功时终端里显示的高亮颜色')}
                 onBlur={hideSettingsHoverTip}
                 onChange={(e) => updateHighlightRule(rule.id, { color: e.target.value })}
               />
@@ -616,21 +604,9 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                   className={`settings-icon-toggle ${rule.caseSensitive === true ? 'active' : ''}`}
                   aria-label="区分大小写"
                   aria-pressed={rule.caseSensitive === true}
-                  onMouseEnter={(e) =>
-                    showSettingsHoverTip(
-                      e,
-                      rule.caseSensitive === true
-                        ? '区分大小写（点击改为忽略大小写）'
-                        : '忽略大小写（点击改为区分大小写）',
-                    )}
+                  onMouseEnter={(e) => showSettingsHoverTip(e, rule.caseSensitive === true ? '区分大小写（点击改为忽略大小写）' : '忽略大小写（点击改为区分大小写）')}
                   onMouseLeave={hideSettingsHoverTip}
-                  onFocus={(e) =>
-                    showSettingsHoverTip(
-                      e,
-                      rule.caseSensitive === true
-                        ? '区分大小写（点击改为忽略大小写）'
-                        : '忽略大小写（点击改为区分大小写）',
-                    )}
+                  onFocus={(e) => showSettingsHoverTip(e, rule.caseSensitive === true ? '区分大小写（点击改为忽略大小写）' : '忽略大小写（点击改为区分大小写）')}
                   onBlur={hideSettingsHoverTip}
                   onClick={() => updateHighlightRule(rule.id, { caseSensitive: !rule.caseSensitive })}
                 >
@@ -641,21 +617,9 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                   className={`settings-icon-toggle ${(rule.useRegex ?? true) ? 'active' : ''}`}
                   aria-label="使用正则表达式"
                   aria-pressed={rule.useRegex ?? true}
-                  onMouseEnter={(e) =>
-                    showSettingsHoverTip(
-                      e,
-                      (rule.useRegex ?? true)
-                        ? '使用正则表达式（点击改为纯文本匹配）'
-                        : '纯文本匹配（点击改为正则）',
-                    )}
+                  onMouseEnter={(e) => showSettingsHoverTip(e, (rule.useRegex ?? true) ? '使用正则表达式（点击改为纯文本匹配）' : '纯文本匹配（点击改为正则）')}
                   onMouseLeave={hideSettingsHoverTip}
-                  onFocus={(e) =>
-                    showSettingsHoverTip(
-                      e,
-                      (rule.useRegex ?? true)
-                        ? '使用正则表达式（点击改为纯文本匹配）'
-                        : '纯文本匹配（点击改为正则）',
-                    )}
+                  onFocus={(e) => showSettingsHoverTip(e, (rule.useRegex ?? true) ? '使用正则表达式（点击改为纯文本匹配）' : '纯文本匹配（点击改为正则）')}
                   onBlur={hideSettingsHoverTip}
                   onClick={() => updateHighlightRule(rule.id, { useRegex: !(rule.useRegex ?? true) })}
                 >
