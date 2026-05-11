@@ -1,18 +1,20 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import {
-  SETTINGS_SCHEMA, saveSettings, exportSettings, importSettings, getDefaultLogPath,
+  SETTINGS_SCHEMA, SETTINGS_GENERAL_SECTION_IDS, saveSettings, exportSettings, importSettings, getDefaultLogPath,
   DEFAULT_SETTINGS, DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
 } from '../store/settingsStore.js'
+import { translate } from '../i18n/translations.js'
 import { exportSessions, importSessions, saveSessions } from '../store/sessionStore.js'
 import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import '../styles/dialog.css'
 import '../styles/settings.css'
 
-/** 保存前：规则名为空则按顺序设为「未命名规则1」… */
-function normalizeHighlightRulesForSave(rules) {
+/** 保存前：规则名为空则按当前语言设为「未命名规则 n」 */
+function normalizeHighlightRulesForSave(rules, lang) {
+  const L = lang === 'en' ? 'en' : 'zh'
   return (rules || []).map((rule, i) => {
     const name = String(rule?.name ?? '').trim()
-    return { ...rule, name: name || `未命名规则${i + 1}` }
+    return { ...rule, name: name || translate(L, 'settings.unnamedRule', { n: i + 1 }) }
   })
 }
 
@@ -67,14 +69,16 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     highlightRules: settings.highlightRules ? [...settings.highlightRules] : [],
     algorithmPreferences: settings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
   })
+  const msgLang = (form.uiLanguage ?? settings.uiLanguage ?? 'zh') === 'en' ? 'en' : 'zh'
+  const t = (path, params) => translate(msgLang, path, params)
+
   const importRef = useRef(null)  // 和useState类似，但它返回一个可变的ref对象，其.current属性被初始化为传入的参数（initialValue）。返回的ref对象在组件的整个生命周期内保持不变，因此它不会触发重新渲染
   const importSettingsRef = useRef(null)  // 用于导入设置的文件输入引用
   /** 合并后的标签页：常规 / SSH 与终端 / 数据与安全（功能与原先 7 个 tab 一致） */
-  const GENERAL_SECTION_KEYS = ['操作确认', '终端行为', '日志']
   const tabs = [
-    { key: 'general', label: '常规' },
-    { key: 'ssh-terminal', label: 'SSH 与终端' },
-    { key: 'data-security', label: '数据与安全' },
+    { key: 'general', label: t('settings.tabs.general') },
+    { key: 'ssh-terminal', label: t('settings.tabs.sshTerminal') },
+    { key: 'data-security', label: t('settings.tabs.dataSecurity') },
   ]
   const [activeTab, setActiveTab] = useState('general')
   const [settingsHoverTip, setSettingsHoverTip] = useState(null)  // 设置弹窗内浮动说明（原生 title 在 Electron 内不可靠，用 fixed 层统一展示）
@@ -171,7 +175,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 将高亮规则列表恢复为应用内置默认（仅更新表单，需再点「保存」写入本地） */
   const handleResetHighlightRules = () => {
-    if (!confirm('确定将高亮规则重置为内置默认列表吗？\n当前列表中的规则会被全部替换；重置后请点击「保存」或「保存并关闭」写入本地。')) return
+    if (!confirm(t('settings.confirmResetHighlight'))) return
     const defaults = JSON.parse(JSON.stringify(DEFAULT_SETTINGS.highlightRules))
     setForm(prev => ({ ...prev, highlightRules: defaults }))
   }
@@ -185,11 +189,11 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 算法类别列表 */
   const algorithmSections = [
-    { key: 'kex', label: '密钥交换 (kex)', desc: '用于协商 SSH 连接的密钥交换算法' },
-    { key: 'serverHostKey', label: '主机密钥 (serverHostKey)', desc: '用于验证服务器身份的主机密钥算法' },
-    { key: 'cipher', label: '加密算法 (cipher)', desc: '用于加密传输数据的对称加密算法' },
-    { key: 'hmac', label: '消息认证码 (hmac)', desc: '用于验证 SSH 数据完整性的哈希算法' },
-    { key: 'compress', label: '压缩算法 (compress)', desc: '用于 SSH 连接压缩传输数据的算法' },
+    { key: 'kex', label: t('settings.algo.kex'), desc: t('settings.algo.kexDesc') },
+    { key: 'serverHostKey', label: t('settings.algo.serverHostKey'), desc: t('settings.algo.serverHostKeyDesc') },
+    { key: 'cipher', label: t('settings.algo.cipher'), desc: t('settings.algo.cipherDesc') },
+    { key: 'hmac', label: t('settings.algo.hmac'), desc: t('settings.algo.hmacDesc') },
+    { key: 'compress', label: t('settings.algo.compress'), desc: t('settings.algo.compressDesc') },
   ]
   const [activeAlgoSection, setActiveAlgoSection] = useState('kex')  // 默认选中密钥交换算法类别
 
@@ -264,19 +268,19 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     const options = SSH_ALGORITHM_OPTION_POOL[section.key] || []  // 可选全集（含遗留算法）；默认套件见 DEFAULT_ALGORITHM_PREFERENCES
     return (
       <div className="settings-section">
-        <div className="settings-section-title">SSH/SFTP 算法</div>
+        <div className="settings-section-title">{t('settings.algoTitle')}</div>
         <div className="settings-items">
           <div className="settings-item">
             <div className="settings-item-info">
-              <span className="settings-item-label">SSH/SFTP 算法</span>
-              <span className="settings-item-desc">默认仅启用现代算法；若须连接老旧设备，可在下方勾选标记为「遗留」的算法（会降低协商强度）</span>
+              <span className="settings-item-label">{t('settings.algoTitle')}</span>
+              <span className="settings-item-desc">{t('settings.algoIntro')}</span>
             </div>
-            <button className="settings-action-btn" onClick={resetAlgorithmPreferences}>重置默认</button>
+            <button className="settings-action-btn" onClick={resetAlgorithmPreferences}>{t('settings.resetDefault')}</button>
           </div>
           <div className="settings-item">
             <div className="settings-item-info">
-              <span className="settings-item-label">算法类别</span>
-              <span className="settings-item-desc">先从下拉列表中选择要配置的算法类别</span>
+              <span className="settings-item-label">{t('settings.algoCategory')}</span>
+              <span className="settings-item-desc">{t('settings.algoCategoryDesc')}</span>
             </div>
             <select className="settings-select" value={activeAlgoSection} onChange={(e) => setActiveAlgoSection(e.target.value)}>
               {algorithmSections.map(item => (
@@ -294,7 +298,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                 className="settings-action-btn"
                 onClick={() => resetAlgorithmSection(section.key)}
               >
-                重置本类默认
+                {t('settings.resetSection')}
               </button>
             </div>
             {selected.map((value, index) => (
@@ -309,10 +313,10 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                   {isWeakSshAlgorithm(section.key, value) && (
                     <span
                       className="settings-algo-weak-badge"
-                      onMouseEnter={(e) => showSettingsHoverTip(e, '遗留或较弱的算法，可能存在安全风险，仅在为兼容老旧 SSH 服务端时启用')}
+                      onMouseEnter={(e) => showSettingsHoverTip(e, t('settings.weakTip'))}
                       onMouseLeave={hideSettingsHoverTip}
                     >
-                      不安全
+                      {t('settings.weakBadge')}
                     </span>
                   )}
                 </label>
@@ -344,10 +348,10 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                   {isWeakSshAlgorithm(section.key, value) && (
                     <span
                       className="settings-algo-weak-badge"
-                      onMouseEnter={(e) => showSettingsHoverTip(e, '遗留或较弱的算法，可能存在安全风险，仅在为兼容老旧 SSH 服务端时启用')}
+                      onMouseEnter={(e) => showSettingsHoverTip(e, t('settings.weakTip'))}
                       onMouseLeave={hideSettingsHoverTip}
                     >
-                      不安全
+                      {t('settings.weakBadge')}
                     </span>
                   )}
                 </label>
@@ -365,7 +369,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 处理保存设置的操作，将当前表单数据保存到设置中，并调用 onSave 回调函数传递新的设置对象 */
   const handleSave = () => {
-    const next = { ...form, highlightRules: normalizeHighlightRulesForSave(form.highlightRules) }
+    const next = { ...form, highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang) }
     setForm(next)
     saveSettings(next)
     onSave(next)
@@ -373,7 +377,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 保存设置后关闭对话框 */
   const handleSaveAndClose = () => {
-    const next = { ...form, highlightRules: normalizeHighlightRulesForSave(form.highlightRules) }
+    const next = { ...form, highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang) }
     setForm(next)
     saveSettings(next)
     onSave(next)
@@ -393,20 +397,20 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
       imported.forEach(s => { if (!merged.find(m => m.savedId === s.savedId) && !merged.find(m => m.label === s.label)) merged.push(s) })
       const sanitized = await absorbPlaintextSecretsFromImportedSessions(merged)
       onUpdateSessions(sanitized)
-      alert(`已导入 ${sanitized.length - beforeCount} 个新会话，相同 ID 或名称的会话已被忽略`)
-    } catch (err) { alert('导入失败：' + err.message) }
+      alert(t('settings.importSessionsOk', { n: sanitized.length - beforeCount }))
+    } catch (err) { alert(t('settings.importFail', { msg: err.message })) }
     e.target.value = ''
   }
 
   /** 处理清除所有会话的操作，弹出两次确认对话框，确认后清除所有保存的会话和分组占位符，并更新会话列表和占位符列表 */
   const handleClearAll = () => {
-    if (!confirm('确定要清除所有保存的会话和分组吗？\n此操作不可恢复！')) return
-    if (!confirm('再次确认：将删除全部会话数据，确定继续？')) return
+    if (!confirm(t('settings.confirmClearSessions'))) return
+    if (!confirm(t('settings.confirmClearSessions2'))) return
     void clearAllVaultEntries()
     onUpdateSessions([])
     saveSessions([])
     onUpdatePlaceholders?.([])  // 同时清除所有分组占位符
-    alert('已清除所有会话和分组')
+    alert(t('settings.clearedSessions'))
   }
 
   /** 处理导出设置的操作，将当前设置导出为 JSON 文件 */
@@ -423,22 +427,22 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
         highlightRules: importedSettings.highlightRules ? [...importedSettings.highlightRules] : [],
         algorithmPreferences: importedSettings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
       })  // 更新表单状态
-      alert('设置已导入，请点击"保存"按钮应用更改')
+      alert(t('settings.importSettingsOk'))
     } catch (err) {
-      alert('导入失败：' + err.message)
+      alert(t('settings.importFail', { msg: err.message }))
     }
     e.target.value = ''  // 重置文件输入
   }
 
   /** 将所有设置恢复为内置默认值；二次确认后立即写入本地并同步到应用 */
   const handleRestoreDefaultSettings = () => {
-    if (!confirm('确定将所有本地设置恢复为默认值吗？\n终端高亮规则、SSH 算法偏好、日志路径、确认选项、凭据存储开关与存储的密钥等都会重置，此操作不可撤销。')) return
-    if (!confirm('再次确认：将立即把默认设置写入本机存储并生效，是否继续？')) return
+    if (!confirm(t('settings.confirmRestore'))) return
+    if (!confirm(t('settings.confirmRestore2'))) return
     const next = JSON.parse(JSON.stringify(DEFAULT_SETTINGS))
     setForm(next)
     saveSettings(next)
     onSave(next)
-    alert('已恢复为默认设置')
+    alert(t('settings.restored'))
   }
 
   /** 处理选择日志路径的操作，兼容使用不同的 API 弹出目录选择对话框，选择后更新日志路径设置 */
@@ -472,63 +476,71 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
    */
   const renderSection = (section) => (
     <div key={section.section} className="settings-section">
-      <div className="settings-section-title">{section.section}</div>
+      <div className="settings-section-title">{t(`settings.sections.${section.section}`)}</div>
       <div className="settings-items">
-        {section.items.map(item => (
-          <div key={item.key} className="settings-item">
-            <div className="settings-item-info">
-              <span className="settings-item-label">{item.label}</span>
-              {item.desc && <span className="settings-item-desc">{item.desc}</span>}
-            </div>
-            {item.type === 'boolean' && (
-              <button
-                className={`settings-toggle ${form[item.key] ? 'on' : 'off'}`}
-                onClick={() => set(item.key, !form[item.key])}
-              >
-                <span className="settings-toggle-knob" />
-              </button>
-            )}
-            {item.type === 'path' && (
-              <div className="settings-path-row">
-                <input
-                  className="settings-path-input"
-                  value={form[item.key] || getDefaultLogPath()}
-                  placeholder={getDefaultLogPath() || '选择目录'}
-                  readOnly
-                  aria-label={`${item.label}：当前路径`}
-                  onMouseEnter={(e) => showSettingsHoverTip(e, `当前日志目录：\n${form[item.key] || getDefaultLogPath() || '系统下载目录（默认）'}`)}
-                  onMouseLeave={hideSettingsHoverTip}
-                  onFocus={(e) => showSettingsHoverTip(e, `当前日志目录：\n${form[item.key] || getDefaultLogPath() || '系统下载目录（默认）'}`)}
-                  onBlur={hideSettingsHoverTip}
-                />
-                <button className="settings-path-btn" onClick={handleChooseLogPath}>选择</button>
+        {section.items.map(item => {
+          const label = t(`settings.fields.${item.key}.label`)
+          const desc = t(`settings.fields.${item.key}.desc`)
+          const logDisplay = form[item.key] || getDefaultLogPath() || t('settings.logDefaultDir')
+          const logTipPath = form[item.key] || getDefaultLogPath() || t('settings.logDefaultDir')
+          const logResetTip = t('settings.logResetDefault', { path: getDefaultLogPath() || t('settings.logDefaultDir') })
+          return (
+            <div key={item.key} className="settings-item">
+              <div className="settings-item-info">
+                <span className="settings-item-label">{label}</span>
+                {desc ? <span className="settings-item-desc">{desc}</span> : null}
+              </div>
+              {item.type === 'boolean' && (
                 <button
                   type="button"
-                  className="settings-path-btn reset"
-                  aria-label="恢复默认日志目录"
-                  onClick={handleResetLogPath}
-                  onMouseEnter={(e) => showSettingsHoverTip(e, `恢复默认目录为：\n${getDefaultLogPath() || '系统下载目录'}`)}
-                  onMouseLeave={hideSettingsHoverTip}
-                  onFocus={(e) => showSettingsHoverTip(e, `恢复默认目录为：\n${getDefaultLogPath() || '系统下载目录'}`)}
-                  onBlur={hideSettingsHoverTip}
+                  className={`settings-toggle ${form[item.key] ? 'on' : 'off'}`}
+                  onClick={() => set(item.key, !form[item.key])}
                 >
-                  ↺
+                  <span className="settings-toggle-knob" />
                 </button>
-              </div>
-            )}
-            {item.type === 'select' && (
-              <select
-                className="settings-select"
-                value={form[item.key] ?? item.options?.[0]?.value ?? ''}
-                onChange={(e) => set(item.key, e.target.value)}
-              >
-                {(item.options || []).map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            )}
-          </div>
-        ))}
+              )}
+              {item.type === 'path' && (
+                <div className="settings-path-row">
+                  <input
+                    className="settings-path-input"
+                    value={logDisplay}
+                    placeholder={getDefaultLogPath() || t('settings.logChooseDir')}
+                    readOnly
+                    aria-label={`${label}`}
+                    onMouseEnter={(e) => showSettingsHoverTip(e, t('settings.logCurrentDir', { path: logTipPath }))}
+                    onMouseLeave={hideSettingsHoverTip}
+                    onFocus={(e) => showSettingsHoverTip(e, t('settings.logCurrentDir', { path: logTipPath }))}
+                    onBlur={hideSettingsHoverTip}
+                  />
+                  <button type="button" className="settings-path-btn" onClick={handleChooseLogPath}>{t('settings.choose')}</button>
+                  <button
+                    type="button"
+                    className="settings-path-btn reset"
+                    aria-label={t('settings.logResetAria')}
+                    onClick={handleResetLogPath}
+                    onMouseEnter={(e) => showSettingsHoverTip(e, logResetTip)}
+                    onMouseLeave={hideSettingsHoverTip}
+                    onFocus={(e) => showSettingsHoverTip(e, logResetTip)}
+                    onBlur={hideSettingsHoverTip}
+                  >
+                    ↺
+                  </button>
+                </div>
+              )}
+              {item.type === 'select' && (
+                <select
+                  className="settings-select"
+                  value={form[item.key] ?? item.options?.[0]?.value ?? ''}
+                  onChange={(e) => set(item.key, e.target.value)}
+                >
+                  {(item.options || []).map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.labelKey ? t(opt.labelKey) : (opt.label ?? opt.value)}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -536,128 +548,128 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   /** 渲染终端输出高亮标签页的内容，提供一个界面让用户添加、编辑和删除高亮规则，每个规则包含启用状态、匹配模式、是否使用正则表达式和高亮颜色等属性 */
   const renderHighlightTab = () => (
     <div className="settings-section">
-      <div className="settings-section-title">终端输出高亮</div>
+      <div className="settings-section-title">{t('settings.highlightTitle')}</div>
       <div className="settings-items">
         <div className="settings-item">
           <div className="settings-item-info">
-            <span className="settings-item-label">高亮规则</span>
-            <span className="settings-item-desc">为终端输出文本定义匹配表达式和高亮颜色</span>
+            <span className="settings-item-label">{t('settings.highlightRules')}</span>
+            <span className="settings-item-desc">{t('settings.highlightDesc')}</span>
           </div>
           <div className="settings-item-actions">
-            <button type="button" className="settings-action-btn" onClick={handleResetHighlightRules}>重置规则</button>
-            <button type="button" className="settings-action-btn" onClick={addHighlightRule}>新增规则</button>
+            <button type="button" className="settings-action-btn" onClick={handleResetHighlightRules}>{t('settings.resetRules')}</button>
+            <button type="button" className="settings-action-btn" onClick={addHighlightRule}>{t('settings.addRule')}</button>
           </div>
         </div>
-        {(form.highlightRules || []).map((rule, idx) => (
-          <div key={rule.id} className="settings-rule-item">
-            <div className="settings-rule-top">
-              <span className="settings-rule-index">规则 {idx + 1}</span>
-              <input
-                className="settings-rule-name-input"
-                type="text"
-                value={rule.name ?? ''}
-                placeholder="请输入规则名字"
-                aria-label="规则名称"
-                onMouseEnter={(e) => showSettingsHoverTip(e, '规则名称')}
-                onMouseLeave={hideSettingsHoverTip}
-                onChange={(e) => updateHighlightRule(rule.id, { name: e.target.value })}
-              />
-              <span className="settings-rule-grid-placeholder" aria-hidden="true" />
-              <button
-                type="button"
-                className={`settings-toggle ${rule.enabled ? 'on' : 'off'}`}
-                aria-label={`${(rule.name || '').trim() || `未命名规则${idx + 1}`}：${rule.enabled ? '已启用' : '已禁用'}`}
-                onMouseEnter={(e) => showSettingsHoverTip(e, rule.enabled ? '规则已启用' : '规则已禁用')}
-                onMouseLeave={hideSettingsHoverTip}
-                onFocus={(e) => showSettingsHoverTip(e, rule.enabled ? '规则已启用' : '规则已禁用')}
-                onBlur={hideSettingsHoverTip}
-                onClick={() => updateHighlightRule(rule.id, { enabled: !rule.enabled })}
-              >
-                <span className="settings-toggle-knob" />
-              </button>
-            </div>
-            <div className="settings-rule-row">
-              <button type="button" className="settings-action-btn danger" onClick={() => removeHighlightRule(rule.id)}>删除</button>
-              <input
-                className="settings-rule-pattern"
-                type="text"
-                value={rule.pattern}
-                placeholder="请输入匹配规则"
-                onMouseEnter={(e) => showSettingsHoverTip(e, '匹配高亮文本规则')}
-                onMouseLeave={hideSettingsHoverTip}
-                onChange={(e) => updateHighlightRule(rule.id, { pattern: e.target.value })}
-              />
-              <input
-                className="settings-rule-color"
-                type="color"
-                value={rule.color || '#ffcc00'}
-                aria-label="高亮颜色"
-                onMouseEnter={(e) => showSettingsHoverTip(e, '点击选择匹配成功时终端里显示的高亮颜色')}
-                onMouseLeave={hideSettingsHoverTip}
-                onFocus={(e) => showSettingsHoverTip(e, '点击选择匹配成功时终端里显示的高亮颜色')}
-                onBlur={hideSettingsHoverTip}
-                onChange={(e) => updateHighlightRule(rule.id, { color: e.target.value })}
-              />
-              <div className="settings-rule-icon-toggles" role="group" aria-label="匹配选项">
-              <button
-                  type="button"
-                  className={`settings-icon-toggle ${rule.caseSensitive === true ? 'active' : ''}`}
-                  aria-label="区分大小写"
-                  aria-pressed={rule.caseSensitive === true}
-                  onMouseEnter={(e) => showSettingsHoverTip(e, rule.caseSensitive === true ? '区分大小写（点击改为忽略大小写）' : '忽略大小写（点击改为区分大小写）')}
+        {(form.highlightRules || []).map((rule, idx) => {
+          const unnamed = translate(msgLang, 'settings.unnamedRule', { n: idx + 1 })
+          return (
+            <div key={rule.id} className="settings-rule-item">
+              <div className="settings-rule-top">
+                <span className="settings-rule-index">{t('settings.ruleN', { n: idx + 1 })}</span>
+                <input
+                  className="settings-rule-name-input"
+                  type="text"
+                  value={rule.name ?? ''}
+                  placeholder={t('settings.ruleNamePh')}
+                  aria-label={t('settings.ruleNameTip')}
+                  onMouseEnter={(e) => showSettingsHoverTip(e, t('settings.ruleNameTip'))}
                   onMouseLeave={hideSettingsHoverTip}
-                  onFocus={(e) => showSettingsHoverTip(e, rule.caseSensitive === true ? '区分大小写（点击改为忽略大小写）' : '忽略大小写（点击改为区分大小写）')}
-                  onBlur={hideSettingsHoverTip}
-                  onClick={() => updateHighlightRule(rule.id, { caseSensitive: !rule.caseSensitive })}
-                >
-                  <HighlightCaseIcon />
-                </button>
+                  onChange={(e) => updateHighlightRule(rule.id, { name: e.target.value })}
+                />
+                <span className="settings-rule-grid-placeholder" aria-hidden="true" />
                 <button
                   type="button"
-                  className={`settings-icon-toggle ${(rule.useRegex ?? true) ? 'active' : ''}`}
-                  aria-label="使用正则表达式"
-                  aria-pressed={rule.useRegex ?? true}
-                  onMouseEnter={(e) => showSettingsHoverTip(e, (rule.useRegex ?? true) ? '使用正则表达式（点击改为纯文本匹配）' : '纯文本匹配（点击改为正则）')}
+                  className={`settings-toggle ${rule.enabled ? 'on' : 'off'}`}
+                  aria-label={`${(rule.name || '').trim() || unnamed}：${rule.enabled ? t('settings.ruleEnabled') : t('settings.ruleDisabled')}`}
+                  onMouseEnter={(e) => showSettingsHoverTip(e, rule.enabled ? t('settings.ruleEnabled') : t('settings.ruleDisabled'))}
                   onMouseLeave={hideSettingsHoverTip}
-                  onFocus={(e) => showSettingsHoverTip(e, (rule.useRegex ?? true) ? '使用正则表达式（点击改为纯文本匹配）' : '纯文本匹配（点击改为正则）')}
+                  onFocus={(e) => showSettingsHoverTip(e, rule.enabled ? t('settings.ruleEnabled') : t('settings.ruleDisabled'))}
                   onBlur={hideSettingsHoverTip}
-                  onClick={() => updateHighlightRule(rule.id, { useRegex: !(rule.useRegex ?? true) })}
+                  onClick={() => updateHighlightRule(rule.id, { enabled: !rule.enabled })}
                 >
-                  <HighlightRegexIcon />
+                  <span className="settings-toggle-knob" />
                 </button>
               </div>
+              <div className="settings-rule-row">
+                <button type="button" className="settings-action-btn danger" onClick={() => removeHighlightRule(rule.id)}>{t('settings.delete')}</button>
+                <input
+                  className="settings-rule-pattern"
+                  type="text"
+                  value={rule.pattern}
+                  placeholder={t('settings.patternPh')}
+                  onMouseEnter={(e) => showSettingsHoverTip(e, t('settings.patternTip'))}
+                  onMouseLeave={hideSettingsHoverTip}
+                  onChange={(e) => updateHighlightRule(rule.id, { pattern: e.target.value })}
+                />
+                <input
+                  className="settings-rule-color"
+                  type="color"
+                  value={rule.color || '#ffcc00'}
+                  aria-label={t('settings.colorTip')}
+                  onMouseEnter={(e) => showSettingsHoverTip(e, t('settings.colorTip'))}
+                  onMouseLeave={hideSettingsHoverTip}
+                  onFocus={(e) => showSettingsHoverTip(e, t('settings.colorTip'))}
+                  onBlur={hideSettingsHoverTip}
+                  onChange={(e) => updateHighlightRule(rule.id, { color: e.target.value })}
+                />
+                <div className="settings-rule-icon-toggles" role="group" aria-label={t('settings.matchOptions')}>
+                  <button
+                    type="button"
+                    className={`settings-icon-toggle ${rule.caseSensitive === true ? 'active' : ''}`}
+                    aria-label={t('settings.caseAria')}
+                    aria-pressed={rule.caseSensitive === true}
+                    onMouseEnter={(e) => showSettingsHoverTip(e, rule.caseSensitive === true ? t('settings.caseTipOn') : t('settings.caseTipOff'))}
+                    onMouseLeave={hideSettingsHoverTip}
+                    onFocus={(e) => showSettingsHoverTip(e, rule.caseSensitive === true ? t('settings.caseTipOn') : t('settings.caseTipOff'))}
+                    onBlur={hideSettingsHoverTip}
+                    onClick={() => updateHighlightRule(rule.id, { caseSensitive: !rule.caseSensitive })}
+                  >
+                    <HighlightCaseIcon />
+                  </button>
+                  <button
+                    type="button"
+                    className={`settings-icon-toggle ${(rule.useRegex ?? true) ? 'active' : ''}`}
+                    aria-label={t('settings.regexAria')}
+                    aria-pressed={rule.useRegex ?? true}
+                    onMouseEnter={(e) => showSettingsHoverTip(e, (rule.useRegex ?? true) ? t('settings.regexTipOn') : t('settings.regexTipOff'))}
+                    onMouseLeave={hideSettingsHoverTip}
+                    onFocus={(e) => showSettingsHoverTip(e, (rule.useRegex ?? true) ? t('settings.regexTipOn') : t('settings.regexTipOff'))}
+                    onBlur={hideSettingsHoverTip}
+                    onClick={() => updateHighlightRule(rule.id, { useRegex: !(rule.useRegex ?? true) })}
+                  >
+                    <HighlightRegexIcon />
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
 
   /** 清空主进程加密库中的全部敏感凭据（不删除已保存会话条目） */
   const handleClearAllVaultSecrets = async () => {
-    if (!confirm('确定清空全部已加密保存的敏感信息？\n已保存的会话列表仍会保留，但 SSH/Telnet 的密码、私钥与 passphrase 需重新输入或重新保存。')) return
-    if (!confirm('再次确认：此操作不可恢复。')) return
+    if (!confirm(t('settings.confirmClearVault'))) return
+    if (!confirm(t('settings.confirmClearVault2'))) return
     try {
       await clearAllVaultEntries()
-      alert('已清空全部敏感信息')
+      alert(t('settings.clearedVault'))
     } catch (e) {
-      alert('清空失败：' + (e?.message || String(e)))
+      alert(t('settings.clearVaultFail', { msg: e?.message || String(e) }))
     }
   }
 
   /** 凭据存储：单一总开关 + 清空加密库 */
   const renderCredentialsTab = () => (
     <div className="settings-section">
-      <div className="settings-section-title">凭据存储</div>
-      <p className="settings-credentials-intro">
-        开启后，保存 SSH/Telnet 会话时会把密码、私钥路径或 PEM、私钥 passphrase 等一并写入系统加密存储。
-        关闭并保存设置后，会按会话从加密库中移除这些字段；若系统不支持加密，保存会话时会提示且不会把明文写入磁盘。
-      </p>
+      <div className="settings-section-title">{t('settings.credentialsTitle')}</div>
+      <p className="settings-credentials-intro">{t('settings.credentialsIntro')}</p>
       <div className="settings-items">
         <div className="settings-item">
           <div className="settings-item-info">
-            <span className="settings-item-label">保存敏感凭据到加密存储</span>
-            <span className="settings-item-desc">涵盖 SSH 密码、私钥与 passphrase、Telnet 密码（Telnet 传输本身非加密，请仅在可信网络使用）</span>
+            <span className="settings-item-label">{t('settings.saveSecrets')}</span>
+            <span className="settings-item-desc">{t('settings.saveSecretsDesc')}</span>
           </div>
           <button
             type="button"
@@ -669,10 +681,10 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
         </div>
         <div className="settings-item">
           <div className="settings-item-info">
-            <span className="settings-item-label">清空全部已保存的敏感信息</span>
-            <span className="settings-item-desc">立即删除加密库中所有凭据；不影响会话列表与本地设置</span>
+            <span className="settings-item-label">{t('settings.clearSecrets')}</span>
+            <span className="settings-item-desc">{t('settings.clearSecretsDesc')}</span>
           </div>
-          <button type="button" className="settings-action-btn danger" onClick={handleClearAllVaultSecrets}>清空</button>
+          <button type="button" className="settings-action-btn danger" onClick={handleClearAllVaultSecrets}>{t('settings.clear')}</button>
         </div>
       </div>
     </div>
@@ -680,54 +692,54 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   const renderSessionTab = () => (
     <div className="settings-section">
-      <div className="settings-section-title">会话管理</div>
+      <div className="settings-section-title">{t('settings.sessionMgmt')}</div>
       <div className="settings-items">
         <div className="settings-item">
           <div className="settings-item-info">
-            <span className="settings-item-label">导出会话</span>
-            <span className="settings-item-desc">将所有保存的会话导出为 JSON 文件</span>
+            <span className="settings-item-label">{t('settings.exportSessions')}</span>
+            <span className="settings-item-desc">{t('settings.exportSessionsDesc')}</span>
           </div>
-          <button className="settings-action-btn" onClick={handleExport}>导出</button>
+          <button type="button" className="settings-action-btn" onClick={handleExport}>{t('settings.export')}</button>
         </div>
         <div className="settings-item">
           <div className="settings-item-info">
-            <span className="settings-item-label">导入会话</span>
-            <span className="settings-item-desc">从 JSON 文件导入会话（与现有会话合并）</span>
+            <span className="settings-item-label">{t('settings.importSessions')}</span>
+            <span className="settings-item-desc">{t('settings.importSessionsDesc')}</span>
           </div>
-          <button className="settings-action-btn" onClick={() => importRef.current?.click()}>导入</button>
+          <button type="button" className="settings-action-btn" onClick={() => importRef.current?.click()}>{t('settings.import')}</button>
           <input ref={importRef} type="file" accept=".json" style={{display:'none'}} onChange={handleImport} />
         </div>
         <div className="settings-item">
           <div className="settings-item-info">
-            <span className="settings-item-label">清除所有会话</span>
-            <span className="settings-item-desc">删除全部保存的会话和分组，操作不可恢复</span>
+            <span className="settings-item-label">{t('settings.clearAllSessions')}</span>
+            <span className="settings-item-desc">{t('settings.clearAllSessionsDesc')}</span>
           </div>
-          <button className="settings-action-btn danger" onClick={handleClearAll}>清除</button>
+          <button type="button" className="settings-action-btn danger" onClick={handleClearAll}>{t('settings.clearAll')}</button>
         </div>
       </div>
-      <div className="settings-section-title">设置管理</div>
+      <div className="settings-section-title">{t('settings.settingsMgmt')}</div>
       <div className="settings-items">
         <div className="settings-item">
           <div className="settings-item-info">
-            <span className="settings-item-label">导出设置</span>
-            <span className="settings-item-desc">将当前所有设置导出为 JSON 文件</span>
+            <span className="settings-item-label">{t('settings.exportSettings')}</span>
+            <span className="settings-item-desc">{t('settings.exportSettingsDesc')}</span>
           </div>
-          <button className="settings-action-btn" onClick={handleExportSettings}>导出</button>
+          <button type="button" className="settings-action-btn" onClick={handleExportSettings}>{t('settings.export')}</button>
         </div>
         <div className="settings-item">
           <div className="settings-item-info">
-            <span className="settings-item-label">导入设置</span>
-            <span className="settings-item-desc">从 JSON 文件导入设置（将覆盖当前设置）</span>
+            <span className="settings-item-label">{t('settings.importSettings')}</span>
+            <span className="settings-item-desc">{t('settings.importSettingsDesc')}</span>
           </div>
-          <button className="settings-action-btn" onClick={() => importSettingsRef.current?.click()}>导入</button>
+          <button type="button" className="settings-action-btn" onClick={() => importSettingsRef.current?.click()}>{t('settings.import')}</button>
           <input ref={importSettingsRef} type="file" accept=".json" style={{display:'none'}} onChange={handleImportSettings} />
         </div>
         <div className="settings-item">
           <div className="settings-item-info">
-            <span className="settings-item-label">恢复默认设置</span>
-            <span className="settings-item-desc">将本地保存的全部选项重置为应用内置默认值（会同时清除保存的密钥等敏感信息，但不影响已保存的会话列表）</span>
+            <span className="settings-item-label">{t('settings.restoreDefaults')}</span>
+            <span className="settings-item-desc">{t('settings.restoreDefaultsDesc')}</span>
           </div>
-          <button type="button" className="settings-action-btn danger" onClick={handleRestoreDefaultSettings}>恢复默认</button>
+          <button type="button" className="settings-action-btn danger" onClick={handleRestoreDefaultSettings}>{t('settings.restoreDefaultBtn')}</button>
         </div>
       </div>
     </div>
@@ -746,7 +758,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
       )}
       <div className="dialog settings-dialog">
         <div className="dialog-header">
-          <div className="settings-title"><span className="settings-title-icon">⚙ </span>设置</div>
+          <div className="settings-title"><span className="settings-title-icon">⚙ </span>{t('settings.title')}</div>
           <button className="dialog-close" onClick={onClose}>×</button>
         </div>
 
@@ -765,9 +777,9 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
           </div>
 
           <div className="settings-tab-panels">
-            {activeTab === 'general' && GENERAL_SECTION_KEYS.map((name) => {
-              const section = SETTINGS_SCHEMA.find((s) => s.section === name)
-              return section ? <Fragment key={name}>{renderSection(section)}</Fragment> : null
+            {activeTab === 'general' && SETTINGS_GENERAL_SECTION_IDS.map((id) => {
+              const section = SETTINGS_SCHEMA.find((s) => s.section === id)
+              return section ? <Fragment key={id}>{renderSection(section)}</Fragment> : null
             })}
             {activeTab === 'ssh-terminal' && (
               <>
@@ -785,9 +797,9 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
         </div>
 
         <div className="dialog-footer">
-          <button type="button" className="btn-cancel" onClick={onClose}>取消</button>
-          <button type="button" className="btn-save" onClick={handleSave}>保存</button>
-          <button type="button" className="btn-save-connect" onClick={handleSaveAndClose}>保存并关闭</button>
+          <button type="button" className="btn-cancel" onClick={onClose}>{t('settings.cancel')}</button>
+          <button type="button" className="btn-save" onClick={handleSave}>{t('settings.save')}</button>
+          <button type="button" className="btn-save-connect" onClick={handleSaveAndClose}>{t('settings.saveClose')}</button>
         </div>
       </div>
     </div>

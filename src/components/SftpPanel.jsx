@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useI18n } from '../context/I18nContext.jsx'
 import '../styles/sftp.css'
 
 /**
@@ -73,6 +74,7 @@ function formatDate(ms) {
  * @returns {JSX.Element} SFTP 面板组件
  */
 export default function SftpPanel({ session }) {
+  const { t } = useI18n()
   const sftpSessionId = session?.id ? `${session.id}-sftp` : null  // 会话 ID
   const [path, setPath] = useState('/')  // 当前路径
   const [items, setItems] = useState([])  // 文件列表
@@ -142,7 +144,7 @@ export default function SftpPanel({ session }) {
    */
   const handleDelete = async (item, e) => {
     e.stopPropagation()
-    if (!confirm(`确认删除 ${item.name}?`)) return
+    if (!confirm(t('sftp.confirmDelete', { name: item.name }))) return
     const res = await window.zterm.sftp.delete(sftpSessionId, item.path)
     if (res.success) loadDir(path)
     else setError(res.error)
@@ -159,7 +161,7 @@ export default function SftpPanel({ session }) {
     const name = createDirName.trim()
     if (!name) { setCreatingDir(false); return }
     if (INVALID_NAME_CHARS.test(name)) {
-      setError('名称不允许包含以下字符：/ \\ : * ? " < > |')
+      setError(t('sftp.nameInvalid'))
       return
     }
     const newPath = path === '/' ? '/' + name : path + '/' + name
@@ -187,7 +189,7 @@ export default function SftpPanel({ session }) {
     if (!nextName) { setRenaming(null); return }
     if (nextName === prevName) { setRenaming(null); return }
     if (INVALID_NAME_CHARS.test(nextName)) {
-      setError('名称不允许包含以下字符：/ \\ : * ? " < > |')
+      setError(t('sftp.nameInvalid'))
       return
     }
     const dir = path === '/' ? '' : path
@@ -213,7 +215,7 @@ export default function SftpPanel({ session }) {
     const res = item.isDir
       ? await window.zterm.sftp.downloadDir(sftpSessionId, item.path, localPath)
       : await window.zterm.sftp.download(sftpSessionId, item.path, localPath)
-    if (!res?.success) setError(res?.error || '下载失败')
+    if (!res?.success) setError(res?.error || t('sftp.downloadFail'))
   }
 
   /** 
@@ -231,7 +233,7 @@ export default function SftpPanel({ session }) {
     if (res?.success) { cache.add(remoteDir); return true } // 如果创建成功，将目录添加到缓存集合中，并返回 true
     const msg = String(res?.error || '')
     if (/exist|exists|failure/i.test(msg)) { cache.add(remoteDir); return true } // 如果创建失败，且错误信息中包含 exist、exists 或 failure，将目录添加到缓存集合中，并返回 true
-    throw new Error(res?.error || `mkdir失败: ${remoteDir}`) // 如果创建失败，且错误信息中不包含 exist、exists 或 failure，抛出错误
+    throw new Error(res?.error || t('sftp.mkdirFail', { path: remoteDir })) // 如果创建失败，且错误信息中不包含 exist、exists 或 failure，抛出错误
   }
 
   /** 
@@ -276,7 +278,7 @@ export default function SftpPanel({ session }) {
       for (const f of files) {
         const remotePath = (path === '/' ? '' : path) + '/' + f.name
         const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
-        if (!res?.success) throw new Error(res?.error || `上传失败: ${f.name}`)
+        if (!res?.success) throw new Error(res?.error || t('sftp.uploadFail', { name: f.name }))
       }
       loadDir(path)
     } catch (err) {
@@ -311,7 +313,7 @@ export default function SftpPanel({ session }) {
         const remoteDir = remotePath.split('/').slice(0, -1).join('/') || '/'
         await ensureRemoteDir(remoteDir, cache)
         const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
-        if (!res?.success) throw new Error(res?.error || `上传失败: ${f.webkitRelativePath}`)
+        if (!res?.success) throw new Error(res?.error || t('sftp.uploadFail', { name: f.webkitRelativePath }))
       }
       loadDir(path)
     } catch (err) {
@@ -354,7 +356,7 @@ export default function SftpPanel({ session }) {
           const remoteDir = remotePath.split('/').slice(0, -1).join('/') || '/' // 获取远程目录
           await ensureRemoteDir(remoteDir, cache) // 确保远程目录存在
           const res = await window.zterm.sftp.upload(sftpSessionId, localPath, remotePath) // 上传文件
-          if (!res?.success) throw new Error(res?.error || `上传失败: ${relPath}`) // 如果上传失败，抛出错误
+          if (!res?.success) throw new Error(res?.error || t('sftp.uploadFail', { name: relPath })) // 如果上传失败，抛出错误
         }
         loadDir(path)
         return
@@ -365,7 +367,7 @@ export default function SftpPanel({ session }) {
       for (const f of files) {  // 遍历要上传的文件列表
         const remotePath = (path === '/' ? '' : path) + '/' + f.name // 获取远程路径
         const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath) // 上传文件
-        if (!res?.success) throw new Error(res?.error || `上传失败: ${f.name}`) // 如果上传失败，抛出错误
+        if (!res?.success) throw new Error(res?.error || t('sftp.uploadFail', { name: f.name })) // 如果上传失败，抛出错误
       }
       loadDir(path) // 刷新目录
     } catch (err) {
@@ -381,7 +383,7 @@ export default function SftpPanel({ session }) {
         <span className="sftp-title">SFTP — {session.host}</span>
         <div className="sftp-toolbar">
           <details ref={uploadDetailsRef} className="sftp-upload-details">
-            <summary className="sftp-btn sftp-upload-summary" title="上传到当前目录">↑ 上传</summary>
+            <summary className="sftp-btn sftp-upload-summary" title={t('sftp.uploadTitle')}>{t('sftp.upload')}</summary>
             <div className="sftp-upload-menu" role="menu">
               <button
                 type="button"
@@ -391,7 +393,7 @@ export default function SftpPanel({ session }) {
                   fileUploadInputRef.current?.click()
                 }}
               >
-                选择文件…
+                {t('sftp.pickFiles')}
               </button>
               <button
                 type="button"
@@ -401,7 +403,7 @@ export default function SftpPanel({ session }) {
                   folderUploadInputRef.current?.click()
                 }}
               >
-                选择文件夹…
+                {t('sftp.pickFolder')}
               </button>
             </div>
           </details>
@@ -427,15 +429,15 @@ export default function SftpPanel({ session }) {
               e.target.value = ''
             }}
           />
-          <button className="sftp-btn" onClick={startCreateDir} title="新建文件夹">+ 文件夹</button>
-          <button className="sftp-btn" onClick={() => { loadDir(path); setProgress(null) }} title="刷新">↻ 刷新</button>
+          <button type="button" className="sftp-btn" onClick={startCreateDir} title={t('sftp.newFolderTitle')}>{t('sftp.newFolder')}</button>
+          <button type="button" className="sftp-btn" onClick={() => { loadDir(path); setProgress(null) }} title={t('sftp.refreshTitle')}>{t('sftp.refresh')}</button>
         </div>
       </div>
       {creatingDir && (
         <div className="sftp-breadcrumb">
           <input
             className="sftp-rename-input"
-            placeholder="输入新文件夹名称"
+            placeholder={t('sftp.newFolderPh')}
             value={createDirName}
             autoFocus
             onChange={e => setCreateDirName(e.target.value)}
@@ -444,8 +446,8 @@ export default function SftpPanel({ session }) {
               if (e.key === 'Escape') { setCreatingDir(false); setCreateDirName('') }
             }}
           />
-          <button id="sftp-create-dir-btn" className="sftp-btn" onClick={commitCreateDir}>创建</button>
-          <button id="sftp-cancel-dir-btn" className="sftp-btn" onClick={() => { setCreatingDir(false); setCreateDirName('') }}>取消</button>
+          <button type="button" id="sftp-create-dir-btn" className="sftp-btn" onClick={commitCreateDir}>{t('sftp.create')}</button>
+          <button type="button" id="sftp-cancel-dir-btn" className="sftp-btn" onClick={() => { setCreatingDir(false); setCreateDirName('') }}>{t('sftp.cancel')}</button>
         </div>
       )}
 
@@ -465,7 +467,7 @@ export default function SftpPanel({ session }) {
 
       {progress && (
         <div className="sftp-progress">
-          <span>{progress.type === 'upload' ? '上传' : '下载'}: {progress.file.split('/').pop()}</span>
+          <span>{progress.type === 'upload' ? t('sftp.progressUp') : t('sftp.progressDown')}: {progress.file.split('/').pop()}</span>
           <div className="sftp-progress-bar">
             <div className="sftp-progress-fill" style={{ width: progress.percent + '%' }} />
           </div>
@@ -480,7 +482,7 @@ export default function SftpPanel({ session }) {
             <span className="sftp-item-name">..</span>
           </div>
         )}
-        {loading && <div className="sftp-loading">加载中...</div>}
+        {loading && <div className="sftp-loading">{t('sftp.loading')}</div>}
         {!loading && items.map(item => (
           <div
             key={item.path}
@@ -504,14 +506,14 @@ export default function SftpPanel({ session }) {
             <span className="sftp-item-size">{item.isDir ? '' : formatSize(item.size)}</span>
             <span className="sftp-item-date">{formatDate(item.mtime)}</span>
             <div className="sftp-item-actions">
-              <button className="sftp-action-btn" onClick={(e) => handleDownload(item, e)} title="下载">⭳</button>
-              <button className="sftp-action-btn" onClick={(e) => startRename(item, e)} title="重命名">✏</button>
-              <button className="sftp-action-btn danger" onClick={(e) => handleDelete(item, e)} title="删除">🗑</button>
+              <button type="button" className="sftp-action-btn" onClick={(e) => handleDownload(item, e)} title={t('sftp.download')}>⭳</button>
+              <button type="button" className="sftp-action-btn" onClick={(e) => startRename(item, e)} title={t('sftp.rename')}>✏</button>
+              <button type="button" className="sftp-action-btn danger" onClick={(e) => handleDelete(item, e)} title={t('sftp.delete')}>🗑</button>
             </div>
           </div>
         ))}
         {!loading && items.length === 0 && !error && (
-          <div className="sftp-empty">此目录为空</div>
+          <div className="sftp-empty">{t('sftp.empty')}</div>
         )}
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
+import { useI18n } from '../context/I18nContext.jsx'
 import { fetchSessionSecrets } from '../store/credentialsBridge.js'
 import { TERMINAL_ENCODING_OPTIONS, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
 import '../styles/dialog.css'
@@ -68,6 +69,7 @@ function buildLabel(tab, form) {
  * @param {Function} props.onClose 关闭对话框的回调函数
  */
 export default function ConnectDialog({ type, initialData, savedGroups, onConnect, onSaveAndConnect, onSaveOnly, onClose }) {
+  const { t } = useI18n()
   const [tab, setTab] = useState(type || 'ssh')
   const [form, setForm] = useState(() => getDefault(type || 'ssh', initialData))
   const [ports, setPorts] = useState([])
@@ -131,18 +133,18 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
    * @returns {string} 错误信息，如果没有错误则返回空字符串
    */
   const validate = () => {
-    if (tab === 'ssh' && !form.host?.trim()) return '请填写主机地址'
-    if (tab === 'telnet' && !form.host?.trim()) return '请填写主机地址'
+    if (tab === 'ssh' && !form.host?.trim()) return t('connect.errHost')
+    if (tab === 'telnet' && !form.host?.trim()) return t('connect.errHost')
     if (tab === 'serial') {
-      if (!form.path?.trim()) return '请选择串口设备'
+      if (!form.path?.trim()) return t('connect.errSerial')
       if (!isSerialPathInEnumeratedList(form.path, ports)) {
-        return '串口路径须来自当前枚举列表；请点击「刷新」更新设备列表后，从列表中选择路径'
+        return t('connect.errSerialList')
       }
     }
-    if (form.group?.startsWith('/')) return '分组不允许为以"/"开头'
-    if (form.group?.endsWith('/')) return '分组不允许为以"/"结尾，会导致分组名为空'
-    if (form.group && /[\\:*?"\u003c\u003e|\x00]/.test(form.group)) return '分组不允许包含以下字符：\\ : * ? " < > |'
-    if (form.label && /[\/\\:*?"\u003c\u003e|\x00]/.test(form.label)) return '标签名不允许包含以下字符：/ \\ : * ? " < > |'
+    if (form.group?.startsWith('/')) return t('connect.errGroupSlashStart')
+    if (form.group?.endsWith('/')) return t('connect.errGroupSlashEnd')
+    if (form.group && /[\\:*?"\u003c\u003e|\x00]/.test(form.group)) return t('connect.errGroupChars')
+    if (form.label && /[\/\\:*?"\u003c\u003e|\x00]/.test(form.label)) return t('connect.errLabelChars')
     return ''
   }
 
@@ -252,14 +254,13 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
       <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && setCredDialog(null)}>
         <div className="dialog">
           <div className="dialog-header">
-            <div className="dialog-tabs">输入凭证</div>
+            <div className="dialog-tabs">{t('connect.credTitle')}</div>
             <button className="dialog-close" onClick={() => setCredDialog(null)}>×</button>
           </div>
           <div className="dialog-body">
-            <FormRow label="用户名">
+            <FormRow label={t('connect.username')}>
               <input
                 ref={credUserInputRef}
-                placeholder="用户名"
                 value={username}
                 onChange={e => setCredDialog(prev => ({ ...prev, username: e.target.value }))}
                 onKeyDown={e => e.key === 'Enter' && applyCred()}
@@ -267,7 +268,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
             </FormRow>
             {keyAuth ? (
               <>
-                <FormRow label="私钥路径">
+                <FormRow label={t('connect.privateKey')}>
                   <input
                     ref={credPkeyInputRef}
                     placeholder="/path/to/id_rsa"
@@ -276,10 +277,10 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
                     onKeyDown={e => e.key === 'Enter' && applyCred()}
                   />
                 </FormRow>
-                <FormRow label="私钥密码短语">
+                <FormRow label={t('connect.passphrase')}>
                   <input
                     type="password"
-                    placeholder="可选"
+                    placeholder={t('connect.passphrasePh')}
                     value={passphrase}
                     onChange={e => setCredDialog(prev => ({ ...prev, passphrase: e.target.value }))}
                     onKeyDown={e => e.key === 'Enter' && applyCred()}
@@ -287,11 +288,10 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
                 </FormRow>
               </>
             ) : (
-              <FormRow label="密码">
+              <FormRow label={t('connect.password')}>
                 <input
                   ref={credPassInputRef}
                   type="password"
-                  placeholder="密码"
                   value={password}
                   onChange={e => setCredDialog(prev => ({ ...prev, password: e.target.value }))}
                   onKeyDown={e => e.key === 'Enter' && applyCred()}
@@ -300,8 +300,8 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
             )}
           </div>
           <div className="dialog-footer">
-            <button className="btn-cancel" onClick={() => setCredDialog(null)}>取消</button>
-            <button className="btn-connect" onClick={applyCred}>连接</button>
+            <button className="btn-cancel" onClick={() => setCredDialog(null)}>{t('connect.cancel')}</button>
+            <button className="btn-connect" onClick={applyCred}>{t('connect.connect')}</button>
           </div>
         </div>
       </div>
@@ -313,9 +313,9 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
       <div className="dialog">
         <div className="dialog-header">
           <div className="dialog-tabs">
-            {['ssh', 'telnet', 'serial'].map(t => (
-              <button key={t} type="button" className={`dialog-tab ${tab===t?'active':''}`} onClick={() => switchTab(t)}>
-                {t === 'ssh' ? 'SSH' : t === 'telnet' ? 'Telnet' : 'Serial'}
+            {['ssh', 'telnet', 'serial'].map((proto) => (
+              <button key={proto} type="button" className={`dialog-tab ${tab===proto?'active':''}`} onClick={() => switchTab(proto)}>
+                {proto === 'ssh' ? 'SSH' : proto === 'telnet' ? 'Telnet' : 'Serial'}
               </button>
             ))}
           </div>
@@ -323,11 +323,11 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
         </div>
 
         <div className="dialog-body">
-          <FormRow label="标签">
-            <input placeholder="自定义名称（可选）" value={form.label} onChange={e => set('label', e.target.value)} />
+          <FormRow label={t('connect.label')}>
+            <input placeholder={t('connect.labelPh')} value={form.label} onChange={e => set('label', e.target.value)} />
           </FormRow>
-          <FormRow label="分组">
-            <input placeholder="可选，空则保存在根分组" value={form.group} onChange={e => set('group', e.target.value)} list="group-list" />
+          <FormRow label={t('connect.group')}>
+            <input placeholder={t('connect.groupPh')} value={form.group} onChange={e => set('group', e.target.value)} list="group-list" />
             <datalist id="group-list">
               {(savedGroups||[]).map(g => <option key={g} value={g} />)}
             </datalist>
@@ -336,7 +336,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
           <SshForm form={form} set={set} visible={tab==='ssh'} />
           <TelnetForm form={form} set={set} visible={tab==='telnet'} />
           <SerialForm form={form} set={set} ports={ports} visible={tab === 'serial'} onRefreshPorts={refreshSerialPorts} />
-          <FormRow label="终端编码">
+          <FormRow label={t('connect.encoding')}>
             <select value={form.encoding || DEFAULT_TERMINAL_ENCODING} onChange={e => set('encoding', e.target.value)}>
               {TERMINAL_ENCODING_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -345,10 +345,10 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
         </div>
 
         <div className="dialog-footer">
-          <button className="btn-cancel" onClick={onClose}>取消</button>
-          <button className="btn-save" onClick={() => act(onSaveOnly, false)}>保存</button>
-          <button className="btn-connect" onClick={() => act(onConnect, true)}>直接连接</button>
-          <button className="btn-save-connect" onClick={() => act(onSaveAndConnect, true)}>保存并连接</button>
+          <button className="btn-cancel" onClick={onClose}>{t('connect.cancel')}</button>
+          <button className="btn-save" onClick={() => act(onSaveOnly, false)}>{t('connect.save')}</button>
+          <button className="btn-connect" onClick={() => act(onConnect, true)}>{t('connect.connectDirect')}</button>
+          <button className="btn-save-connect" onClick={() => act(onSaveAndConnect, true)}>{t('connect.saveAndConnect')}</button>
         </div>
       </div>
     </div>
@@ -363,43 +363,44 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
  * @returns {JSX.Element} SSH 表单
  */
 function SshForm({ form, set, visible }) {
+  const { t } = useI18n()
   if (!visible) return null
   return (
     <>
-      <FormRow label="主机">
-        <input placeholder="hostname 或 IP" value={form.host} onChange={e => set('host', e.target.value)} autoFocus />
+      <FormRow label={t('connect.host')}>
+        <input placeholder={t('connect.hostPh')} value={form.host} onChange={e => set('host', e.target.value)} autoFocus />
       </FormRow>
-      <FormRow label="端口">
+      <FormRow label={t('connect.port')}>
         <input type="number" value={form.port} onChange={e => set('port', e.target.value)} style={{width:80}} />
       </FormRow>
-      <FormRow label="用户名">
-        <input placeholder="可选，连接时输入" value={form.username || ''} onChange={e => set('username', e.target.value)} />
+      <FormRow label={t('connect.username')}>
+        <input placeholder={t('connect.usernamePh')} value={form.username || ''} onChange={e => set('username', e.target.value)} />
       </FormRow>
-      <FormRow label="认证方式">
+      <FormRow label={t('connect.authType')}>
         <select value={form.authType} onChange={e => set('authType', e.target.value)}>
-          <option value="password">密码</option>
-          <option value="privateKey">私钥文件</option>
+          <option value="password">{t('connect.authPassword')}</option>
+          <option value="privateKey">{t('connect.authPrivateKey')}</option>
         </select>
       </FormRow>
       {form.authType === 'password' ? (
-        <FormRow label="密码">
-          <input type="password" placeholder="可选，连接时输入" value={form.password || ''} onChange={e => set('password', e.target.value)} />
+        <FormRow label={t('connect.password')}>
+          <input type="password" placeholder={t('connect.passwordPh')} value={form.password || ''} onChange={e => set('password', e.target.value)} />
         </FormRow>
       ) : (
         <>
-          <FormRow label="私钥路径">
-            <input placeholder="/path/to/id_rsa" value={form.privateKey} onChange={e => set('privateKey', e.target.value)} />
+          <FormRow label={t('connect.privateKey')}>
+            <input placeholder={t('connect.privateKeyPath')} value={form.privateKey} onChange={e => set('privateKey', e.target.value)} />
           </FormRow>
-          <FormRow label="密码短语">
-            <input type="password" placeholder="可选，私钥文件加密密码" value={form.passphrase} onChange={e => set('passphrase', e.target.value)} />
+          <FormRow label={t('connect.passphrase')}>
+            <input type="password" placeholder={t('connect.passphrasePh')} value={form.passphrase} onChange={e => set('passphrase', e.target.value)} />
           </FormRow>
         </>
       )}
       <div className="dialog-divider" />
-      <FormRow label="SFTP">
+      <FormRow label={t('connect.sftp')}>
         <label className="toggle-row">
           <input type="checkbox" checked={form.enableSftp} onChange={e => set('enableSftp', e.target.checked)} />
-          <span>启用 SFTP</span>
+          <span>{t('connect.enableSftp')}</span>
         </label>
       </FormRow>
     </>
@@ -415,20 +416,21 @@ function SshForm({ form, set, visible }) {
  * @returns {JSX.Element} Telnet 表单
  */
 function TelnetForm({ form, set, visible }) {
+  const { t } = useI18n()
   if (!visible) return null
   return (
     <>
-      <FormRow label="主机">
-        <input placeholder="hostname 或 IP" value={form.host} onChange={e => set('host', e.target.value)} autoFocus />
+      <FormRow label={t('connect.host')}>
+        <input placeholder={t('connect.hostPh')} value={form.host} onChange={e => set('host', e.target.value)} autoFocus />
       </FormRow>
-      <FormRow label="端口">
+      <FormRow label={t('connect.port')}>
         <input type="number" value={form.port} onChange={e => set('port', e.target.value)} style={{width:80}} />
       </FormRow>
-      <FormRow label="用户名">
-        <input placeholder="可选，连接时输入" value={form.username || ''} onChange={e => set('username', e.target.value)} />
+      <FormRow label={t('connect.username')}>
+        <input placeholder={t('connect.usernamePh')} value={form.username || ''} onChange={e => set('username', e.target.value)} />
       </FormRow>
-      <FormRow label="密码">
-        <input type="password" placeholder="可选，连接时输入" value={form.password || ''} onChange={e => set('password', e.target.value)} />
+      <FormRow label={t('connect.password')}>
+        <input type="password" placeholder={t('connect.passwordPh')} value={form.password || ''} onChange={e => set('password', e.target.value)} />
       </FormRow>
     </>
   )
@@ -444,41 +446,42 @@ function TelnetForm({ form, set, visible }) {
  * @returns {JSX.Element} Serial 表单
  */
 function SerialForm({ form, set, ports, visible, onRefreshPorts }) {
+  const { t } = useI18n()
   if (!visible) return null
   return (
     <>
-      <FormRow label="串口">
+      <FormRow label={t('connect.serialPort')}>
         <input
           className="dialog-serial-path-input"
-          placeholder="请从列表选择"
+          placeholder={t('connect.serialPh')}
           value={form.path}
           onChange={e => set('path', e.target.value)}
           list="port-list"
           autoFocus
         />
         <button type="button" className="dialog-serial-refresh-btn" onClick={onRefreshPorts}>
-          刷新
+          {t('connect.refresh')}
         </button>
         <datalist id="port-list">
           {ports.map(p => <option key={p.path} value={p.path}>{p.path}{p.manufacturer ? ` (${p.manufacturer})` : ''}</option>)}
         </datalist>
       </FormRow>
-      <FormRow label="波特率">
+      <FormRow label={t('connect.baudRate')}>
         <select value={form.baudRate} onChange={e => set('baudRate', e.target.value)}>
           {BAUD_RATES.map(r => <option key={r} value={r}>{r}</option>)}
         </select>
       </FormRow>
-      <FormRow label="数据位">
+      <FormRow label={t('connect.dataBits')}>
         <select value={form.dataBits} onChange={e => set('dataBits', e.target.value)}>
           {['5','6','7','8'].map(v => <option key={v} value={v}>{v}</option>)}
         </select>
       </FormRow>
-      <FormRow label="停止位">
+      <FormRow label={t('connect.stopBits')}>
         <select value={form.stopBits} onChange={e => set('stopBits', e.target.value)}>
           {['1','2'].map(v => <option key={v} value={v}>{v}</option>)}
         </select>
       </FormRow>
-      <FormRow label="校验位">
+      <FormRow label={t('connect.parity')}>
         <select value={form.parity} onChange={e => set('parity', e.target.value)}>
           {PARITIES.map(v => <option key={v} value={v}>{v}</option>)}
         </select>

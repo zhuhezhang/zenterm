@@ -45,6 +45,8 @@ export { DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgo
 
 /** 默认设置项 */
 export const DEFAULT_SETTINGS = {
+  /** 界面语言：zh 简体中文 | en English */
+  uiLanguage: 'zh',
   confirmDeleteSession: true,
   confirmDeleteGroup: true,
   deleteGroupWithSessions: false,
@@ -53,10 +55,10 @@ export const DEFAULT_SETTINGS = {
   enableLogging: false,
   logPath: '',
   highlightRules: [
-    { id: 'default1_error', name: '默认规则-错误/失败', enabled: true, useRegex: true, caseSensitive: false, pattern: '(\\berror\\b)|(\\bfailed\\b)|(\\bdenied\\b)|(\\bunauthorized\\b)|(\\bdown\\b)', color: '#f1250e' },
-    { id: 'default2_success', name: '默认规则-成功/就绪', enabled: true, useRegex: true, caseSensitive: false, pattern: '(\\bsuccess\\b)|(\\bconnected\\b)|(\\bready\\b)|(\\bok\\b)|(\\bup\\b)', color: '#4ade80' },
-    { id: 'default3_warning', name: '默认规则-警告/信息', enabled: true, useRegex: true, caseSensitive: false, pattern: '(\\bwarning\\b)|(\\bnotice\\b)|(\\binfo\\b)|(\\bdebug\\b)|(\\bdisabled\\b)', color: '#f1c40f' },
-    { id: 'default4_ip', name: '默认规则-IPv4 地址', enabled: true, useRegex: true, caseSensitive: false, pattern: '\\b(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\b', color: '#c717d3' },
+    { id: 'default1_error', name: 'default1_error', enabled: true, useRegex: true, caseSensitive: false, pattern: '(\\berror\\b)|(\\bfailed\\b)|(\\bdenied\\b)|(\\bunauthorized\\b)|(\\bdown\\b)', color: '#f1250e' },
+    { id: 'default2_success', name: 'default2_success', enabled: true, useRegex: true, caseSensitive: false, pattern: '(\\bsuccess\\b)|(\\bconnected\\b)|(\\bready\\b)|(\\bok\\b)|(\\bup\\b)', color: '#4ade80' },
+    { id: 'default3_warning', name: 'default3_warning', enabled: true, useRegex: true, caseSensitive: false, pattern: '(\\bwarning\\b)|(\\bnotice\\b)|(\\binfo\\b)|(\\bdebug\\b)|(\\bdisabled\\b)', color: '#f1c40f' },
+    { id: 'default4_ip', name: 'default4_ip', enabled: true, useRegex: true, caseSensitive: false, pattern: '\\b(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\b', color: '#c717d3' },
   ],
   algorithmPreferences: DEFAULT_ALGORITHM_PREFERENCES,
   /** 为 true 且系统支持加密时，保存 SSH/Telnet 会话会把密码、私钥与 passphrase 等写入主进程 vault（safeStorage），不写入 localStorage */
@@ -84,6 +86,7 @@ export function loadSettings() {
     }
     const merged = { ...DEFAULT_SETTINGS, ...saved }
     if (!('logPath' in saved)) merged.logPath = getDefaultLogPath()
+    if (merged.uiLanguage !== 'en' && merged.uiLanguage !== 'zh') merged.uiLanguage = 'zh'
     return merged
   } catch (e) {
     return { ...DEFAULT_SETTINGS }
@@ -138,38 +141,52 @@ export function importSettings(file) {
   })
 }
 
-/** 设置项的定义和描述，用于在设置界面动态生成表单 */
+/** 「常规」标签内区块顺序（与 SETTINGS_SCHEMA 中 section 字段对应） */
+export const SETTINGS_GENERAL_SECTION_IDS = ['confirm', 'terminal', 'logging', 'appearance']
+
+/** 设置项的定义和描述，用于在设置界面动态生成表单（文案由 i18n 按 section / key 解析） */
 export const SETTINGS_SCHEMA = [
   {
-    section: '操作确认',
+    section: 'confirm',
     items: [
-      { key: 'confirmDeleteSession',    label: '删除会话前确认',         type: 'boolean', desc: '删除保存的会话前弹出确认对话框' },
-      { key: 'confirmDeleteGroup',      label: '删除分组前确认',         type: 'boolean', desc: '删除分组前弹出确认对话框' },
-      { key: 'deleteGroupWithSessions', label: '删除分组时同时删除会话', type: 'boolean', desc: '关闭时仅删除分组，组内会话变为未分组' },
-    ]
+      { key: 'confirmDeleteSession', type: 'boolean' },
+      { key: 'confirmDeleteGroup', type: 'boolean' },
+      { key: 'deleteGroupWithSessions', type: 'boolean' },
+    ],
   },
   {
-    section: '终端行为',
+    section: 'terminal',
     items: [
-      { key: 'terminalInteract', label: '选中复制 / 右键粘贴', type: 'boolean', desc: '选中终端文本自动复制，右键单击粘贴剪贴板内容' },
+      { key: 'terminalInteract', type: 'boolean' },
       {
         key: 'backspaceMode',
-        label: '退格键模式',
         type: 'select',
-        desc: '设置发送给设备的退格编码。Auto: SSH 用 DEL，Telnet/Serial 用 BS',
         options: [
-          { value: 'auto', label: 'Auto' },
-          { value: 'del', label: 'DEL (0x7F)' },
-          { value: 'bs', label: 'BS (0x08)' },
+          { value: 'auto', labelKey: 'settings.options.backspaceAuto' },
+          { value: 'del', labelKey: 'settings.options.backspaceDel' },
+          { value: 'bs', labelKey: 'settings.options.backspaceBs' },
         ],
       },
-    ]
+    ],
   },
   {
-    section: '日志',
+    section: 'logging',
     items: [
-      { key: 'enableLogging', label: '开启终端 I/O 日志', type: 'boolean', desc: '将每个会话的输入输出记录到独立日志文件' },
-      { key: 'logPath',       label: '日志保存目录',      type: 'path',    desc: '留空则保存至系统下载目录下的「zterm-session-log」文件夹。须选主目录/文稿/下载/桌面等用户目录下路径，否则写入会被主进程拒绝' },
-    ]
+      { key: 'enableLogging', type: 'boolean' },
+      { key: 'logPath', type: 'path' },
+    ],
   },
+  {
+    section: 'appearance',
+    items: [
+      {
+        key: 'uiLanguage',
+        type: 'select',
+        options: [
+          { value: 'zh', labelKey: 'settings.options.langZh' },
+          { value: 'en', labelKey: 'settings.options.langEn' },
+        ],
+      },
+    ],
+  }
 ]

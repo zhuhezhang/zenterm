@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useI18n } from '../context/I18nContext.jsx'
 import ConnectionTypeIcon from './common.jsx'
 import '../styles/tabbar.css'
 
@@ -19,6 +20,7 @@ const STATUS_CLS = { connecting: 'connecting', connected: 'connected', disconnec
  * @param {function} props.onSaveOutput 保存标签页终端输出的回调函数，参数为会话 ID
  */
 export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, onReorder, onSaveOutput }) {
+  const { t } = useI18n()
   const [ctxMenu, setCtxMenu] = useState(null)  // 右键菜单状态，包含 { x, y, id, idx }，表示菜单位置和对应的标签页 ID 和索引
   const dragRef = useRef(null)  // 当前拖拽的标签 ID
   const tabsRef = useRef(null)  // 标签容器的 DOM 引用
@@ -146,11 +148,11 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
             <span className="tab-icon">{ConnectionTypeIcon[s.type] || '⌨'}</span>
             <span className={`tab-status ${STATUS_CLS[s.status] || ''}`}>{STATUS_DOT[s.status] || '○'}</span>
             <span className="tab-label">{s.label || `${s.type?.toUpperCase()} ${s.host || s.path || ''}`}</span>
-            {s.sftpReady && <span className="tab-sftp-badge" title="SFTP 已就绪">⇅</span>}
-            <button className="tab-close" onClick={e => { e.stopPropagation(); onClose(s.id) }} title="关闭">×</button>
+            {s.sftpReady && <span className="tab-sftp-badge" title={t('tabbar.sftpReady')}>⇅</span>}
+            <button className="tab-close" onClick={e => { e.stopPropagation(); onClose(s.id) }} title={t('tabbar.closeTab')}>×</button>
           </div>
         ))}
-        <button className="tab-new" onClick={onNew} title="新建连接">＋</button>
+        <button className="tab-new" onClick={onNew} title={t('tabbar.newConnection')}>＋</button>
       </div>
 
       {ctxMenu && (
@@ -159,14 +161,14 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
           style={{ top: ctxMenu.y, left: ctxMenu.x }}
           onClick={e => e.stopPropagation()}
         >
-          <button onClick={() => closeTab(ctxMenu.id)}>关闭标签页</button>
-          <button onClick={() => closeOthers(ctxMenu.id)} disabled={sessions.length <= 1}>关闭其他标签页</button>
-          <button onClick={() => closeLeft(ctxMenu.idx)} disabled={ctxMenu.idx === 0}>关闭左侧标签页</button>
-          <button onClick={() => closeRight(ctxMenu.idx)} disabled={ctxMenu.idx === sessions.length - 1}>关闭右侧标签页</button>
+          <button onClick={() => closeTab(ctxMenu.id)}>{t('tabbar.closeThis')}</button>
+          <button onClick={() => closeOthers(ctxMenu.id)} disabled={sessions.length <= 1}>{t('tabbar.closeOthers')}</button>
+          <button onClick={() => closeLeft(ctxMenu.idx)} disabled={ctxMenu.idx === 0}>{t('tabbar.closeLeft')}</button>
+          <button onClick={() => closeRight(ctxMenu.idx)} disabled={ctxMenu.idx === sessions.length - 1}>{t('tabbar.closeRight')}</button>
           <div className="tab-ctx-divider" />
-          <button onClick={() => { onSaveOutput?.(ctxMenu.id); closeCtx() }}>保存终端输出</button>
+          <button onClick={() => { onSaveOutput?.(ctxMenu.id); closeCtx() }}>{t('tabbar.saveOutput')}</button>
           <div className="tab-ctx-divider" />
-          <button className="danger" onClick={closeAll}>关闭全部标签页</button>
+          <button className="danger" onClick={closeAll}>{t('tabbar.closeAll')}</button>
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { I18nProvider, useI18n } from './context/I18nContext.jsx'
 import TitleBar from './components/TitleBar.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import TabBar from './components/TabBar.jsx'
@@ -76,8 +77,19 @@ function safeFileToken(raw) {
     .trim() || 'session'
 }
 
-/** 主应用组件 */
-export default function App() {
+/**
+ * 主界面（在 I18nProvider 内，可使用 useI18n）
+ * @param {{ settings: object, setSettings: function }} props
+ * @param {Object} props.settings 设置
+ * @param {Function} props.setSettings 设置回调函数
+ * @returns {React.ReactNode} 应用主组件
+ */
+function AppMain({ settings, setSettings }) {
+  const { t } = useI18n()
+  useEffect(() => {
+    document.documentElement.lang = settings.uiLanguage === 'en' ? 'en' : 'zh-CN'
+  }, [settings.uiLanguage])
+
   // 局部变量无法在多次渲染中持久保存、更改局部变量不会触发渲染，因此使用 useState 来管理组件状态，
   // 它保留渲染之间的数据、更新状态(也就是useState的数据，比如这里的使用setSessions更新sessions)会触发组件(这里的组件就是APP)重新渲染以反映最新状态
   const [sessions, setSessions]           = useState([])  // 当前活跃会话列表(上方tab标签页对应的会话)，每个会话对象包含 { id, type, host, username, ... } 等属性
@@ -86,7 +98,6 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth]   = useState(DEFAULT_SIDEBAR_W)  // 侧边栏宽度
   const [savedSessions, setSavedSessions] = useState(() => loadSavedSessions())  // 已保存的会话配置列表，从 localStorage 加载
   const [groupPlaceholders, setGroupPlaceholders] = useState(() => loadGroupPlaceholders())  // 分组占位符列表，从 localStorage 加载
-  const [settings, setSettings]           = useState(() => loadSettings())  // 应用设置，从 localStorage 加载
   const [showDialog, setShowDialog]       = useState(false)  // 是否显示连接对话框
   const [showSettings, setShowSettings]   = useState(false)  // 是否显示设置对话框
   const [dialogType, setDialogType]       = useState('ssh')  // 连接对话框类型：ssh/telnet/serial
@@ -172,12 +183,12 @@ export default function App() {
   const handleSaveTabOutput = useCallback((sessionId) => {
     const getter = terminalExportersRef.current[sessionId]
     if (!getter) {
-      alert('当前标签页尚未准备好终端输出。')
+      alert(t('app.saveOutputNotReady'))
       return
     }
     const text = getter()
     if (!text?.length) {
-      alert('当前标签页暂无可保存的终端输出。')
+      alert(t('app.saveOutputEmpty'))
       return
     }
     const s = sessions.find(v => v.id === sessionId)
@@ -190,7 +201,7 @@ export default function App() {
     a.download = filename
     a.click()
     URL.revokeObjectURL(url)
-  }, [sessions])
+  }, [sessions, t])
 
   /**
    * 更新会话属性
@@ -504,22 +515,33 @@ export default function App() {
   )
 }
 
+/** 应用主组件 */
+export default function App() {
+  const [settings, setSettings] = useState(() => loadSettings())
+  return (
+    <I18nProvider language={settings.uiLanguage}>
+      <AppMain settings={settings} setSettings={setSettings} />
+    </I18nProvider>
+  )
+}
+
 /**
  * 欢迎界面组件
  * 显示在没有打开任何会话时，提供新建会话的入口
  * @param {Function} onNewSession 新建会话的回调函数
  */
 function WelcomeScreen({ onNewSession }) {
+  const { t } = useI18n()
   return (
     <div className="welcome">
       <div className="welcome-logo">
         <span className="welcome-title">ZTerm</span>
-        <span className="welcome-sub">Terminal Emulator</span>
+        <span className="welcome-sub">{t('welcome.subtitle')}</span>
       </div>
       <div className="welcome-actions">
-        {[{type:'ssh',icon:ConnectionTypeIcon.ssh,label:'SSH',desc:'Secure Shell'},
-          {type:'telnet',icon:ConnectionTypeIcon.telnet,label:'Telnet',desc:'Telnet Protocol'},
-          {type:'serial',icon:ConnectionTypeIcon.serial,label:'Serial',desc:'Serial Port'}].map(b => (
+        {[{type:'ssh',icon:ConnectionTypeIcon.ssh,label:'SSH',desc:t('welcome.sshDesc')},
+          {type:'telnet',icon:ConnectionTypeIcon.telnet,label:'Telnet',desc:t('welcome.telnetDesc')},
+          {type:'serial',icon:ConnectionTypeIcon.serial,label:'Serial',desc:t('welcome.serialDesc')}].map(b => (
           <button key={b.type} className="welcome-btn" onClick={() => onNewSession(b.type)}>
             <span className="welcome-btn-icon">{b.icon}</span>
             <span className="welcome-btn-label">{b.label}</span>
@@ -545,6 +567,7 @@ function WelcomeScreen({ onNewSession }) {
  * @param {Function} props.onClose 关闭对话框
  */
 function CredentialDialog({ username, password, privateKey, passphrase, session, saveSecretsToVault, onConnect, onSaveAndConnect, onClose }) {
+  const { t } = useI18n()
   const [user, setUser] = useState(username || '')
   const [pass, setPass] = useState(password || '')
   const [pkey, setPkey] = useState(privateKey || '')
@@ -562,15 +585,15 @@ function CredentialDialog({ username, password, privateKey, passphrase, session,
     <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="dialog">
         <div className="dialog-header">
-          <div className="dialog-tabs">输入凭证</div>
+          <div className="dialog-tabs">{t('credential.title')}</div>
           <button className="dialog-close" onClick={onClose}>×</button>
         </div>
         <div className="dialog-body">
           <div className="form-row">
-            <label className="form-label">用户名</label>
+            <label className="form-label">{t('credential.username')}</label>
             <div className="form-control">
               <input
-                placeholder="用户名"
+                placeholder={t('credential.usernamePh')}
                 value={user}
                 autoFocus={autoFocusUser}
                 onChange={e => setUser(e.target.value)}
@@ -581,7 +604,7 @@ function CredentialDialog({ username, password, privateKey, passphrase, session,
           {keyAuth ? (
             <>
               <div className="form-row">
-                <label className="form-label">私钥路径</label>
+                <label className="form-label">{t('credential.privateKeyPath')}</label>
                 <div className="form-control">
                   <input
                     placeholder="/path/to/id_rsa"
@@ -593,11 +616,11 @@ function CredentialDialog({ username, password, privateKey, passphrase, session,
                 </div>
               </div>
               <div className="form-row">
-                <label className="form-label">私钥密码短语</label>
+                <label className="form-label">{t('credential.keyPassphrase')}</label>
                 <div className="form-control">
                   <input
                     type="password"
-                    placeholder="可选"
+                    placeholder={t('credential.optional')}
                     value={pphrase}
                     onChange={e => setPphrase(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && submitSaveAndConnect()}
@@ -607,11 +630,11 @@ function CredentialDialog({ username, password, privateKey, passphrase, session,
             </>
           ) : (
             <div className="form-row">
-              <label className="form-label">密码</label>
+              <label className="form-label">{t('credential.password')}</label>
               <div className="form-control">
                 <input
                   type="password"
-                  placeholder="密码"
+                  placeholder={t('credential.passwordPh')}
                   value={pass}
                   autoFocus={!autoFocusUser && !hasPass}
                   onChange={e => setPass(e.target.value)}
@@ -622,16 +645,14 @@ function CredentialDialog({ username, password, privateKey, passphrase, session,
           )}
           {canSave && (
             <p className="cred-dialog-hint">
-              {saveSecretsToVault
-                ? '「保存并连接」会将用户名和敏感信息写入加密存储（与设置中的「保存敏感凭据到加密存储」一致）。「连接」不写库。'
-                : '当前未开启「保存敏感凭据到加密存储」。「保存并连接」仅更新已保存会话中的用户名；「连接」不写库。'}
+              {saveSecretsToVault ? t('credential.hintSaveOn') : t('credential.hintSaveOff')}
             </p>
           )}
         </div>
         <div className="dialog-footer">
-          <button type="button" className="btn-cancel" onClick={onClose}>取消</button>
-          <button type="button" className="btn-connect" onClick={submitConnect}>连接</button>
-          <button type="button" className="btn-save-connect" disabled={!canSave} onClick={submitSaveAndConnect} title={canSave ? '' : '非已保存会话'}>保存并连接</button>
+          <button type="button" className="btn-cancel" onClick={onClose}>{t('credential.cancel')}</button>
+          <button type="button" className="btn-connect" onClick={submitConnect}>{t('credential.connect')}</button>
+          <button type="button" className="btn-save-connect" disabled={!canSave} onClick={submitSaveAndConnect} title={canSave ? '' : t('credential.notSavedSession')}>{t('credential.saveConnect')}</button>
         </div>
       </div>
     </div>

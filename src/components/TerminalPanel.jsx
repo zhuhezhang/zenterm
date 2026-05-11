@@ -6,6 +6,7 @@ import '@xterm/xterm/css/xterm.css'
 import '../styles/terminal.css'
 import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
 import { resolveLoggingDirectory } from '../store/settingsStore.js'
+import { translate } from '../i18n/translations.js'
 
 /**
  * 标准化错误对象，提取原始错误文本
@@ -22,8 +23,14 @@ function normalizeError(err) {
  * @param {string} raw 原始错误文本
  * @returns {string} 拼接后的错误提示
  */
-function withRawDetail(friendly, raw) {
-  return raw ? `${friendly}（${raw}）` : `${friendly}`
+function withRawDetail(friendly, raw, lang) {
+  if (!raw) return friendly
+  return translate(lang, 'errors.withRaw', { friendly, raw })
+}
+
+/** @param {object} [settings] */
+function uiLangFromSettings(settings) {
+  return settings?.uiLanguage === 'en' ? 'en' : 'zh'
 }
 
 /**
@@ -31,82 +38,86 @@ function withRawDetail(friendly, raw) {
  * @param {unknown} err 错误对象
  * @returns {string} 映射后的错误提示
  */
-function mapSshError(err) {
+function mapSshError(err, lang) {
   const { raw, lower } = normalizeError(err)
-  if (!raw) return 'SSH 连接失败：未知错误'
+  const w = (key) => withRawDetail(translate(lang, key), raw, lang)
+  if (!raw) return translate(lang, 'errors.ssh.unknown')
   if (lower.includes('all configured authentication methods failed') || lower.includes('permission denied')) {
-    return withRawDetail('SSH 认证失败：用户名或密码错误', raw)
+    return w('errors.ssh.auth')
   }
   if (lower.includes('timed out while waiting for handshake') || lower.includes('etimedout')) {
-    return withRawDetail('SSH 连接超时：服务器无响应，请检查网络、主机和端口', raw)
+    return w('errors.ssh.timeout')
   }
   if (lower.includes('econnrefused')) {
-    return withRawDetail('SSH 连接被拒绝：目标端口未开启 SSH 服务', raw)
+    return w('errors.ssh.refused')
   }
   if (lower.includes('enotfound') || lower.includes('getaddrinfo')) {
-    return withRawDetail('SSH 主机不可达：地址无法解析，请检查主机名或 IP', raw)
+    return w('errors.ssh.dns')
   }
   if (lower.includes('ehostunreach') || lower.includes('enetunreach')) {
-    return withRawDetail('SSH 主机不可达：网络路由不可达，请检查网络连通性', raw)
+    return w('errors.ssh.net')
   }
-  return withRawDetail('SSH 连接失败：请检查连接参数和网络状态', raw)
+  return w('errors.ssh.generic')
 }
 /**
  * 映射 SFTP 连接错误
  * @param {unknown} err 错误对象
  * @returns {string} 映射后的错误提示
  */
-function mapSftpError(err) {
+function mapSftpError(err, lang) {
   const { raw, lower } = normalizeError(err)
-  if (!raw) return 'SFTP 连接失败：未知错误'
+  const w = (key) => withRawDetail(translate(lang, key), raw, lang)
+  if (!raw) return translate(lang, 'errors.sftp.unknown')
   if (lower.includes('no matching key exchange algorithm')) {
-    return withRawDetail('SFTP 连接失败：没有匹配的密钥交换算法', raw)
+    return w('errors.sftp.kex')
   }
   if (lower.includes('start subsystem') || lower.includes('sftp')) {
-    return withRawDetail('SFTP 连接失败：不支持打开 SFTP 子系统', raw)
+    return w('errors.sftp.subsystem')
   }
-  return withRawDetail('SFTP 连接失败：请检查连接参数、网络状态、服务器配置等', raw)
+  return w('errors.sftp.generic')
 }
 /**
  * 映射 Telnet 连接错误
  * @param {unknown} err 错误对象
  * @returns {string} 映射后的错误提示
  */
-function mapTelnetError(err) {
+function mapTelnetError(err, lang) {
   const { raw, lower } = normalizeError(err)
-  if (!raw) return 'Telnet 连接失败：未知错误'
+  const w = (key) => withRawDetail(translate(lang, key), raw, lang)
+  if (!raw) return translate(lang, 'errors.telnet.unknown')
   if (lower.includes('connection timeout') || lower.includes('etimedout')) {
-    return withRawDetail('Telnet 连接超时：服务器无响应，请检查网络、主机和端口', raw)
+    return w('errors.telnet.timeout')
   }
   if (lower.includes('econnrefused')) {
-    return withRawDetail('Telnet 连接被拒绝：目标端口未开启 Telnet 服务', raw)
+    return w('errors.telnet.refused')
   }
   if (lower.includes('enotfound') || lower.includes('getaddrinfo')) {
-    return withRawDetail('Telnet 主机不可达：地址无法解析，请检查主机名或 IP', raw)
+    return w('errors.telnet.dns')
   }
   if (lower.includes('ehostunreach') || lower.includes('enetunreach')) {
-    return withRawDetail('Telnet 主机不可达：网络路由不可达，请检查网络连通性', raw)
+    return w('errors.telnet.net')
   }
-  return withRawDetail('Telnet 连接失败：请检查连接参数和网络状态', raw)
+  return w('errors.telnet.generic')
 }
 /**
  * 映射串口连接错误
  * @param {unknown} err 错误对象
  * @returns {string} 映射后的错误提示
  */
-function mapSerialError(err) {
+function mapSerialError(err, lang) {
   const { raw, lower } = normalizeError(err)
-  if (!raw) return '串口连接失败：未知错误'
+  const w = (key) => withRawDetail(translate(lang, key), raw, lang)
+  if (!raw) return translate(lang, 'errors.serial.unknown')
   if (lower.includes('cannot open') || lower.includes('access denied') || lower.includes('eperm') || lower.includes('eacces')) {
-    return withRawDetail('串口打开失败：端口被占用或权限不足', raw)
+    return w('errors.serial.access')
   }
   if (lower.includes('no such file') || lower.includes('enoent')) {
-    return withRawDetail('串口不存在：请检查端口路径是否正确', raw)
+    return w('errors.serial.missing')
   }
   if (lower.includes('baud')) {
-    return withRawDetail('串口参数错误：请检查波特率等配置', raw)
+    return w('errors.serial.baud')
   }
-  return withRawDetail('串口连接失败：请检查端口状态和连接参数', raw)
+  return w('errors.serial.generic')
 }
 
 /**
@@ -187,13 +198,13 @@ export default function TerminalPanel({ session, active, onUpdate, settings, onR
         const ro = new ResizeObserver(() => { try { fitAddonRef.current.fit() } catch (e) {} })  // 重连时要重新监听容器尺寸变化
         ro.observe(containerRef.current)
         cleanupRef.current.push(() => ro.disconnect())
-        term.writeln('\r\x1b[33mReconnecting...\x1b[0m')
+        term.writeln(`\r\x1b[33m${translate(uiLangFromSettings(settings), 'terminal.reconnecting')}\x1b[0m`)
         setupLogging(session, settingsRef.current, term, logFileRef, cleanupRef)  // 重连时重新初始化日志
         connectSession(term, fitAddonRef.current, session, onUpdate, cleanupRef, disconnectedRef, null, logFileRef, settingsRef)
       }
     })
     return () => d.dispose()
-  }, [session.id])
+  }, [session.id, settings.uiLanguage])
 
   return (
     <div className={`terminal-panel ${active ? 'active' : ''}`} style={{ display: active ? 'flex' : 'none' }}>
@@ -400,17 +411,18 @@ function setupLogging(session, settings, term, logFileRef, cleanupRef) {
 async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, isCancelled, logFileRef, settingsRef) {
   const { id, type } = session  // 从会话对象中提取会话 ID 和类型（SSH/Telnet/Serial）
   const terminalEncoding = session.encoding || DEFAULT_TERMINAL_ENCODING
+  const L = () => uiLangFromSettings(settingsRef.current)
   const writeInfo    = (m) => term.writeln(`\r\x1b[33m${m}\x1b[0m`)  // 在终端写入黄色信息消息（使用 ANSI 转义码）
   const writeError   = (m) => term.writeln(`\r\x1b[31m${m}\x1b[0m`)  // 在终端写入红色错误消息
   const writeSuccess = (m) => term.writeln(`\r\x1b[32m${m}\x1b[0m`)  // 在终端写入绿色成功消息
 
   /**
    * 连接断开处理函数：在终端显示断开消息，提示用户按 R 重连，更新会话状态为断开，并设置断连标记
-   * @param {string} msg 断开消息内容
+   * @param {string} msgKey terminal.* 文案键
    */
-  const onDisconnect = (msg) => {
-    writeInfo(msg)
-    writeInfo('\x1b[2mPress R to reconnect...\x1b[0m')
+  const onDisconnect = (msgKey) => {
+    writeInfo(`\r\n${translate(L(), msgKey)}`)
+    writeInfo(`\x1b[2m${translate(L(), 'terminal.pressR')}\x1b[0m`)
     disconnectedRef.current = true
     onUpdate({ status: 'disconnected', sftpReady: false })
   }
@@ -426,7 +438,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
   }
 
   if (type === 'ssh') {
-    writeInfo(`Connecting to ${session.host}:${session.port || 22}...`)
+    writeInfo(translate(L(), 'terminal.sshConnecting', { host: session.host, port: session.port || 22 }))
     try {
       const connectPayload = {
         ...session,
@@ -435,13 +447,13 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const res = await window.zterm.ssh.connect(id, connectPayload)
       if (isCancelled?.()) return   // 组件已卸载，放弃后续注册
       if (!res.success) throw new Error(res.error)  // 连接失败，抛出错误
-      writeSuccess('Connected!')
+      writeSuccess(translate(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
       const dim = fitAddon.proposeDimensions() || { cols: 80, rows: 24 }  // 获取终端建议尺寸（列和行），默认80x24
       window.zterm.ssh.resize(id, dim.cols, dim.rows)
 
       const r1 = window.zterm.ssh.onData(id, recv)  // 注册 SSH 数据接收事件监听器，使用 recv 函数处理数据
-      const r2 = window.zterm.ssh.onClose(id, () => onDisconnect('\r\nConnection closed.'))  // 注册 SSH 关闭事件监听器，调用 onDisconnect 处理断开
+      const r2 = window.zterm.ssh.onClose(id, () => onDisconnect('terminal.closed'))  // 注册 SSH 关闭事件监听器，调用 onDisconnect 处理断开
       const d1 = term.onData((data) => {  // 注册终端数据事件监听器，用户输入时发送数据到 SSH 会话，并同步日志快照
         window.zterm.ssh.sendData(id, normalizeInputData(type, data, settingsRef), terminalEncoding)
         logFileRef.current?.()
@@ -464,27 +476,27 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
             throw new Error(sr.error)
           }
         } catch (e) { 
-          writeError(mapSftpError(e))
+          writeError(mapSftpError(e, L()))
           window.zterm.ssh.sendData(id, '\n', terminalEncoding)
           onUpdate({ sftpReady: false })
         }
       }
     } catch (e) {
       if (isCancelled?.()) return
-      writeError(mapSshError(e))
+      writeError(mapSshError(e, L()))
       onUpdate({ status: 'error' })
     }
 
   } else if (type === 'telnet') {
-    writeInfo(`Connecting to ${session.host}:${session.port || 23}...`)
+    writeInfo(translate(L(), 'terminal.telnetConnecting', { host: session.host, port: session.port || 23 }))
     try {
       const res = await window.zterm.telnet.connect(id, session)
       if (isCancelled?.()) return
       if (!res.success) throw new Error(res.error)
-      writeSuccess('Connected!')
+      writeSuccess(translate(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
       const r1 = window.zterm.telnet.onData(id, recv)
-      const r2 = window.zterm.telnet.onClose(id, () => onDisconnect('\r\nConnection closed.'))
+      const r2 = window.zterm.telnet.onClose(id, () => onDisconnect('terminal.closed'))
       const d1 = term.onData((data) => {
         window.zterm.telnet.sendData(id, normalizeInputData(type, data, settingsRef), terminalEncoding)
         logFileRef.current?.()
@@ -492,20 +504,20 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.telnet.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
-      writeError(mapTelnetError(e))
+      writeError(mapTelnetError(e, L()))
       onUpdate({ status: 'error' })
     }
 
   } else if (type === 'serial') {
-    writeInfo(`Opening ${session.path} @ ${session.baudRate || 9600} baud...`)
+    writeInfo(translate(L(), 'terminal.serialOpening', { path: session.path, baud: session.baudRate || 9600 }))
     try {
       const res = await window.zterm.serial.connect(id, session)
       if (isCancelled?.()) return
       if (!res.success) throw new Error(res.error)
-      writeSuccess('Serial port opened!')
+      writeSuccess(translate(L(), 'terminal.serialOpened'))
       onUpdate({ status: 'connected' })
       const r1 = window.zterm.serial.onData(id, recv)
-      const r2 = window.zterm.serial.onClose(id, () => onDisconnect('\r\nPort closed.'))
+      const r2 = window.zterm.serial.onClose(id, () => onDisconnect('terminal.portClosed'))
       const d1 = term.onData((data) => {
         window.zterm.serial.sendData(id, normalizeInputData(type, data, settingsRef), terminalEncoding)
         logFileRef.current?.()
@@ -513,7 +525,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.serial.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
-      writeError(mapSerialError(e))
+      writeError(mapSerialError(e, L()))
       onUpdate({ status: 'error' })
     }
   }

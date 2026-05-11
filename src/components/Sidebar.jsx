@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
+import { useI18n } from '../context/I18nContext.jsx'
 import { addGroupPlaceholder, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
 import SftpPanel from './SftpPanel.jsx'
 import ConnectionTypeIcon from './common.jsx'
@@ -111,6 +112,7 @@ export default function Sidebar(props) {
     activeSession, settings, onOpenSettings, style, groupPlaceholders = [], onUpdatePlaceholders,
   } = props
 
+  const { t } = useI18n()
   const [expanded, setExpanded] = useState({})  // 展开状态，key 是分组路径，value 是是否展开
   const [sessionsCollapsed, setSessionsCollapsed] = useState(false)  // 会话是否收起
   const [contextMenu, setContextMenu] = useState(null)  // 上下文菜单状态，包含 x、y 坐标、类型和数据
@@ -223,7 +225,7 @@ export default function Sidebar(props) {
       if (renameGroupAlertingRef.current) return
       renameGroupAlertingRef.current = true  // 设置警告状态，避免 alert 触发的事件链（blur/focus）导致重复弹窗
       ignoreRenameGroupBlurRef.current = true  // 设置忽略 blur 状态（blur 事件也就是失去焦点事件）
-      alert('分组名不允许包含以下字符：/ \\ : * ? " < > |')
+      alert(t('sidebar.renameGroupInvalid'))
       renameGroupAlertingRef.current = false
       setTimeout(() => {  // 等当前调用栈结束后再 focus()，确保浏览器/React 状态稳定，焦点能正确回到输入框
         renameGroupInputRef.current?.focus()
@@ -276,7 +278,7 @@ export default function Sidebar(props) {
   const deleteGroup = (path) => {
     const w = settings?.deleteGroupWithSessions  // 是否删除分组时连带删除其下的所有会话
     const name = path.split('/').pop()  // 获取分组名称
-    const msg = w ? `删除分组「${name}」及其所有内容？` : `删除分组「${name}」？组内会话将变为未分组。`
+    const msg = w ? t('sidebar.deleteGroupWithKids', { name }) : t('sidebar.deleteGroupOnly', { name })
     if (settings?.confirmDeleteGroup !== false && !confirm(msg)) return  // 如果配置了不确认删除，则不删除
     if (w)  // 如果配置了删除分组时连带删除其下的所有会话，则删除所有会话
       onUpdateSessions(savedSessions.filter(s => s.group !== path && !s.group?.startsWith(path + '/')))
@@ -291,7 +293,7 @@ export default function Sidebar(props) {
    * @param {string} label 会话名称
    */
   const deleteSession = (id, label) => {
-    if (settings?.confirmDeleteSession !== false && !confirm(`删除会话「${label}」？`)) return  // 如果配置了不确认删除，则不删除
+    if (settings?.confirmDeleteSession !== false && !confirm(t('sidebar.deleteSession', { label }))) return  // 如果配置了不确认删除，则不删除
     onDeleteSaved(id)
   }
 
@@ -316,7 +318,7 @@ export default function Sidebar(props) {
       if (renameSessionAlertingRef.current) return
       renameSessionAlertingRef.current = true  // 设置警告状态，避免 alert 触发的事件链（blur/focus）导致重复弹窗
       ignoreRenameSessionBlurRef.current = true  // 设置忽略 blur 状态（blur 事件也就是失去焦点事件）
-      alert('标签名不允许包含以下字符：/ \\ : * ? " < > |')
+      alert(t('sidebar.renameSessionInvalid'))
       renameSessionAlertingRef.current = false  // 设置警告状态为 false，避免重复弹窗
       setTimeout(() => {  // 等当前调用栈结束后再 focus()，确保浏览器/React 状态稳定，焦点能正确回到输入框
         renameSessionInputRef.current?.focus()
@@ -551,7 +553,7 @@ export default function Sidebar(props) {
 
   return (
     <div className={`sidebar ${open ? 'open' : 'closed'}`} style={open ? style : undefined} onClick={closeCtx}>
-      <SidebarTop open={open} onToggle={onToggle} onOpenSettings={onOpenSettings} />
+      <SidebarTop open={open} onToggle={onToggle} onOpenSettings={onOpenSettings} t={t} />
       {open && (
         <div className="sidebar-content">
           {hasSftp && (
@@ -559,7 +561,7 @@ export default function Sidebar(props) {
               <div className="sb-section-row" onClick={() => setSftpExpanded(v => !v)}>
                 <span className={`sb-chevron${sftpExpanded ? ' open' : ''}`}><Chevron /></span>
                 <span className="sftp-item-icon">📁</span>
-                <span className="sb-section-label">远程文件</span>
+                <span className="sb-section-label">{t('sidebar.remoteFiles')}</span>
               </div>
               {sftpExpanded && <SftpPanel session={activeSession} />}
             </div>
@@ -573,7 +575,7 @@ export default function Sidebar(props) {
               onDrop={dropUngroup}>
               <span className={`sb-chevron${sessionsCollapsed ? '' : ' open'}`}><Chevron /></span>
               <span className="sftp-item-icon sb-folder-icon" style={{ color: !sessionsCollapsed ? '#e8bf6a' : '#c4a35a' }}><FolderIcon open={open} /></span>
-              <span className="sb-section-label">保存的会话</span>
+              <span className="sb-section-label">{t('sidebar.savedSessions')}</span>
             </div>
             {!sessionsCollapsed && (
               <>
@@ -581,10 +583,10 @@ export default function Sidebar(props) {
                   <input
                     type="search"
                     className="sb-session-search"
-                    placeholder="搜索会话名、主机或串口路径…"
+                    placeholder={t('sidebar.searchPh')}
                     value={sessionSearchQuery}
                     onChange={(e) => setSessionSearchQuery(e.target.value)}
-                    aria-label="按会话名、主机或串口路径搜索已保存会话"
+                    aria-label={t('sidebar.searchAria')}
                   />
                 </div>
                 <div
@@ -596,16 +598,16 @@ export default function Sidebar(props) {
                   <div className="sb-empty">
                     {savedSessions.length === 0 ? (
                       <>
-                        <span>暂无保存的会话</span>
-                        <button type="button" className="sb-link" onClick={() => onNewSession('ssh')}>新建连接</button>
+                        <span>{t('sidebar.noSaved')}</span>
+                        <button type="button" className="sb-link" onClick={() => onNewSession('ssh')}>{t('sidebar.newConnection')}</button>
                       </>
                     ) : searchTrim ? (
                       <>
-                        <span>无匹配的会话</span>
-                        <button type="button" className="sb-link" onClick={() => setSessionSearchQuery('')}>清除搜索</button>
+                        <span>{t('sidebar.noMatch')}</span>
+                        <button type="button" className="sb-link" onClick={() => setSessionSearchQuery('')}>{t('sidebar.clearSearch')}</button>
                       </>
                     ) : (
-                      <span>暂无展示项</span>
+                      <span>{t('sidebar.nothingToShow')}</span>
                     )}
                   </div>
                 )}
@@ -776,17 +778,17 @@ function TreeNode({ node, depth, isExp, togExp, openCtx, onConnectSaved,
  *  @param {function} props.onOpenSettings 打开设置界面的回调函数
  *  @returns {JSX.Element} 侧边栏顶部组件
  */
-function SidebarTop({ open, onToggle, onOpenSettings }) {
+function SidebarTop({ open, onToggle, onOpenSettings, t }) {
   return (
     <div className="sidebar-top">
-      <button className="sidebar-toggle" onClick={onToggle} title={open ? '收起' : '展开'}>
+      <button type="button" className="sidebar-toggle" onClick={onToggle} title={open ? t('sidebar.collapse') : t('sidebar.expand')}>
         <svg width="18" height="18" viewBox="0 0 16 16">
           {open
             ? <path d="M6 2L2 8L6 14M10 2L6 8L10 14" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
             : <path d="M10 2L14 8L10 14M6 2L10 8L6 14" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>}
         </svg>
       </button>
-      {open && <button className="sidebar-settings-btn" title="设置" onClick={onOpenSettings}>⚙</button>}
+      {open && <button type="button" className="sidebar-settings-btn" title={t('sidebar.settings')} onClick={onOpenSettings}>⚙</button>}
     </div>
   )
 }
@@ -814,6 +816,7 @@ function SidebarTop({ open, onToggle, onOpenSettings }) {
  * @returns {JSX.Element} 上下文菜单组件
  */
 function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, deleteSession, deleteGroup, setRenaming, setRenameVal, groupPlaceholders, onUpdatePlaceholders, expandAll, collapseAll, expandGroupAll, collapseGroupAll, setRenamingSession, setRenameSessionVal }) {
+  const { t } = useI18n()
   const [subInput, setSubInput] = useState(null)  // 子分组名称输入值
   const [newGroupInput, setNewGroupInput] = useState(null)  // 新分组名称输入值
   const subInputRef = useRef(null)  // 子分组名称输入引用
@@ -840,28 +843,28 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
   if (subInput !== null) {
     return renderInBody(
       <div ref={menuRef} className="context-menu context-menu-input" style={{ top: menuPos.y, left: menuPos.x }} onClick={e => e.stopPropagation()}>
-        <div className="context-menu-input-label">子分组名称：</div>
-        <input className="context-menu-input-field" value={subInput} autoFocus placeholder="输入名称..." ref={subInputRef}
+        <div className="context-menu-input-label">{t('sidebar.subGroupName')}</div>
+        <input className="context-menu-input-field" value={subInput} autoFocus placeholder={t('sidebar.namePh')} ref={subInputRef}
           onChange={e => setSubInput(e.target.value)}
           onKeyDown={e => {
             if (e.key === 'Enter') {
               const trimmed = subInput.trim()
-              if (!trimmed) { alert('分组名不能为空'); return }
-              if (INVALID_LABEL_CHARS.test(trimmed)) { alert('分组名不允许包含以下字符：/ \\ : * ? " < > |'); return }
+              if (!trimmed) { alert(t('sidebar.groupNameEmpty')); return }
+              if (INVALID_LABEL_CHARS.test(trimmed)) { alert(t('sidebar.groupNameInvalid')); return }
               onUpdatePlaceholders?.(addGroupPlaceholder(groupPlaceholders, `${ctx.data}/${trimmed}`))
               setSubInput(null); closeCtx()
             }
             if (e.key === 'Escape') { setSubInput(null); closeCtx() }
           }} />
         <div className="context-menu-input-actions">
-          <button onClick={() => { setSubInput(null); closeCtx() }}>取消</button>
-          <button className="confirm" onClick={() => {
+          <button type="button" onClick={() => { setSubInput(null); closeCtx() }}>{t('sidebar.cancel')}</button>
+          <button type="button" className="confirm" onClick={() => {
             const trimmed = subInput.trim()
-            if (!trimmed) { alert('分组名不能为空'); subInputRef.current?.focus(); return }
-            if (INVALID_LABEL_CHARS.test(trimmed)) { alert('分组名不允许包含以下字符：/ \\ : * ? " < > |'); subInputRef.current?.focus(); return }
+            if (!trimmed) { alert(t('sidebar.groupNameEmpty')); subInputRef.current?.focus(); return }
+            if (INVALID_LABEL_CHARS.test(trimmed)) { alert(t('sidebar.groupNameInvalid')); subInputRef.current?.focus(); return }
             onUpdatePlaceholders?.(addGroupPlaceholder(groupPlaceholders, `${ctx.data}/${trimmed}`))
             setSubInput(null); closeCtx()
-          }}>确定</button>
+          }}>{t('sidebar.confirm')}</button>
         </div>
       </div>
     )
@@ -870,28 +873,28 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
   if (newGroupInput !== null) {
     return renderInBody(
       <div ref={menuRef} className="context-menu context-menu-input" style={{ top: menuPos.y, left: menuPos.x }} onClick={e => e.stopPropagation()}>
-        <div className="context-menu-input-label">分组名称：</div>
-        <input className="context-menu-input-field" value={newGroupInput} autoFocus placeholder="输入名称..." ref={newGroupInputRef}
+        <div className="context-menu-input-label">{t('sidebar.groupName')}</div>
+        <input className="context-menu-input-field" value={newGroupInput} autoFocus placeholder={t('sidebar.namePh')} ref={newGroupInputRef}
           onChange={e => setNewGroupInput(e.target.value)}
           onKeyDown={e => {
             if (e.key === 'Enter') {
               const trimmed = newGroupInput.trim()
-              if (!trimmed) { alert('分组名不能为空'); return }
-              if (INVALID_LABEL_CHARS.test(trimmed)) { alert('分组名不允许包含以下字符：/ \\ : * ? " < > |'); return }
+              if (!trimmed) { alert(t('sidebar.groupNameEmpty')); return }
+              if (INVALID_LABEL_CHARS.test(trimmed)) { alert(t('sidebar.groupNameInvalid')); return }
               onUpdatePlaceholders?.(addGroupPlaceholder(groupPlaceholders, trimmed))
               setNewGroupInput(null); closeCtx()
             }
             if (e.key === 'Escape') { setNewGroupInput(null); closeCtx() }
           }} />
         <div className="context-menu-input-actions">
-          <button onClick={() => { setNewGroupInput(null); closeCtx() }}>取消</button>
-          <button className="confirm" onClick={() => {
+          <button type="button" onClick={() => { setNewGroupInput(null); closeCtx() }}>{t('sidebar.cancel')}</button>
+          <button type="button" className="confirm" onClick={() => {
             const trimmed = newGroupInput.trim()
-            if (!trimmed) { alert('分组名不能为空'); newGroupInputRef.current?.focus(); return }
-            if (INVALID_LABEL_CHARS.test(trimmed)) { alert('分组名不允许包含以下字符：/ \\ : * ? " < > |'); newGroupInputRef.current?.focus(); return }
+            if (!trimmed) { alert(t('sidebar.groupNameEmpty')); newGroupInputRef.current?.focus(); return }
+            if (INVALID_LABEL_CHARS.test(trimmed)) { alert(t('sidebar.groupNameInvalid')); newGroupInputRef.current?.focus(); return }
             onUpdatePlaceholders?.(addGroupPlaceholder(groupPlaceholders, trimmed))
             setNewGroupInput(null); closeCtx()
-          }}>确定</button>
+          }}>{t('sidebar.confirm')}</button>
         </div>
       </div>
     )
@@ -899,28 +902,28 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
   return renderInBody(
     <div ref={menuRef} className="context-menu" style={{ top: menuPos.y, left: menuPos.x }} onClick={e => e.stopPropagation()}>
       {ctx.type === 'sessions-header' && (<>
-        <button onClick={() => { onNewSession('ssh'); closeCtx() }}>新建连接</button>
-        <button onClick={() => setNewGroupInput('')}>新建分组</button>
+        <button type="button" onClick={() => { onNewSession('ssh'); closeCtx() }}>{t('sidebar.newConnectionMenu')}</button>
+        <button type="button" onClick={() => setNewGroupInput('')}>{t('sidebar.newGroup')}</button>
         <div className="context-menu-divider" />
-        <button onClick={() => { expandAll(); closeCtx() }}>展开所有</button>
-        <button onClick={() => { collapseAll(); closeCtx() }}>收起所有</button>
+        <button type="button" onClick={() => { expandAll(); closeCtx() }}>{t('sidebar.expandAll')}</button>
+        <button type="button" onClick={() => { collapseAll(); closeCtx() }}>{t('sidebar.collapseAll')}</button>
       </>)}
       {ctx.type === 'session' && (<>
-        <button onClick={() => { onConnectSaved(ctx.data); closeCtx() }}>连接</button>
-        <button onClick={() => { onNewSession(ctx.data.type, ctx.data); closeCtx() }}>编辑</button>
-        <button onClick={() => { setRenamingSession(ctx.data.savedId); setRenameSessionVal(ctx.data.label || ''); closeCtx() }}>重命名</button>
-        <button onClick={() => { dupSession(ctx.data.savedId); closeCtx() }}>复制</button>
-        <button className="danger" onClick={() => { deleteSession(ctx.data.savedId, ctx.data.label); closeCtx() }}>删除</button>
+        <button type="button" onClick={() => { onConnectSaved(ctx.data); closeCtx() }}>{t('sidebar.connect')}</button>
+        <button type="button" onClick={() => { onNewSession(ctx.data.type, ctx.data); closeCtx() }}>{t('sidebar.edit')}</button>
+        <button type="button" onClick={() => { setRenamingSession(ctx.data.savedId); setRenameSessionVal(ctx.data.label || ''); closeCtx() }}>{t('sidebar.rename')}</button>
+        <button type="button" onClick={() => { dupSession(ctx.data.savedId); closeCtx() }}>{t('sidebar.duplicate')}</button>
+        <button type="button" className="danger" onClick={() => { deleteSession(ctx.data.savedId, ctx.data.label); closeCtx() }}>{t('sidebar.delete')}</button>
       </>)}
       {ctx.type === 'group' && (<>
-        <button onClick={() => { onNewSession('ssh', { group: ctx.data }); closeCtx() }}>新建会话</button>
-        <button onClick={() => { setRenaming(ctx.data); setRenameVal(ctx.data.split('/').pop()); closeCtx() }}>重命名分组</button>
-        <button onClick={() => setSubInput('')}>新建子分组</button>
+        <button type="button" onClick={() => { onNewSession('ssh', { group: ctx.data }); closeCtx() }}>{t('sidebar.newSession')}</button>
+        <button type="button" onClick={() => { setRenaming(ctx.data); setRenameVal(ctx.data.split('/').pop()); closeCtx() }}>{t('sidebar.renameGroup')}</button>
+        <button type="button" onClick={() => setSubInput('')}>{t('sidebar.newSubGroup')}</button>
         <div className="context-menu-divider" />
-        <button onClick={() => { expandGroupAll(ctx.data); closeCtx() }}>展开该分组所有子项</button>
-        <button onClick={() => { collapseGroupAll(ctx.data); closeCtx() }}>收起该分组所有子项</button>
+        <button type="button" onClick={() => { expandGroupAll(ctx.data); closeCtx() }}>{t('sidebar.expandGroup')}</button>
+        <button type="button" onClick={() => { collapseGroupAll(ctx.data); closeCtx() }}>{t('sidebar.collapseGroup')}</button>
         <div className="context-menu-divider" />
-        <button className="danger" onClick={() => { deleteGroup(ctx.data); closeCtx() }}>删除分组</button>
+        <button type="button" className="danger" onClick={() => { deleteGroup(ctx.data); closeCtx() }}>{t('sidebar.deleteGroup')}</button>
       </>)}
     </div>
   )
