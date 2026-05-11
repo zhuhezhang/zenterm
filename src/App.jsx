@@ -20,6 +20,7 @@ import {
   reapplyVaultPoliciesForAllSessions,
 } from './store/credentialsBridge.js'
 import { loadSettings } from './store/settingsStore.js'
+import { resolveEffectiveUiLanguage } from './i18n/resolveUiLanguage.js'
 import './styles/app.css'
 
 /** 默认侧边栏宽度 */
@@ -87,7 +88,8 @@ function safeFileToken(raw) {
 function AppMain({ settings, setSettings }) {
   const { t } = useI18n()
   useEffect(() => {
-    document.documentElement.lang = settings.uiLanguage === 'en' ? 'en' : 'zh-CN'
+    const eff = resolveEffectiveUiLanguage(settings.uiLanguage)
+    document.documentElement.lang = eff === 'en' ? 'en' : 'zh-CN'
   }, [settings.uiLanguage])
 
   // 局部变量无法在多次渲染中持久保存、更改局部变量不会触发渲染，因此使用 useState 来管理组件状态，

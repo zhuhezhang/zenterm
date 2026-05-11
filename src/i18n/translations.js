@@ -142,7 +142,7 @@ export const MESSAGES = {
       fields: {
         uiLanguage: {
           label: 'Language / 语言',
-          desc: '切换应用界面语言；保存后立即生效。',
+          desc: '含「自动」时按系统首选语言在简中 / 英文间选择；保存后立即生效。',
         },
         confirmDeleteSession: { label: '删除会话前确认', desc: '删除保存的会话前弹出确认对话框' },
         confirmDeleteGroup: { label: '删除分组前确认', desc: '删除分组前弹出确认对话框' },
@@ -159,6 +159,7 @@ export const MESSAGES = {
         },
       },
       options: {
+        langAuto: '自动（跟随系统）',
         langZh: '简体中文',
         langEn: 'English',
         backspaceAuto: 'Auto',
@@ -465,7 +466,7 @@ export const MESSAGES = {
       fields: {
         uiLanguage: {
           label: '语言 / Language',
-          desc: 'Switch UI language; applies after you save.',
+          desc: 'With Automatic, the UI follows the system locale (Simplified Chinese vs English). Applies after you save.',
         },
         confirmDeleteSession: { label: 'Confirm before deleting a session', desc: 'Ask before removing a saved session' },
         confirmDeleteGroup: { label: 'Confirm before deleting a group', desc: 'Ask before removing a group' },
@@ -488,6 +489,7 @@ export const MESSAGES = {
         },
       },
       options: {
+        langAuto: 'Automatic (follow system)',
         langZh: '简体中文',
         langEn: 'English',
         backspaceAuto: 'Auto',

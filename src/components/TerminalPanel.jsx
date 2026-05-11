@@ -7,6 +7,7 @@ import '../styles/terminal.css'
 import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
 import { resolveLoggingDirectory } from '../store/settingsStore.js'
 import { translate } from '../i18n/translations.js'
+import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
 
 /**
  * 标准化错误对象，提取原始错误文本
@@ -30,7 +31,7 @@ function withRawDetail(friendly, raw, lang) {
 
 /** @param {object} [settings] */
 function uiLangFromSettings(settings) {
-  return settings?.uiLanguage === 'en' ? 'en' : 'zh'
+  return resolveEffectiveUiLanguage(settings?.uiLanguage)
 }
 
 /**

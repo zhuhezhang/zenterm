@@ -45,8 +45,8 @@ export { DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgo
 
 /** 默认设置项 */
 export const DEFAULT_SETTINGS = {
-  /** 界面语言：zh 简体中文 | en English */
-  uiLanguage: 'zh',
+  /** 界面语言：auto 跟随系统 | zh 简体中文 | en English */
+  uiLanguage: 'auto',
   confirmDeleteSession: true,
   confirmDeleteGroup: true,
   deleteGroupWithSessions: false,
@@ -86,7 +86,7 @@ export function loadSettings() {
     }
     const merged = { ...DEFAULT_SETTINGS, ...saved }
     if (!('logPath' in saved)) merged.logPath = getDefaultLogPath()
-    if (merged.uiLanguage !== 'en' && merged.uiLanguage !== 'zh') merged.uiLanguage = 'zh'
+    if (!['auto', 'en', 'zh'].includes(merged.uiLanguage)) merged.uiLanguage = 'auto'
     return merged
   } catch (e) {
     return { ...DEFAULT_SETTINGS }
@@ -183,6 +183,7 @@ export const SETTINGS_SCHEMA = [
         key: 'uiLanguage',
         type: 'select',
         options: [
+          { value: 'auto', labelKey: 'settings.options.langAuto' },
           { value: 'zh', labelKey: 'settings.options.langZh' },
           { value: 'en', labelKey: 'settings.options.langEn' },
         ],

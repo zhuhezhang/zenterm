@@ -4,6 +4,7 @@ import {
   DEFAULT_SETTINGS, DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
 } from '../store/settingsStore.js'
 import { translate } from '../i18n/translations.js'
+import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
 import { exportSessions, importSessions, saveSessions } from '../store/sessionStore.js'
 import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import '../styles/dialog.css'
@@ -69,7 +70,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     highlightRules: settings.highlightRules ? [...settings.highlightRules] : [],
     algorithmPreferences: settings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
   })
-  const msgLang = (form.uiLanguage ?? settings.uiLanguage ?? 'zh') === 'en' ? 'en' : 'zh'
+  const msgLang = resolveEffectiveUiLanguage(form.uiLanguage ?? settings.uiLanguage ?? 'auto')
   const t = (path, params) => translate(msgLang, path, params)
 
   const importRef = useRef(null)  // 和useState类似，但它返回一个可变的ref对象，其.current属性被初始化为传入的参数（initialValue）。返回的ref对象在组件的整个生命周期内保持不变，因此它不会触发重新渲染
@@ -422,8 +423,10 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     if (!file) return
     try {
       const importedSettings = await importSettings(file)
+      const uiLanguage = ['auto', 'en', 'zh'].includes(importedSettings.uiLanguage) ? importedSettings.uiLanguage : 'auto'
       setForm({
         ...importedSettings,
+        uiLanguage,
         highlightRules: importedSettings.highlightRules ? [...importedSettings.highlightRules] : [],
         algorithmPreferences: importedSettings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
       })  // 更新表单状态

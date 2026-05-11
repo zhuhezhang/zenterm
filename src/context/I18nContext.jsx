@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo } from 'react'
 import { translate } from '../i18n/translations.js'
+import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
 
 /** I18n 上下文 */
 const I18nContext = createContext({
@@ -10,12 +11,12 @@ const I18nContext = createContext({
 /**
  * I18n 提供者
  * @param {{ language?: string , children: import('react').ReactNode }} props
- * @param {string} props.language 语言
+ * @param {string} props.language `auto` | `zh` | `en`
  * @param {import('react').ReactNode} props.children 子组件
  * @returns {React.ReactNode} I18n 提供者
  */
 export function I18nProvider({ language, children }) {
-  const lang = language === 'en' ? 'en' : 'zh'
+  const lang = resolveEffectiveUiLanguage(language)
   const value = useMemo(
     () => ({
       lang,
