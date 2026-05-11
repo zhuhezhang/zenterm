@@ -415,6 +415,7 @@
   box-shadow: var(--shadow);
   min-width: 130px;
   overflow: hidden;
+  padding: 2px;
   animation: fadeIn 0.1s ease;
 }
 .context-menu button {
@@ -428,6 +429,7 @@
   cursor: pointer;
   background: none;
   border: none;
+  border-radius: var(--radius-sm);
   font-family: var(--font-ui);
 }
 .context-menu button:hover { background: var(--bg-hover); }

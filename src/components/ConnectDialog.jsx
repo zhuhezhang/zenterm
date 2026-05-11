@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { fetchSessionSecrets } from '../store/credentialsBridge.js'
 import '../styles/dialog.css'
 
@@ -72,6 +72,11 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
   const [ports, setPorts] = useState([])
   const [error, setError] = useState('')
   const [credDialog, setCredDialog] = useState(null)  // { username, password, callback } 或 null，表示是否显示凭证输入对话框以及初始值和连接回调函数
+  const credUserInputRef = useRef(null)
+  const credPkeyInputRef = useRef(null)
+  const credPassInputRef = useRef(null)
+  /** 避免在凭证弹层内每次输入都重复 focus，只在本次打开时聚焦一次 */
+  const credFocusAppliedRef = useRef(false)
 
   /**
    * 切换协议类型时更新表单数据。保留已有参数，补齐当前协议缺省字段，重置错误信息
@@ -153,6 +158,37 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
     label: form.label?.trim() || buildLabel(tab, form),
   })
 
+  /** 凭证弹层内 HTML autoFocus 易被关闭按钮等抢占；打开时在 layout 阶段 + 下一帧主动 focus 一次 */
+  useLayoutEffect(() => {  // useLayoutEffect 在 DOM 渲染后执行，不会阻塞主线程，不会影响用户体验
+    if (!credDialog) {
+      credFocusAppliedRef.current = false
+      return
+    }
+    if (credFocusAppliedRef.current) return
+    credFocusAppliedRef.current = true
+
+    const cfg = buildConfig()
+    const keyAuth = cfg.type === 'ssh' && cfg.authType === 'privateKey'
+    const u = credDialog.username?.trim()
+    const hasPkey = credDialog.privateKey?.trim()
+    const hasPwd = credDialog.password?.trim()
+
+    let el
+    if (!u) el = credUserInputRef.current  // 如果用户名为空，则聚焦到用户名输入框
+    else if (keyAuth && !hasPkey) el = credPkeyInputRef.current
+    else if (!keyAuth && !hasPwd) el = credPassInputRef.current
+    else el = credUserInputRef.current
+
+    const run = () => { // 在凭证弹层内每次输入都重复 focus，只在本次打开时聚焦一次
+      el?.focus()
+      if (el === credUserInputRef.current && !u) el?.select?.()
+    }
+    run()
+    const id = requestAnimationFrame(run)  // requestAnimationFrame 让回调函数在下一帧执行，是异步的，不会阻塞主线程，不会影响用户体验
+    return () => cancelAnimationFrame(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- 每轮弹层只聚焦一次；打开时读取当时 form/tab（同 buildConfig）
+  }, [credDialog])
+
   /**
    * 检查是否需要输入凭证（用户名或密码为空）
    * @param {Object} config 配置对象
@@ -198,10 +234,6 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
     const { username, password, privateKey, passphrase, callback } = credDialog
     const cfg = buildConfig()
     const keyAuth = cfg.type === 'ssh' && cfg.authType === 'privateKey'
-    const hasUsername = username?.trim()
-    const hasPassword = password?.trim()
-    const hasPkey = privateKey?.trim()
-    const autoFocusUsername = !hasUsername
     /**
      * 应用凭证函数。根据当前协议类型和表单数据生成一个完整的配置对象，进行必要的类型转换和默认值处理，
      * 同时生成标签名称（如果未指定标签则根据协议和主机信息生成）。该配置对象将作为连接或保存的参数传递给回调函数，然后关闭凭证输入对话框
@@ -224,17 +256,21 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
           </div>
           <div className="dialog-body">
             <FormRow label="用户名">
-              <input placeholder="用户名" value={username} autoFocus={autoFocusUsername}
+              <input
+                ref={credUserInputRef}
+                placeholder="用户名"
+                value={username}
                 onChange={e => setCredDialog(prev => ({ ...prev, username: e.target.value }))}
-                onKeyDown={e => e.key === 'Enter' && applyCred()} />
+                onKeyDown={e => e.key === 'Enter' && applyCred()}
+              />
             </FormRow>
             {keyAuth ? (
               <>
                 <FormRow label="私钥路径">
                   <input
+                    ref={credPkeyInputRef}
                     placeholder="/path/to/id_rsa"
                     value={privateKey}
-                    autoFocus={hasUsername && !hasPkey}
                     onChange={e => setCredDialog(prev => ({ ...prev, privateKey: e.target.value }))}
                     onKeyDown={e => e.key === 'Enter' && applyCred()}
                   />
@@ -251,9 +287,14 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
               </>
             ) : (
               <FormRow label="密码">
-                <input type="password" placeholder="密码" value={password} autoFocus={!autoFocusUsername && !hasPassword}
+                <input
+                  ref={credPassInputRef}
+                  type="password"
+                  placeholder="密码"
+                  value={password}
                   onChange={e => setCredDialog(prev => ({ ...prev, password: e.target.value }))}
-                  onKeyDown={e => e.key === 'Enter' && applyCred()} />
+                  onKeyDown={e => e.key === 'Enter' && applyCred()}
+                />
               </FormRow>
             )}
           </div>
@@ -407,6 +448,7 @@ function SerialForm({ form, set, ports, visible, onRefreshPorts }) {
           value={form.path}
           onChange={e => set('path', e.target.value)}
           list="port-list"
+          autoFocus
         />
         <button type="button" className="dialog-serial-refresh-btn" onClick={onRefreshPorts}>
           刷新
