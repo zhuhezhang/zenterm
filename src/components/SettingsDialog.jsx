@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import {
-  SETTINGS_SCHEMA, saveSettings, exportSettings, importSettings, DEFAULT_LOG_PATH,
+  SETTINGS_SCHEMA, saveSettings, exportSettings, importSettings, getDefaultLogPath,
   DEFAULT_SETTINGS, DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
 } from '../store/settingsStore.js'
 import { exportSessions, importSessions, saveSessions } from '../store/sessionStore.js'
@@ -492,13 +492,13 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
               <div className="settings-path-row">
                 <input
                   className="settings-path-input"
-                  value={form[item.key] || DEFAULT_LOG_PATH}
-                  placeholder={DEFAULT_LOG_PATH || '选择目录'}
+                  value={form[item.key] || getDefaultLogPath()}
+                  placeholder={getDefaultLogPath() || '选择目录'}
                   readOnly
                   aria-label={`${item.label}：当前路径`}
-                  onMouseEnter={(e) => showSettingsHoverTip(e, `当前日志目录：\n${form[item.key] || DEFAULT_LOG_PATH || '系统下载目录（默认）'}`)}
+                  onMouseEnter={(e) => showSettingsHoverTip(e, `当前日志目录：\n${form[item.key] || getDefaultLogPath() || '系统下载目录（默认）'}`)}
                   onMouseLeave={hideSettingsHoverTip}
-                  onFocus={(e) => showSettingsHoverTip(e, `当前日志目录：\n${form[item.key] || DEFAULT_LOG_PATH || '系统下载目录（默认）'}`)}
+                  onFocus={(e) => showSettingsHoverTip(e, `当前日志目录：\n${form[item.key] || getDefaultLogPath() || '系统下载目录（默认）'}`)}
                   onBlur={hideSettingsHoverTip}
                 />
                 <button className="settings-path-btn" onClick={handleChooseLogPath}>选择</button>
@@ -507,9 +507,9 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                   className="settings-path-btn reset"
                   aria-label="恢复默认日志目录"
                   onClick={handleResetLogPath}
-                  onMouseEnter={(e) => showSettingsHoverTip(e, `恢复默认目录为：\n${DEFAULT_LOG_PATH || '系统下载目录'}`)}
+                  onMouseEnter={(e) => showSettingsHoverTip(e, `恢复默认目录为：\n${getDefaultLogPath() || '系统下载目录'}`)}
                   onMouseLeave={hideSettingsHoverTip}
-                  onFocus={(e) => showSettingsHoverTip(e, `恢复默认目录为：\n${DEFAULT_LOG_PATH || '系统下载目录'}`)}
+                  onFocus={(e) => showSettingsHoverTip(e, `恢复默认目录为：\n${getDefaultLogPath() || '系统下载目录'}`)}
                   onBlur={hideSettingsHoverTip}
                 >
                   ↺

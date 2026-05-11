@@ -2,6 +2,7 @@ import { Client } from 'ssh2'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
 import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
 import { createSshHostVerifier } from '../lib/sshKnownHosts.js'
+import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
 
 /** 存储所有 SSH 会话信息的 Map */
 const sshSessions = new Map()
@@ -95,11 +96,12 @@ function setupSSHHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('ssh:data', (event, id, data) => {
+  ipcMain.on('ssh:data', (event, id, data, encoding) => {
     if (!isTrustedIpcSender(event.sender)) return
     const session = sshSessions.get(id)
     if (session && session.stream) {
-      session.stream.write(data)
+      const buf = typeof data === 'string' ? stringToTerminalBytes(data, encoding) : data
+      session.stream.write(buf)
     }
   })
 

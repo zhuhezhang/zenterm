@@ -26,6 +26,7 @@
     "dev:electron:silent": "wait-on tcp:5173 && nodemon --watch electron --ext js,json --exec \"cross-env ELECTRON_DISABLE_SECURITY_WARNINGS=1 electron .\""
   },
   "dependencies": {
+    "iconv-lite": "^0.6.3",
     "serialport": "^12.0.0",
     "ssh2": "^1.15.0"
   },

@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { fetchSessionSecrets } from '../store/credentialsBridge.js'
+import { TERMINAL_ENCODING_OPTIONS, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
 import '../styles/dialog.css'
 
-const SSH_DEFAULT = { host: '', port: '22', username: '', password: '', privateKey: '', passphrase: '', authType: 'password', label: '', group: '', enableSftp: false }
-const TELNET_DEFAULT = { host: '', port: '23', label: '', group: '' }
-const SERIAL_DEFAULT = { path: '', baudRate: '9600', dataBits: '8', stopBits: '1', parity: 'none', label: '', group: '' }
+const SSH_DEFAULT = { host: '', port: '22', username: '', password: '', privateKey: '', passphrase: '', authType: 'password', label: '', group: '', enableSftp: false, encoding: DEFAULT_TERMINAL_ENCODING }
+const TELNET_DEFAULT = { host: '', port: '23', label: '', group: '', encoding: DEFAULT_TERMINAL_ENCODING }
+const SERIAL_DEFAULT = { path: '', baudRate: '9600', dataBits: '8', stopBits: '1', parity: 'none', label: '', group: '', encoding: DEFAULT_TERMINAL_ENCODING }
 const BAUD_RATES = ['110','300','600','1200','2400','4800','9600','14400','19200','38400','57600','115200','128000','256000']
 const PARITIES = ['none','even','odd','mark','space']
 
@@ -335,6 +336,11 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
           <SshForm form={form} set={set} visible={tab==='ssh'} />
           <TelnetForm form={form} set={set} visible={tab==='telnet'} />
           <SerialForm form={form} set={set} ports={ports} visible={tab === 'serial'} onRefreshPorts={refreshSerialPorts} />
+          <FormRow label="终端编码">
+            <select value={form.encoding || DEFAULT_TERMINAL_ENCODING} onChange={e => set('encoding', e.target.value)}>
+              {TERMINAL_ENCODING_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </FormRow>
           {error && <div className="dialog-error">{error}</div>}
         </div>
 

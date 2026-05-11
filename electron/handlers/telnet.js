@@ -1,5 +1,6 @@
 import net from 'net'
 import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
+import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
 
 /** 存储所有 Telnet 会话信息的 Map，键为会话 ID，值为 net.Socket 实例 */
 const telnetSessions = new Map()
@@ -96,11 +97,12 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('telnet:data', (event, id, data) => {
+  ipcMain.on('telnet:data', (event, id, data, encoding) => {
     if (!isTrustedIpcSender(event.sender)) return
     const socket = telnetSessions.get(id)
     if (socket) {
-      socket.write(data)
+      const buf = typeof data === 'string' ? stringToTerminalBytes(data, encoding) : data
+      socket.write(buf)
     }
   })
 

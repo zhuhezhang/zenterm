@@ -1,4 +1,5 @@
 import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
+import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
 
 let SerialPort
 try {
@@ -100,11 +101,12 @@ function setupSerialHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('serial:data', (event, id, data) => {
+  ipcMain.on('serial:data', (event, id, data, encoding) => {
     if (!isTrustedIpcSender(event.sender)) return
     const port = serialSessions.get(id)
     if (port && port.isOpen) {
-      port.write(data)
+      const buf = typeof data === 'string' ? stringToTerminalBytes(data, encoding) : data
+      port.write(buf)
     }
   })
 

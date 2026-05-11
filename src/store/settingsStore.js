@@ -1,12 +1,39 @@
 /** 本地存储设置的键名 */
 const SETTINGS_KEY = 'zterm_settings'
 
-/** 默认日志路径，优先使用系统下载目录，如果获取失败则使用空字符串表示默认位置 */
-export const DEFAULT_LOG_PATH = (() => {
+/** 默认放在系统下载目录下的日志子文件夹名 */
+export const LOG_PATH_SUBFOLDER = 'zterm-session-log'
+
+/**
+ * 默认日志目录：系统下载目录下的 zterm-session-log（主进程会 mkdir 递归创建）
+ * @returns {string}
+ */
+export function getDefaultLogPath() {
   try {
-    return window?.zterm?.getDownloadsPath?.() || ''  // 如果 IPC 调用失败或未定义，则返回空字符串，表示使用默认下载目录
-  } catch { return '' }
-})()
+    const base = window?.zterm?.getDownloadsPath?.()
+    if (!base || typeof base !== 'string') return ''
+    const trimmed = base.replace(/[/\\]+$/, '')
+    const sep = trimmed.includes('\\') ? '\\' : '/'
+    return `${trimmed}${sep}${LOG_PATH_SUBFOLDER}`
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * 解析实际用于写入日志的目录：自定义路径优先，否则为默认子目录，再否则退回下载根目录
+ * @param {{ logPath?: string }} [settings]
+ * @returns {string}
+ */
+export function resolveLoggingDirectory(settings) {
+  try {
+    const custom = settings?.logPath != null ? String(settings.logPath).trim() : ''
+    if (custom) return custom
+    return getDefaultLogPath() || window?.zterm?.getDownloadsPath?.() || ''
+  } catch {
+    return ''
+  }
+}
 
 import {
   DEFAULT_ALGORITHM_PREFERENCES,
@@ -24,7 +51,7 @@ export const DEFAULT_SETTINGS = {
   terminalInteract: true,   // 选中复制 + 右键粘贴
   backspaceMode: 'auto',    // 退格键模式：auto / del / bs
   enableLogging: false,
-  logPath: DEFAULT_LOG_PATH,
+  logPath: '',
   highlightRules: [
     { id: 'default1_error', name: '默认规则-错误/失败', enabled: true, useRegex: true, caseSensitive: false, pattern: '(\\berror\\b)|(\\bfailed\\b)|(\\bdenied\\b)|(\\bunauthorized\\b)|(\\bdown\\b)', color: '#f1250e' },
     { id: 'default2_success', name: '默认规则-成功/就绪', enabled: true, useRegex: true, caseSensitive: false, pattern: '(\\bsuccess\\b)|(\\bconnected\\b)|(\\bready\\b)|(\\bok\\b)|(\\bup\\b)', color: '#4ade80' },
@@ -55,7 +82,9 @@ export function loadSettings() {
         ...saved.algorithmPreferences,
       }
     }
-    return { ...DEFAULT_SETTINGS, ...saved }  // saved 中的值会覆盖默认设置
+    const merged = { ...DEFAULT_SETTINGS, ...saved }
+    if (!('logPath' in saved)) merged.logPath = getDefaultLogPath()
+    return merged
   } catch (e) {
     return { ...DEFAULT_SETTINGS }
   }
@@ -140,7 +169,7 @@ export const SETTINGS_SCHEMA = [
     section: '日志',
     items: [
       { key: 'enableLogging', label: '开启终端 I/O 日志', type: 'boolean', desc: '将每个会话的输入输出记录到独立日志文件' },
-      { key: 'logPath',       label: '日志保存目录',      type: 'path',    desc: '留空则保存至系统下载目录。须选主目录/文稿/下载/桌面等用户目录下路径，否则写入会被主进程拒绝' },
+      { key: 'logPath',       label: '日志保存目录',      type: 'path',    desc: '留空则保存至系统下载目录下的「zterm-session-log」文件夹。须选主目录/文稿/下载/桌面等用户目录下路径，否则写入会被主进程拒绝' },
     ]
   },
 ]

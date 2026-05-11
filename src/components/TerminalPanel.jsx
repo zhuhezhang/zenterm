@@ -4,19 +4,8 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import '../styles/terminal.css'
-
-/**
- * 二进制数据转 UTF-8 字符串，兼容不同环境下的编码问题
- * @param {string} binary 可能包含非 UTF-8 字符的二进制字符串
- * @returns {string} 转换后的 UTF-8 字符串，如果转换失败则返回原始字符串
- */
-function binaryToUtf8(binary) {
-  try {
-    const bytes = new Uint8Array(binary.length)
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-    return new TextDecoder('utf-8').decode(bytes)
-  } catch (e) { return binary }
-}
+import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
+import { resolveLoggingDirectory } from '../store/settingsStore.js'
 
 /**
  * 标准化错误对象，提取原始错误文本
@@ -355,7 +344,7 @@ function applyTerminalSettings(term, settingsRef) {
  */
 function setupLogging(session, settings, term, logFileRef, cleanupRef) {
   if (!settings?.enableLogging) return
-  const logDir = settings?.logPath || window.zterm?.getDownloadsPath?.()
+  const logDir = resolveLoggingDirectory(settings)
   if (!logDir) return
   // 文件名由 tab 创建时间和会话标签名组成
   const now = new Date()
@@ -410,6 +399,7 @@ function setupLogging(session, settings, term, logFileRef, cleanupRef) {
  */
 async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, isCancelled, logFileRef, settingsRef) {
   const { id, type } = session  // 从会话对象中提取会话 ID 和类型（SSH/Telnet/Serial）
+  const terminalEncoding = session.encoding || DEFAULT_TERMINAL_ENCODING
   const writeInfo    = (m) => term.writeln(`\r\x1b[33m${m}\x1b[0m`)  // 在终端写入黄色信息消息（使用 ANSI 转义码）
   const writeError   = (m) => term.writeln(`\r\x1b[31m${m}\x1b[0m`)  // 在终端写入红色错误消息
   const writeSuccess = (m) => term.writeln(`\r\x1b[32m${m}\x1b[0m`)  // 在终端写入绿色成功消息
@@ -430,7 +420,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
    * @param {string} data 接收到的二进制数据字符串
    */
   const recv = (data) => {
-    const decoded = binaryToUtf8(data)
+    const decoded = decodeTerminalBinaryString(data, terminalEncoding)
     const highlighted = applyHighlightRules(decoded, settingsRef.current)
     term.write(highlighted, () => logFileRef.current?.())
   }
@@ -453,7 +443,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const r1 = window.zterm.ssh.onData(id, recv)  // 注册 SSH 数据接收事件监听器，使用 recv 函数处理数据
       const r2 = window.zterm.ssh.onClose(id, () => onDisconnect('\r\nConnection closed.'))  // 注册 SSH 关闭事件监听器，调用 onDisconnect 处理断开
       const d1 = term.onData((data) => {  // 注册终端数据事件监听器，用户输入时发送数据到 SSH 会话，并同步日志快照
-        window.zterm.ssh.sendData(id, normalizeInputData(type, data, settingsRef))
+        window.zterm.ssh.sendData(id, normalizeInputData(type, data, settingsRef), terminalEncoding)
         logFileRef.current?.()
       })
       const d2 = term.onResize(({ cols, rows }) => window.zterm.ssh.resize(id, cols, rows))  // 注册终端尺寸变化事件监听器，调整 SSH 连接尺寸
@@ -475,7 +465,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
           }
         } catch (e) { 
           writeError(mapSftpError(e))
-          window.zterm.ssh.sendData(id, '\n')
+          window.zterm.ssh.sendData(id, '\n', terminalEncoding)
           onUpdate({ sftpReady: false })
         }
       }
@@ -496,7 +486,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const r1 = window.zterm.telnet.onData(id, recv)
       const r2 = window.zterm.telnet.onClose(id, () => onDisconnect('\r\nConnection closed.'))
       const d1 = term.onData((data) => {
-        window.zterm.telnet.sendData(id, normalizeInputData(type, data, settingsRef))
+        window.zterm.telnet.sendData(id, normalizeInputData(type, data, settingsRef), terminalEncoding)
         logFileRef.current?.()
       })
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.telnet.disconnect(id))
@@ -517,7 +507,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const r1 = window.zterm.serial.onData(id, recv)
       const r2 = window.zterm.serial.onClose(id, () => onDisconnect('\r\nPort closed.'))
       const d1 = term.onData((data) => {
-        window.zterm.serial.sendData(id, normalizeInputData(type, data, settingsRef))
+        window.zterm.serial.sendData(id, normalizeInputData(type, data, settingsRef), terminalEncoding)
         logFileRef.current?.()
       })
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.serial.disconnect(id))
