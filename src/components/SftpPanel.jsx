@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
 import '../styles/sftp.css'
 
@@ -89,6 +90,9 @@ export default function SftpPanel({ session }) {
   const fileUploadInputRef = useRef(null) // 文件上传输入框引用
   const folderUploadInputRef = useRef(null) // 文件夹上传输入框引用
   const uploadDetailsRef = useRef(null) // 上传详情引用
+  const [fileCtx, setFileCtx] = useState(null) // 文件行右键菜单 { x, y, item }
+  const [fileMenuPos, setFileMenuPos] = useState({ x: 0, y: 0 })
+  const fileCtxMenuRef = useRef(null)  // 文件行右键菜单引用
 
   /** 
    * 加载目录
@@ -96,6 +100,7 @@ export default function SftpPanel({ session }) {
    */
   const loadDir = useCallback(async (dirPath) => {
     if (!sftpSessionId) return
+    setFileCtx(null)
     setLoading(true)
     setError('')
     setSelected(null)
@@ -117,6 +122,60 @@ export default function SftpPanel({ session }) {
     const unsub = window.zterm.sftp.onProgress(sftpSessionId, (p) => setProgress(p))
     return unsub
   }, [sftpSessionId, loadDir])
+
+  useLayoutEffect(() => {  // 根据视口边界动态修正菜单位置，避免底部/右侧被遮挡
+    if (!fileCtx) return
+    const el = fileCtxMenuRef.current
+    if (!el) {
+      setFileMenuPos({ x: fileCtx.x, y: fileCtx.y })
+      return
+    }
+    const margin = 8
+    const maxX = Math.max(margin, window.innerWidth - el.offsetWidth - margin)
+    const maxY = Math.max(margin, window.innerHeight - el.offsetHeight - margin)
+    setFileMenuPos({
+      x: Math.max(margin, Math.min(fileCtx.x, maxX)),
+      y: Math.max(margin, Math.min(fileCtx.y, maxY)),
+    })
+  }, [fileCtx])
+
+  useEffect(() => {  // 监听文件行右键菜单点击事件，点击菜单外区域自动关闭菜单
+    if (!fileCtx) return
+    const onDocMouseDown = (e) => {
+      if (e.target?.closest?.('.context-menu')) return
+      setFileCtx(null)
+    }
+    const onKey = (e) => {
+      if (e.key === 'Escape') setFileCtx(null)
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocMouseDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [fileCtx])
+
+  useEffect(() => {  // 监听上传菜单点击事件，点击菜单外区域自动关闭菜单
+    const closeUploadMenuIfOutside = (e) => {
+      const root = uploadDetailsRef.current
+      if (!root?.open) return
+      if (root.contains(e.target)) return
+      root.removeAttribute('open')
+    }
+    const onEscape = (e) => {
+      if (e.key !== 'Escape') return
+      const root = uploadDetailsRef.current
+      if (!root?.open) return
+      root.removeAttribute('open')
+    }
+    document.addEventListener('mousedown', closeUploadMenuIfOutside)
+    document.addEventListener('keydown', onEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeUploadMenuIfOutside)
+      document.removeEventListener('keydown', onEscape)
+    }
+  }, [])
 
   /** 上移到父目录 */
   const goUp = () => {
@@ -142,8 +201,7 @@ export default function SftpPanel({ session }) {
    * @param {Object} item 文件（文件夹）对象
    * @param {Event} e 事件对象
    */
-  const handleDelete = async (item, e) => {
-    e.stopPropagation()
+  const handleDelete = async (item) => {
     if (!confirm(t('sftp.confirmDelete', { name: item.name }))) return
     const res = await window.zterm.sftp.delete(sftpSessionId, item.path)
     if (res.success) loadDir(path)
@@ -175,8 +233,7 @@ export default function SftpPanel({ session }) {
   }
 
   /** 开始重命名 */
-  const startRename = (item, e) => {
-    e.stopPropagation()
+  const startRename = (item) => {
     setRenaming(item)
     setRenameValue(item.name)
   }
@@ -206,8 +263,7 @@ export default function SftpPanel({ session }) {
    * @param {Object} item 文件（文件夹）对象
    * @param {Event} e 事件对象
    */
-  const handleDownload = async (item, e) => {
-    e.stopPropagation()
+  const handleDownload = async (item) => {
     const dir = await window.zterm?.chooseDirectory?.()
     if (!dir) return
     const localBase = dir.endsWith('/') ? dir.slice(0, -1) : dir
@@ -375,6 +431,15 @@ export default function SftpPanel({ session }) {
     }
   }
 
+  /** 在文件/文件夹行上打开右键菜单 */
+  const openFileCtx = (e, item) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setFileMenuPos({ x: e.clientX, y: e.clientY })
+    setFileCtx({ x: e.clientX, y: e.clientY, item })
+    setSelected(item)
+  }
+
   const breadcrumbs = path === '/' ? ['/'] : ['/', ...path.split('/').filter(Boolean)]  // 面包屑导航：当前路径为根目录时，只显示根目录；否则显示根目录和当前路径
 
   return (
@@ -488,6 +553,7 @@ export default function SftpPanel({ session }) {
             key={item.path}
             className={`sftp-item ${item.isDir ? 'sftp-item-dir' : 'sftp-item-file'} ${selected?.path === item.path ? 'selected' : ''} ${renaming?.path === item.path ? 'renaming' : ''}`}
             onClick={() => handleItemClick(item)}
+            onContextMenu={(e) => openFileCtx(e, item)}
           >
             <span className="sftp-item-icon">{item.isDir ? '📁' : '📄'}</span>
             {renaming?.path === item.path ? (
@@ -505,17 +571,53 @@ export default function SftpPanel({ session }) {
             )}
             <span className="sftp-item-size">{item.isDir ? '' : formatSize(item.size)}</span>
             <span className="sftp-item-date">{formatDate(item.mtime)}</span>
-            <div className="sftp-item-actions">
-              <button type="button" className="sftp-action-btn" onClick={(e) => handleDownload(item, e)} title={t('sftp.download')}>⭳</button>
-              <button type="button" className="sftp-action-btn" onClick={(e) => startRename(item, e)} title={t('sftp.rename')}>✏</button>
-              <button type="button" className="sftp-action-btn danger" onClick={(e) => handleDelete(item, e)} title={t('sftp.delete')}>🗑</button>
-            </div>
           </div>
         ))}
         {!loading && items.length === 0 && !error && (
           <div className="sftp-empty">{t('sftp.empty')}</div>
         )}
       </div>
+      {fileCtx && document.body && createPortal(
+        <div
+          ref={fileCtxMenuRef}
+          className="context-menu"
+          style={{ top: fileMenuPos.y, left: fileMenuPos.x }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              const target = fileCtx.item
+              setFileCtx(null)
+              void handleDownload(target)
+            }}
+          >
+            {t('sftp.download')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const target = fileCtx.item
+              setFileCtx(null)
+              startRename(target)
+            }}
+          >
+            {t('sftp.rename')}
+          </button>
+          <button
+            type="button"
+            className="danger"
+            onClick={() => {
+              const target = fileCtx.item
+              setFileCtx(null)
+              void handleDelete(target)
+            }}
+          >
+            {t('sftp.delete')}
+          </button>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
