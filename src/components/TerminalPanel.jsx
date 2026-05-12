@@ -8,6 +8,7 @@ import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../../sha
 import { resolveLoggingDirectory } from '../store/settingsStore.js'
 import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
+import { getXtermTheme } from '../theme/appTheme.js'
 
 /**
  * 标准化错误对象，提取原始错误文本
@@ -128,9 +129,10 @@ function mapSerialError(err, lang) {
  * @param {Boolean} props.active 是否为当前活跃标签页
  * @param {Function} props.onUpdate 会话状态更新回调函数
  * @param {Object} props.settings 全局设置对象，包含用户偏好设置
+ * @param {'dark'|'light'} props.appThemeEffective 应用亮暗（与界面 CSS 变量一致），用于 xterm 配色
  * @param {Function} props.onRegisterExport 注册导出终端输出函数的回调，参数为 (sessionId, getter|null)
  */
-export default function TerminalPanel({ session, active, onUpdate, settings, onRegisterExport }) {
+export default function TerminalPanel({ session, active, onUpdate, settings, appThemeEffective = 'dark', onRegisterExport }) {
   /** 终端容器的 DOM 引用，用于挂载 xterm 实例 */
   const containerRef = useRef(null)
   /** Terminal 实例引用，保存对 xterm 实例的访问以便在不同函数中使用 */
@@ -149,7 +151,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, onR
 
   useEffect(() => {  // 组件初次挂载时：创建终端实例、连接会话，并设置相关事件监听器；组件卸载时：调用 cleanupRef 中的函数进行清理
     if (!containerRef.current) return
-    const term = createTerminal()
+    const term = createTerminal(appThemeEffective)
     const fitAddon = new FitAddon()
     term.loadAddon(fitAddon)
     term.loadAddon(new WebLinksAddon())  // WebLinksAddon 负责将终端中的 URL 自动识别为可点击链接
@@ -175,6 +177,15 @@ export default function TerminalPanel({ session, active, onUpdate, settings, onR
       term.dispose()
     }
   }, [session.id])
+
+  useEffect(() => {  // 监听当应用主题变化时，更新终端主题，确保终端主题与应用主题一致
+    const term = termRef.current
+    if (!term) return
+    term.options.theme = getXtermTheme(appThemeEffective)
+    try {
+      term.refresh(0, term.rows - 1)
+    } catch (_) {}
+  }, [appThemeEffective])
 
   useEffect(() => {  // 当 active 状态变化时，如果当前标签页变为活跃，则调整终端尺寸并聚焦终端，确保用户界面正确显示并且用户可以立即输入
     if (active && fitAddonRef.current) {
@@ -295,9 +306,10 @@ function applyHighlightRules(text, settings) {
 
 /**
  * 创建并配置 xterm 终端实例
+ * @param {'dark'|'light'} themeMode
  * @returns {Terminal} 配置好的 Terminal 实例
  */
-function createTerminal() {
+function createTerminal(themeMode) {
   return new Terminal({
     fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", Menlo, monospace',  // 左到右为字体的优先级
     fontSize: 14,
@@ -307,15 +319,7 @@ function createTerminal() {
     allowTransparency: true,  // 允许背景透明，配合主题颜色可以实现半透明效果
     scrollback: 5000,  // 滚动缓冲区行数，增加可滚动的历史记录
     windowsMode: false,  // 关闭 Windows 模式（影响换行符处理），启用更现代的行为和样式
-    theme: {  // 终端配色方案，基于 GitHub Dark Theme，调整了部分颜色以适配半透明背景和增强对比度
-      background: '#0d1117', foreground: '#e6edf3',
-      cursor: '#58a6ff', cursorAccent: '#0d1117', selectionBackground: '#264f78',
-      black: '#484f58', red: '#ff7b72', green: '#3fb950', yellow: '#d29922',
-      blue: '#58a6ff', magenta: '#bc8cff', cyan: '#39c5cf', white: '#b1bac4',
-      brightBlack: '#6e7681', brightRed: '#ffa198', brightGreen: '#56d364',
-      brightYellow: '#e3b341', brightBlue: '#79c0ff', brightMagenta: '#d2a8ff',
-      brightCyan: '#56d4dd', brightWhite: '#f0f6fc',
-    },
+    theme: getXtermTheme(themeMode),
   })
 }
 

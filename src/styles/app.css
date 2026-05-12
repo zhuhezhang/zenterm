@@ -146,7 +146,7 @@
 .welcome-btn:hover {
   border-color: var(--accent);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(88,166,255,0.15);
+  box-shadow: var(--welcome-hover-shadow);
 }
 
 .welcome-btn:hover::before { opacity: 1; }

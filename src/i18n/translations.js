@@ -134,12 +134,16 @@ export const MESSAGES = {
       saveClose: '保存并关闭',
       tabs: { general: '常规', sshTerminal: 'SSH 与终端', dataSecurity: '数据与安全' },
       sections: {
-        appearance: '界面语言',
+        appearance: '外观与语言',
         confirm: '操作确认',
         terminal: '终端行为',
         logging: '日志',
       },
       fields: {
+        appTheme: {
+          label: '应用主题',
+          desc: '暗黑 / 浅色 / 跟随系统外观设置；保存后立即生效。',
+        },
         uiLanguage: {
           label: 'Language / 语言',
           desc: '含「自动」时按系统首选语言在简中 / 英文间选择；保存后立即生效。',
@@ -159,6 +163,9 @@ export const MESSAGES = {
         },
       },
       options: {
+        themeDark: '暗黑',
+        themeLight: '浅色',
+        themeAuto: '自动（跟随系统）',
         langAuto: '自动（跟随系统）',
         langZh: '简体中文',
         langEn: 'English',
@@ -458,12 +465,16 @@ export const MESSAGES = {
       saveClose: 'Save & close',
       tabs: { general: 'General', sshTerminal: 'SSH & terminal', dataSecurity: 'Data & security' },
       sections: {
-        appearance: 'Language',
+        appearance: 'Appearance & language',
         confirm: 'Confirmations',
         terminal: 'Terminal behavior',
         logging: 'Logging',
       },
       fields: {
+        appTheme: {
+          label: 'App theme',
+          desc: 'Dark, light, or match the system appearance. Applies after you save.',
+        },
         uiLanguage: {
           label: '语言 / Language',
           desc: 'With Automatic, the UI follows the system locale (Simplified Chinese vs English). Applies after you save.',
@@ -489,6 +500,9 @@ export const MESSAGES = {
         },
       },
       options: {
+        themeDark: 'Dark',
+        themeLight: 'Light',
+        themeAuto: 'Automatic (follow system)',
         langAuto: 'Automatic (follow system)',
         langZh: '简体中文',
         langEn: 'English',

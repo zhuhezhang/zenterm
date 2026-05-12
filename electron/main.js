@@ -70,6 +70,14 @@ function createWindow() {
     return mainWindow.isMaximized()
   })
 
+  ipcMain.on('window:setBackgroundColor', (e, hex) => {  // 监听渲染进程发送的窗口背景色设置请求，设置窗口背景色
+    if (!isTrustedIpcSender(e.sender)) return
+    if (!mainWindow || typeof hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(hex)) return  // 如果窗口不存在或 hex 不是有效的十六进制颜色，则返回
+    try {
+      mainWindow.setBackgroundColor(hex)
+    } catch (_) {}
+  })
+
   mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized', true))  // 当窗口被最大化时，向渲染进程发送 window:maximized 消息
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximized', false))
 

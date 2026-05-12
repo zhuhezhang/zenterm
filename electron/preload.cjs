@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('zterm', {  // 在渲染进程中通过window.zt
     minimize: () => ipcRenderer.send('window:minimize'),
     maximize: () => ipcRenderer.send('window:maximize'),
     close: () => ipcRenderer.send('window:close'),
+    /** 与界面主题同步，减少自定义标题栏周围色差（Electron setBackgroundColor） */
+    setBackgroundColor: (hex) => ipcRenderer.send('window:setBackgroundColor', hex),
     // 主进程 → 渲染进程：ipcRenderer 收到 'window:maximized' 事件
     // 事件处理器：(_, v) => cb(v) 被调用
     // 用户回调：传入的 cb 函数被执行，接收 v（true/false）

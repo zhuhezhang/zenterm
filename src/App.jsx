@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
 import { I18nProvider, useI18n } from './context/I18nContext.jsx'
 import TitleBar from './components/TitleBar.jsx'
 import Sidebar from './components/Sidebar.jsx'
@@ -21,6 +21,7 @@ import {
 } from './store/credentialsBridge.js'
 import { loadSettings } from './store/settingsStore.js'
 import { resolveEffectiveUiLanguage } from './i18n/resolveUiLanguage.js'
+import { resolveEffectiveAppTheme } from './theme/appTheme.js'
 import './styles/app.css'
 
 /** 默认侧边栏宽度 */
@@ -79,6 +80,33 @@ function safeFileToken(raw) {
 }
 
 /**
+ * 同步应用主题到 document、原生窗口底色，并在 auto 时监听系统主题变化
+ * @param {'dark'|'light'|'auto'} appTheme
+ * @returns {'dark'|'light'} 当前实际亮暗
+ */
+function useSyncedAppTheme(appTheme) {
+  const [effective, setEffective] = useState(() => resolveEffectiveAppTheme(appTheme))
+
+  useLayoutEffect(() => {
+    const apply = () => {
+      const eff = resolveEffectiveAppTheme(appTheme)
+      setEffective(eff)
+      const root = document.documentElement
+      root.dataset.appTheme = eff
+      root.style.colorScheme = eff
+      window.zterm?.window?.setBackgroundColor?.(eff === 'light' ? '#ffffff' : '#0d1117')
+    }
+    apply()
+    if (appTheme !== 'auto') return undefined
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [appTheme])
+
+  return effective
+}
+
+/**
  * 主界面（在 I18nProvider 内，可使用 useI18n）
  * @param {{ settings: object, setSettings: function }} props
  * @param {Object} props.settings 设置
@@ -87,6 +115,7 @@ function safeFileToken(raw) {
  */
 function AppMain({ settings, setSettings }) {
   const { t } = useI18n()
+  const appThemeEffective = useSyncedAppTheme(settings.appTheme)
   useEffect(() => {
     const eff = resolveEffectiveUiLanguage(settings.uiLanguage)
     document.documentElement.lang = eff === 'en' ? 'en' : 'zh-CN'
@@ -310,6 +339,10 @@ function AppMain({ settings, setSettings }) {
   const handleConnSaved = useCallback((s) => {
     void (async () => {
       const merged = await mergeSessionWithVaultSecrets(s)
+      if (merged.type === 'serial') {
+        launchSession(merged)
+        return
+      }
       if (merged.type === 'telnet') {
         if (!merged.username?.trim() || !merged.password?.trim()) {
           setCredDialogState({
@@ -445,7 +478,8 @@ function AppMain({ settings, setSettings }) {
                 ? <WelcomeScreen onNewSession={openDialog} />
                 : sessions.map(s => (
                   <TerminalPanel key={s.id} session={s} active={s.id === activeId}
-                    settings={settings} onRegisterExport={registerTerminalExporter}
+                    settings={settings} appThemeEffective={appThemeEffective}
+                    onRegisterExport={registerTerminalExporter}
                     onUpdate={(upd) => { updateSession(s.id, upd) }}
                   />
                 ))
