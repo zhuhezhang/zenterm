@@ -424,7 +424,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     try {
       const importedSettings = await importSettings(file)
       const uiLanguage = ['auto', 'en', 'zh'].includes(importedSettings.uiLanguage) ? importedSettings.uiLanguage : 'auto'
-      const appTheme = ['dark', 'light', 'auto'].includes(importedSettings.appTheme) ? importedSettings.appTheme : 'dark'
+      const appTheme = ['dark', 'light', 'auto'].includes(importedSettings.appTheme) ? importedSettings.appTheme : 'auto'
       setForm({
         ...importedSettings,
         uiLanguage,

@@ -46,7 +46,7 @@ export { DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgo
 /** 默认设置项 */
 export const DEFAULT_SETTINGS = {
   /** 应用界面主题：dark | light | auto（跟随系统亮暗） */
-  appTheme: 'dark',
+  appTheme: 'auto',
   /** 界面语言：auto 跟随系统 | zh 简体中文 | en English */
   uiLanguage: 'auto',
   confirmDeleteSession: true,
@@ -89,7 +89,7 @@ export function loadSettings() {
     const merged = { ...DEFAULT_SETTINGS, ...saved }
     if (!('logPath' in saved)) merged.logPath = getDefaultLogPath()
     if (!['auto', 'en', 'zh'].includes(merged.uiLanguage)) merged.uiLanguage = 'auto'
-    if (!['dark', 'light', 'auto'].includes(merged.appTheme)) merged.appTheme = 'dark'
+    if (!['dark', 'light', 'auto'].includes(merged.appTheme)) merged.appTheme = 'auto'
     return merged
   } catch (e) {
     return { ...DEFAULT_SETTINGS }

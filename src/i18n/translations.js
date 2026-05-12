@@ -142,7 +142,7 @@ export const MESSAGES = {
       fields: {
         appTheme: {
           label: '应用主题',
-          desc: '暗黑 / 浅色 / 跟随系统外观设置；保存后立即生效。',
+          desc: '暗黑 / 浅色 / 跟随系统外观设置；内置默认跟随系统，保存后立即生效。',
         },
         uiLanguage: {
           label: 'Language / 语言',
@@ -473,7 +473,7 @@ export const MESSAGES = {
       fields: {
         appTheme: {
           label: 'App theme',
-          desc: 'Dark, light, or match the system appearance. Applies after you save.',
+          desc: 'Dark, light, or match the system. Default is follow system; applies after you save.',
         },
         uiLanguage: {
           label: '语言 / Language',
