@@ -305,6 +305,24 @@ function applyHighlightRules(text, settings) {
 }
 
 /**
+ * 返回第一个行结束序列最后一个字符的下标（支持 \r\n、\n、单独 \r），无则 -1。
+ * 串口常按字节小块到达，高亮需在累积文本上匹配；按行切分可减少跨块断词。
+ * @param {string} s
+ * @returns {number}
+ */
+function nextLineBreakEndIndex(s) {
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i)
+    if (c === 0x0a) return i
+    if (c === 0x0d) {
+      if (s.charCodeAt(i + 1) === 0x0a) return i + 1
+      return i
+    }
+  }
+  return -1
+}
+
+/**
  * 创建并配置 xterm 终端实例
  * @param {'dark'|'light'} themeMode
  * @returns {Terminal} 配置好的 Terminal 实例
@@ -432,14 +450,57 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
     onUpdate({ status: 'disconnected', sftpReady: false })
   }
 
+  // 串口下行小块聚合：高亮规则需在足够长的文本上匹配，UART 常逐字节到达
+  let serialHighlightBuf = ''
+  let serialHighlightIdleTimer = null
+  /** 串口高亮缓冲区空闲时刷新：避免长时间无数据时高亮规则无法匹配 */
+  const flushSerialHighlightIdle = () => {
+    serialHighlightIdleTimer = null
+    if (!serialHighlightBuf) return
+    const chunk = serialHighlightBuf
+    serialHighlightBuf = ''
+    const highlighted = applyHighlightRules(chunk, settingsRef.current)
+    term.write(highlighted, () => logFileRef.current?.())
+  }
+  /** 计划串口高亮缓冲区空闲时刷新：避免长时间无数据时高亮规则无法匹配 */
+  const scheduleSerialHighlightFlush = () => {
+    if (serialHighlightIdleTimer != null) clearTimeout(serialHighlightIdleTimer)
+    serialHighlightIdleTimer = window.setTimeout(flushSerialHighlightIdle, 32)
+  }
+
   /**
    * 数据接收处理函数：将接收到的二进制数据转换为 UTF-8 字符串，写入终端并记录日志
    * @param {string} data 接收到的二进制数据字符串
    */
   const recv = (data) => {
     const decoded = decodeTerminalBinaryString(data, terminalEncoding)
-    const highlighted = applyHighlightRules(decoded, settingsRef.current)
-    term.write(highlighted, () => logFileRef.current?.())
+    if (type !== 'serial') { // 非串口：直接应用高亮规则
+      const highlighted = applyHighlightRules(decoded, settingsRef.current)
+      term.write(highlighted, () => logFileRef.current?.())
+      return
+    }
+    serialHighlightBuf += decoded
+    let end
+    while ((end = nextLineBreakEndIndex(serialHighlightBuf)) >= 0) { // 串口：按行切分并应用高亮规则
+      const line = serialHighlightBuf.slice(0, end + 1)
+      serialHighlightBuf = serialHighlightBuf.slice(end + 1)
+      const highlighted = applyHighlightRules(line, settingsRef.current)
+      term.write(highlighted, () => logFileRef.current?.())
+    }
+    if (serialHighlightBuf.length > 8192) { // 串口：缓冲区溢出：截断并应用高亮规则
+      const overflow = serialHighlightBuf
+      serialHighlightBuf = ''
+      const highlighted = applyHighlightRules(overflow, settingsRef.current)
+      term.write(highlighted, () => logFileRef.current?.())
+    }
+    if (serialHighlightBuf.length === 0) { // 串口：缓冲区空：清除定时器
+      if (serialHighlightIdleTimer != null) {
+        clearTimeout(serialHighlightIdleTimer)
+        serialHighlightIdleTimer = null
+      }
+    } else { // 串口：缓冲区非空：计划高亮缓冲区空闲时刷新
+      scheduleSerialHighlightFlush()
+    }
   }
 
   if (type === 'ssh') {
@@ -527,7 +588,17 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
         window.zterm.serial.sendData(id, normalizeInputData(type, data, settingsRef), terminalEncoding)
         logFileRef.current?.()
       })
-      cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.serial.disconnect(id))
+      cleanupRef.current.push(() => { // 清理：清除定时器，退出前再同步一次，确保日志与最终终端内容一致
+        if (serialHighlightIdleTimer != null) {
+          clearTimeout(serialHighlightIdleTimer)
+          serialHighlightIdleTimer = null
+        }
+        if (serialHighlightBuf) {
+          const highlighted = applyHighlightRules(serialHighlightBuf, settingsRef.current)
+          term.write(highlighted, () => logFileRef.current?.())
+          serialHighlightBuf = ''
+        }
+      }, r1, r2, () => d1.dispose(), () => window.zterm.serial.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
       writeError(mapSerialError(e, L()))
