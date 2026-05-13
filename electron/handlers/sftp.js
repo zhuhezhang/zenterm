@@ -1,208 +1,193 @@
-import { Client } from 'ssh2'
-import fs from 'fs'
-import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
+import { Worker } from 'worker_threads'
+import { fileURLToPath } from 'url'
 import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
 import {
-  assertSftpLocalFilePathAllowed,
   assertSftpLocalDirAllowed,
-  safeJoinLocalDownloadPath,
+  assertSftpLocalFilePathAllowed,
+  getAllowedUserRootPaths,
 } from '../lib/localPathPolicy.js'
-import { createSshHostVerifier } from '../lib/sshKnownHosts.js'
+import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
 
-/** 存储所有 SFTP 会话信息的 Map */
+/** 存储每个 SFTP 会话对应的 Worker 与会话状态 */
 const sftpSessions = new Map()
 
+/** Worker 入口文件 */
+const workerEntry = fileURLToPath(new URL('../workers/sftpSessionWorker.js', import.meta.url))
+
 /**
- * 设置 SFTP 相关的 IPC 处理函数，传入 ipcMain 和 mainWindow 以便在处理函数中使用 IPC 和窗口通信
- * @param {Electron.IpcMain} ipcMain Electron 的 IPC 主进程模块，用于监听和处理来自渲染进程的 IPC 消息
- * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息 
+ * 发送命令到 Worker
+ * @param {{ worker: Worker, pending: Map<number, (msg: object) => void>, reqSeq: number, isClosed: boolean }} session 会话状态
+ * @param {object} payload 命令及参数
+ * @returns {Promise<object>} CMD_RESULT 消息体
+ */
+function workerCommand(session, payload) {
+  return new Promise((resolve) => {
+    const reqId = ++session.reqSeq
+    session.pending.set(reqId, resolve)
+    try {
+      session.worker.postMessage({ type: 'CMD', reqId, ...payload })
+    } catch (e) {
+      session.pending.delete(reqId)
+      resolve({ success: false, error: e.message })
+    }
+  })
+}
+
+/**
+ * 拒绝所有等待的请求
+ * @param {object} session 会话状态
+ * @param {string} error 错误消息
+ */
+function rejectAllPending(session, error) {
+  for (const res of session.pending.values()) {
+    res({ success: false, error })
+  }
+  session.pending.clear()
+}
+
+/**
+ * 设置 SFTP 相关的 IPC 处理函数
+ * @param {Electron.IpcMain} ipcMain
+ * @param {Electron.BrowserWindow} mainWindow
  */
 function setupSFTPHandlers(ipcMain, mainWindow) {
-  /** 
-   * 读取远程服务器目录
-   * @param {Object} session SFTP 会话对象
-   * @param {string} remotePath 远程服务器目录路径
-   */
-  const sftpReaddir = (session, remotePath) => new Promise((resolve, reject) => {
-    session.sftp.readdir(remotePath, (err, list) => (err ? reject(err) : resolve(list)))
-  })
-  /** 
-   * 删除远程服务器文件
-   * @param {Object} session SFTP 会话对象
-   * @param {string} remotePath 远程服务器文件路径
-   */
-  const sftpUnlink = (session, remotePath) => new Promise((resolve, reject) => {
-    session.sftp.unlink(remotePath, (err) => (err ? reject(err) : resolve()))
-  })
-  /** 
-   * 删除远程服务器目录
-   * @param {Object} session SFTP 会话对象
-   * @param {string} remotePath 远程服务器目录路径
-   */
-  const sftpRmdir = (session, remotePath) => new Promise((resolve, reject) => {
-    session.sftp.rmdir(remotePath, (err) => (err ? reject(err) : resolve()))
-  })
-
-  /** 
-   * 递归删除远程服务器文件（目录）
-   * @param {Object} session SFTP 会话对象
-   * @param {string} remotePath 远程服务器文件（目录）路径
-   */
-  const deleteRecursive = async (session, remotePath) => {
-    try {
-      await sftpUnlink(session, remotePath)
-      return
-    } catch (e) {  // 不是文件，可能是目录，尝试删除目录
-    }
-    let list
-    try {
-      list = await sftpReaddir(session, remotePath)
-    } catch (e) {
-      await sftpRmdir(session, remotePath)  // 如果无法读取目录，尝试直接删除目录
-      return
-    }
-    for (const item of list) {  // 递归删除远程服务器文件（目录）
-      const name = item.filename
-      const child = remotePath === '/' ? '/' + name : remotePath + '/' + name
-      if (item.attrs.isDirectory()) await deleteRecursive(session, child)  // 如果是目录，递归删除
-      else await sftpUnlink(session, child)  // 如果是文件，删除文件
-    }
-    await sftpRmdir(session, remotePath)
-  }
-
-  /** 
-   * 递归下载远程服务器目录到本地目录
-   * @param {Object} session SFTP 会话对象
-   * @param {string} id 会话 ID
-   * @param {string} remoteDir 远程服务器目录路径
-   * @param {string} localDir 本地保存目录路径
-   */
-  const downloadDirRecursive = async (session, id, remoteDir, localDir) => {
-    assertSftpLocalDirAllowed(localDir, '下载')
-    fs.mkdirSync(localDir, { recursive: true })  // 确保本地目录存在（recursive可以创建多级目录）
-    const list = await sftpReaddir(session, remoteDir)
-    for (const item of list) {
-      const name = item.filename
-      const remotePath = remoteDir === '/' ? '/' + name : remoteDir + '/' + name
-      const localPath = safeJoinLocalDownloadPath(localDir, name, '下载')
-      if (item.attrs.isDirectory()) {
-        await downloadDirRecursive(session, id, remotePath, localPath)
-      } else {
-        await new Promise((resolve, reject) => {
-          session.sftp.fastGet(remotePath, localPath, {
-            step: (transferred, _chunk, total_size) => {
-              mainWindow.webContents.send('sftp:progress', id, {
-                type: 'download',
-                file: remotePath,
-                transferred,
-                total: total_size,
-                percent: total_size ? Math.round((transferred / total_size) * 100) : 0,
-              })
-            },
-          }, (err) => (err ? reject(err) : resolve()))
-        })
-      }
-    }
-  }
   ipcMain.handle('sftp:connect', async (event, id, config) => {
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
-    return new Promise((resolve, _reject) => {
-      const conn = new Client()
 
-      conn.on('ready', () => {  // 监听 ready 事件（SSH 认证成功后触发）
-        conn.sftp((err, sftp) => {  // 调用 conn.sftp() 获取 SFTP 会话
-          if (err) {
-            conn.end()
-            return resolve({ success: false, error: err.message })
-          }
-          sftpSessions.set(id, { conn, sftp })  // 保存连接信息；没有单独的 SFTP 连接对象，直接在会话对象中保存 sftp 实例
-          resolve({ success: true })
-        })
-      })
+    return new Promise((resolve) => {
+      let settled = false
+      let worker
 
-      conn.on('error', (err) => {
-        resolve({ success: false, error: err.message })
-      })
-
-      /** 构建连接配置对象，根据用户选择的认证方式（密码或私钥）设置相应的属性，并调用 conn.connect() 发起 SSH 连接请求 */
-      const connectConfig = {
-        host: config.host,
-        port: config.port || 22,
-        username: config.username,
-        readyTimeout: 60000,  // 连接超时60秒
+      /** 会话状态 */
+      const session = {
+        worker: /** @type {Worker|null} */ (null),
+        pending: new Map(),
+        reqSeq: 0,
+        isClosed: false,
       }
 
-      if (config.algorithms && typeof config.algorithms === 'object') {
-        const filtered = {}
-        for (const key of ['kex', 'serverHostKey', 'cipher', 'hmac', 'compress']) {
-          if (Array.isArray(config.algorithms[key]) && config.algorithms[key].length) {
-            filtered[key] = config.algorithms[key]
-          }
+      /** 处理连接失败 */
+      const finishFail = (error) => {
+        if (settled) return
+        settled = true
+        sftpSessions.delete(id)
+        rejectAllPending(session, String(error || 'SFTP connection failed'))
+        try {
+          worker?.terminate()
+        } catch (_) {}
+        resolve({ success: false, error: String(error || 'SFTP connection failed') })
+      }
+
+      /** 处理连接成功 */
+      const finishOk = () => {
+        if (settled) return
+        settled = true
+        resolve({ success: true })
+      }
+
+      /** 关闭会话一次 */
+      const closeSessionOnce = () => {
+        if (session.isClosed) return
+        session.isClosed = true
+        sftpSessions.delete(id)
+        rejectAllPending(session, 'SFTP session closed')
+        try {
+          session.worker?.terminate()
+        } catch (_) {}
+      }
+
+      /** 处理 Worker 消息 */
+      const onWorkerMessage = async (msg) => {
+        if (msg.type === 'HOST_VERIFY') {  // 处理主机公钥校验请求
+          const raw = Buffer.from(msg.keyBase64, 'base64')
+          const ok = await verifySshHostKeyTrust(mainWindow, msg.host, msg.port, raw)
+          try {
+            worker.postMessage({ type: 'HOST_VERIFY_RESULT', reqId: msg.reqId, ok })
+          } catch (_) {}
+          return
         }
-        if (Object.keys(filtered).length) {
-          connectConfig.algorithms = filtered
+        if (msg.type === 'PROGRESS') {  // 处理进度消息
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('sftp:progress', id, msg.progress)
+          }
+          return
+        }
+        if (msg.type === 'CMD_RESULT') {  // 处理命令结果消息
+          const res = session.pending.get(msg.reqId)
+          session.pending.delete(msg.reqId)
+          res?.(msg)
+          return
+        }
+        if (msg.type === 'READY') {  // 处理连接成功消息
+          sftpSessions.set(id, session)
+          finishOk()
+          return
+        }
+        if (msg.type === 'CONNECT_FAILED') {  // 处理连接失败消息
+          finishFail(msg.error)
+          return
+        }
+        if (msg.type === 'CLOSED') {  // 处理关闭消息
+          closeSessionOnce()
         }
       }
-      if (!connectConfig.algorithms) {
-        connectConfig.algorithms = DEFAULT_ALGORITHM_PREFERENCES
-      }
-
-      if (config.authType === 'password') {
-        connectConfig.password = config.password
-      } else if (config.authType === 'privateKey') {
-        connectConfig.privateKey = config.privateKey
-        if (config.passphrase) connectConfig.passphrase = config.passphrase
-      }
-
-      connectConfig.hostVerifier = createSshHostVerifier(
-        mainWindow,
-        config.host,
-        connectConfig.port
-      )
 
       try {
-        conn.connect(connectConfig)  // 发起 SSH 连接请求，连接结果将通过 ready 和 error 事件处理器处理
+        worker = new Worker(workerEntry, {  // 创建 Worker
+          type: 'module',
+          workerData: {
+            sessionId: id,
+            config,
+            allowedRoots: getAllowedUserRootPaths(),
+          },
+        })
+        session.worker = worker
       } catch (e) {
-        resolve({ success: false, error: e.message })
+        return resolve({ success: false, error: e.message })
       }
+
+      worker.on('message', onWorkerMessage)  // 监听 Worker 消息事件
+
+      worker.on('error', (err) => finishFail(err.message))  // 监听 Worker 错误事件
+
+      worker.on('exit', (code) => {  // 监听 Worker 退出事件
+        if (!settled) {
+          finishFail(`SFTP worker exited unexpectedly (${code})`)
+        } else if (sftpSessions.has(id) && !session.isClosed) {
+          closeSessionOnce()  // 关闭会话一次
+        }
+      })
     })
   })
 
-  ipcMain.handle('sftp:disconnect', async (event, id) => {
+  ipcMain.handle('sftp:disconnect', async (event, id) => {  // 处理断开连接请求
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
-    if (session) {
-      try { session.conn.end() } catch (e) {}
+    if (session?.worker) {
+      rejectAllPending(session, 'disconnected')
       sftpSessions.delete(id)
+      try {
+        session.worker.postMessage({ type: 'DISCONNECT' })
+      } catch (_) {}
+      setTimeout(() => {
+        try {
+          session.worker.terminate()
+        } catch (_) {}
+      }, 120)
     }
     return { success: true }
   })
 
-  ipcMain.handle('sftp:list', async (event, id, remotePath) => {
+  ipcMain.handle('sftp:list', async (event, id, remotePath) => {  // 处理列出远程目录请求
     if (!isTrustedIpcSender(event.sender)) return { success: false, error: IPC_UNAUTHORIZED.error }
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
-
-    return new Promise((resolve) => {
-      session.sftp.readdir(remotePath, (err, list) => {  // 读取远程文件（文件夹），回调接收错误 err 和文件列表 list
-        if (err) return resolve({ success: false, error: err.message })
-        const items = list.map(item => ({  // list.map：将每个文件项转换为对象，包含文件名、路径、是否为目录、大小、修改时间和权限信息
-          name: item.filename,
-          path: remotePath === '/' ? '/' + item.filename : remotePath + '/' + item.filename,
-          isDir: item.attrs.isDirectory(),
-          size: item.attrs.size,
-          mtime: item.attrs.mtime * 1000,
-          permissions: item.attrs.mode,
-        })).sort((a, b) => {  // 排序：目录优先，然后按名称排序
-          if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
-          return a.name.localeCompare(b.name)
-        })
-        resolve({ success: true, items })
-      })
-    })
+    const msg = await workerCommand(session, { cmd: 'LIST', remotePath })
+    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    return { success: true, items: msg.items }
   })
 
-  ipcMain.handle('sftp:download', async (event, id, remotePath, localPath) => {
+  ipcMain.handle('sftp:download', async (event, id, remotePath, localPath) => {  // 处理下载文件请求
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
@@ -211,26 +196,12 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     } catch (e) {
       return { success: false, error: e.message }
     }
-
-    return new Promise((resolve) => {
-      session.sftp.fastGet(remotePath, localPath, {  // 调用 fastGet 开始下载远程文件到本地路径
-        step: (transferred, _chunk, total_size) => {  // fastGet 提供的回调：下载过程中每传输一个块就会调用一次，接收已传输字节数 transferred、当前块大小 chunk 和文件总大小 total_size
-          mainWindow.webContents.send('sftp:progress', id, {
-            type: 'download',
-            file: remotePath,
-            transferred,
-            total: total_size,
-            percent: Math.round((transferred / total_size) * 100),
-          })
-        },
-      }, (err) => {  // fastGet 的最终回调，下载完成或失败时调用
-        if (err) return resolve({ success: false, error: err.message })
-        resolve({ success: true })
-      })
-    })
+    const msg = await workerCommand(session, { cmd: 'DOWNLOAD', remotePath, localPath })
+    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    return { success: true }
   })
 
-  ipcMain.handle('sftp:downloadDir', async (event, id, remoteDir, localDir) => {
+  ipcMain.handle('sftp:downloadDir', async (event, id, remoteDir, localDir) => {  // 处理下载目录请求
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
@@ -239,15 +210,12 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     } catch (e) {
       return { success: false, error: e.message }
     }
-    try {
-      await downloadDirRecursive(session, id, remoteDir, localDir)  // 递归下载远程服务器目录到本地目录
-      return { success: true }
-    } catch (e) {
-      return { success: false, error: e?.message || String(e) }  // 下载失败，返回错误信息
-    }
+    const msg = await workerCommand(session, { cmd: 'DOWNLOAD_DIR', remoteDir, localDir })
+    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    return { success: true }
   })
 
-  ipcMain.handle('sftp:upload', async (event, id, localPath, remotePath) => {
+  ipcMain.handle('sftp:upload', async (event, id, localPath, remotePath) => {  // 处理上传文件请求
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
@@ -256,59 +224,36 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     } catch (e) {
       return { success: false, error: e.message }
     }
-
-    return new Promise((resolve) => {
-      session.sftp.fastPut(localPath, remotePath, {
-        step: (transferred, _chunk, total_size) => {
-          mainWindow.webContents.send('sftp:progress', id, {
-            type: 'upload',
-            file: localPath,
-            transferred,
-            total: total_size,
-            percent: Math.round((transferred / total_size) * 100),
-          })
-        },
-      }, (err) => {
-        if (err) return resolve({ success: false, error: err.message })
-        resolve({ success: true })
-      })
-    })
+    const msg = await workerCommand(session, { cmd: 'UPLOAD', localPath, remotePath })
+    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    return { success: true }
   })
 
-  ipcMain.handle('sftp:mkdir', async (event, id, remotePath) => {
+  ipcMain.handle('sftp:mkdir', async (event, id, remotePath) => {  // 处理创建目录请求
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
-    return new Promise((resolve) => {
-      session.sftp.mkdir(remotePath, (err) => {
-        if (err) return resolve({ success: false, error: err.message })
-        resolve({ success: true })
-      })
-    })
+    const msg = await workerCommand(session, { cmd: 'MKDIR', remotePath })
+    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    return { success: true }
   })
 
-  ipcMain.handle('sftp:delete', async (event, id, remotePath) => {
+  ipcMain.handle('sftp:delete', async (event, id, remotePath) => {  // 处理删除文件请求
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
-    try {
-      await deleteRecursive(session, remotePath)
-      return { success: true }
-    } catch (e) {
-      return { success: false, error: e?.message || String(e) }
-    }
+    const msg = await workerCommand(session, { cmd: 'DELETE', remotePath })
+    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    return { success: true }
   })
 
-  ipcMain.handle('sftp:rename', async (event, id, oldPath, newPath) => {
+  ipcMain.handle('sftp:rename', async (event, id, oldPath, newPath) => {  // 处理重命名文件请求
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
-    return new Promise((resolve) => {
-      session.sftp.rename(oldPath, newPath, (err) => {
-        if (err) return resolve({ success: false, error: err.message })
-        resolve({ success: true })
-      })
-    })
+    const msg = await workerCommand(session, { cmd: 'RENAME', oldPath, newPath })
+    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    return { success: true }
   })
 }
 
