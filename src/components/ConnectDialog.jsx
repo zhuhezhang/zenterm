@@ -10,6 +10,18 @@ const SERIAL_DEFAULT = { path: '', baudRate: '9600', dataBits: '8', stopBits: '1
 const BAUD_RATES = ['110','300','600','1200','2400','4800','9600','14400','19200','38400','57600','115200','128000','256000']
 const PARITIES = ['none','even','odd','mark','space']
 
+const PORT_MIN = 0
+const PORT_MAX = 65535
+
+/** 端口输入严格限制在 0–65535；空字符串保留便于清空重输 */
+function clampPortFieldString(raw) {
+  const s = String(raw ?? '').trim()
+  if (s === '') return ''
+  const n = parseInt(s, 10)
+  if (Number.isNaN(n)) return ''
+  return String(Math.min(PORT_MAX, Math.max(PORT_MIN, n)))
+}
+
 /**
  * 串口路径是否与 listPorts 结果一致（与主进程 serial.js 判定对齐；Windows 上对 COM 路径不区分大小写）
  * @param {string} requestedPath
@@ -154,7 +166,11 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
    */
   const buildConfig = () => ({
     ...form, type: tab,
-    port: parseInt(form.port) || undefined,
+    port: (() => {
+      const p = parseInt(form.port, 10)
+      if (Number.isNaN(p)) return undefined
+      return Math.min(PORT_MAX, Math.max(PORT_MIN, p))
+    })(),
     baudRate: parseInt(form.baudRate) || 9600,
     dataBits: parseInt(form.dataBits) || 8,
     stopBits: parseInt(form.stopBits) || 1,
@@ -371,7 +387,7 @@ function SshForm({ form, set, visible }) {
         <input placeholder={t('connect.hostPh')} value={form.host} onChange={e => set('host', e.target.value)} autoFocus />
       </FormRow>
       <FormRow label={t('connect.port')}>
-        <input type="number" value={form.port} onChange={e => set('port', e.target.value)} style={{width:80}} />
+        <input type="number" min={PORT_MIN} max={PORT_MAX} value={form.port} onChange={e => set('port', clampPortFieldString(e.target.value))} style={{width:80}} />
       </FormRow>
       <FormRow label={t('connect.username')}>
         <input placeholder={t('connect.usernamePh')} value={form.username || ''} onChange={e => set('username', e.target.value)} />
@@ -424,7 +440,7 @@ function TelnetForm({ form, set, visible }) {
         <input placeholder={t('connect.hostPh')} value={form.host} onChange={e => set('host', e.target.value)} autoFocus />
       </FormRow>
       <FormRow label={t('connect.port')}>
-        <input type="number" value={form.port} onChange={e => set('port', e.target.value)} style={{width:80}} />
+        <input type="number" min={PORT_MIN} max={PORT_MAX} value={form.port} onChange={e => set('port', clampPortFieldString(e.target.value))} style={{width:80}} />
       </FormRow>
       <FormRow label={t('connect.username')}>
         <input placeholder={t('connect.usernamePh')} value={form.username || ''} onChange={e => set('username', e.target.value)} />

@@ -14,40 +14,90 @@ const TELNET_WONT = 252
 const TELNET_SB = 250
 const TELNET_SE = 240
 
+/** 未完成的 Telnet 序列与跨 TCP 分片拼接；socket 销毁后由 WeakMap 与 close 清理 */
+const telnetInboundPending = new WeakMap()
+const TELNET_MAX_PENDING = 65536
+
 /**
- * 处理 Telnet 数据，过滤掉协议命令并返回纯数据内容
- * @param {Buffer} data 从 Telnet 连接接收到的数据
- * @returns {Buffer} 处理后的数据，去除了 Telnet 协议命令
+ * 从下行流中去掉 Telnet 命令，保留终端数据；支持跨 chunk、IAC IAC 字面 0xFF、SB…IAC SE
+ * @param {import('net').Socket} socket Telnet 会话的 socket 实例
+ * @param {Buffer} chunk 下行流数据
+ * @returns {Buffer} 处理后的数据
  */
-function processTelnetData(data) {
+function stripTelnetStream(socket, chunk) {
+  let pending = telnetInboundPending.get(socket)
+  if (pending?.length && pending.length + chunk.length > TELNET_MAX_PENDING) {
+    telnetInboundPending.delete(socket)
+    pending = undefined
+  }
+  const buf = pending?.length ? Buffer.concat([pending, chunk]) : Buffer.from(chunk)
+
   const output = []
   let i = 0
-  while (i < data.length) {
-    if (data[i] === TELNET_IAC) {
+  const len = buf.length
+
+  while (i < len) {
+    if (buf[i] !== TELNET_IAC) {
+      output.push(buf[i])
       i++
-      if (i >= data.length) break
-      const cmd = data[i]
-      if (cmd === TELNET_DO || cmd === TELNET_DONT || cmd === TELNET_WILL || cmd === TELNET_WONT) {
-        i += 2  // 跳过命令和选项字节
-      } else if (cmd === TELNET_SB) {
-        i++  // 跳过 SB 命令字节
-        while (i < data.length && data[i] !== TELNET_SE) i++
-        i++  // 跳过 SE 命令字节
-      } else {
-        i++  // 跳过其他 IAC 命令字节
-      }
-    } else {
-      output.push(data[i])
-      i++
+      continue
     }
+    if (i + 1 >= len) break
+
+    const cmd = buf[i + 1]
+    if (cmd === TELNET_IAC) {
+      output.push(TELNET_IAC)
+      i += 2
+      continue
+    }
+    if (cmd === TELNET_DO || cmd === TELNET_DONT || cmd === TELNET_WILL || cmd === TELNET_WONT) {
+      if (i + 2 >= len) break
+      i += 3
+      continue
+    }
+    if (cmd === TELNET_SB) {
+      if (i + 3 > len) break
+      let j = i + 3
+      let closed = false
+      while (j < len) {
+        if (buf[j] === TELNET_IAC) {
+          if (j + 1 >= len) break
+          if (buf[j + 1] === TELNET_SE) {
+            j += 2
+            closed = true
+            break
+          }
+          if (buf[j + 1] === TELNET_IAC) {
+            j += 2
+            continue
+          }
+          j += 2
+          continue
+        }
+        j++
+      }
+      if (!closed) break
+      i = j
+      continue
+    }
+    i += 2
   }
+
+  if (i < len) telnetInboundPending.set(socket, buf.subarray(i))
+  else telnetInboundPending.delete(socket)
+
   return Buffer.from(output)
+}
+
+/** 清除 Telnet 解析器状态 */
+function clearTelnetParserState(socket) {
+  telnetInboundPending.delete(socket)
 }
 
 /**
  * 设置 Telnet 相关的 IPC 处理函数，传入 ipcMain 和 mainWindow 以便在处理函数中使用 IPC 和窗口通信
  * @param {Electron.IpcMain} ipcMain Electron 的 IPC 主进程模块，用于监听和处理来自渲染进程的 IPC 消息
- * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息 
+ * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息
  */
 function setupTelnetHandlers(ipcMain, mainWindow) {
   ipcMain.handle('telnet:connect', async (event, id, config) => {
@@ -73,31 +123,33 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
         resolveOnce({ success: true })
       })
 
-      socket.on('data', (data) => {  // 监听从服务器接收的数据，处理 Telnet 协议命令并发送纯数据到渲染进程
-        const processed = processTelnetData(data)
+      socket.on('data', (data) => {  // 监听接收数据，去掉 Telnet 命令，保留终端数据，并发送到渲染进程
+        const processed = stripTelnetStream(socket, data)
         if (processed.length > 0) {
           mainWindow.webContents.send('telnet:output', id, processed.toString('binary'))
         }
       })
 
-      socket.on('close', () => {  // 监听服务器关闭连接，清理会话并通知渲染进程
+      socket.on('close', () => {  // 监听连接关闭，清除解析器状态并通知渲染进程
+        clearTelnetParserState(socket)
         telnetSessions.delete(id)
         mainWindow.webContents.send('telnet:closed', id)
       })
 
-      socket.on('error', (err) => {  // 监听服务器错误信息，清理并根据连接状态拒绝或通知
+      socket.on('error', (err) => {  // 监听错误，清除超时定时器、解析器状态并通知渲染进程
         clearTimeout(timeout)
+        clearTelnetParserState(socket)
         telnetSessions.delete(id)
         if (!connected) {
           resolveOnce({ success: false, error: err.message })
         } else {
-          mainWindow.webContents.send('telnet:closed', id)
+          mainWindow.webContents.send('telnet:closed', id)  // 连接失败，通知渲染进程连接关闭
         }
       })
     })
   })
 
-  ipcMain.on('telnet:data', (event, id, data, encoding) => {
+  ipcMain.on('telnet:data', (event, id, data, encoding) => {  // 处理 Telnet 数据事件，发送数据到 Telnet 会话
     if (!isTrustedIpcSender(event.sender)) return
     const socket = telnetSessions.get(id)
     if (socket) {
@@ -106,11 +158,14 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
     }
   })
 
-  ipcMain.handle('telnet:disconnect', async (event, id) => {
+  ipcMain.handle('telnet:disconnect', async (event, id) => {  // 处理 Telnet 断开连接请求，销毁 socket 并清理会话
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const socket = telnetSessions.get(id)
     if (socket) {
-      try { socket.destroy() } catch (e) {}
+      try {
+        clearTelnetParserState(socket)
+        socket.destroy()
+      } catch (e) {}
       telnetSessions.delete(id)
     }
     return { success: true }
