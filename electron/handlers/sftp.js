@@ -129,7 +129,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
         host: config.host,
         port: config.port || 22,
         username: config.username,
-        readyTimeout: 20000,  // 连接超时20秒
+        readyTimeout: 60000,  // 连接超时60秒
       }
 
       if (config.algorithms && typeof config.algorithms === 'object') {

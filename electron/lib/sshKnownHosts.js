@@ -87,6 +87,69 @@ function parseHostKeyType(rawKey) {
 }
 
 /**
+ * 校验/提示是否信任 SSH 主机公钥（与 known_hosts 一致）；供主线程与 Worker 桥接共用。
+ * @param {Electron.BrowserWindow|null|undefined} mainWindow 主窗口实例
+ * @param {string} host 主机名或 IP
+ * @param {number} port 端口
+ * @param {Buffer} rawKey 主机公钥二进制
+ * @returns {Promise<boolean>} 是否允许继续握手
+ */
+export async function verifySshHostKeyTrust(mainWindow, host, port, rawKey) {
+  const raw = Buffer.isBuffer(rawKey) ? rawKey : Buffer.from(rawKey)
+  const fp = fingerprintHostKey(raw)
+  const keyType = parseHostKeyType(raw)
+  const hp = knownHostLookupKey(host, port)
+  const store = loadStore()
+  const existing = store[hp]
+  const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined
+
+  if (existing && existing.sha256 === fp) {
+    return true
+  }
+
+  try {
+    if (existing && existing.sha256 !== fp) {
+      const { response } = await dialog.showMessageBox(parent, {
+        type: 'error',
+        title: 'SSH 主机密钥已变更',
+        message: '与本地已保存的指纹不一致，可能存在中间人攻击。',
+        detail: `主机: ${hp}\n密钥类型: ${keyType}\n已保存 SHA256: ${existing.sha256}\n当前 SHA256: ${fp}`,
+        buttons: ['断开连接', '信任新密钥并继续'],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+      })
+      if (response === 1) {
+        store[hp] = { sha256: fp, keyType, updatedAt: Date.now() }
+        saveStore(store)
+        return true
+      }
+      return false
+    }
+
+    const { response } = await dialog.showMessageBox(parent, {
+      type: 'question',
+      title: '未知 SSH 主机',
+      message: '尚未记录该主机的公钥指纹，是否信任并保存？',
+      detail: `主机: ${hp}\n密钥类型: ${keyType}\nSHA256: ${fp}`,
+      buttons: ['取消', '信任并保存'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    })
+    if (response === 1) {
+      store[hp] = { sha256: fp, keyType, updatedAt: Date.now() }
+      saveStore(store)
+      return true
+    }
+    return false
+  } catch (e) {
+    console.error('ssh hostVerifier dialog error', e)
+    return false
+  }
+}
+
+/**
  * 创建 SSH 主机公钥校验器：供 ssh2 connect({ hostVerifier }) 使用；须异步调用 callback(boolean)。
  * @param {Electron.BrowserWindow|null} mainWindow 主窗口实例
  * @param {string} host 主机名或 IP
@@ -94,69 +157,14 @@ function parseHostKeyType(rawKey) {
  * @returns {Function} 主机公钥校验器
  */
 export function createSshHostVerifier(mainWindow, host, port) {
-  const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined
-
   return function hostVerifier(key, callback) {
-    const raw = Buffer.isBuffer(key) ? key : Buffer.from(key)
-    const fp = fingerprintHostKey(raw)
-    const keyType = parseHostKeyType(raw)
-    const hp = knownHostLookupKey(host, port)
-    const store = loadStore()
-    const existing = store[hp]
-
-    const done = (ok) => {
-      if (typeof callback === 'function') callback(ok)
-    }
-
-    if (existing && existing.sha256 === fp) {
-      done(true)
-      return
-    }
-
-    void (async () => {
-      try {
-        if (existing && existing.sha256 !== fp) {
-          const { response } = await dialog.showMessageBox(parent, {
-            type: 'error',
-            title: 'SSH 主机密钥已变更',
-            message: '与本地已保存的指纹不一致，可能存在中间人攻击。',
-            detail: `主机: ${hp}\n密钥类型: ${keyType}\n已保存 SHA256: ${existing.sha256}\n当前 SHA256: ${fp}`,
-            buttons: ['断开连接', '信任新密钥并继续'],
-            defaultId: 0,
-            cancelId: 0,
-            noLink: true,
-          })
-          if (response === 1) {
-            store[hp] = { sha256: fp, keyType, updatedAt: Date.now() }
-            saveStore(store)
-            done(true)
-          } else {
-            done(false)
-          }
-          return
-        }
-
-        const { response } = await dialog.showMessageBox(parent, {
-          type: 'question',
-          title: '未知 SSH 主机',
-          message: '尚未记录该主机的公钥指纹，是否信任并保存？',
-          detail: `主机: ${hp}\n密钥类型: ${keyType}\nSHA256: ${fp}`,
-          buttons: ['取消', '信任并保存'],
-          defaultId: 0,
-          cancelId: 0,
-          noLink: true,
-        })
-        if (response === 1) {
-          store[hp] = { sha256: fp, keyType, updatedAt: Date.now() }
-          saveStore(store)
-          done(true)
-        } else {
-          done(false)
-        }
-      } catch (e) {
-        console.error('ssh hostVerifier dialog error', e)
-        done(false)
-      }
-    })()
+    void verifySshHostKeyTrust(mainWindow, host, port, Buffer.from(key))
+      .then((ok) => {
+        if (typeof callback === 'function') callback(ok)
+      })
+      .catch((e) => {
+        console.error('ssh hostVerifier error', e)
+        if (typeof callback === 'function') callback(false)
+      })
   }
 }
