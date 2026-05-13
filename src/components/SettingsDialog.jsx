@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import {
   SETTINGS_SCHEMA, SETTINGS_GENERAL_SECTION_IDS, saveSettings, exportSettings, importSettings, getDefaultLogPath,
   DEFAULT_SETTINGS, DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
+  clampTerminalScrollback,
 } from '../store/settingsStore.js'
 import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
@@ -370,7 +371,11 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 处理保存设置的操作，将当前表单数据保存到设置中，并调用 onSave 回调函数传递新的设置对象 */
   const handleSave = () => {
-    const next = { ...form, highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang) }
+    const next = {
+      ...form,
+      highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang),
+      terminalScrollback: clampTerminalScrollback(form.terminalScrollback),
+    }
     setForm(next)
     saveSettings(next)
     onSave(next)
@@ -378,7 +383,11 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 保存设置后关闭对话框 */
   const handleSaveAndClose = () => {
-    const next = { ...form, highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang) }
+    const next = {
+      ...form,
+      highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang),
+      terminalScrollback: clampTerminalScrollback(form.terminalScrollback),
+    }
     setForm(next)
     saveSettings(next)
     onSave(next)
@@ -431,6 +440,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
         appTheme,
         highlightRules: importedSettings.highlightRules ? [...importedSettings.highlightRules] : [],
         algorithmPreferences: importedSettings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
+        terminalScrollback: clampTerminalScrollback(importedSettings.terminalScrollback),
       })  // 更新表单状态
       alert(t('settings.importSettingsOk'))
     } catch (err) {
@@ -542,6 +552,28 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                     <option key={opt.value} value={opt.value}>{opt.labelKey ? t(opt.labelKey) : (opt.label ?? opt.value)}</option>
                   ))}
                 </select>
+              )}
+              {item.type === 'number' && (
+                <input
+                  type="number"
+                  className="settings-number-input"
+                  min={item.min ?? 0}
+                  max={item.max}
+                  step={item.step ?? 1}
+                  value={form[item.key] ?? ''}
+                  aria-label={label}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (v === '' || v === '-') {
+                      set(item.key, v)
+                      return
+                    }
+                    const n = Number(v)
+                    if (!Number.isFinite(n)) return
+                    set(item.key, n)
+                  }}
+                  onBlur={() => set(item.key, clampTerminalScrollback(form[item.key]))}
+                />
               )}
             </div>
           )

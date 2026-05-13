@@ -43,6 +43,24 @@ import {
 
 export { DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm }
 
+/** xterm 滚动缓冲区行数：内置默认与可配置范围上限（xterm 理论更大，此处控制内存与 UI） */
+export const TERMINAL_SCROLLBACK_DEFAULT = 5000
+export const TERMINAL_SCROLLBACK_MIN = 0
+export const TERMINAL_SCROLLBACK_MAX = 500_000
+
+/**
+ * 将用户输入规范为合法滚动行数；无法解析时用内置默认。
+ * @param {unknown} raw
+ * @returns {number}
+ */
+export function clampTerminalScrollback(raw) {
+  const n = Math.floor(Number(raw))
+  if (!Number.isFinite(n)) return TERMINAL_SCROLLBACK_DEFAULT
+  if (n < TERMINAL_SCROLLBACK_MIN) return TERMINAL_SCROLLBACK_MIN
+  if (n > TERMINAL_SCROLLBACK_MAX) return TERMINAL_SCROLLBACK_MAX
+  return n
+}
+
 /** 默认设置项 */
 export const DEFAULT_SETTINGS = {
   /** 应用界面主题：dark | light | auto（跟随系统亮暗） */
@@ -53,6 +71,8 @@ export const DEFAULT_SETTINGS = {
   confirmDeleteGroup: true,
   deleteGroupWithSessions: false,
   terminalInteract: true,   // 选中复制 + 右键粘贴
+  /** xterm scrollback：仅「视口外」向上保留的历史行数，不含当前可见的 term.rows 行 */
+  terminalScrollback: TERMINAL_SCROLLBACK_DEFAULT,
   backspaceMode: 'auto',    // 退格键模式：auto / del / bs
   enableLogging: false,
   logPath: '',
@@ -87,6 +107,7 @@ export function loadSettings() {
       }
     }
     const merged = { ...DEFAULT_SETTINGS, ...saved }
+    merged.terminalScrollback = clampTerminalScrollback(merged.terminalScrollback)
     if (!('logPath' in saved)) merged.logPath = getDefaultLogPath()
     if (!['auto', 'en', 'zh'].includes(merged.uiLanguage)) merged.uiLanguage = 'auto'
     if (!['dark', 'light', 'auto'].includes(merged.appTheme)) merged.appTheme = 'auto'
@@ -169,6 +190,13 @@ export const SETTINGS_SCHEMA = [
           { value: 'del', labelKey: 'settings.options.backspaceDel' },
           { value: 'bs', labelKey: 'settings.options.backspaceBs' },
         ],
+      },
+      {
+        key: 'terminalScrollback',
+        type: 'number',
+        min: TERMINAL_SCROLLBACK_MIN,
+        max: TERMINAL_SCROLLBACK_MAX,
+        step: 500,
       },
     ],
   },

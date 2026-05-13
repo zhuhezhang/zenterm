@@ -91,6 +91,26 @@
   border-color: var(--accent);
 }
 
+.settings-number-input {
+  width: 7.5rem;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  outline: none;
+}
+.settings-number-input:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+.settings-number-input:focus {
+  border-color: var(--accent);
+}
+
 /* 两行共用同一四列网格（子行 display:contents），名称与匹配输入左缘对齐 */
 .settings-rule-item {
   display: grid;

@@ -156,6 +156,10 @@ export const MESSAGES = {
           label: '退格键模式',
           desc: '设置发送给设备的退格编码。Auto: SSH 用 DEL，Telnet/Serial 用 BS',
         },
+        terminalScrollback: {
+          label: '视口外滚动历史（行）',
+          desc: '限制「已滚出屏幕上方」仍保留的行数，不包含当前窗口里可见的那些行（可见行数由窗口高度决定）。向上滚动能浏览的总行数约为「本数值 + 终端高度行数」。越大越占内存。保存后生效。',
+        },
         enableLogging: { label: '开启终端 I/O 日志', desc: '将每个会话的输入输出记录到独立日志文件' },
         logPath: {
           label: '日志保存目录',
@@ -492,6 +496,10 @@ export const MESSAGES = {
         backspaceMode: {
           label: 'Backspace mode',
           desc: 'Byte sent for backspace. Auto: DEL for SSH, BS for Telnet/Serial',
+        },
+        terminalScrollback: {
+          label: 'Scrollback (lines above viewport)',
+          desc: 'Rows kept after they scroll off the top—not the on-screen rows (those depend on window height). Total lines you can scroll through is about this value plus the terminal row count. Higher uses more RAM. Takes effect after you save.',
         },
         enableLogging: { label: 'Terminal I/O logging', desc: 'Write each session to its own log file' },
         logPath: {

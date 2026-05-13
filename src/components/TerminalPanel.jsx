@@ -5,7 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import '../styles/terminal.css'
 import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
-import { resolveLoggingDirectory } from '../store/settingsStore.js'
+import { resolveLoggingDirectory, clampTerminalScrollback } from '../store/settingsStore.js'
 import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
 import { getXtermTheme } from '../theme/appTheme.js'
@@ -151,7 +151,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
 
   useEffect(() => {  // 组件初次挂载时：创建终端实例、连接会话，并设置相关事件监听器；组件卸载时：调用 cleanupRef 中的函数进行清理
     if (!containerRef.current) return
-    const term = createTerminal(appThemeEffective)
+    const term = createTerminal(appThemeEffective, clampTerminalScrollback(settingsRef.current?.terminalScrollback))
     const fitAddon = new FitAddon()
     term.loadAddon(fitAddon)
     term.loadAddon(new WebLinksAddon())  // WebLinksAddon 负责将终端中的 URL 自动识别为可点击链接
@@ -177,6 +177,15 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
       term.dispose()
     }
   }, [session.id])
+
+  useEffect(() => {  // 滚动缓冲行数：保存设置后更新已存在终端（xterm 支持运行时改 options.scrollback）
+    const term = termRef.current
+    if (!term) return
+    const sb = clampTerminalScrollback(settings?.terminalScrollback)
+    if (term.options.scrollback !== sb) {
+      term.options.scrollback = sb
+    }
+  }, [settings?.terminalScrollback])
 
   useEffect(() => {  // 监听当应用主题变化时，更新终端主题，确保终端主题与应用主题一致
     const term = termRef.current
@@ -325,9 +334,10 @@ function nextLineBreakEndIndex(s) {
 /**
  * 创建并配置 xterm 终端实例
  * @param {'dark'|'light'} themeMode
+ * @param {number} scrollback 滚动缓冲行数（由设置 clamp）
  * @returns {Terminal} 配置好的 Terminal 实例
  */
-function createTerminal(themeMode) {
+function createTerminal(themeMode, scrollback) {
   return new Terminal({
     fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", Menlo, monospace',  // 左到右为字体的优先级
     fontSize: 14,
@@ -335,7 +345,7 @@ function createTerminal(themeMode) {
     cursorBlink: true,  // 启用光标闪烁，增强可见性
     cursorStyle: 'bar',  // 光标样式为竖线，适合现代终端习惯
     allowTransparency: true,  // 允许背景透明，配合主题颜色可以实现半透明效果
-    scrollback: 5000,  // 滚动缓冲区行数，增加可滚动的历史记录
+    scrollback,
     windowsMode: false,  // 关闭 Windows 模式（影响换行符处理），启用更现代的行为和样式
     theme: getXtermTheme(themeMode),
   })
