@@ -345,9 +345,9 @@ function createTerminal(themeMode, scrollback) {
     cursorBlink: true,  // 启用光标闪烁，增强可见性
     cursorStyle: 'bar',  // 光标样式为竖线，适合现代终端习惯
     allowTransparency: true,  // 允许背景透明，配合主题颜色可以实现半透明效果
-    scrollback,
+    scrollback,  // 滚动缓冲行数
     windowsMode: false,  // 关闭 Windows 模式（影响换行符处理），启用更现代的行为和样式
-    theme: getXtermTheme(themeMode),
+    theme: getXtermTheme(themeMode),  // 获取 xterm 主题
   })
 }
 
