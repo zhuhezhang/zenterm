@@ -82,7 +82,7 @@ function createWindow() {
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximized', false))
 
 
-  ipcMain.on('app:getDownloadsPath', (e) => {
+  ipcMain.on('app:getDownloadsPath', (e) => {  // 获取下载目录路径
     if (!isTrustedIpcSender(e.sender)) {
       e.returnValue = ''
       return
@@ -90,7 +90,7 @@ function createWindow() {
     e.returnValue = app.getPath('downloads')
   })
 
-  ipcMain.handle('app:chooseDirectory', async (event) => {
+  ipcMain.handle('app:chooseDirectory', async (event) => {  // 选择日志保存目录
     if (!isTrustedIpcSender(event.sender)) return null
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory', 'createDirectory'],
@@ -99,7 +99,7 @@ function createWindow() {
     return result.canceled ? null : result.filePaths[0]
   })
 
-  ipcMain.on('log:write', (e, logDir, logFileName, data) => {
+  ipcMain.on('log:write', (e, logDir, logFileName, data) => {  // 写入日志
     try {
       if (!isTrustedIpcSender(e.sender)) return
       if (!logDir) return
@@ -110,6 +110,20 @@ function createWindow() {
       fs.writeFileSync(filePath, data, 'utf8')
     } catch (err) {
       console.error('log:write error', err)
+    }
+  })
+
+  ipcMain.on('log:append', (e, logDir, logFileName, data) => {  // 追加写入会话日志（与 log:write 相同路径校验），用于保留已滚出 xterm 缓冲区的历史输出
+    try {
+      if (!isTrustedIpcSender(e.sender)) return
+      if (!logDir || data == null || data === '') return
+      assertLogWriteDirectoryAllowed(logDir)
+      fs.mkdirSync(logDir, { recursive: true })
+      const safeFileName = String(logFileName).replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '_').trim() || 'session'
+      const filePath = path.join(logDir, `${safeFileName}.log`)
+      fs.appendFileSync(filePath, String(data), 'utf8')
+    } catch (err) {
+      console.error('log:append error', err)
     }
   })
 }

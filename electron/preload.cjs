@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('zterm', {  // 在渲染进程中通过window.zt
 
   log: {  // 日志写入
     write: (logDir, sessionId, data) => ipcRenderer.send('log:write', logDir, sessionId, data),
+    append: (logDir, sessionId, data) => ipcRenderer.send('log:append', logDir, sessionId, data), // 追加日志
   },
 
   window: {  // 窗口控制

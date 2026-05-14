@@ -573,6 +573,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                     set(item.key, n)
                   }}
                   onBlur={() => set(item.key, clampTerminalScrollback(form[item.key]))}
+                  title=''
                 />
               )}
             </div>

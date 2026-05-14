@@ -136,14 +136,12 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
         mainWindow.webContents.send('telnet:closed', id)
       })
 
-      socket.on('error', (err) => {  // 监听错误，清除超时定时器、解析器状态并通知渲染进程
+      socket.on('error', (err) => {  // 监听错误：未连上时结束 Promise；已连上时勿发 telnet:closed（close 仍会触发并统一通知，避免重复「连接已关闭」）
         clearTimeout(timeout)
         clearTelnetParserState(socket)
         telnetSessions.delete(id)
         if (!connected) {
           resolveOnce({ success: false, error: err.message })
-        } else {
-          mainWindow.webContents.send('telnet:closed', id)  // 连接失败，通知渲染进程连接关闭
         }
       })
     })

@@ -44,7 +44,7 @@ import {
 export { DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm }
 
 /** xterm 滚动缓冲区行数：内置默认与可配置范围上限（xterm 理论更大，此处控制内存与 UI） */
-export const TERMINAL_SCROLLBACK_DEFAULT = 5000
+export const TERMINAL_SCROLLBACK_DEFAULT = 20_000
 export const TERMINAL_SCROLLBACK_MIN = 0
 export const TERMINAL_SCROLLBACK_MAX = 500_000
 
