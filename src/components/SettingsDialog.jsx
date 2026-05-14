@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import {
   SETTINGS_SCHEMA, SETTINGS_GENERAL_SECTION_IDS, saveSettings, exportSettings, importSettings, getDefaultLogPath,
   DEFAULT_SETTINGS, DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
-  clampTerminalScrollback,
+  clampTerminalScrollback, normalizeLoggingMode,
 } from '../store/settingsStore.js'
 import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
@@ -375,6 +375,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
       ...form,
       highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang),
       terminalScrollback: clampTerminalScrollback(form.terminalScrollback),
+      loggingMode: normalizeLoggingMode(form.loggingMode),
     }
     setForm(next)
     saveSettings(next)
@@ -387,6 +388,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
       ...form,
       highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang),
       terminalScrollback: clampTerminalScrollback(form.terminalScrollback),
+      loggingMode: normalizeLoggingMode(form.loggingMode),
     }
     setForm(next)
     saveSettings(next)
@@ -441,6 +443,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
         highlightRules: importedSettings.highlightRules ? [...importedSettings.highlightRules] : [],
         algorithmPreferences: importedSettings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
         terminalScrollback: clampTerminalScrollback(importedSettings.terminalScrollback),
+        loggingMode: normalizeLoggingMode(importedSettings.loggingMode),
       })  // 更新表单状态
       alert(t('settings.importSettingsOk'))
     } catch (err) {
@@ -547,6 +550,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                   className="settings-select"
                   value={form[item.key] ?? item.options?.[0]?.value ?? ''}
                   onChange={(e) => set(item.key, e.target.value)}
+                  disabled={item.key === 'loggingMode' && !form.enableLogging}
                 >
                   {(item.options || []).map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.labelKey ? t(opt.labelKey) : (opt.label ?? opt.value)}</option>

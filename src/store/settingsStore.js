@@ -79,6 +79,15 @@ export function clampTerminalScrollback(raw) {
   return n
 }
 
+/**
+ * 会话日志写入方式：buffer = 与 xterm 屏幕缓冲一致（整文件覆盖）；stream = 下行原始流去 ANSI 后追加
+ * @param {unknown} m
+ * @returns {'stream'|'buffer'}
+ */
+export function normalizeLoggingMode(m) {
+  return String(m || '').toLowerCase() === 'stream' ? 'stream' : 'buffer'
+}
+
 /** 默认设置项 */
 export const DEFAULT_SETTINGS = {
   /** 应用界面主题：dark | light | auto（跟随系统亮暗） */
@@ -93,6 +102,8 @@ export const DEFAULT_SETTINGS = {
   terminalScrollback: TERMINAL_SCROLLBACK_DEFAULT,
   backspaceMode: 'auto',    // 退格键模式：auto / del / bs
   enableLogging: false,
+  /** 日志模式：buffer 与屏幕一致；stream 按 PTY 下行流追加（可能与 zsh 重绘所见不一致） */
+  loggingMode: 'buffer',
   logPath: '',
   highlightRules: [
     { id: 'default1_error', name: 'default1_error', enabled: true, useRegex: true, caseSensitive: false, pattern: '(\\berror\\b)|(\\bfailed\\b)|(\\bdenied\\b)|(\\bunauthorized\\b)|(\\bdown\\b)', color: '#f1250e' },
@@ -128,6 +139,7 @@ export function loadSettings() {
     }
     const merged = { ...DEFAULT_SETTINGS, ...saved }
     merged.terminalScrollback = clampTerminalScrollback(merged.terminalScrollback)
+    merged.loggingMode = normalizeLoggingMode(merged.loggingMode)
     if (!('logPath' in saved)) merged.logPath = getDefaultLogPath()
     if (!['auto', 'en', 'zh'].includes(merged.uiLanguage)) merged.uiLanguage = 'auto'
     if (!['dark', 'light', 'auto'].includes(merged.appTheme)) merged.appTheme = 'auto'
@@ -225,6 +237,14 @@ export const SETTINGS_SCHEMA = [
     section: 'logging',
     items: [
       { key: 'enableLogging', type: 'boolean' },
+      {
+        key: 'loggingMode',
+        type: 'select',
+        options: [
+          { value: 'buffer', labelKey: 'settings.options.loggingModeBuffer' },
+          { value: 'stream', labelKey: 'settings.options.loggingModeStream' },
+        ],
+      },
       { key: 'logPath', type: 'path' },
     ],
   },

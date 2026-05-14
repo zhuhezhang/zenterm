@@ -5,7 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import '../styles/terminal.css'
 import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
-import { resolveLoggingDirectory, clampTerminalScrollback } from '../store/settingsStore.js'
+import { resolveLoggingDirectory, clampTerminalScrollback, normalizeLoggingMode } from '../store/settingsStore.js'
 import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
 import { getXtermTheme } from '../theme/appTheme.js'
@@ -141,7 +141,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
   const fitAddonRef  = useRef(null)
   /** 清理函数列表引用，用于存储连接相关的清理函数（如事件监听器、连接断开函数等），组件卸载时调用这些函数进行清理 */
   const cleanupRef   = useRef([])
-  /** 日志写入引用：启用时为 `{ enqueue, flushNow }`，按与终端一致的文本流追加到文件（不依赖 xterm 滚动缓冲） */
+  /** 日志写入引用：由 setupLogging 挂载，支持 buffer（屏幕快照）与 stream（原始流追加） */
   const logFileRef   = useRef(null)
   /** 同一标签页（同一 session.id）内复用首次生成的日志文件名，断开按 R 重连仍写入同一 .log */
   const logFileStemStateRef = useRef({ sessionId: null, stem: null })
@@ -163,10 +163,16 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
     fitAddonRef.current = fitAddon
 
     applyTerminalSettings(term, settingsRef)
-    setupLogging(session, settings, logFileRef, logFileStemStateRef)
 
     let cancelled = false
     connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, () => cancelled, logFileRef, settingsRef)
+
+    const logOnResize = term.onResize(() => {
+      if (normalizeLoggingMode(settingsRef.current?.loggingMode) === 'buffer') {
+        logFileRef.current?.scheduleSnapshot?.()
+      }
+    })
+    cleanupRef.current.push(() => { try { logOnResize.dispose() } catch (e) {} })
 
     const ro = new ResizeObserver(() => { try { fitAddon.fit() } catch (e) {} })  // 监听容器尺寸变化，调整终端尺寸以适应新的容器大小
     ro.observe(containerRef.current)
@@ -181,6 +187,18 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
       term.dispose()
     }
   }, [session.id])
+
+  /** 日志：启用开关、写入方式或目录变化时重建控制器并绑定当前终端 */
+  useEffect(() => {
+    const term = termRef.current
+    if (!settings.enableLogging) {
+      try { logFileRef.current?.flushNow?.() } catch (_) {}
+      logFileRef.current = null
+      return
+    }
+    setupLogging(session, settings, logFileRef, logFileStemStateRef, settingsRef)
+    logFileRef.current?.setTerminal?.(term ?? null)
+  }, [session.id, settings.enableLogging, settings.loggingMode, settings.logPath])
 
   useEffect(() => {  // 滚动缓冲行数：保存设置后更新已存在终端（xterm 支持运行时改 options.scrollback）
     const term = termRef.current
@@ -220,11 +238,12 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
         disconnectedRef.current = false
         cleanupRef.current.forEach(fn => { try { fn() } catch (e) {} })  // 调用 cleanupRef 中的函数清理之前的连接状态和事件监听器，确保重连时不会有遗留的状态或监听器干扰新的连接
         cleanupRef.current = []
-        try { logFileRef.current?.flushNow?.() } catch (_) {}  // 先刷盘，避免串口尾块等留在旧 enqueue 闭包里
+        try { logFileRef.current?.flushNow?.() } catch (_) {}  // 先刷盘，再换日志控制器
         const ro = new ResizeObserver(() => { try { fitAddonRef.current.fit() } catch (e) {} })  // 重连时要重新监听容器尺寸变化
         ro.observe(containerRef.current)
         cleanupRef.current.push(() => ro.disconnect())
-        setupLogging(session, settingsRef.current, logFileRef, logFileStemStateRef)  // 重连：复用本标签页首次连接时的日志文件
+        setupLogging(session, settingsRef.current, logFileRef, logFileStemStateRef, settingsRef)  // 重连：复用本标签页首次连接时的日志文件
+        logFileRef.current?.setTerminal?.(term)
         writelnWithLog(term, logFileRef, `\r\x1b[33m${translate(uiLangFromSettings(settings), 'terminal.reconnecting')}\x1b[0m`)
         connectSession(term, fitAddonRef.current, session, onUpdate, cleanupRef, disconnectedRef, null, logFileRef, settingsRef)
       }
@@ -257,14 +276,15 @@ function exportTerminalBuffer(term) {
 }
 
 /**
- * 写入一行终端内容并记入会话日志（与 xterm writeln 一致地追加 \r\n）
+ * 写入一行终端内容并按当前日志模式记入会话日志
  * @param {import('@xterm/xterm').Terminal} term
- * @param {{ current: { enqueue?: (s: string) => void } | null }} logRef
+ * @param {{ current: { scheduleSnapshot?: () => void, enqueue?: (s: string) => void } | null }} logRef
  * @param {string} lineForWriteln 传给 term.writeln 的字符串（不含结尾换行）
  */
 function writelnWithLog(term, logRef, lineForWriteln) {
-  logRef.current?.enqueue?.(lineForWriteln + '\r\n')
   term.writeln(lineForWriteln)
+  logRef.current?.scheduleSnapshot?.()
+  logRef.current?.enqueue?.(lineForWriteln + '\r\n')
 }
 
 /**
@@ -396,8 +416,8 @@ function applyTerminalSettings(term, settingsRef) {
 
 /**
  * 去掉已完整的 ANSI/OSC 等转义序列（CSI 如 [33m、[42D；OSC 至 BEL 或 ST 等）
- * @param {string} s 要去掉已完整的 ANSI/OSC 等转义序列的字符串
- * @returns {string} 去掉已完整的 ANSI/OSC 等转义序列后的字符串
+ * @param {string} s
+ * @returns {string}
  */
 function stripCompleteAnsiEscapes(s) {
   if (!s) return ''
@@ -412,8 +432,8 @@ function stripCompleteAnsiEscapes(s) {
 
 /**
  * 从串尾拆出可能未闭合的转义前缀，避免分包时把 \x1b 与 [33m 拆开误当成可见字符
- * @param {string} s 要从串尾拆出可能未闭合的转义前缀的字符串
- * @returns {{ body: string, carry: string }} 包含已去掉转义前缀的字符串和可能未闭合的转义前缀的字符串
+ * @param {string} s
+ * @returns {{ body: string, carry: string }}
  */
 function peelIncompleteAnsiSuffix(s) {
   if (!s) return { body: '', carry: '' }
@@ -433,10 +453,10 @@ function peelIncompleteAnsiSuffix(s) {
   return { body: s, carry: '' }
 }
 
-/** 
+/**
  * 去掉其余 C0 控制符（保留 \t \n \r）
- * @param {string} s 要去掉其余 C0 控制符的字符串
- * @returns {string} 去掉其余 C0 控制符后的字符串
+ * @param {string} s
+ * @returns {string}
  */
 function stripOtherC0Controls(s) {
   return s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
@@ -444,9 +464,9 @@ function stripOtherC0Controls(s) {
 
 /**
  * 将一段终端输出转为适合写入 .log 的纯文本（可见字符 + 换行制表）
- * @param {string} carry 上次未拼完的转义前缀
- * @param {string} chunk 新片段
- * @returns {{ text: string, carry: string }} 包含已去掉其余 C0 控制符和转义前缀的字符串和可能未闭合的转义前缀的字符串
+ * @param {string} carry
+ * @param {string} chunk
+ * @returns {{ text: string, carry: string }}
  */
 function stripAnsiForLogChunk(carry, chunk) {
   const raw = carry + chunk
@@ -456,16 +476,19 @@ function stripAnsiForLogChunk(carry, chunk) {
 }
 
 /**
- * 设置日志记录：按与写入终端相同的文本流追加到文件，已滚出 xterm 缓冲区的内容仍保留在日志中。
- * @param {Object} session 会话对象
- * @param {Object} settings 设置对象
- * @param {{ current: { enqueue: (chunk: string) => void, flushNow: () => void } | null }} logFileRef 日志控制引用
- * @param {{ current: { sessionId: string|null, stem: string|null } }} logFileStemStateRef 同一标签页内复用的日志主文件名（不含 .log）
+ * 设置会话日志：buffer = xterm 缓冲快照整文件覆盖；stream = 下行流去 ANSI 后追加。
+ * @param {Object} session
+ * @param {Object} settings
+ * @param {{ current: object | null }} logFileRef
+ * @param {{ current: { sessionId: string|null, stem: string|null } }} logFileStemStateRef
+ * @param {{ current?: object } | null} settingsRef
  */
-function setupLogging(session, settings, logFileRef, logFileStemStateRef) {
+function setupLogging(session, settings, logFileRef, logFileStemStateRef, settingsRef) {
   if (!settings?.enableLogging) return
   const logDir = resolveLoggingDirectory(settings)
   if (!logDir) return
+
+  const getMode = () => normalizeLoggingMode(settingsRef?.current?.loggingMode)
 
   /** 同一标签页内复用的日志主文件名（不含 .log） */
   const stemState = logFileStemStateRef.current
@@ -476,50 +499,36 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef) {
 
   let logFileName = stemState.stem
   if (!logFileName) {
-    // 文件名由首次启用日志时的日期时间和会话标签名组成；同一 session.id 重连不再更换
     const now = new Date()
     const timestamp = now.getFullYear() +
       String(now.getMonth()+1).padStart(2,'0') +
       String(now.getDate()).padStart(2,'0') + '_' +
       String(now.getHours()).padStart(2,'0') +
       String(now.getMinutes()).padStart(2,'0') +
-      String(now.getSeconds()).padStart(2,'0')  // 生成 YYYYMMDD_HHMMSS 格式的时间戳
+      String(now.getSeconds()).padStart(2,'0')
     const rawLabel = session.label || session.host || session.path || session.id || 'session'
     const sessionName = rawLabel
-      .replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '')  // 过滤文件名非法字符
-      .replace(/\s+/g, '_')  // 替换空格为下划线
-      .replace(/^[._]+|[._]+$/g, '')  // 去除首尾下划线
-      .trim() || 'session'  // 去除首尾空格，如果结果为空则使用默认值 'session'
+      .replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '')
+      .replace(/\s+/g, '_')
+      .replace(/^[._]+|[._]+$/g, '')
+      .trim() || 'session'
     logFileName = `${timestamp}_${sessionName}`
     stemState.stem = logFileName
   }
 
+  // --- stream（追加）
   let pending = ''
   let ansiCarry = ''
-  let timer = null
-  /** 刷新待写入日志缓冲区：将缓冲区内容写入日志文件 */
-  const flushPending = () => {
-    timer = null
+  let streamTimer = null
+  const flushPendingStream = () => {
+    streamTimer = null
     if (!pending) return
     const chunk = pending
     pending = ''
     window.zterm?.log?.append?.(logDir, logFileName, chunk)
   }
-  /** 立即刷新日志缓冲区：将缓冲区内容写入日志文件 */
-  const flushNow = () => {
-    if (timer != null) {
-      window.clearTimeout(timer)
-      timer = null
-    }
-    if (ansiCarry) {
-      const { text } = stripAnsiForLogChunk(ansiCarry, '')
-      ansiCarry = ''
-      if (text) pending += text
-    }
-    flushPending()
-  }
-  /** 追加写入日志缓冲区：将片段添加到待写入日志缓冲区 */
   const enqueue = (chunk) => {
+    if (getMode() !== 'stream') return
     if (chunk === '' || chunk == null) return
     if (typeof chunk !== 'string') return
     if (!window.zterm?.log?.append) return
@@ -527,10 +536,64 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef) {
     ansiCarry = carry
     if (!text) return
     pending += text
-    if (timer != null) return
-    timer = window.setTimeout(flushPending, 80)
+    if (streamTimer != null) return
+    streamTimer = window.setTimeout(flushPendingStream, 80)
   }
-  logFileRef.current = { enqueue, flushNow }  // 将 enqueue 和 flushNow 方法挂载到 logFileRef 对象上
+
+  // --- buffer（整文件覆盖）
+  /** @type {import('@xterm/xterm').Terminal|null} */
+  let terminal = null
+  let snapshotTimer = null
+  const SNAPSHOT_DEBOUNCE_MS = 80
+  const flushSnapshot = () => {
+    if (!window.zterm?.log?.write) return
+    if (!terminal) return
+    try {
+      window.zterm.log.write(logDir, logFileName, exportTerminalBuffer(terminal))
+    } catch (_) {}
+  }
+  const scheduleSnapshot = () => {
+    if (getMode() !== 'buffer') return
+    if (!window.zterm?.log?.write) return
+    if (!terminal) return
+    if (snapshotTimer != null) {
+      window.clearTimeout(snapshotTimer)
+      snapshotTimer = null
+    }
+    snapshotTimer = window.setTimeout(() => {
+      snapshotTimer = null
+      flushSnapshot()
+    }, SNAPSHOT_DEBOUNCE_MS)
+  }
+
+  const flushNow = () => {
+    if (snapshotTimer != null) {
+      window.clearTimeout(snapshotTimer)
+      snapshotTimer = null
+    }
+    if (streamTimer != null) {
+      window.clearTimeout(streamTimer)
+      streamTimer = null
+    }
+    if (getMode() === 'buffer') {
+      pending = ''
+      ansiCarry = ''
+      flushSnapshot()
+    } else {
+      if (ansiCarry) {
+        const { text } = stripAnsiForLogChunk(ansiCarry, '')
+        ansiCarry = ''
+        if (text) pending += text
+      }
+      flushPendingStream()
+    }
+  }
+
+  const setTerminal = (t) => {
+    terminal = t
+  }
+
+  logFileRef.current = { setTerminal, scheduleSnapshot, enqueue, flushNow }
 }
 
 /**
@@ -542,16 +605,16 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef) {
  * @param {Object} cleanupRef 清理函数引用，用于存储连接相关的清理函数
  * @param {Object} disconnectedRef 断连状态引用，用于标记当前连接是否已断开
  * @param {Function} isCancelled 可选的取消函数，组件卸载时返回 true，连接过程中定期调用以判断是否应放弃后续操作
- * @param {{ current: { enqueue?: (chunk: string) => void, flushNow?: () => void } | null }} logFileRef 会话日志：enqueue 追加与终端一致的片段，flushNow 立即刷盘
+ * @param {{ current: { setTerminal?: (t: import('@xterm/xterm').Terminal) => void, scheduleSnapshot?: () => void, enqueue?: (chunk: string) => void, flushNow?: () => void } | null }} logFileRef 会话日志：buffer / stream 由设置决定，flushNow 立即刷盘
  * @param {Object} settingsRef 设置引用，用于读取实时终端行为设置
  */
 async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, isCancelled, logFileRef, settingsRef) {
   const { id, type } = session  // 从会话对象中提取会话 ID 和类型（SSH/Telnet/Serial）
   const terminalEncoding = session.encoding || DEFAULT_TERMINAL_ENCODING
   const L = () => uiLangFromSettings(settingsRef.current)
-  const writeInfo    = (m) => writelnWithLog(term, logFileRef, `\r\x1b[33m${m}\x1b[0m`)  // 在终端写入黄色信息消息（使用 ANSI 转义码）
-  const writeError   = (m) => writelnWithLog(term, logFileRef, `\r\x1b[31m${m}\x1b[0m`)  // 在终端写入红色错误消息
-  const writeSuccess = (m) => writelnWithLog(term, logFileRef, `\r\x1b[32m${m}\x1b[0m`)  // 在终端写入绿色成功消息
+  const writeInfo    = (m) => writelnWithLog(term, logFileRef, `\r\x1b[33m${m}\x1b[0m`)
+  const writeError   = (m) => writelnWithLog(term, logFileRef, `\r\x1b[31m${m}\x1b[0m`)
+  const writeSuccess = (m) => writelnWithLog(term, logFileRef, `\r\x1b[32m${m}\x1b[0m`)
 
   /**
    * 连接断开处理函数：在终端显示断开消息，提示用户按 R 重连，更新会话状态为断开，并设置断连标记
@@ -574,8 +637,9 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
     const chunk = serialHighlightBuf
     serialHighlightBuf = ''
     const highlighted = applyHighlightRules(chunk, settingsRef.current)
-    logFileRef.current?.enqueue?.(highlighted)
     term.write(highlighted)
+    logFileRef.current?.scheduleSnapshot?.()
+    logFileRef.current?.enqueue?.(highlighted)
   }
   /** 计划串口高亮缓冲区空闲时刷新：避免长时间无数据时高亮规则无法匹配 */
   const scheduleSerialHighlightFlush = () => {
@@ -591,8 +655,9 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
     const decoded = decodeTerminalBinaryString(data, terminalEncoding)
     if (type !== 'serial') { // 非串口：直接应用高亮规则
       const highlighted = applyHighlightRules(decoded, settingsRef.current)
-      logFileRef.current?.enqueue?.(highlighted)
       term.write(highlighted)
+      logFileRef.current?.scheduleSnapshot?.()
+      logFileRef.current?.enqueue?.(highlighted)
       return
     }
     serialHighlightBuf += decoded
@@ -601,15 +666,17 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const line = serialHighlightBuf.slice(0, end + 1)
       serialHighlightBuf = serialHighlightBuf.slice(end + 1)
       const highlighted = applyHighlightRules(line, settingsRef.current)
-      logFileRef.current?.enqueue?.(highlighted)
       term.write(highlighted)
+      logFileRef.current?.scheduleSnapshot?.()
+      logFileRef.current?.enqueue?.(highlighted)
     }
     if (serialHighlightBuf.length > 8192) { // 串口：缓冲区溢出：截断并应用高亮规则
       const overflow = serialHighlightBuf
       serialHighlightBuf = ''
       const highlighted = applyHighlightRules(overflow, settingsRef.current)
-      logFileRef.current?.enqueue?.(highlighted)
       term.write(highlighted)
+      logFileRef.current?.scheduleSnapshot?.()
+      logFileRef.current?.enqueue?.(highlighted)
     }
     if (serialHighlightBuf.length === 0) { // 串口：缓冲区空：清除定时器
       if (serialHighlightIdleTimer != null) {
@@ -710,8 +777,9 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
         }
         if (serialHighlightBuf) {
           const highlighted = applyHighlightRules(serialHighlightBuf, settingsRef.current)
-          logFileRef.current?.enqueue?.(highlighted)
           term.write(highlighted)
+          logFileRef.current?.scheduleSnapshot?.()
+          logFileRef.current?.enqueue?.(highlighted)
           serialHighlightBuf = ''
         }
       }, r1, r2, () => d1.dispose(), () => window.zterm.serial.disconnect(id))
