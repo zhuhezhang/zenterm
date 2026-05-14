@@ -19,17 +19,10 @@ import {
   duplicateVaultEntry,
   reapplyVaultPoliciesForAllSessions,
 } from './store/credentialsBridge.js'
-import { loadSettings } from './store/settingsStore.js'
+import { loadSettings, saveSettings, clampSidebarWidthPx, DEFAULT_SIDEBAR_WIDTH } from './store/settingsStore.js'
 import { resolveEffectiveUiLanguage } from './i18n/resolveUiLanguage.js'
 import { resolveEffectiveAppTheme } from './theme/appTheme.js'
 import './styles/app.css'
-
-/** 默认侧边栏宽度 */
-const DEFAULT_SIDEBAR_W = 300
-/** 获取最小侧边栏宽度。最小宽度不小于 80px，且不小于窗口宽度的 10% */
-const getMinSidebar = () => Math.max(80, Math.floor(window.innerWidth * 0.10))
-/** 获取最大侧边栏宽度。最大宽度不超过窗口宽度的 90% */
-const getMaxSidebar = () => Math.floor(window.innerWidth * 0.90)
 
 /** 生成唯一会话 ID，格式为 sess-时间戳-随机字符串 */
 function generateId() {
@@ -126,7 +119,15 @@ function AppMain({ settings, setSettings }) {
   const [sessions, setSessions]           = useState([])  // 当前活跃会话列表(上方tab标签页对应的会话)，每个会话对象包含 { id, type, host, username, ... } 等属性
   const [activeId, setActiveId]           = useState(null)  // 当前活跃会话 ID
   const [sidebarOpen, setSidebarOpen]     = useState(true)  // 侧边栏是否打开
-  const [sidebarWidth, setSidebarWidth]   = useState(DEFAULT_SIDEBAR_W)  // 侧边栏宽度
+  const [sidebarWidth, setSidebarWidth]   = useState(() =>
+    clampSidebarWidthPx(settings.sidebarWidth ?? DEFAULT_SIDEBAR_WIDTH, window.innerWidth)
+  )  // 侧边栏宽度（与 settings.sidebarWidth 同步；拖拽结束后写回 localStorage）
+  useEffect(() => {
+    setSidebarWidth((cur) => {
+      const w = clampSidebarWidthPx(settings.sidebarWidth, window.innerWidth)
+      return w === cur ? cur : w
+    })
+  }, [settings.sidebarWidth])
   const [savedSessions, setSavedSessions] = useState(() => loadSavedSessions())  // 已保存的会话配置列表，从 localStorage 加载
   const [groupPlaceholders, setGroupPlaceholders] = useState(() => loadGroupPlaceholders())  // 分组占位符列表，从 localStorage 加载
   const [showDialog, setShowDialog]       = useState(false)  // 是否显示连接对话框
@@ -139,17 +140,29 @@ function AppMain({ settings, setSettings }) {
    * 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听器
    * @param {MouseEvent} e 鼠标事件对象，包含鼠标位置等信息
    */
-  const handleDividerMouseDown = useCallback((e) => {  // useCallback 在多次渲染中缓存一个函数，直至这个函数的依赖（这里为sidebarWidth）发生改变
+  const handleDividerMouseDown = useCallback((e) => {
     e.preventDefault()
     const startX = e.clientX
     const startW = sidebarWidth
-    const onMove = (ev) => setSidebarWidth(
-      Math.min(getMaxSidebar(), Math.max(getMinSidebar(), startW + ev.clientX - startX))
-    )
-    const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+    let latest = startW
+    /** 鼠标移动时更新侧边栏宽度 */
+    const onMove = (ev) => {
+      latest = clampSidebarWidthPx(startW + ev.clientX - startX, window.innerWidth)
+      setSidebarWidth(latest)
+    }
+    /** 鼠标释放时移除监听器，并保存设置 */
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      setSettings((prev) => {
+        const next = { ...prev, sidebarWidth: latest }
+        saveSettings(next)
+        return next
+      })
+    }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  }, [sidebarWidth])
+  }, [sidebarWidth, setSettings])
 
   /** 从已保存会话和分组占位符生成分组列表 */
   const savedGroups    = getGroups(savedSessions, groupPlaceholders)

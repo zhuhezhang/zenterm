@@ -43,6 +43,24 @@ import {
 
 export { DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm }
 
+/** 主界面左侧会话栏默认宽度（px），与 App 分割条逻辑一致 */
+export const DEFAULT_SIDEBAR_WIDTH = 300
+
+/**
+ * 将侧边栏宽度限制在窗口可用范围内（与主界面分割条 min/max 一致）
+ * @param {unknown} width 侧边栏宽度
+ * @param {number} [innerWidth] 窗口可用宽度
+ * @returns {number} 限制后的侧边栏宽度
+ */
+export function clampSidebarWidthPx(width, innerWidth = typeof window !== 'undefined' ? window.innerWidth : 1200) {
+  const iw = Math.max(320, Math.floor(Number(innerWidth)) || 1200)
+  const min = Math.max(80, Math.floor(iw * 0.10))
+  const max = Math.floor(iw * 0.90)
+  const w = Math.floor(Number(width))
+  if (!Number.isFinite(w)) return DEFAULT_SIDEBAR_WIDTH
+  return Math.min(max, Math.max(min, w))
+}
+
 /** xterm 滚动缓冲区行数：内置默认与可配置范围上限（xterm 理论更大，此处控制内存与 UI） */
 export const TERMINAL_SCROLLBACK_DEFAULT = 20_000
 export const TERMINAL_SCROLLBACK_MIN = 0
@@ -85,6 +103,8 @@ export const DEFAULT_SETTINGS = {
   algorithmPreferences: DEFAULT_ALGORITHM_PREFERENCES,
   /** 为 true 且系统支持加密时，保存 SSH/Telnet 会话会把密码、私钥与 passphrase 等写入主进程 vault（safeStorage），不写入 localStorage */
   saveSecretsToVault: false,
+  /** 主界面左侧栏宽度（px）；未写入过 localStorage 的旧数据使用 DEFAULT_SIDEBAR_WIDTH */
+  sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
 }
 
 /**
@@ -111,6 +131,7 @@ export function loadSettings() {
     if (!('logPath' in saved)) merged.logPath = getDefaultLogPath()
     if (!['auto', 'en', 'zh'].includes(merged.uiLanguage)) merged.uiLanguage = 'auto'
     if (!['dark', 'light', 'auto'].includes(merged.appTheme)) merged.appTheme = 'auto'
+    merged.sidebarWidth = clampSidebarWidthPx(merged.sidebarWidth, typeof window !== 'undefined' ? window.innerWidth : 1200)
     return merged
   } catch (e) {
     return { ...DEFAULT_SETTINGS }
