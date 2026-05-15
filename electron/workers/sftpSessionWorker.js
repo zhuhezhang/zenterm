@@ -11,7 +11,7 @@ import {
   safeJoinLocalDownloadPathForRoots,
 } from '../lib/sftpLocalPathRoots.js'
 
-const { sessionId, config, allowedRoots } = workerData
+const { _sessionId, config, allowedRoots } = workerData
 
 /** 
  * 发送消息到主线程

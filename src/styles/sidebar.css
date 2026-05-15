@@ -56,9 +56,6 @@
 }
 .sidebar-settings-btn:hover { color: var(--accent); background: var(--bg-hover); }
 
-/* ungrouped drop zone - kept for compat */
-.sidebar-ungrouped-zone { min-height: 4px; }
-
 .sidebar-content {
   flex: 1;
   overflow-y: auto;
@@ -122,13 +119,6 @@
 }
 
 .sb-section-row:hover { opacity: 1; }
-
-.sb-loading {
-  font-size: 10px;
-  color: var(--text-muted);
-  animation: pulse 1s infinite;
-}
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
 /* ── 树容器 ── */
 .sb-tree {
@@ -403,7 +393,6 @@
 .sftp-tree-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 
 .sidebar-loading-text { padding: 8px 16px; font-size: 13px; color: var(--text-secondary); }
-.sidebar-empty-dir { padding: 6px 16px; font-size: 13px; color: var(--text-secondary); font-style: italic; }
 
 /* ── 右键菜单 ── */
 .context-menu {

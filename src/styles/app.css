@@ -59,10 +59,6 @@
   position: relative;
 }
 
-.terminal-area.with-sftp {
-  flex: 1;
-}
-
 /* ===== Welcome Screen ===== */
 .welcome {
   flex: 1;
