@@ -18,8 +18,9 @@ const STATUS_CLS = { connecting: 'connecting', connected: 'connected', disconnec
  * @param {function} props.onNew 新建标签页的回调函数，无参数
  * @param {function} props.onReorder 拖拽排序后的回调函数，参数为 fromId 和 toId
  * @param {function} props.onSaveOutput 保存标签页终端输出的回调函数，参数为会话 ID
+ * @param {function} [props.onClearScreen] 清屏回调，参数为会话 ID（对应标签页的 xterm.clear）
  */
-export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, onReorder, onSaveOutput }) {
+export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, onReorder, onSaveOutput, onClearScreen }) {
   const { t } = useI18n()
   const [ctxMenu, setCtxMenu] = useState(null)  // 右键菜单状态，包含 { x, y, id, idx }，表示菜单位置和对应的标签页 ID 和索引
   const dragRef = useRef(null)  // 当前拖拽的标签 ID
@@ -167,6 +168,7 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
           <button onClick={() => closeRight(ctxMenu.idx)} disabled={ctxMenu.idx === sessions.length - 1}>{t('tabbar.closeRight')}</button>
           <div className="tab-ctx-divider" />
           <button onClick={() => { onSaveOutput?.(ctxMenu.id); closeCtx() }}>{t('tabbar.saveOutput')}</button>
+          <button onClick={() => { onClearScreen?.(ctxMenu.id); closeCtx() }}>{t('tabbar.clearScreen')}</button>
           <div className="tab-ctx-divider" />
           <button className="danger" onClick={closeAll}>{t('tabbar.closeAll')}</button>
         </div>

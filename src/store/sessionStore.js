@@ -3,9 +3,9 @@ const STORAGE_KEY = 'zterm_saved_sessions'
 
 /** 各会话类型允许持久化到 localStorage 的字段（password/privateKey/passphrase 仅存主进程加密 vault，不写入此项） */
 const TYPE_FIELDS = {
-  ssh: ['host', 'port', 'username', 'authType', 'enableSftp', 'encoding'],
-  telnet: ['host', 'port', 'username', 'encoding'],
-  serial: ['path', 'baudRate', 'dataBits', 'stopBits', 'parity', 'encoding'],
+  ssh: ['host', 'port', 'username', 'authType', 'enableSftp', 'encoding', 'backspaceMode'],
+  telnet: ['host', 'port', 'username', 'encoding', 'backspaceMode'],
+  serial: ['path', 'baudRate', 'dataBits', 'stopBits', 'parity', 'encoding', 'backspaceMode'],
 }
 
 /**

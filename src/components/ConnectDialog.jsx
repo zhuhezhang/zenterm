@@ -4,9 +4,19 @@ import { fetchSessionSecrets } from '../store/credentialsBridge.js'
 import { TERMINAL_ENCODING_OPTIONS, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
 import '../styles/dialog.css'
 
-const SSH_DEFAULT = { host: '', port: '22', username: '', password: '', privateKey: '', passphrase: '', authType: 'password', label: '', group: '', enableSftp: false, encoding: DEFAULT_TERMINAL_ENCODING }
-const TELNET_DEFAULT = { host: '', port: '23', label: '', group: '', encoding: DEFAULT_TERMINAL_ENCODING }
-const SERIAL_DEFAULT = { path: '', baudRate: '9600', dataBits: '8', stopBits: '1', parity: 'none', label: '', group: '', encoding: DEFAULT_TERMINAL_ENCODING }
+/** 
+ * 将退格模式字符串规范为合法值
+ * @param {string} v 退格模式字符串
+ * @returns {string|null} 规范后的退格模式字符串，如果 v 为空或不合法则返回 null
+ */
+function normalizeBackspaceMode(v) {
+  const s = String(v ?? '').toLowerCase()
+  return s === 'auto' || s === 'del' || s === 'bs' ? s : null
+}
+
+const SSH_DEFAULT = { host: '', port: '22', username: '', password: '', privateKey: '', passphrase: '', authType: 'password', label: '', group: '', enableSftp: false, encoding: DEFAULT_TERMINAL_ENCODING, backspaceMode: 'auto' }
+const TELNET_DEFAULT = { host: '', port: '23', label: '', group: '', encoding: DEFAULT_TERMINAL_ENCODING, backspaceMode: 'auto' }
+const SERIAL_DEFAULT = { path: '', baudRate: '9600', dataBits: '8', stopBits: '1', parity: 'none', label: '', group: '', encoding: DEFAULT_TERMINAL_ENCODING, backspaceMode: 'auto' }
 const BAUD_RATES = ['110','300','600','1200','2400','4800','9600','14400','19200','38400','57600','115200','128000','256000']
 const PARITIES = ['none','even','odd','mark','space']
 
@@ -44,12 +54,14 @@ function isSerialPathInEnumeratedList(requestedPath, ports) {
  * 根据协议类型返回对应的默认配置对象，如果传入 initial 则在默认配置基础上覆盖初始值
  * @param {string} tab 协议类型
  * @param {Object} initial 初始配置
+ * @param {string} [globalBackspace] 旧版全局设置中的退格模式，用于新建会话默认值
  * @returns {Object} 默认配置
  */
-function getDefault(tab, initial) {
+function getDefault(tab, initial, globalBackspace) {
   const base = tab === 'ssh' ? { ...SSH_DEFAULT } : tab === 'telnet' ? { ...TELNET_DEFAULT } : { ...SERIAL_DEFAULT }
-  if (initial) return { ...base, ...initial }
-  return base
+  const merged = initial ? { ...base, ...initial } : { ...base }
+  merged.backspaceMode = normalizeBackspaceMode(merged.backspaceMode) ?? normalizeBackspaceMode(globalBackspace) ?? 'auto'
+  return merged
 }
 
 /**
@@ -79,11 +91,12 @@ function buildLabel(tab, form) {
  * @param {Function} props.onSaveAndConnect 保存并连接的回调函数，参数为配置对象
  * @param {Function} props.onSaveOnly 仅保存的回调函数，参数为配置对象
  * @param {Function} props.onClose 关闭对话框的回调函数
+ * @param {string} [props.appBackspaceFallback] 旧版全局「退格键模式」，新建时作默认值（已迁移到按会话配置）
  */
-export default function ConnectDialog({ type, initialData, savedGroups, onConnect, onSaveAndConnect, onSaveOnly, onClose }) {
+export default function ConnectDialog({ type, initialData, savedGroups, appBackspaceFallback, onConnect, onSaveAndConnect, onSaveOnly, onClose }) {
   const { t } = useI18n()
   const [tab, setTab] = useState(type || 'ssh')
-  const [form, setForm] = useState(() => getDefault(type || 'ssh', initialData))
+  const [form, setForm] = useState(() => getDefault(type || 'ssh', initialData, appBackspaceFallback))
   const [ports, setPorts] = useState([])
   const [error, setError] = useState('')
   const [credDialog, setCredDialog] = useState(null)  // { username, password, callback } 或 null，表示是否显示凭证输入对话框以及初始值和连接回调函数
@@ -99,7 +112,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
    */
   const switchTab = (t) => {
     if (t === tab) return
-    setForm(prev => ({ ...prev, ...getDefault(t, prev) }))
+    setForm(prev => getDefault(t, prev, appBackspaceFallback))
     setTab(t)
     setError('')
   }
@@ -128,10 +141,10 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
       if (cancelled) return
       const t = initialData.type || type || 'ssh'
       setTab(t)
-      setForm({ ...getDefault(t, initialData), ...sec })
+      setForm({ ...getDefault(t, initialData, appBackspaceFallback), ...sec })
     })()
     return () => { cancelled = true }
-  }, [initialData?.savedId, initialData?.type, type])
+  }, [initialData?.savedId, initialData?.type, type, appBackspaceFallback])
 
   /** 
    * 更新表单数据的通用函数。接收一个键和值，使用 setForm 更新对应的表单字段，同时保留其他字段不变
@@ -165,7 +178,9 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
    * @returns {Object} 配置对象
    */
   const buildConfig = () => ({
-    ...form, type: tab,
+    ...form,
+    type: tab,
+    backspaceMode: normalizeBackspaceMode(form.backspaceMode) ?? 'auto',
     port: (() => {
       const p = parseInt(form.port, 10)
       if (Number.isNaN(p)) return undefined
@@ -357,6 +372,13 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
               {TERMINAL_ENCODING_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </FormRow>
+          <FormRow label={t('connect.backspaceMode')} title={t('connect.backspaceModeHint')}>
+            <select value={form.backspaceMode || 'auto'} onChange={e => set('backspaceMode', e.target.value)}>
+              <option value="auto">{t('settings.options.backspaceAuto')}</option>
+              <option value="del">{t('settings.options.backspaceDel')}</option>
+              <option value="bs">{t('settings.options.backspaceBs')}</option>
+            </select>
+          </FormRow>
           {error && <div className="dialog-error">{error}</div>}
         </div>
 
@@ -512,10 +534,10 @@ function SerialForm({ form, set, ports, visible, onRefreshPorts }) {
  * @param {JSX.Element} children 输入控件
  * @returns {JSX.Element} 表单行
  */
-function FormRow({ label, children }) {
+function FormRow({ label, children, title }) {
   return (
     <div className="form-row">
-      <label className="form-label">{label}</label>
+      <label className="form-label" title={title}>{label}</label>
       <div className="form-control">{children}</div>
     </div>
   )

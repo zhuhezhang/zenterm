@@ -125,7 +125,6 @@ export const DEFAULT_SETTINGS = {
   terminalInteract: true,   // 选中复制 + 右键粘贴
   /** xterm scrollback：仅「视口外」向上保留的历史行数，不含当前可见的 term.rows 行 */
   terminalScrollback: TERMINAL_SCROLLBACK_DEFAULT,
-  backspaceMode: 'auto',    // 退格键模式：auto / del / bs
   /** 日志模式：none 关闭；buffer 与屏幕一致；stream 按 PTY 下行流追加（可能与 zsh 重绘所见不一致） */
   loggingMode: 'none',
   logPath: '',
@@ -239,15 +238,6 @@ export const SETTINGS_SCHEMA = [
     section: 'terminal',
     items: [
       { key: 'terminalInteract', type: 'boolean' },
-      {
-        key: 'backspaceMode',
-        type: 'select',
-        options: [
-          { value: 'auto', labelKey: 'settings.options.backspaceAuto' },
-          { value: 'del', labelKey: 'settings.options.backspaceDel' },
-          { value: 'bs', labelKey: 'settings.options.backspaceBs' },
-        ],
-      },
       {
         key: 'terminalScrollback',
         type: 'number',

@@ -15,6 +15,7 @@ export const MESSAGES = {
       closeLeft: '关闭左侧标签页',
       closeRight: '关闭右侧标签页',
       saveOutput: '保存终端输出',
+      clearScreen: '清屏',
       closeAll: '关闭全部标签页',
     },
     welcome: {
@@ -52,6 +53,8 @@ export const MESSAGES = {
       group: '分组',
       groupPh: '可选，空则保存在根分组',
       encoding: '终端编码',
+      backspaceMode: '退格键模式',
+      backspaceModeHint: '设置发送给设备的退格编码。Auto: SSH 用 DEL，Telnet/Serial 用 BS',
       host: '主机',
       hostPh: '主机名 或 IP',
       port: '端口',
@@ -152,10 +155,6 @@ export const MESSAGES = {
         confirmDeleteGroup: { label: '删除分组前确认', desc: '删除分组前弹出确认对话框' },
         deleteGroupWithSessions: { label: '删除分组时同时删除会话', desc: '关闭时仅删除分组，组内会话变为未分组' },
         terminalInteract: { label: '选中复制 / 右键粘贴', desc: '选中终端文本自动复制，右键单击粘贴剪贴板内容' },
-        backspaceMode: {
-          label: '退格键模式',
-          desc: '设置发送给设备的退格编码。Auto: SSH 用 DEL，Telnet/Serial 用 BS',
-        },
         terminalScrollback: {
           label: '视口外滚动历史（行）',
           desc: '限制「已滚出屏幕上方」仍保留的行数，不包含当前窗口里可见的那些行（可见行数由窗口高度决定）。向上滚动能浏览的总行数约为「本数值 + 终端高度行数」。越大越占内存。保存后生效',
@@ -189,6 +188,8 @@ export const MESSAGES = {
       logResetDefault: '恢复默认目录为：\n{path}',
       logResetAria: '恢复默认日志目录',
       logPathDisabledTip: '当前为「无」：未启用终端 I/O 日志，目录设置无效；先选择缓冲或原始流模式后再配置',
+      logPathRejected: '所选目录不在允许范围内，会话日志将无法写入。',
+      logPathValidateFail: '校验日志目录失败：{msg}',
       choose: '选择',
       algoTitle: 'SSH/SFTP 算法',
       algoIntro: '默认仅启用现代算法；若须连接老旧设备，可在下方勾选标记为「遗留」的算法（会降低协商强度）',
@@ -220,10 +221,9 @@ export const MESSAGES = {
       regexTipOn: '使用正则表达式（点击改为纯文本匹配）',
       regexTipOff: '纯文本匹配（点击改为正则）',
       credentialsTitle: '凭据存储',
-      credentialsIntro:
+      saveSecretsDesc:
         '开启后，保存 SSH/Telnet 会话时会把密码、私钥路径或 PEM、私钥 passphrase 等一并写入系统加密存储。\n关闭并保存设置后，会按会话从加密库中移除这些字段；若系统不支持加密，保存会话时会提示且不会把明文写入磁盘',
       saveSecrets: '保存敏感凭据到加密存储',
-      saveSecretsDesc: '涵盖 SSH 密码、私钥与 passphrase、Telnet 密码（Telnet 传输本身非加密，请仅在可信网络使用）',
       clearSecrets: '清空全部已保存的敏感信息',
       clearSecretsDesc: '立即删除加密库中所有凭据；不影响会话列表与本地设置',
       clear: '清空',
@@ -355,6 +355,7 @@ export const MESSAGES = {
       closeLeft: 'Close tabs to the left',
       closeRight: 'Close tabs to the right',
       saveOutput: 'Save terminal output',
+      clearScreen: 'Clear screen',
       closeAll: 'Close all tabs',
     },
     welcome: {
@@ -394,6 +395,8 @@ export const MESSAGES = {
       group: 'Group',
       groupPh: 'Optional, empty = root group',
       encoding: 'Terminal encoding',
+      backspaceMode: 'Backspace mode',
+      backspaceModeHint: 'Byte sent for backspace. Auto: DEL for SSH, BS for Telnet/Serial',
       host: 'Host',
       hostPh: 'Hostname or IP',
       port: 'Port',
@@ -500,10 +503,6 @@ export const MESSAGES = {
           label: 'Copy on select / paste on right-click',
           desc: 'Auto-copy selection; right-click pastes clipboard',
         },
-        backspaceMode: {
-          label: 'Backspace mode',
-          desc: 'Byte sent for backspace. Auto: DEL for SSH, BS for Telnet/Serial',
-        },
         terminalScrollback: {
           label: 'Scrollback (lines above viewport)',
           desc: 'Rows kept after they scroll off the top—not the on-screen rows (those depend on window height). Total lines you can scroll through is about this value plus the terminal row count. Higher uses more RAM. Takes effect after you save.',
@@ -537,6 +536,8 @@ export const MESSAGES = {
       logResetDefault: 'Reset default directory to:\n{path}',
       logResetAria: 'Reset log directory to default',
       logPathDisabledTip: 'Logging is off (“None”): the directory is ignored. Pick buffer or stream mode first to configure it.',
+      logPathRejected: 'This folder is outside the allowed locations; session logs cannot be written there.',
+      logPathValidateFail: 'Could not validate log folder: {msg}',
       choose: 'Browse',
       algoTitle: 'SSH/SFTP algorithms',
       algoIntro:
@@ -569,11 +570,9 @@ export const MESSAGES = {
       regexTipOn: 'Regex (click for plain text)',
       regexTipOff: 'Plain text (click for regex)',
       credentialsTitle: 'Credential storage',
-      credentialsIntro:
+      saveSecretsDesc:
         'When on, saving SSH/Telnet sessions stores password, private key / PEM, and passphrase in OS secure storage.\nWhen off and saved, those fields are removed from the vault; if encryption is unavailable, saving will warn and avoid writing plaintext.',
       saveSecrets: 'Save secrets to encrypted storage',
-      saveSecretsDesc:
-        'SSH password, key & passphrase, Telnet password (Telnet is not encrypted—use only on trusted networks)',
       clearSecrets: 'Clear all stored secrets',
       clearSecretsDesc: 'Remove every credential from the vault; sessions and settings stay',
       clear: 'Clear',

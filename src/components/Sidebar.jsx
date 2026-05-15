@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
-import { addGroupPlaceholder, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
+import { addGroupPlaceholder, exportSessions, importSessions, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
+import { absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import SftpPanel from './SftpPanel.jsx'
 import ConnectionTypeIcon from './common.jsx'
 import '../styles/sidebar.css'
@@ -151,6 +152,27 @@ export default function Sidebar(props) {
   const openCtx = (e, type, data) => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, type, data }) }
   /** 关闭上下文菜单 */
   const closeCtx = () => setContextMenu(null)
+
+  const importSessionsFileRef = useRef(null)
+  /** 与设置页「导入会话」一致：合并 JSON 中的会话并尽量将明文敏感字段吸入 vault */
+  const handleImportSessionsFile = useCallback(async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const beforeCount = savedSessions.length
+      const imported = await importSessions(file)
+      const merged = [...savedSessions]
+      imported.forEach((s) => {
+        if (!merged.find((m) => m.savedId === s.savedId) && !merged.find((m) => m.label === s.label)) merged.push(s)
+      })
+      const sanitized = await absorbPlaintextSecretsFromImportedSessions(merged)
+      onUpdateSessions(sanitized)
+      alert(t('settings.importSessionsOk', { n: sanitized.length - beforeCount }))
+    } catch (err) {
+      alert(t('settings.importFail', { msg: err.message }))
+    }
+    e.target.value = ''
+  }, [savedSessions, onUpdateSessions, t])
 
   useEffect(() => {  // 右键菜单打开后，点击菜单外区域自动关闭
     if (!contextMenu) return
@@ -553,6 +575,7 @@ export default function Sidebar(props) {
 
   return (
     <div className={`sidebar ${open ? 'open' : 'closed'}`} style={open ? style : undefined} onClick={closeCtx}>
+      <input ref={importSessionsFileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportSessionsFile} aria-hidden />
       <SidebarTop open={open} onToggle={onToggle} onOpenSettings={onOpenSettings} t={t} />
       {open && (
         <div className="sidebar-content">
@@ -640,6 +663,8 @@ export default function Sidebar(props) {
           expandAll={expandAll} collapseAll={collapseAll}
           expandGroupAll={expandGroupAll} collapseGroupAll={collapseGroupAll}
           setRenamingSession={setRenamingSession} setRenameSessionVal={setRenameSessionVal}
+          savedSessions={savedSessions}
+          importSessionsFileRef={importSessionsFileRef}
         />
       )}
     </div>
@@ -813,9 +838,11 @@ function SidebarTop({ open, onToggle, onOpenSettings, t }) {
  * @param {function} props.collapseGroupAll 收起该分组所有子项的回调函数：点击收起该分组所有子项时调用，参数是分组路径
  * @param {function} props.setRenamingSession 设置重命名会话状态的回调函数：点击重命名会话时调用，参数是会话 ID 和新的名称
  * @param {function} props.setRenameSessionVal 设置重命名会话值的回调函数：点击重命名会话时调用，参数是新的名称
+ * @param {array} props.savedSessions 已保存会话（用于导出）
+ * @param {import('react').MutableRefObject<HTMLInputElement|null>} props.importSessionsFileRef 隐藏的文件选择 input
  * @returns {JSX.Element} 上下文菜单组件
  */
-function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, deleteSession, deleteGroup, setRenaming, setRenameVal, groupPlaceholders, onUpdatePlaceholders, expandAll, collapseAll, expandGroupAll, collapseGroupAll, setRenamingSession, setRenameSessionVal }) {
+function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, deleteSession, deleteGroup, setRenaming, setRenameVal, groupPlaceholders, onUpdatePlaceholders, expandAll, collapseAll, expandGroupAll, collapseGroupAll, setRenamingSession, setRenameSessionVal, savedSessions, importSessionsFileRef }) {
   const { t } = useI18n()
   const [subInput, setSubInput] = useState(null)  // 子分组名称输入值
   const [newGroupInput, setNewGroupInput] = useState(null)  // 新分组名称输入值
@@ -907,6 +934,12 @@ function CtxMenu({ ctx, closeCtx, onConnectSaved, onNewSession, dupSession, dele
         <div className="context-menu-divider" />
         <button type="button" onClick={() => { expandAll(); closeCtx() }}>{t('sidebar.expandAll')}</button>
         <button type="button" onClick={() => { collapseAll(); closeCtx() }}>{t('sidebar.collapseAll')}</button>
+        <div className="context-menu-divider" />
+        <button type="button" onClick={() => { exportSessions(savedSessions); closeCtx() }}>{t('settings.exportSessions')}</button>
+        <button type="button" onClick={() => {
+          closeCtx()
+          queueMicrotask(() => importSessionsFileRef.current?.click())
+        }}>{t('settings.importSessions')}</button>
       </>)}
       {ctx.type === 'session' && (<>
         <button type="button" onClick={() => { onConnectSaved(ctx.data); closeCtx() }}>{t('sidebar.connect')}</button>

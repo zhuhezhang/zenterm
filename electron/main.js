@@ -7,7 +7,7 @@ import { setupSFTPHandlers } from './handlers/sftp.js'
 import { setupTelnetHandlers } from './handlers/telnet.js'
 import { setupSerialHandlers } from './handlers/serial.js'
 import { setupCredentialHandlers } from './handlers/credentials.js'
-import { assertLogWriteDirectoryAllowed } from './lib/localPathPolicy.js'
+import { assertLogWriteDirectoryAllowed, validateLogWriteDirectory } from './lib/localPathPolicy.js'
 import {
   setTrustedRendererWebContents,
   clearTrustedRendererWebContents,
@@ -97,6 +97,13 @@ function createWindow() {
       title: '选择日志保存目录',
     })
     return result.canceled ? null : result.filePaths[0]
+  })
+
+  ipcMain.handle('app:validateLogDirectory', (event, dir) => {  // 校验日志目录是否在允许的用户目录范围内（与 log:write 一致）
+    if (!isTrustedIpcSender(event.sender)) return { ok: false, message: '无效的请求。' }
+    const s = dir == null ? '' : String(dir).trim()
+    if (!s) return { ok: true }
+    return validateLogWriteDirectory(s)
   })
 
   ipcMain.on('log:write', (e, logDir, logFileName, data) => {  // 写入日志

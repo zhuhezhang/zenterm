@@ -464,25 +464,59 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     alert(t('settings.restored'))
   }
 
+  /** 
+   * 选择目录后主进程校验路径（与 log:write 一致）；不允许则提示且不写入表单
+   * @param {string} rawPath 原始路径
+   * @returns {Promise<void>}
+   */
+  const applyChosenLogPath = async (rawPath) => {
+    const p = String(rawPath ?? '').trim()
+    if (!p) return
+    const likelyAbsolute =
+      p.startsWith('/') ||
+      p.startsWith('\\') ||
+      /^[a-zA-Z]:[\\/]/.test(p)
+    try {
+      if (window.zterm?.validateLogDirectory && likelyAbsolute) {
+        const vr = await window.zterm.validateLogDirectory(p)
+        if (!vr?.ok) {
+          alert(vr?.message || t('settings.logPathRejected'))
+          return
+        }
+      }
+      set('logPath', p)
+    } catch (err) {
+      alert(t('settings.logPathValidateFail', { msg: err?.message ?? String(err) }))
+    }
+  }
+
   /** 处理选择日志路径的操作，兼容使用不同的 API 弹出目录选择对话框，选择后更新日志路径设置 */
   const handleChooseLogPath = async () => {
     try {
       if (window.zterm?.chooseDirectory) {
-        const p = await window.zterm.chooseDirectory()
-        if (p) set('logPath', p)
+        const picked = await window.zterm.chooseDirectory()
+        if (picked) await applyChosenLogPath(picked)
       } else if (window.showDirectoryPicker) {
         const dir = await window.showDirectoryPicker()
-        set('logPath', dir.name)
+        await applyChosenLogPath(dir.name)
       } else {
         const el = document.createElement('input')
         el.type = 'file'
         el.webkitdirectory = true
-        el.onchange = () => {
-          if (el.files[0]) set('logPath', el.files[0].path.replace(/[^/\\]*$/, ''))
+        el.onchange = async () => {
+          const f = el.files?.[0]
+          if (!f) return
+          const diskPath =
+            typeof window.zterm?.getPathForFile === 'function'
+              ? window.zterm.getPathForFile(f)
+              : (typeof f.path === 'string' ? f.path : '')
+          if (!diskPath) return
+          const dirPath = diskPath.replace(/[/\\][^/\\]*$/, '')
+          await applyChosenLogPath(dirPath)
         }
         el.click()
       }
-    } catch (e) {}
+    } catch (_) {}
   }
 
   /** 处理重置日志路径的操作，将日志路径设置恢复为默认值 */
@@ -713,7 +747,6 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   const renderCredentialsTab = () => (
     <div className="settings-section">
       <div className="settings-section-title">{t('settings.credentialsTitle')}</div>
-      <p className="settings-credentials-intro">{t('settings.credentialsIntro')}</p>
       <div className="settings-items">
         <div className="settings-item">
           <div className="settings-item-info">

@@ -135,6 +135,7 @@ function AppMain({ settings, setSettings }) {
   const [dialogType, setDialogType]       = useState('ssh')  // 连接对话框类型：ssh/telnet/serial
   const [dialogInitial, setDialogInitial] = useState(null)  // 连接对话框初始数据（编辑已保存会话时传入）
   const terminalExportersRef = useRef({})  // 保存每个会话导出终端文本的 getter
+  const terminalClearScreenRef = useRef({})  // 每个标签页清屏回调（xterm.clear）
 
   /**
    * 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听器
@@ -205,6 +206,7 @@ function AppMain({ settings, setSettings }) {
       return next
     })
     delete terminalExportersRef.current[id]
+    delete terminalClearScreenRef.current[id]
   }, [])
 
   /**
@@ -218,6 +220,24 @@ function AppMain({ settings, setSettings }) {
       return
     }
     terminalExportersRef.current[sessionId] = getter
+  }, [])
+
+  /**
+   * 注册/卸载某个会话标签页的清屏函数（调用 xterm Terminal.clear）
+   * @param {string} sessionId 会话 ID
+   * @param {Function|null} fn 清屏函数，传 null 表示卸载
+   */
+  const registerTerminalClearScreen = useCallback((sessionId, fn) => {
+    if (!fn) {
+      delete terminalClearScreenRef.current[sessionId]
+      return
+    }
+    terminalClearScreenRef.current[sessionId] = fn
+  }, [])
+
+  /** 右键标签「清屏」：清当前标签对应 xterm 视口（含滚动缓冲由 xterm 行为决定） */
+  const handleClearTabScreen = useCallback((sessionId) => {
+    terminalClearScreenRef.current[sessionId]?.()
   }, [])
 
   /**
@@ -484,7 +504,8 @@ function AppMain({ settings, setSettings }) {
 
         <div className="main-area">
           <TabBar sessions={sessions} activeId={activeId} onSelect={setActiveId} onClose={removeSession}
-            onNew={() => openDialog('ssh')} onReorder={handleTabReorder} onSaveOutput={handleSaveTabOutput} />
+            onNew={() => openDialog('ssh')} onReorder={handleTabReorder} onSaveOutput={handleSaveTabOutput}
+            onClearScreen={handleClearTabScreen} />
           <div className="content-area">
             <div className="terminal-area">
               {sessions.length === 0
@@ -493,6 +514,7 @@ function AppMain({ settings, setSettings }) {
                   <TerminalPanel key={s.id} session={s} active={s.id === activeId}
                     settings={settings} appThemeEffective={appThemeEffective}
                     onRegisterExport={registerTerminalExporter}
+                    onRegisterClearScreen={registerTerminalClearScreen}
                     onUpdate={(upd) => { updateSession(s.id, upd) }}
                   />
                 ))
@@ -508,6 +530,7 @@ function AppMain({ settings, setSettings }) {
           type={dialogType}
           initialData={dialogInitial}
           savedGroups={savedGroups}
+          appBackspaceFallback={settings.backspaceMode}
           onConnect={handleConnect}
           onSaveAndConnect={handleSaveAndConn}
           onSaveOnly={handleSaveOnly}

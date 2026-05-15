@@ -2,14 +2,6 @@
   width: 500px;
 }
 
-.settings-credentials-intro {
-  font-size: 12px;
-  line-height: 1.55;
-  color: var(--text-secondary);
-  margin: 0 0 14px 0;
-  padding: 0 24px;
-}
-
 .settings-path-col {
   display: flex;
   flex-direction: column;
@@ -68,7 +60,7 @@
   flex-shrink: 0;
 }
 .settings-path-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-.settings-path-btn.reset { padding: 5px 8px; font-size: 14px; }
+.settings-path-btn.reset { padding: 5px 8px; font-size: 14px; height: 26.67px; }
 .settings-path-btn.reset:hover { color: var(--accent); border-color: var(--accent); }
 
 .settings-path-row.is-log-path-disabled {

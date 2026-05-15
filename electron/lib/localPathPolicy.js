@@ -80,6 +80,21 @@ export function assertLogWriteDirectoryAllowed(logDir) {
 }
 
 /**
+ * 校验日志目录是否允许写入（供设置界面等展示提示，不抛错）
+ * @param {string} logDir 日志目录（来自设置）
+ * @returns {{ ok: true } | { ok: false, message: string }} 如果日志目录允许写入则返回 { ok: true }，否则返回 { ok: false, message: string }
+ */
+export function validateLogWriteDirectory(logDir) {
+  try {
+    assertLogWriteDirectoryAllowed(logDir)
+    return { ok: true }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    return { ok: false, message }
+  }
+}
+
+/**
  * SFTP 上传/下载涉及的本地文件路径（源文件或目标文件）
  * @param {string} localPath
  * @param {string} kind 错误前缀，如「下载」「上传」

@@ -131,8 +131,9 @@ function mapSerialError(err, lang) {
  * @param {Object} props.settings 全局设置对象，包含用户偏好设置
  * @param {'dark'|'light'} props.appThemeEffective 应用亮暗（与界面 CSS 变量一致），用于 xterm 配色
  * @param {Function} props.onRegisterExport 注册导出终端输出函数的回调，参数为 (sessionId, getter|null)
+ * @param {Function} [props.onRegisterClearScreen] 注册清屏函数的回调，参数为 (sessionId, fn|null)
  */
-export default function TerminalPanel({ session, active, onUpdate, settings, appThemeEffective = 'dark', onRegisterExport }) {
+export default function TerminalPanel({ session, active, onUpdate, settings, appThemeEffective = 'dark', onRegisterExport, onRegisterClearScreen }) {
   /** 终端容器的 DOM 引用，用于挂载 xterm 实例 */
   const containerRef = useRef(null)
   /** Terminal 实例引用，保存对 xterm 实例的访问以便在不同函数中使用 */
@@ -230,6 +231,19 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
     return () => onRegisterExport?.(session.id, null)
   }, [session.id, onRegisterExport])
 
+  useEffect(() => {  // 注册清屏：供标签栏右键菜单调用 xterm.clear()
+    const clear = () => {
+      const term = termRef.current
+      if (!term) return
+      try {
+        term.clear()
+      } catch (_) {}
+      logFileRef.current?.scheduleSnapshot?.()
+    }
+    onRegisterClearScreen?.(session.id, clear)
+    return () => onRegisterClearScreen?.(session.id, null)
+  }, [session.id, onRegisterClearScreen])
+
   useEffect(() => {  // 监听按键事件：当连接断开时，按 R 键触发重连逻辑，重新连接会话并设置相关事件监听器
     const term = termRef.current
     if (!term) return
@@ -293,11 +307,12 @@ function writelnWithLog(term, logRef, lineForWriteln) {
  * - 对 Telnet/Serial 会话把 DEL 转为 BS(0x08)，更符合设备控制台习惯
  * @param {'ssh'|'telnet'|'serial'} type 会话类型
  * @param {string} data xterm 原始输入数据
- * @param {{ current?: { backspaceMode?: string } } | null} settingsRef 设置引用
+ * @param {Object|null|undefined} session 当前会话（含 per-session backspaceMode）
+ * @param {{ current?: { backspaceMode?: string } } | null} settingsRef 全局设置（兼容旧版存于设置中的退格模式）
  * @returns {string} 规范化后的数据
  */
-function normalizeInputData(type, data, settingsRef) {
-  const mode = (settingsRef?.current?.backspaceMode || 'auto').toLowerCase()
+function normalizeInputData(type, data, session, settingsRef) {
+  const mode = String(session?.backspaceMode || settingsRef?.current?.backspaceMode || 'auto').toLowerCase()
   if (mode === 'del') return data.replace(/\x08/g, '\x7f')
   if (mode === 'bs') return data.replace(/\x7f/g, '\x08')
   // Auto：SSH 默认保留 DEL；Telnet/Serial 默认转为 BS，兼容更多设备
@@ -707,7 +722,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const r1 = window.zterm.ssh.onData(id, recv)  // 注册 SSH 数据接收事件监听器，使用 recv 函数处理数据
       const r2 = window.zterm.ssh.onClose(id, () => onDisconnect('terminal.closed'))  // 注册 SSH 关闭事件监听器，调用 onDisconnect 处理断开
       const d1 = term.onData((data) => {  // 注册终端数据事件监听器，用户输入时发送到 SSH（回显由对端数据经 recv 记入日志，避免与本地按键重复）
-        window.zterm.ssh.sendData(id, normalizeInputData(type, data, settingsRef), terminalEncoding)
+        window.zterm.ssh.sendData(id, normalizeInputData(type, data, session, settingsRef), terminalEncoding)
       })
       const d2 = term.onResize(({ cols, rows }) => window.zterm.ssh.resize(id, cols, rows))  // 注册终端尺寸变化事件监听器，调整 SSH 连接尺寸
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => d2.dispose(), () => window.zterm.ssh.disconnect(id))  // 将所有清理函数添加到 cleanupRef 列表，包括移除监听器和断开连接
@@ -749,7 +764,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const r1 = window.zterm.telnet.onData(id, recv)
       const r2 = window.zterm.telnet.onClose(id, () => onDisconnect('terminal.closed'))
       const d1 = term.onData((data) => {
-        window.zterm.telnet.sendData(id, normalizeInputData(type, data, settingsRef), terminalEncoding)
+        window.zterm.telnet.sendData(id, normalizeInputData(type, data, session, settingsRef), terminalEncoding)
       })
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.telnet.disconnect(id))
     } catch (e) {
@@ -769,7 +784,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const r1 = window.zterm.serial.onData(id, recv)
       const r2 = window.zterm.serial.onClose(id, () => onDisconnect('terminal.portClosed'))
       const d1 = term.onData((data) => {
-        window.zterm.serial.sendData(id, normalizeInputData(type, data, settingsRef), terminalEncoding)
+        window.zterm.serial.sendData(id, normalizeInputData(type, data, session, settingsRef), terminalEncoding)
       })
       cleanupRef.current.push(() => { // 清理：清除定时器，退出前刷出串口尾块（与 recv 一致记入日志）
         if (serialHighlightIdleTimer != null) {
