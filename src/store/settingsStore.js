@@ -80,12 +80,37 @@ export function clampTerminalScrollback(raw) {
 }
 
 /**
- * 会话日志写入方式：buffer = 与 xterm 屏幕缓冲一致（整文件覆盖）；stream = 下行原始流去 ANSI 后追加
+ * 会话日志：none = 关闭；buffer = 与 xterm 屏幕缓冲一致（整文件覆盖）；stream = 下行原始流去 ANSI 后追加
  * @param {unknown} m
- * @returns {'stream'|'buffer'}
+ * @returns {'none'|'stream'|'buffer'}
  */
 export function normalizeLoggingMode(m) {
-  return String(m || '').toLowerCase() === 'stream' ? 'stream' : 'buffer'
+  const v = String(m ?? '').trim().toLowerCase()
+  if (v === 'none') return 'none'
+  if (v === 'stream') return 'stream'
+  return 'buffer'
+}
+
+/**
+ * 将旧版 enableLogging 并入 loggingMode（删除 enableLogging），并规范 loggingMode
+ * @param {Record<string, unknown>} settings 
+ * @returns {Record<string, unknown>}
+ */
+export function applyLegacyLoggingMigration(settings) {
+  if (!settings || typeof settings !== 'object') return settings ?? {}
+  const out = { ...settings }
+  if ('enableLogging' in out) {
+    if (out.enableLogging === true) {
+      let mode = normalizeLoggingMode(out.loggingMode)
+      if (mode === 'none') mode = 'buffer'
+      out.loggingMode = mode
+    } else {
+      out.loggingMode = 'none'
+    }
+    delete out.enableLogging
+  }
+  out.loggingMode = normalizeLoggingMode(out.loggingMode)
+  return out
 }
 
 /** 默认设置项 */
@@ -101,9 +126,8 @@ export const DEFAULT_SETTINGS = {
   /** xterm scrollback：仅「视口外」向上保留的历史行数，不含当前可见的 term.rows 行 */
   terminalScrollback: TERMINAL_SCROLLBACK_DEFAULT,
   backspaceMode: 'auto',    // 退格键模式：auto / del / bs
-  enableLogging: false,
-  /** 日志模式：buffer 与屏幕一致；stream 按 PTY 下行流追加（可能与 zsh 重绘所见不一致） */
-  loggingMode: 'buffer',
+  /** 日志模式：none 关闭；buffer 与屏幕一致；stream 按 PTY 下行流追加（可能与 zsh 重绘所见不一致） */
+  loggingMode: 'none',
   logPath: '',
   highlightRules: [
     { id: 'default1_error', name: 'default1_error', enabled: true, useRegex: true, caseSensitive: false, pattern: '(\\berror\\b)|(\\bfailed\\b)|(\\bdenied\\b)|(\\bunauthorized\\b)|(\\bdown\\b)', color: '#f1250e' },
@@ -137,9 +161,9 @@ export function loadSettings() {
         ...saved.algorithmPreferences,
       }
     }
-    const merged = { ...DEFAULT_SETTINGS, ...saved }
+    let merged = { ...DEFAULT_SETTINGS, ...saved }
     merged.terminalScrollback = clampTerminalScrollback(merged.terminalScrollback)
-    merged.loggingMode = normalizeLoggingMode(merged.loggingMode)
+    merged = applyLegacyLoggingMigration(merged)
     if (!('logPath' in saved)) merged.logPath = getDefaultLogPath()
     if (!['auto', 'en', 'zh'].includes(merged.uiLanguage)) merged.uiLanguage = 'auto'
     if (!['dark', 'light', 'auto'].includes(merged.appTheme)) merged.appTheme = 'auto'
@@ -236,11 +260,11 @@ export const SETTINGS_SCHEMA = [
   {
     section: 'logging',
     items: [
-      { key: 'enableLogging', type: 'boolean' },
       {
         key: 'loggingMode',
         type: 'select',
         options: [
+          { value: 'none', labelKey: 'settings.options.loggingModeNone' },
           { value: 'buffer', labelKey: 'settings.options.loggingModeBuffer' },
           { value: 'stream', labelKey: 'settings.options.loggingModeStream' },
         ],

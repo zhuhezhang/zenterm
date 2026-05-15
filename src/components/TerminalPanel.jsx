@@ -188,17 +188,17 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
     }
   }, [session.id])
 
-  /** 日志：启用开关、写入方式或目录变化时重建控制器并绑定当前终端 */
+  /** 日志：写入方式或目录变化时重建控制器并绑定当前终端 */
   useEffect(() => {
     const term = termRef.current
-    if (!settings.enableLogging) {
+    if (normalizeLoggingMode(settings.loggingMode) === 'none') {
       try { logFileRef.current?.flushNow?.() } catch (_) {}
       logFileRef.current = null
       return
     }
     setupLogging(session, settings, logFileRef, logFileStemStateRef, settingsRef)
     logFileRef.current?.setTerminal?.(term ?? null)
-  }, [session.id, settings.enableLogging, settings.loggingMode, settings.logPath])
+  }, [session.id, settings.loggingMode, settings.logPath])
 
   useEffect(() => {  // 滚动缓冲行数：保存设置后更新已存在终端（xterm 支持运行时改 options.scrollback）
     const term = termRef.current
@@ -481,14 +481,15 @@ function stripAnsiForLogChunk(carry, chunk) {
  * @param {Object} settings
  * @param {{ current: object | null }} logFileRef
  * @param {{ current: { sessionId: string|null, stem: string|null } }} logFileStemStateRef
- * @param {{ current?: object } | null} settingsRef
+ * @param {{ current?: object } | null} _settingsRef 预留与调用方签名一致（本函数内以创建时的 logKind 为准）
  */
-function setupLogging(session, settings, logFileRef, logFileStemStateRef, settingsRef) {
-  if (!settings?.enableLogging) return
+function setupLogging(session, settings, logFileRef, logFileStemStateRef, _settingsRef) {
+  if (normalizeLoggingMode(settings?.loggingMode) === 'none') return
   const logDir = resolveLoggingDirectory(settings)
   if (!logDir) return
 
-  const getMode = () => normalizeLoggingMode(settingsRef?.current?.loggingMode)
+  /** 本控制器创建时的写入方式（关闭日志时 settings 可能已变为 none，收尾刷盘仍按此方式执行） */
+  const logKind = normalizeLoggingMode(settings.loggingMode)
 
   /** 同一标签页内复用的日志主文件名（不含 .log） */
   const stemState = logFileStemStateRef.current
@@ -528,7 +529,7 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, settin
     window.zterm?.log?.append?.(logDir, logFileName, chunk)
   }
   const enqueue = (chunk) => {
-    if (getMode() !== 'stream') return
+    if (logKind !== 'stream') return
     if (chunk === '' || chunk == null) return
     if (typeof chunk !== 'string') return
     if (!window.zterm?.log?.append) return
@@ -553,7 +554,7 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, settin
     } catch (_) {}
   }
   const scheduleSnapshot = () => {
-    if (getMode() !== 'buffer') return
+    if (logKind !== 'buffer') return
     if (!window.zterm?.log?.write) return
     if (!terminal) return
     if (snapshotTimer != null) {
@@ -575,7 +576,7 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, settin
       window.clearTimeout(streamTimer)
       streamTimer = null
     }
-    if (getMode() === 'buffer') {
+    if (logKind === 'buffer') {
       pending = ''
       ansiCarry = ''
       flushSnapshot()

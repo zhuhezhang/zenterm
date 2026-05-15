@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import {
   SETTINGS_SCHEMA, SETTINGS_GENERAL_SECTION_IDS, saveSettings, exportSettings, importSettings, getDefaultLogPath,
   DEFAULT_SETTINGS, DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
-  clampTerminalScrollback, normalizeLoggingMode,
+  clampTerminalScrollback, normalizeLoggingMode, applyLegacyLoggingMigration,
 } from '../store/settingsStore.js'
 import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
@@ -371,12 +371,12 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 处理保存设置的操作，将当前表单数据保存到设置中，并调用 onSave 回调函数传递新的设置对象 */
   const handleSave = () => {
-    const next = {
+    const next = applyLegacyLoggingMigration({
       ...form,
       highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang),
       terminalScrollback: clampTerminalScrollback(form.terminalScrollback),
       loggingMode: normalizeLoggingMode(form.loggingMode),
-    }
+    })
     setForm(next)
     saveSettings(next)
     onSave(next)
@@ -384,12 +384,12 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 保存设置后关闭对话框 */
   const handleSaveAndClose = () => {
-    const next = {
+    const next = applyLegacyLoggingMigration({
       ...form,
       highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang),
       terminalScrollback: clampTerminalScrollback(form.terminalScrollback),
       loggingMode: normalizeLoggingMode(form.loggingMode),
-    }
+    })
     setForm(next)
     saveSettings(next)
     onSave(next)
@@ -434,16 +434,17 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     if (!file) return
     try {
       const importedSettings = await importSettings(file)
-      const uiLanguage = ['auto', 'en', 'zh'].includes(importedSettings.uiLanguage) ? importedSettings.uiLanguage : 'auto'
-      const appTheme = ['dark', 'light', 'auto'].includes(importedSettings.appTheme) ? importedSettings.appTheme : 'auto'
+      const migrated = applyLegacyLoggingMigration(importedSettings)
+      const uiLanguage = ['auto', 'en', 'zh'].includes(migrated.uiLanguage) ? migrated.uiLanguage : 'auto'
+      const appTheme = ['dark', 'light', 'auto'].includes(migrated.appTheme) ? migrated.appTheme : 'auto'
       setForm({
-        ...importedSettings,
+        ...migrated,
         uiLanguage,
         appTheme,
-        highlightRules: importedSettings.highlightRules ? [...importedSettings.highlightRules] : [],
-        algorithmPreferences: importedSettings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
-        terminalScrollback: clampTerminalScrollback(importedSettings.terminalScrollback),
-        loggingMode: normalizeLoggingMode(importedSettings.loggingMode),
+        highlightRules: migrated.highlightRules ? [...migrated.highlightRules] : [],
+        algorithmPreferences: migrated.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
+        terminalScrollback: clampTerminalScrollback(migrated.terminalScrollback),
+        loggingMode: normalizeLoggingMode(migrated.loggingMode),
       })  // 更新表单状态
       alert(t('settings.importSettingsOk'))
     } catch (err) {
@@ -502,6 +503,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
           const logDisplay = form[item.key] || getDefaultLogPath() || t('settings.logDefaultDir')
           const logTipPath = form[item.key] || getDefaultLogPath() || t('settings.logDefaultDir')
           const logResetTip = t('settings.logResetDefault', { path: getDefaultLogPath() || t('settings.logDefaultDir') })
+          const logPathDisabled = item.key === 'logPath' && normalizeLoggingMode(form.loggingMode) === 'none'
           return (
             <div key={item.key} className="settings-item">
               <div className="settings-item-info">
@@ -518,28 +520,34 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                 </button>
               )}
               {item.type === 'path' && (
-                <div className="settings-path-row">
+                <div
+                  className={`settings-path-row${logPathDisabled ? ' is-log-path-disabled' : ''}`}
+                  onMouseEnter={logPathDisabled ? (e) => showSettingsHoverTip(e, t('settings.logPathDisabledTip')) : undefined}
+                  onMouseLeave={logPathDisabled ? hideSettingsHoverTip : undefined}
+                >
                   <input
                     className="settings-path-input"
                     value={logDisplay}
                     placeholder={getDefaultLogPath() || t('settings.logChooseDir')}
                     readOnly
+                    disabled={logPathDisabled}
                     aria-label={`${label}`}
-                    onMouseEnter={(e) => showSettingsHoverTip(e, t('settings.logCurrentDir', { path: logTipPath }))}
-                    onMouseLeave={hideSettingsHoverTip}
-                    onFocus={(e) => showSettingsHoverTip(e, t('settings.logCurrentDir', { path: logTipPath }))}
-                    onBlur={hideSettingsHoverTip}
+                    onMouseEnter={logPathDisabled ? undefined : (e) => showSettingsHoverTip(e, t('settings.logCurrentDir', { path: logTipPath }))}
+                    onMouseLeave={logPathDisabled ? undefined : hideSettingsHoverTip}
+                    onFocus={logPathDisabled ? undefined : (e) => showSettingsHoverTip(e, t('settings.logCurrentDir', { path: logTipPath }))}
+                    onBlur={logPathDisabled ? undefined : hideSettingsHoverTip}
                   />
-                  <button type="button" className="settings-path-btn" onClick={handleChooseLogPath}>{t('settings.choose')}</button>
+                  <button type="button" className="settings-path-btn" disabled={logPathDisabled} onClick={handleChooseLogPath}>{t('settings.choose')}</button>
                   <button
                     type="button"
                     className="settings-path-btn reset"
                     aria-label={t('settings.logResetAria')}
+                    disabled={logPathDisabled}
                     onClick={handleResetLogPath}
-                    onMouseEnter={(e) => showSettingsHoverTip(e, logResetTip)}
-                    onMouseLeave={hideSettingsHoverTip}
-                    onFocus={(e) => showSettingsHoverTip(e, logResetTip)}
-                    onBlur={hideSettingsHoverTip}
+                    onMouseEnter={logPathDisabled ? undefined : (e) => showSettingsHoverTip(e, logResetTip)}
+                    onMouseLeave={logPathDisabled ? undefined : hideSettingsHoverTip}
+                    onFocus={logPathDisabled ? undefined : (e) => showSettingsHoverTip(e, logResetTip)}
+                    onBlur={logPathDisabled ? undefined : hideSettingsHoverTip}
                   >
                     ↺
                   </button>
@@ -550,7 +558,6 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
                   className="settings-select"
                   value={form[item.key] ?? item.options?.[0]?.value ?? ''}
                   onChange={(e) => set(item.key, e.target.value)}
-                  disabled={item.key === 'loggingMode' && !form.enableLogging}
                 >
                   {(item.options || []).map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.labelKey ? t(opt.labelKey) : (opt.label ?? opt.value)}</option>

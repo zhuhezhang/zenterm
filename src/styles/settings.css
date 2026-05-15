@@ -71,6 +71,16 @@
 .settings-path-btn.reset { padding: 5px 8px; font-size: 14px; }
 .settings-path-btn.reset:hover { color: var(--accent); border-color: var(--accent); }
 
+.settings-path-row.is-log-path-disabled {
+  opacity: 0.5;
+}
+.settings-path-row.is-log-path-disabled .settings-path-input:disabled {
+  cursor: not-allowed;
+}
+.settings-path-row.is-log-path-disabled .settings-path-btn:disabled {
+  cursor: not-allowed;
+}
+
 .settings-select {
   width: auto;
   padding: 5px 8px;

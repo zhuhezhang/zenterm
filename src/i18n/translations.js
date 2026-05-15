@@ -160,10 +160,9 @@ export const MESSAGES = {
           label: '视口外滚动历史（行）',
           desc: '限制「已滚出屏幕上方」仍保留的行数，不包含当前窗口里可见的那些行（可见行数由窗口高度决定）。向上滚动能浏览的总行数约为「本数值 + 终端高度行数」。越大越占内存。保存后生效',
         },
-        enableLogging: { label: '开启终端 I/O 日志', desc: '将会话写入独立 .log 文件；具体格式由下方「日志写入方式」决定' },
         loggingMode: {
-          label: '日志写入方式',
-          desc: '「缓存快照覆盖」从 xterm 缓存导出纯文本并覆盖写入，与屏幕输出内容一致，但输出内容超过「视口外滚动历史（行）」会丢弃旧内容且每次输出日志文件都是覆盖写入对磁盘不友好；「原始流追加」按下行数据去 ANSI 后追加，但在 zsh 重绘等场景可能与所见不一致，比如会输出非可见字符等情况',
+          label: '终端 I/O 日志',
+          desc: '选「无」关闭。否则将会话写入下方目录中的独立 .log 文件。「缓冲快照覆盖」从 xterm 缓存导出纯文本并覆盖写入，与屏幕输出一致，但超过「视口外滚动历史（行）」会丢弃更早内容且覆盖写入对磁盘不友好；「原始流追加」按下行数据去 ANSI 后追加，在 zsh 重绘等场景可能与所见不一致',
         },
         logPath: {
           label: '日志保存目录',
@@ -180,6 +179,7 @@ export const MESSAGES = {
         backspaceAuto: 'Auto',
         backspaceDel: 'DEL (0x7F)',
         backspaceBs: 'BS (0x08)',
+        loggingModeNone: '无',
         loggingModeBuffer: '缓冲快照覆盖',
         loggingModeStream: '原始流追加',
       },
@@ -188,6 +188,7 @@ export const MESSAGES = {
       logDefaultDir: '系统下载目录（默认）',
       logResetDefault: '恢复默认目录为：\n{path}',
       logResetAria: '恢复默认日志目录',
+      logPathDisabledTip: '当前为「无」：未启用终端 I/O 日志，目录设置无效；先选择缓冲或原始流模式后再配置',
       choose: '选择',
       algoTitle: 'SSH/SFTP 算法',
       algoIntro: '默认仅启用现代算法；若须连接老旧设备，可在下方勾选标记为「遗留」的算法（会降低协商强度）',
@@ -507,10 +508,9 @@ export const MESSAGES = {
           label: 'Scrollback (lines above viewport)',
           desc: 'Rows kept after they scroll off the top—not the on-screen rows (those depend on window height). Total lines you can scroll through is about this value plus the terminal row count. Higher uses more RAM. Takes effect after you save.',
         },
-        enableLogging: { label: 'Terminal I/O logging', desc: 'Write each session to its own .log file; format is controlled by “Log write mode” below.' },
         loggingMode: {
-          label: 'Log write mode',
-          desc: 'Buffer Snapshot Overwrite: Export plain text from xterm cache and perform overwrite writing. Its content matches on-screen output. However, any content exceeding the viewport scroll history (lines) will discard earlier records, and each log export uses overwrite mode, which is inefficient for disk I/O; Raw Stream Append: Append data line by line after stripping ANSI escape codes. It may fail to match visual display in scenarios like zsh redrawing, such as generating invisible control characters and other abnormal outputs.',
+          label: 'Terminal I/O logging',
+          desc: 'Choose “None” to disable. Otherwise each session is written to its own .log file under the directory below. Buffer snapshot overwrite: export plain text from the xterm buffer and overwrite the file (matches the screen, but scrollback limits history and overwrite is heavier on disk). Raw stream append: strip ANSI and append chunks (can diverge from what you see, e.g. zsh redraws).',
         },
         logPath: {
           label: 'Log directory',
@@ -527,6 +527,7 @@ export const MESSAGES = {
         backspaceAuto: 'Auto',
         backspaceDel: 'DEL (0x7F)',
         backspaceBs: 'BS (0x08)',
+        loggingModeNone: 'None',
         loggingModeBuffer: 'Buffer snapshot overwrite',
         loggingModeStream: 'Raw stream append',
       },
@@ -535,6 +536,7 @@ export const MESSAGES = {
       logDefaultDir: 'Downloads (default)',
       logResetDefault: 'Reset default directory to:\n{path}',
       logResetAria: 'Reset log directory to default',
+      logPathDisabledTip: 'Logging is off (“None”): the directory is ignored. Pick buffer or stream mode first to configure it.',
       choose: 'Browse',
       algoTitle: 'SSH/SFTP algorithms',
       algoIntro:
