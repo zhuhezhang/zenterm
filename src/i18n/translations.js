@@ -713,5 +713,8 @@ export function translate(lang, path, params = {}) {
     cur = cur?.[p]
   }
   if (typeof cur !== 'string') return path
-  return cur.replace(/\{(\w+)\}/g, (_, k) => (params[k] != null ? String(params[k]) : `{${k}}`))  // 替换占位符
+  // 替换占位符，例如 cur 为 importSessionsOk: '已导入 {n} 个新会话，相同 ID 或名称的会话已被忽略'
+  // 那么当传入 params 为 {n: 1} 时，k=n，返回 "已导入 1 个新会话，相同 ID 或名称的会话已被忽略"
+  // 若传入 params 为 {m: 1} 时，k=m，返回 "已导入 {m} 个新会话，相同 ID 或名称的会话已被忽略"
+  return cur.replace(/\{(\w+)\}/g, (_, k) => (params[k] != null ? String(params[k]) : `{${k}}`))
 }

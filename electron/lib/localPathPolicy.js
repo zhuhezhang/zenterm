@@ -53,7 +53,7 @@ function collectResolvedRoots() {
 
 /**
  * 供主进程在启动 Worker 时注入：当前用户允许作为 SFTP 本地读写的绝对根路径快照。
- * @returns {string[]}
+ * @returns {string[]} 已解析的允许根目录列表，绝对路径且不含重复项
  */
 export function getAllowedUserRootPaths() {
   return collectResolvedRoots()

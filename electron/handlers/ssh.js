@@ -1,10 +1,26 @@
+/**
+ * Worker 线程里跑 ssh2。握手和 DH 交换放在 Worker 里，避免卡住 Electron 主进程事件循环
+ * 一次完整的连接：
+ * TerminalPanel          主进程 ssh.js              Worker ssh2
+     | connect(id,cfg)      |                          |
+     |--------------------->| new Worker(config)       |
+     |                      |------------------------->| connect()
+     |                      |<----- HOST_VERIFY -------| (若需要)
+     |                      | verifySshHostKeyTrust()  |
+     |                      |------ VERIFY_RESULT ----->|
+     |                      |<-------- READY ----------| shell 就绪
+     |<--- {success:true}---| sshSessions.set(id)      |
+     | onData / onResize    |                          |
+     | sendData ----------->| WRITE ------------------->| stream
+     |<----- ssh:output ----|<-------- OUTPUT ----------|
+ */
 import { Worker } from 'worker_threads'
 import { fileURLToPath } from 'url'
 import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
 import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
 import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
 
-/** 存储每个 SSH 会话对应的 Worker 桥接状态 */
+/** 存储每个 SSH 会话对应的 Worker 桥接状态（键id → 值{ worker: Worker, isClosed: boolean }） */
 const sshSessions = new Map()
 
 /** Worker 入口文件 */
@@ -16,14 +32,7 @@ const workerEntry = fileURLToPath(new URL('../workers/sshSessionWorker.js', impo
  * @param {Electron.BrowserWindow} mainWindow 主窗口实例
  */
 function setupSSHHandlers(ipcMain, mainWindow) {
-  /**
-   * 处理 SSH 连接请求
-   * @param {Electron.IpcMainEvent} event 事件
-   * @param {string} id 会话 ID
-   * @param {object} config 配置
-   * @returns {Promise<object>} 结果
-   */
-  ipcMain.handle('ssh:connect', async (event, id, config) => {
+  ipcMain.handle('ssh:connect', async (event, id, config) => {  // 连接 SSH，参数为会话ID、配置对象，返回连接结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
 
     return new Promise((resolve) => {
@@ -54,7 +63,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
         worker = new Worker(workerEntry, {
           type: 'module',
           workerData: { config },
-        })
+        })  // 起一个子进程 Worker 跑 ssh2，Worker 启动后立即执行（文件名末尾有 .js 会被视为 Worker 入口）
       } catch (e) {
         return resolve({ success: false, error: e.message })
       }
@@ -74,7 +83,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
         } catch (_) {}
       }
 
-      worker.on('message', async (msg) => {  // 监听 Worker 消息事件
+      worker.on('message', async (msg) => {  // 监听来自子进程 Worker 的消息
         if (msg.type === 'HOST_VERIFY') {  // 处理主机公钥校验请求
           const raw = Buffer.from(msg.keyBase64, 'base64')
           const ok = await verifySshHostKeyTrust(mainWindow, msg.host, msg.port, raw)
@@ -102,10 +111,8 @@ function setupSSHHandlers(ipcMain, mainWindow) {
           closeSessionOnce()
         }
       })
-
-      worker.on('error', (err) => finishFail(err.message))  // 监听 Worker 错误事件
-
-      worker.on('exit', (code) => {  // 监听 Worker 退出事件
+      worker.on('error', (err) => finishFail(err.message))  // 监听来自子进程 Worker 的错误事件，参数为错误对象
+      worker.on('exit', (code) => {  // 监听来自子进程 Worker 的退出事件，参数为退出码
         if (!settled) {
           finishFail(`SSH worker exited unexpectedly (${code})`)
         } else if (sshSessions.has(id) && !session.isClosed) {
@@ -115,7 +122,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('ssh:data', (event, id, data, encoding) => {  // 处理 SSH 数据事件
+  ipcMain.on('ssh:data', (event, id, data, encoding) => {  // 处理 SSH 数据事件，参数为会话ID、数据、编码，返回发送结果
     if (!isTrustedIpcSender(event.sender)) return
     const session = sshSessions.get(id)
     if (session?.worker) {
@@ -131,7 +138,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
     }
   })
 
-  ipcMain.on('ssh:resize', (event, id, cols, rows) => {  // 处理 SSH 调整大小事件
+  ipcMain.on('ssh:resize', (event, id, cols, rows) => {  // 处理 SSH 调整大小事件，参数为会话ID、列数、行数，返回调整大小结果
     if (!isTrustedIpcSender(event.sender)) return
     const session = sshSessions.get(id)
     if (session?.worker) {
@@ -141,7 +148,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
     }
   })
 
-  ipcMain.handle('ssh:disconnect', async (event, id) => {  // 处理 SSH 断开连接请求
+  ipcMain.handle('ssh:disconnect', async (event, id) => {  // 断开 SSH 连接，参数为会话ID，返回断开结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sshSessions.get(id)
     if (session?.worker) {

@@ -14,7 +14,7 @@ import {
   isTrustedIpcSender,
 } from './lib/trustedSender.js'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const __dirname = path.dirname(fileURLToPath(import.meta.url))  // 当前文件的目录路径
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged  // 兼容开发环境和生产环境的判断(通过环境变量和是否打包判读)
 // const isDev = false  // 强制生产环境用于测试
@@ -48,8 +48,8 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))  // 生产环境加载打包后的静态文件
   }
 
-  setTrustedRendererWebContents(mainWindow.webContents)
-  mainWindow.on('closed', () => clearTrustedRendererWebContents())
+  setTrustedRendererWebContents(mainWindow.webContents)  // 设置渲染进程可信任的 IPC 发送者
+  mainWindow.on('closed', () => clearTrustedRendererWebContents())  // 当窗口关闭时，清除渲染进程可信任的 IPC 发送者
 
   // 监听渲染进程发送的窗口操作指令（最小化、最大化、关闭）
   ipcMain.on('window:minimize', (e) => {

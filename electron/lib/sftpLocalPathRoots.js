@@ -4,8 +4,7 @@
 import path from 'path'
 
 /** 与 localPathPolicy 中 ERR_HINT 保持一致 */
-export const SFTP_PATH_ERR_HINT =
-  '路径须位于用户主目录、文稿/文档、下载、桌面、图片、音乐、影片或本应用用户数据目录下。'
+export const SFTP_PATH_ERR_HINT = '路径须位于用户主目录、文稿/文档、下载、桌面、图片、音乐、影片或本应用用户数据目录下'
 
 /**
  * 检查给定路径是否位于允许的用户根目录范围内

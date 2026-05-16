@@ -1,3 +1,6 @@
+/**
+ * sftp 后端处理流程参考 ssh 的解释，两者相似的
+ */
 import { Worker } from 'worker_threads'
 import { fileURLToPath } from 'url'
 import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
@@ -15,7 +18,7 @@ const sftpSessions = new Map()
 const workerEntry = fileURLToPath(new URL('../workers/sftpSessionWorker.js', import.meta.url))
 
 /**
- * 发送命令到 Worker
+ * 发送命令到子进程 Worker
  * @param {{ worker: Worker, pending: Map<number, (msg: object) => void>, reqSeq: number, isClosed: boolean }} session 会话状态
  * @param {object} payload 命令及参数
  * @returns {Promise<object>} CMD_RESULT 消息体
@@ -51,7 +54,7 @@ function rejectAllPending(session, error) {
  * @param {Electron.BrowserWindow} mainWindow
  */
 function setupSFTPHandlers(ipcMain, mainWindow) {
-  ipcMain.handle('sftp:connect', async (event, id, config) => {
+  ipcMain.handle('sftp:connect', async (event, id, config) => {  // 连接 SFTP，参数为会话ID、配置对象，返回连接结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
 
     return new Promise((resolve) => {
@@ -96,7 +99,10 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
         } catch (_) {}
       }
 
-      /** 处理 Worker 消息 */
+      /**
+       * 处理来自子进程 Worker 消息
+       * @param msg {object} Worker 消息
+       */
       const onWorkerMessage = async (msg) => {
         if (msg.type === 'HOST_VERIFY') {  // 处理主机公钥校验请求
           const raw = Buffer.from(msg.keyBase64, 'base64')
@@ -147,9 +153,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
       }
 
       worker.on('message', onWorkerMessage)  // 监听 Worker 消息事件
-
       worker.on('error', (err) => finishFail(err.message))  // 监听 Worker 错误事件
-
       worker.on('exit', (code) => {  // 监听 Worker 退出事件
         if (!settled) {
           finishFail(`SFTP worker exited unexpectedly (${code})`)
@@ -160,7 +164,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.handle('sftp:disconnect', async (event, id) => {  // 处理断开连接请求
+  ipcMain.handle('sftp:disconnect', async (event, id) => {  // 断开 SFTP 连接，参数为会话ID，返回断开结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (session?.worker) {
@@ -178,7 +182,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     return { success: true }
   })
 
-  ipcMain.handle('sftp:list', async (event, id, remotePath) => {  // 处理列出远程目录请求
+  ipcMain.handle('sftp:list', async (event, id, remotePath) => {  // 列出远程目录，参数为会话ID、远程路径，返回列出结果
     if (!isTrustedIpcSender(event.sender)) return { success: false, error: IPC_UNAUTHORIZED.error }
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
@@ -187,7 +191,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     return { success: true, items: msg.items }
   })
 
-  ipcMain.handle('sftp:download', async (event, id, remotePath, localPath) => {  // 处理下载文件请求
+  ipcMain.handle('sftp:download', async (event, id, remotePath, localPath) => {  // 下载文件，参数为会话ID、远程路径、本地路径，返回下载结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
@@ -201,7 +205,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     return { success: true }
   })
 
-  ipcMain.handle('sftp:downloadDir', async (event, id, remoteDir, localDir) => {  // 处理下载目录请求
+  ipcMain.handle('sftp:downloadDir', async (event, id, remoteDir, localDir) => {  // 下载目录，参数为会话ID、远程目录、本地目录，返回下载结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
@@ -215,7 +219,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     return { success: true }
   })
 
-  ipcMain.handle('sftp:upload', async (event, id, localPath, remotePath) => {  // 处理上传文件请求
+  ipcMain.handle('sftp:upload', async (event, id, localPath, remotePath) => {  // 上传文件，参数为会话ID、本地路径、远程路径，返回上传结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
@@ -229,7 +233,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     return { success: true }
   })
 
-  ipcMain.handle('sftp:mkdir', async (event, id, remotePath) => {  // 处理创建目录请求
+  ipcMain.handle('sftp:mkdir', async (event, id, remotePath) => {  // 创建目录，参数为会话ID、远程路径，返回创建结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
@@ -238,7 +242,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     return { success: true }
   })
 
-  ipcMain.handle('sftp:delete', async (event, id, remotePath) => {  // 处理删除文件请求
+  ipcMain.handle('sftp:delete', async (event, id, remotePath) => {  // 删除文件，参数为会话ID、远程路径，返回删除结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
@@ -247,7 +251,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     return { success: true }
   })
 
-  ipcMain.handle('sftp:rename', async (event, id, oldPath, newPath) => {  // 处理重命名文件请求
+  ipcMain.handle('sftp:rename', async (event, id, oldPath, newPath) => {  // 重命名文件，参数为会话ID、旧路径、新路径，返回重命名结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }

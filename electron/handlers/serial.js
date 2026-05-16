@@ -14,8 +14,8 @@ const serialSessions = new Map()
 
 /**
  * 请求的路径是否在当前枚举到的串口列表中（降低任意路径打开设备的风险）
- * @param {string} requestedPath
- * @param {Array<{ path?: string }>} ports SerialPort.list() 结果
+ * @param {string} requestedPath 请求的路径
+ * @param {Array<{ path?: string }>} ports SerialPort.list() 结果（如[{ path: '/dev/tty.usbserial-A1234567' }]）
  */
 function isSerialPathInEnumeratedList(requestedPath, ports) {
   const req = String(requestedPath ?? '').trim()
@@ -34,7 +34,7 @@ function isSerialPathInEnumeratedList(requestedPath, ports) {
  * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息
  */
 function setupSerialHandlers(ipcMain, mainWindow) {
-  ipcMain.handle('serial:listPorts', async (event) => {
+  ipcMain.handle('serial:listPorts', async (event) => {  // 获取可用串口列表
     if (!isTrustedIpcSender(event.sender)) return { success: false, error: IPC_UNAUTHORIZED.error, ports: [] }
     if (!SerialPort) return { success: false, error: 'serialport module not available', ports: [] }
     try {
@@ -45,7 +45,7 @@ function setupSerialHandlers(ipcMain, mainWindow) {
     }
   })
 
-  ipcMain.handle('serial:connect', async (event, id, config) => {
+  ipcMain.handle('serial:connect', async (event, id, config) => {  // 连接串口，参数为会话ID、配置对象，返回连接结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     if (!SerialPort) return { success: false, error: 'serialport module not available' }
 
@@ -101,7 +101,7 @@ function setupSerialHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('serial:data', (event, id, data, encoding) => {
+  ipcMain.on('serial:data', (event, id, data, encoding) => {  // 发送串口数据，参数为会话ID、数据、编码，返回发送结果
     if (!isTrustedIpcSender(event.sender)) return
     const port = serialSessions.get(id)
     if (port && port.isOpen) {
@@ -110,7 +110,7 @@ function setupSerialHandlers(ipcMain, mainWindow) {
     }
   })
 
-  ipcMain.handle('serial:disconnect', async (event, id) => {
+  ipcMain.handle('serial:disconnect', async (event, id) => {  // 断开串口连接，参数为会话ID，返回断开结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const port = serialSessions.get(id)
     if (port) {

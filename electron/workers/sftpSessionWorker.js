@@ -67,7 +67,6 @@ let verifySeq = 0
 /** 主机公钥校验回调函数 */
 const verifyCallbacks = new Map()
 /** 状态对象 */
-
 const state = {
   conn: null,  // SSH 连接
   sftp: null,  // SFTP 会话

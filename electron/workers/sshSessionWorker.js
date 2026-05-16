@@ -73,7 +73,6 @@ function buildConnectConfig(cfg, hostVerifier) {
 let verifySeq = 0
 /** 主机公钥校验回调函数 */
 const verifyCallbacks = new Map()
-
 /** 状态对象 */
 const state = {
   conn: null,  // SSH 连接
@@ -96,7 +95,7 @@ function hostVerifier(key, callback) {
     host: config.host,
     port: config.port || 22,
     keyBase64: raw.toString('base64'),
-  })
+  })  // ssh2 的 hostVerifier 在 Worker 里，但 弹框必须在主进程（要 dialog 和 BrowserWindow），所以发消息到主线程
 }
 
 parentPort.on('message', (msg) => {  // 监听主线程发送的消息
@@ -154,9 +153,7 @@ function postClosed() {
   post({ type: 'CLOSED' })
 }
 
-/** SSH 连接 */
 state.conn = new Client()
-
 state.conn.on('ready', () => {  // 监听 SSH 连接就绪事件
   state.conn.shell({ term: 'xterm-256color' }, (err, stream) => {
     if (err) {
@@ -167,24 +164,23 @@ state.conn.on('ready', () => {  // 监听 SSH 连接就绪事件
       return
     }
     state.stream = stream
-    stream.on('data', (data) => {
+    stream.on('data', (data) => {  // 监听 SSH 流数据事件，参数为数据
       post({ type: 'OUTPUT', data: data.toString('binary') })
     })
-    stream.stderr.on('data', (data) => {
+    stream.stderr.on('data', (data) => {  // 监听 SSH 流错误数据事件，参数为数据
       post({ type: 'OUTPUT', data: data.toString('binary') })
     })
-    stream.on('close', postClosed)
-    state.conn.on('close', postClosed)
+    stream.on('close', postClosed)  // 监听 SSH 流关闭事件，发送关闭消息
+    state.conn.on('close', postClosed)  // 监听 SSH 连接关闭事件，发送关闭消息
     post({ type: 'READY' })
   })
 })
-
-state.conn.on('error', (err) => {  // 监听 SSH 连接错误事件
+state.conn.on('error', (err) => {  // 监听 SSH 连接错误事件，参数为错误对象
   postFail(err.message)
 })
 
 try {
-  state.conn.connect(buildConnectConfig(config, hostVerifier))  // 连接 SSH 服务器
+  state.conn.connect(buildConnectConfig(config, hostVerifier))  // 连接 SSH 服务器，参数为连接配置、主机公钥校验器
 } catch (e) {
   postFail(e.message)  // 发送失败消息
 }

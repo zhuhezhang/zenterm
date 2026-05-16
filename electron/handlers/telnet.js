@@ -89,7 +89,10 @@ function stripTelnetStream(socket, chunk) {
   return Buffer.from(output)
 }
 
-/** 清除 Telnet 解析器状态 */
+/** 
+ * 清除 Telnet 解析器状态 
+ * @param {import('net').Socket} socket Telnet 会话的 socket 实例
+ */
 function clearTelnetParserState(socket) {
   telnetInboundPending.delete(socket)
 }
@@ -100,7 +103,7 @@ function clearTelnetParserState(socket) {
  * @param {Electron.BrowserWindow} mainWindow 主窗口实例，用于在处理函数中向渲染进程发送 IPC 消息
  */
 function setupTelnetHandlers(ipcMain, mainWindow) {
-  ipcMain.handle('telnet:connect', async (event, id, config) => {
+  ipcMain.handle('telnet:connect', async (event, id, config) => {  // 连接 Telnet，参数为会话ID、配置对象，返回连接结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     return new Promise((resolve, _reject) => {
       const socket = new net.Socket()
@@ -147,7 +150,7 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('telnet:data', (event, id, data, encoding) => {  // 处理 Telnet 数据事件，发送数据到 Telnet 会话
+  ipcMain.on('telnet:data', (event, id, data, encoding) => {  // 发送 Telnet 数据，参数为会话ID、数据、编码，返回发送结果
     if (!isTrustedIpcSender(event.sender)) return
     const socket = telnetSessions.get(id)
     if (socket) {
@@ -156,7 +159,7 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
     }
   })
 
-  ipcMain.handle('telnet:disconnect', async (event, id) => {  // 处理 Telnet 断开连接请求，销毁 socket 并清理会话
+  ipcMain.handle('telnet:disconnect', async (event, id) => {  // 断开 Telnet 连接，参数为会话ID，返回断开结果
     if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
     const socket = telnetSessions.get(id)
     if (socket) {
