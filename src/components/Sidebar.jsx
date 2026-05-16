@@ -7,10 +7,11 @@ import SftpPanel from './SftpPanel.jsx'
 import ConnectionTypeIcon from './common.jsx'
 import '../styles/sidebar.css'
 
+/** 连接类型颜色映射 */
 const TYPE_COLORS = { ssh: '#58a6ff', telnet: '#3fb950', serial: '#ffa657' }
 /** 搜索时 buildTree 不注入占位分组，避免无匹配会话下出现空分组树 */
 const NO_GROUP_PLACEHOLDERS = []
-/** 名称非法字符验证正则表达式 */
+/** 名称非法字符正则表达式 */
 const INVALID_LABEL_CHARS = /[\/\\:*?"\u003c\u003e|\x00]/
 
 /** sftp和会话分组展开/收起图标 */
@@ -153,6 +154,7 @@ export default function Sidebar(props) {
   /** 关闭上下文菜单 */
   const closeCtx = () => setContextMenu(null)
 
+  /** 导入会话的文件输入引用 */
   const importSessionsFileRef = useRef(null)
   /** 与设置页「导入会话」一致：合并 JSON 中的会话并尽量将明文敏感字段吸入 vault */
   const handleImportSessionsFile = useCallback(async (e) => {
@@ -529,9 +531,11 @@ export default function Sidebar(props) {
     dragRef.current = null
   }
 
+  /** 搜索查询的 trimmed 版本 */
   const searchTrim = sessionSearchQuery.trim()
+  /** 搜索查询的 lowercased 版本 */
   const searchLower = searchTrim.toLowerCase()
-  /** 按保存的会话名（及主机）筛选侧边栏列表 */
+  /** 按保存的会话名（及主机）筛选侧边栏列表。 useMemo：记忆化计算，缓存结果，避免重复计算。当savedSessions/searchLower变化时重新计算 */
   const filteredSavedSessions = useMemo(() => {  // useMemo：记忆化计算，缓存结果，避免重复计算。当savedSessions/searchLower变化时重新计算
     if (!searchLower) return savedSessions
     return savedSessions.filter((s) => {
@@ -551,8 +555,7 @@ export default function Sidebar(props) {
     [filteredSavedSessions, treePlaceholders],
   )
 
-  /** 有筛选关键词时自动展开匹配会话所在分组 */
-  useEffect(() => {
+  useEffect(() => {  // 有筛选关键词时自动展开匹配会话所在分组
     if (!searchTrim) return
     const paths = new Set()
     for (const s of filteredSavedSessions) {
@@ -571,7 +574,8 @@ export default function Sidebar(props) {
     })
   }, [searchTrim, filteredSavedSessions])
 
-  const hasSftp = !!activeSession?.sftpReady  // !!(...) 把结果强制转换成布尔值
+  /** 是否有 SFTP 面板。 !!(...) 把结果强制转换成布尔值 */
+  const hasSftp = !!activeSession?.sftpReady
 
   return (
     <div className={`sidebar ${open ? 'open' : 'closed'}`} style={open ? style : undefined} onClick={closeCtx}>

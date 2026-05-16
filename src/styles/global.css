@@ -32,6 +32,7 @@
   --font-mono:    'JetBrains Mono', 'Cascadia Code', monospace;
 }
 
+/* 当 html 标签上有 [data-app-theme="light"] 时使用下面这套变量 */
 [data-app-theme="light"] {
   color-scheme: light;
   --bg-primary:   #ffffff;

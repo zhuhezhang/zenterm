@@ -4,6 +4,14 @@ import { fetchSessionSecrets } from '../store/credentialsBridge.js'
 import { TERMINAL_ENCODING_OPTIONS, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
 import '../styles/dialog.css'
 
+const SSH_DEFAULT = { host: '', port: '22', username: '', password: '', privateKey: '', passphrase: '', authType: 'password', label: '', group: '', enableSftp: false, encoding: DEFAULT_TERMINAL_ENCODING, backspaceMode: 'auto' }
+const TELNET_DEFAULT = { host: '', port: '23', label: '', group: '', encoding: DEFAULT_TERMINAL_ENCODING, backspaceMode: 'auto' }
+const SERIAL_DEFAULT = { path: '', baudRate: '9600', dataBits: '8', stopBits: '1', parity: 'none', label: '', group: '', encoding: DEFAULT_TERMINAL_ENCODING, backspaceMode: 'auto' }
+const BAUD_RATES = ['110','300','600','1200','2400','4800','9600','14400','19200','38400','57600','115200','128000','256000']
+const PARITIES = ['none','even','odd','mark','space']
+const PORT_MIN = 0
+const PORT_MAX = 65535
+
 /** 
  * 将退格模式字符串规范为合法值
  * @param {string} v 退格模式字符串
@@ -14,16 +22,11 @@ function normalizeBackspaceMode(v) {
   return s === 'auto' || s === 'del' || s === 'bs' ? s : null
 }
 
-const SSH_DEFAULT = { host: '', port: '22', username: '', password: '', privateKey: '', passphrase: '', authType: 'password', label: '', group: '', enableSftp: false, encoding: DEFAULT_TERMINAL_ENCODING, backspaceMode: 'auto' }
-const TELNET_DEFAULT = { host: '', port: '23', label: '', group: '', encoding: DEFAULT_TERMINAL_ENCODING, backspaceMode: 'auto' }
-const SERIAL_DEFAULT = { path: '', baudRate: '9600', dataBits: '8', stopBits: '1', parity: 'none', label: '', group: '', encoding: DEFAULT_TERMINAL_ENCODING, backspaceMode: 'auto' }
-const BAUD_RATES = ['110','300','600','1200','2400','4800','9600','14400','19200','38400','57600','115200','128000','256000']
-const PARITIES = ['none','even','odd','mark','space']
-
-const PORT_MIN = 0
-const PORT_MAX = 65535
-
-/** 端口输入严格限制在 0–65535；空字符串保留便于清空重输 */
+/** 
+ * 端口输入严格限制在 0–65535；空字符串保留便于清空重输
+ * @param {string} raw 原始端口输入
+ * @returns {string} 规范后的端口输入，如果输入不合法则返回空字符串
+ */
 function clampPortFieldString(raw) {
   const s = String(raw ?? '').trim()
   if (s === '') return ''
@@ -34,8 +37,9 @@ function clampPortFieldString(raw) {
 
 /**
  * 串口路径是否与 listPorts 结果一致（与主进程 serial.js 判定对齐；Windows 上对 COM 路径不区分大小写）
- * @param {string} requestedPath
- * @param {Array<{ path?: string }>} ports
+ * @param {string} requestedPath 请求的串口路径
+ * @param {Array<{ path?: string }>} ports 枚举的串口列表
+ * @returns {boolean} 是否与枚举列表一致，如果请求的串口路径为空则返回 false
  */
 function isSerialPathInEnumeratedList(requestedPath, ports) {
   const req = String(requestedPath ?? '').trim()
@@ -50,8 +54,7 @@ function isSerialPathInEnumeratedList(requestedPath, ports) {
 }
 
 /**
- * 获取默认配置
- * 根据协议类型返回对应的默认配置对象，如果传入 initial 则在默认配置基础上覆盖初始值
+ * 获取默认配置：根据协议类型返回对应的默认配置对象，如果传入 initial 则在默认配置基础上覆盖初始值
  * @param {string} tab 协议类型
  * @param {Object} initial 初始配置
  * @param {string} [globalBackspace] 旧版全局设置中的退格模式，用于新建会话默认值
@@ -65,8 +68,7 @@ function getDefault(tab, initial, globalBackspace) {
 }
 
 /**
- * 构建标签名称
- * 根据协议类型和配置对象生成一个标签名称，去除非法字符并保证不为空
+ * 构建标签名称：根据协议类型和配置对象生成一个标签名称，去除非法字符并保证不为空
  * @param {string} tab 协议类型
  * @param {Object} form 配置对象
  * @returns {string} 标签名称
@@ -81,8 +83,7 @@ function buildLabel(tab, form) {
 }
 
 /**
- * 连接对话框组件
- * 提供 SSH、Telnet、Serial 三种连接方式的配置界面，支持保存会话和直接连接
+ * 连接对话框组件：提供 SSH、Telnet、Serial 三种连接方式的配置界面，支持保存会话和直接连接
  * @param {Object} props 组件属性
  * @param {string} props.type 初始协议类型（ssh/telnet/serial）
  * @param {Object} props.initialData 初始配置数据，用于编辑已保存会话时预填充表单
@@ -94,45 +95,67 @@ function buildLabel(tab, form) {
  * @param {string} [props.appBackspaceFallback] 旧版全局「退格键模式」，新建时作默认值（已迁移到按会话配置）
  */
 export default function ConnectDialog({ type, initialData, savedGroups, appBackspaceFallback, onConnect, onSaveAndConnect, onSaveOnly, onClose }) {
-  const { t } = useI18n()
-  const [tab, setTab] = useState(type || 'ssh')
-  const [form, setForm] = useState(() => getDefault(type || 'ssh', initialData, appBackspaceFallback))
-  const [ports, setPorts] = useState([])
-  const [error, setError] = useState('')
-  const [credDialog, setCredDialog] = useState(null)  // { username, password, callback } 或 null，表示是否显示凭证输入对话框以及初始值和连接回调函数
+  const { t } = useI18n()  // 国际化翻译函数
+  const [tab, setTab] = useState(type || 'ssh')  // 当前协议类型
+  const [form, setForm] = useState(() => getDefault(type || 'ssh', initialData, appBackspaceFallback))  // 表单数据
+  const [ports, setPorts] = useState([])  // 串口列表
+  const [error, setError] = useState('')  // 错误信息
+  const [credDialog, setCredDialog] = useState(null)  // { username, password, privateKey, passphrase, callback } 或 null，表示是否显示凭证输入对话框以及初始值和连接回调函数
+  
+  /** 用户名输入框引用，用来聚焦到用户名输入框 */
   const credUserInputRef = useRef(null)
+  /** 私钥输入框引用，用来聚焦到私钥输入框 */
   const credPkeyInputRef = useRef(null)
+  /** 密码输入框引用，用来聚焦到密码输入框 */
   const credPassInputRef = useRef(null)
-  /** 避免在凭证弹层内每次输入都重复 focus，只在本次打开时聚焦一次 */
+  /** 避免在凭证弹层内每次输入都重复 focus，只在本次打开时聚焦一次，用一个布尔值来记录是否已经聚焦过 */
   const credFocusAppliedRef = useRef(false)
+  /** SSH / Telnet 各自上次在表单里编辑的端口；互切标签时不把对方的端口写进当前协议 */
+  const portByTabRef = useRef({ ssh: SSH_DEFAULT.port, telnet: TELNET_DEFAULT.port })
 
   /**
-   * 切换协议类型时更新表单数据。保留已有参数，补齐当前协议缺省字段，重置错误信息
-   * @param {string} t 新的协议类型
+   * 切换协议类型时更新表单数据。保留已有参数，补齐当前协议缺省字段，重置错误信息。
+   * SSH 与 Telnet 互切时端口不跟随对方，恢复该协议上次使用的端口（首次为 22 / 23）。
+   * @param {string} next 新的协议类型
    */
-  const switchTab = (t) => {
-    if (t === tab) return
-    setForm(prev => getDefault(t, prev, appBackspaceFallback))
-    setTab(t)
+  const switchTab = (next) => {
+    if (next === tab) return
+    const from = tab
+    setForm((prev) => {
+      if (from === 'ssh') {
+        const s = String(prev.port ?? '').trim()
+        portByTabRef.current.ssh = s === '' ? SSH_DEFAULT.port : clampPortFieldString(s) || SSH_DEFAULT.port
+      }
+      if (from === 'telnet') {
+        const s = String(prev.port ?? '').trim()
+        portByTabRef.current.telnet = s === '' ? TELNET_DEFAULT.port : clampPortFieldString(s) || TELNET_DEFAULT.port
+      }
+      const merged = getDefault(next, prev, appBackspaceFallback)
+      const sshTelnetSwitch = (from === 'ssh' && next === 'telnet') || (from === 'telnet' && next === 'ssh')
+      if (sshTelnetSwitch) {
+        const p = next === 'ssh' ? portByTabRef.current.ssh : portByTabRef.current.telnet
+        return { ...merged, port: p }
+      }
+      return merged
+    })
+    setTab(next)
     setError('')
   }
 
-  // 刷新串口列表，用于串口连接时选择串口设备
-  const refreshSerialPorts = useCallback(() => {
+  /** 刷新串口列表，用于串口连接时选择串口设备 */
+  const refreshSerialPorts = useCallback(() => {  // useCallback: 记忆化回调函数，避免重复创建回调函数，提高性能。当依赖项变化时，回调函数会被重新创建并记忆化
     window.zterm?.serial.listPorts().then((res) => {
       if (res?.success) setPorts(res.ports)
       else setPorts([])
     })
   }, [])
 
-  // 监听 tab：切换到 Serial 时枚举串口
-  useEffect(() => {
+  useEffect(() => {  // 监听 tab 变化，切换到 Serial 时枚举串口
     setError('')
     if (tab === 'serial') refreshSerialPorts()
   }, [tab, refreshSerialPorts])
 
-  /** 编辑已保存会话时从主进程 vault 拉取敏感字段合并到表单 */
-  useEffect(() => {
+  useEffect(() => {  // 编辑已保存会话时从主进程 vault 拉取敏感字段合并到表单
     let cancelled = false
     const sid = initialData?.savedId
     if (!sid) return
@@ -192,8 +215,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
     label: form.label?.trim() || buildLabel(tab, form),
   })
 
-  /** 凭证弹层内 HTML autoFocus 易被关闭按钮等抢占；打开时在 layout 阶段 + 下一帧主动 focus 一次 */
-  useLayoutEffect(() => {  // useLayoutEffect 在 DOM 渲染后执行，不会阻塞主线程，不会影响用户体验
+  useLayoutEffect(() => {  // 凭证弹层内 HTML autoFocus 易被关闭按钮等抢占；打开时在 layout 阶段 + 下一帧主动 focus 一次（useLayoutEffect 在 DOM 渲染后执行，不会阻塞主线程，不会影响用户体验）
     if (!credDialog) {
       credFocusAppliedRef.current = false
       return
@@ -218,9 +240,8 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
       if (el === credUserInputRef.current && !u) el?.select?.()
     }
     run()
-    const id = requestAnimationFrame(run)  // requestAnimationFrame 让回调函数在下一帧执行，是异步的，不会阻塞主线程，不会影响用户体验
+    const id = requestAnimationFrame(run)  // requestAnimationFrame 让回调函数在下一帧执行（是异步的，不会阻塞主线程，不会影响用户体验）
     return () => cancelAnimationFrame(id)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- 每轮弹层只聚焦一次；打开时读取当时 form/tab（同 buildConfig）
   }, [credDialog])
 
   /**

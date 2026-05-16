@@ -17,9 +17,9 @@ export function resolveEffectiveAppTheme(appTheme) {
 }
 
 /**
- * xterm 内置主题：与界面亮/暗一致
+ * 获取 xterm 内置主题
  * @param {AppThemeResolved} mode 主题名称
- * @returns {Record<string, string>} xterm 内置主题
+ * @returns {Record<string, string>} xterm 内置主题对象
  */
 export function getXtermTheme(mode) {
   if (mode === 'light') {

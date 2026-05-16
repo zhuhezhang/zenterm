@@ -11,12 +11,20 @@ import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from
 import '../styles/dialog.css'
 import '../styles/settings.css'
 
-/** 保存前：规则名为空则按当前语言设为「未命名规则 n」 */
+/** 
+ * 终端文本高亮规则名称规范化：规则名称为空则按当前语言设为「未命名规则 n」
+ * @param {Array} rules 高亮规则列表
+ * @param {string} lang 语言
+ * @returns {Array} 规范后的高亮规则列表
+ */
 function normalizeHighlightRulesForSave(rules, lang) {
-  const L = lang === 'en' ? 'en' : 'zh'
-  return (rules || []).map((rule, i) => {
-    const name = String(rule?.name ?? '').trim()
-    return { ...rule, name: name || translate(L, 'settings.unnamedRule', { n: i + 1 }) }
+  const locale = lang === 'en' ? 'en' : 'zh'
+  const safeList = rules ?? []
+
+  return safeList.map((rule, index) => {
+    const trimmed = String(rule?.name ?? '').trim() // 去除规则名称两端的空白字符
+    const displayName = trimmed || translate(locale, 'settings.unnamedRule', { n: index + 1 }) // 如果规则名称为空，则按当前语言设为「未命名规则 n」
+    return { ...rule, name: displayName } // 返回规范后的高亮规则对象
   })
 }
 
@@ -74,17 +82,20 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   const msgLang = resolveEffectiveUiLanguage(form.uiLanguage ?? settings.uiLanguage ?? 'auto')
   const t = (path, params) => translate(msgLang, path, params)
 
-  const importRef = useRef(null)  // 和useState类似，但它返回一个可变的ref对象，其.current属性被初始化为传入的参数（initialValue）。返回的ref对象在组件的整个生命周期内保持不变，因此它不会触发重新渲染
-  const importSettingsRef = useRef(null)  // 用于导入设置的文件输入引用
+  /** 导入设置的文件输入引用。 useRef和useState类似，但它返回一个可变的ref对象，其.current属性被初始化为传入的参数（initialValue）。返回的ref对象在组件的整个生命周期内保持不变，因此它不会触发重新渲染*/
+  const importRef = useRef(null)
+  /** 用于导入设置的文件输入引用 */
+  const importSettingsRef = useRef(null)
   /** 合并后的标签页：常规 / SSH 与终端 / 数据与安全（功能与原先 7 个 tab 一致） */
   const tabs = [
     { key: 'general', label: t('settings.tabs.general') },
     { key: 'ssh-terminal', label: t('settings.tabs.sshTerminal') },
     { key: 'data-security', label: t('settings.tabs.dataSecurity') },
   ]
-  const [activeTab, setActiveTab] = useState('general')
+  const [activeTab, setActiveTab] = useState('general')  // 当前选中的标签页
   const [settingsHoverTip, setSettingsHoverTip] = useState(null)  // 设置弹窗内浮动说明（原生 title 在 Electron 内不可靠，用 fixed 层统一展示）
-  const settingsHoverTipTimerRef = useRef(null)  // 设置悬停提示定时器引用
+  /** 设置悬停提示定时器引用 */
+  const settingsHoverTipTimerRef = useRef(null)
 
   /** 隐藏设置悬停提示，清除定时器并设置状态为 null */
   const hideSettingsHoverTip = useCallback(() => {
@@ -114,8 +125,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     }, 1000)
   }
 
-  /** 任意按下或点击（含键盘触发的主按钮）时关闭已显示或待显示的说明 */
-  useEffect(() => {
+  useEffect(() => {  // 任意按下或点击（含键盘触发的主按钮）时关闭已显示或待显示的说明
     document.addEventListener('pointerdown', hideSettingsHoverTip, true)
     document.addEventListener('click', hideSettingsHoverTip, true)
     return () => {

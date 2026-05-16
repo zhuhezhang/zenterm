@@ -6,7 +6,7 @@
  */
 export function buildSecretsSyncPayload(config, settings) {
   const keys = { password: null, privateKey: null, passphrase: null }
-  const persist = !!settings.saveSecretsToVault
+  const persist = !!settings.saveSecretsToVault  // 是否持久化到加密存储(!!表示强制转换为布尔值)
   if (config.type === 'ssh') {
     keys.password = persist && config.password ? config.password : null
     keys.privateKey = persist && config.privateKey ? config.privateKey : null
@@ -95,7 +95,7 @@ export async function clearAllVaultEntries() {
 /**
  * 设置变更后：按新开关重新写入每条会话的 vault（需从 vault 读出再按策略裁剪）
  * @param {Array} savedSessions 不含明文的会话列表
- * @param {object} settings
+ * @param {object} settings 当前应用设置
  */
 export async function reapplyVaultPoliciesForAllSessions(savedSessions, settings) {
   const api = window.zterm?.credentials

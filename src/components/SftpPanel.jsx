@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
 import '../styles/sftp.css'
 
+/** 非法文件名字符正则表达式 */
+const INVALID_NAME_CHARS = /[\/\\:*?"\u003c\u003e|\x00]/
+
 /**
  * 沙盒渲染进程不提供 File.path，须通过 preload 的 webUtils.getPathForFile。
  * @param {File} file 文件对象
@@ -42,9 +45,6 @@ function readAllDirEntries(reader) {
     step()
   })
 }
-
-/** 非法文件名字符 */
-const INVALID_NAME_CHARS = /[\/\\:*?"\u003c\u003e|\x00]/
 
 /** 
  * 格式化文件大小
@@ -232,7 +232,10 @@ export default function SftpPanel({ session }) {
     else setError(res.error)
   }
 
-  /** 开始重命名 */
+  /** 
+   * 开始重命名
+   * @param {Object} item 文件（文件夹）对象
+   */
   const startRename = (item) => {
     setRenaming(item)
     setRenameValue(item.name)
@@ -431,7 +434,11 @@ export default function SftpPanel({ session }) {
     }
   }
 
-  /** 在文件/文件夹行上打开右键菜单 */
+  /**
+   * 在文件/文件夹行上打开右键菜单
+   * @param {Event} e 事件对象
+   * @param {Object} item 文件（文件夹）对象
+   */
   const openFileCtx = (e, item) => {
     e.preventDefault()
     e.stopPropagation()
@@ -440,7 +447,8 @@ export default function SftpPanel({ session }) {
     setSelected(item)
   }
 
-  const breadcrumbs = path === '/' ? ['/'] : ['/', ...path.split('/').filter(Boolean)]  // 面包屑导航：当前路径为根目录时，只显示根目录；否则显示根目录和当前路径
+  /** 面包屑导航：当前路径为根目录时，只显示根目录；否则显示根目录和当前路径 */
+  const breadcrumbs = path === '/' ? ['/'] : ['/', ...path.split('/').filter(Boolean)]
 
   return (
     <div className="sftp-panel">

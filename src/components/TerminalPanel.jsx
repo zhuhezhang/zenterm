@@ -2,47 +2,29 @@ import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import '@xterm/xterm/css/xterm.css'
-import '../styles/terminal.css'
 import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
 import { resolveLoggingDirectory, clampTerminalScrollback, normalizeLoggingMode } from '../store/settingsStore.js'
 import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
 import { getXtermTheme } from '../theme/appTheme.js'
-
-/**
- * 标准化错误对象，提取原始错误文本
- * @param {unknown} err 错误对象
- * @returns {{ raw: string, lower: string }} 标准化的错误对象
- */
-function normalizeError(err) {
-  const raw = String(err?.message || err?.error || err || '').trim()
-  return { raw, lower: raw.toLowerCase() }
-}
-/**
- * 将友好提示与原始错误拼接，便于用户理解和排障
- * @param {string} friendly 友好提示
- * @param {string} raw 原始错误文本
- * @returns {string} 拼接后的错误提示
- */
-function withRawDetail(friendly, raw, lang) {
-  if (!raw) return friendly
-  return translate(lang, 'errors.withRaw', { friendly, raw })
-}
-
-/** @param {object} [settings] */
-function uiLangFromSettings(settings) {
-  return resolveEffectiveUiLanguage(settings?.uiLanguage)
-}
+import '@xterm/xterm/css/xterm.css'
+import '../styles/terminal.css'
 
 /**
  * 映射 SSH 连接错误
  * @param {unknown} err 错误对象
+ * @param {string} lang 语言
  * @returns {string} 映射后的错误提示
  */
 function mapSshError(err, lang) {
-  const { raw, lower } = normalizeError(err)
-  const w = (key) => withRawDetail(translate(lang, key), raw, lang)
+  const raw = String(err?.message || err?.error || err || '').trim()  // 原始错误文本
+  const lower = raw.toLowerCase()
+  const w = (key) => {
+    const friendly = translate(lang, key)  // 友好提示
+    if (!raw) return friendly
+    return translate(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
+  }
+
   if (!raw) return translate(lang, 'errors.ssh.unknown')
   if (lower.includes('all configured authentication methods failed') || lower.includes('permission denied')) {
     return w('errors.ssh.auth')
@@ -64,11 +46,18 @@ function mapSshError(err, lang) {
 /**
  * 映射 SFTP 连接错误
  * @param {unknown} err 错误对象
+ * @param {string} lang 语言
  * @returns {string} 映射后的错误提示
  */
 function mapSftpError(err, lang) {
-  const { raw, lower } = normalizeError(err)
-  const w = (key) => withRawDetail(translate(lang, key), raw, lang)
+  const raw = String(err?.message || err?.error || err || '').trim()  // 原始错误文本
+  const lower = raw.toLowerCase()
+  const w = (key) => {
+    const friendly = translate(lang, key)  // 友好提示
+    if (!raw) return friendly
+    return translate(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
+  }
+
   if (!raw) return translate(lang, 'errors.sftp.unknown')
   if (lower.includes('no matching key exchange algorithm')) {
     return w('errors.sftp.kex')
@@ -81,11 +70,18 @@ function mapSftpError(err, lang) {
 /**
  * 映射 Telnet 连接错误
  * @param {unknown} err 错误对象
+ * @param {string} lang 语言
  * @returns {string} 映射后的错误提示
  */
 function mapTelnetError(err, lang) {
-  const { raw, lower } = normalizeError(err)
-  const w = (key) => withRawDetail(translate(lang, key), raw, lang)
+  const raw = String(err?.message || err?.error || err || '').trim()  // 原始错误文本
+  const lower = raw.toLowerCase()
+  const w = (key) => {
+    const friendly = translate(lang, key)  // 友好提示
+    if (!raw) return friendly
+    return translate(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
+  }
+
   if (!raw) return translate(lang, 'errors.telnet.unknown')
   if (lower.includes('connection timeout') || lower.includes('etimedout')) {
     return w('errors.telnet.timeout')
@@ -104,11 +100,18 @@ function mapTelnetError(err, lang) {
 /**
  * 映射串口连接错误
  * @param {unknown} err 错误对象
+ * @param {string} lang 语言
  * @returns {string} 映射后的错误提示
  */
 function mapSerialError(err, lang) {
-  const { raw, lower } = normalizeError(err)
-  const w = (key) => withRawDetail(translate(lang, key), raw, lang)
+  const raw = String(err?.message || err?.error || err || '').trim()  // 原始错误文本
+  const lower = raw.toLowerCase()
+  const w = (key) => {
+    const friendly = translate(lang, key)  // 友好提示
+    if (!raw) return friendly
+    return translate(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
+  }
+
   if (!raw) return translate(lang, 'errors.serial.unknown')
   if (lower.includes('cannot open') || lower.includes('access denied') || lower.includes('eperm') || lower.includes('eacces')) {
     return w('errors.serial.access')
@@ -258,7 +261,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
         cleanupRef.current.push(() => ro.disconnect())
         setupLogging(session, settingsRef.current, logFileRef, logFileStemStateRef, settingsRef)  // 重连：复用本标签页首次连接时的日志文件
         logFileRef.current?.setTerminal?.(term)
-        writelnWithLog(term, logFileRef, `\r\x1b[33m${translate(uiLangFromSettings(settings), 'terminal.reconnecting')}\x1b[0m`)
+        writelnWithLog(term, logFileRef, `\r\x1b[33m${translate(resolveEffectiveUiLanguage(settings?.uiLanguage), 'terminal.reconnecting')}\x1b[0m`)
         connectSession(term, fitAddonRef.current, session, onUpdate, cleanupRef, disconnectedRef, null, logFileRef, settingsRef)
       }
     })
@@ -291,9 +294,9 @@ function exportTerminalBuffer(term) {
 
 /**
  * 写入一行终端内容并按当前日志模式记入会话日志
- * @param {import('@xterm/xterm').Terminal} term
- * @param {{ current: { scheduleSnapshot?: () => void, enqueue?: (s: string) => void } | null }} logRef
- * @param {string} lineForWriteln 传给 term.writeln 的字符串（不含结尾换行）
+ * @param {import('@xterm/xterm').Terminal} term xterm 终端实例
+ * @param {{ current: { scheduleSnapshot?: () => void, enqueue?: (s: string) => void } | null }} logRef 日志引用，包含 scheduleSnapshot 和 enqueue 方法
+ * @param {string} lineForWriteln 传给 term.writeln 的字符串（不含结尾换行），用于写入终端
  */
 function writelnWithLog(term, logRef, lineForWriteln) {
   term.writeln(lineForWriteln)
@@ -367,8 +370,8 @@ function applyHighlightRules(text, settings) {
 /**
  * 返回第一个行结束序列最后一个字符的下标（支持 \r\n、\n、单独 \r），无则 -1。
  * 串口常按字节小块到达，高亮需在累积文本上匹配；按行切分可减少跨块断词。
- * @param {string} s
- * @returns {number}
+ * @param {string} s 文本字符串
+ * @returns {number} 下标
  */
 function nextLineBreakEndIndex(s) {
   for (let i = 0; i < s.length; i++) {
@@ -384,7 +387,7 @@ function nextLineBreakEndIndex(s) {
 
 /**
  * 创建并配置 xterm 终端实例
- * @param {'dark'|'light'} themeMode
+ * @param {'dark'|'light'} themeMode 主题名称
  * @param {number} scrollback 滚动缓冲行数（由设置 clamp）
  * @returns {Terminal} 配置好的 Terminal 实例
  */
@@ -431,8 +434,8 @@ function applyTerminalSettings(term, settingsRef) {
 
 /**
  * 去掉已完整的 ANSI/OSC 等转义序列（CSI 如 [33m、[42D；OSC 至 BEL 或 ST 等）
- * @param {string} s
- * @returns {string}
+ * @param {string} s 文本字符串
+ * @returns {string} 去掉已完整的 ANSI/OSC 等转义序列后的文本
  */
 function stripCompleteAnsiEscapes(s) {
   if (!s) return ''
@@ -447,8 +450,8 @@ function stripCompleteAnsiEscapes(s) {
 
 /**
  * 从串尾拆出可能未闭合的转义前缀，避免分包时把 \x1b 与 [33m 拆开误当成可见字符
- * @param {string} s
- * @returns {{ body: string, carry: string }}
+ * @param {string} s 文本字符串
+ * @returns {{ body: string, carry: string }} 包含已去掉转义序列的文本和可能未闭合的转义前缀
  */
 function peelIncompleteAnsiSuffix(s) {
   if (!s) return { body: '', carry: '' }
@@ -470,8 +473,8 @@ function peelIncompleteAnsiSuffix(s) {
 
 /**
  * 去掉其余 C0 控制符（保留 \t \n \r）
- * @param {string} s
- * @returns {string}
+ * @param {string} s 文本字符串
+ * @returns {string} 去掉其余 C0 控制符（保留 \t \n \r）后的文本
  */
 function stripOtherC0Controls(s) {
   return s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
@@ -479,9 +482,9 @@ function stripOtherC0Controls(s) {
 
 /**
  * 将一段终端输出转为适合写入 .log 的纯文本（可见字符 + 换行制表）
- * @param {string} carry
- * @param {string} chunk
- * @returns {{ text: string, carry: string }}
+ * @param {string} carry 可能未闭合的转义前缀
+ * @param {string} chunk 终端输出
+ * @returns {{ text: string, carry: string }} 包含已去掉转义序列的文本和可能未闭合的转义前缀
  */
 function stripAnsiForLogChunk(carry, chunk) {
   const raw = carry + chunk
@@ -492,10 +495,10 @@ function stripAnsiForLogChunk(carry, chunk) {
 
 /**
  * 设置会话日志：buffer = xterm 缓冲快照整文件覆盖；stream = 下行流去 ANSI 后追加。
- * @param {Object} session
- * @param {Object} settings
- * @param {{ current: object | null }} logFileRef
- * @param {{ current: { sessionId: string|null, stem: string|null } }} logFileStemStateRef
+ * @param {Object} session 会话对象，包含连接信息和状态
+ * @param {Object} settings 设置对象，包含用户偏好设置
+ * @param {{ current: object | null }} logFileRef 日志引用，包含 setTerminal、scheduleSnapshot 和 enqueue 方法
+ * @param {{ current: { sessionId: string|null, stem: string|null } }} logFileStemStateRef 日志文件名状态引用，包含 sessionId 和 stem
  * @param {{ current?: object } | null} _settingsRef 预留与调用方签名一致（本函数内以创建时的 logKind 为准）
  */
 function setupLogging(session, settings, logFileRef, logFileStemStateRef, _settingsRef) {
@@ -514,7 +517,7 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
   }
 
   let logFileName = stemState.stem
-  if (!logFileName) {
+  if (!logFileName) { // 如果日志文件名为空，则生成新的日志文件名
     const now = new Date()
     const timestamp = now.getFullYear() +
       String(now.getMonth()+1).padStart(2,'0') +
@@ -536,6 +539,7 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
   let pending = ''
   let ansiCarry = ''
   let streamTimer = null
+  /** 刷新待处理流数据 */
   const flushPendingStream = () => {
     streamTimer = null
     if (!pending) return
@@ -543,6 +547,8 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
     pending = ''
     window.zterm?.log?.append?.(logDir, logFileName, chunk)
   }
+
+  /** 将数据追加到日志文件中 */
   const enqueue = (chunk) => {
     if (logKind !== 'stream') return
     if (chunk === '' || chunk == null) return
@@ -557,10 +563,13 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
   }
 
   // --- buffer（整文件覆盖）
-  /** @type {import('@xterm/xterm').Terminal|null} */
+  /** xterm 终端实例 */
   let terminal = null
+  /** 定时器引用，用于延迟执行快照 */
   let snapshotTimer = null
+  /** 快照延迟时间 */
   const SNAPSHOT_DEBOUNCE_MS = 80
+  /** 刷新快照 */
   const flushSnapshot = () => {
     if (!window.zterm?.log?.write) return
     if (!terminal) return
@@ -568,6 +577,8 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
       window.zterm.log.write(logDir, logFileName, exportTerminalBuffer(terminal))
     } catch (_) {}
   }
+
+  /** 计划快照 */
   const scheduleSnapshot = () => {
     if (logKind !== 'buffer') return
     if (!window.zterm?.log?.write) return
@@ -582,6 +593,7 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
     }, SNAPSHOT_DEBOUNCE_MS)
   }
 
+  /** 立即刷盘 */
   const flushNow = () => {
     if (snapshotTimer != null) {
       window.clearTimeout(snapshotTimer)
@@ -627,7 +639,7 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
 async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, isCancelled, logFileRef, settingsRef) {
   const { id, type } = session  // 从会话对象中提取会话 ID 和类型（SSH/Telnet/Serial）
   const terminalEncoding = session.encoding || DEFAULT_TERMINAL_ENCODING
-  const L = () => uiLangFromSettings(settingsRef.current)
+  const L = () => resolveEffectiveUiLanguage(settingsRef.current?.uiLanguage)
   const writeInfo    = (m) => writelnWithLog(term, logFileRef, `\r\x1b[33m${m}\x1b[0m`)
   const writeError   = (m) => writelnWithLog(term, logFileRef, `\r\x1b[31m${m}\x1b[0m`)
   const writeSuccess = (m) => writelnWithLog(term, logFileRef, `\r\x1b[32m${m}\x1b[0m`)

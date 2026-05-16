@@ -187,7 +187,7 @@ export const MESSAGES = {
       logDefaultDir: '系统下载目录（默认）',
       logResetDefault: '恢复默认目录为：\n{path}',
       logResetAria: '恢复默认日志目录',
-      logPathDisabledTip: '当前为「无」：未启用终端 I/O 日志，目录设置无效；先选择缓冲或原始流模式后再配置',
+      logPathDisabledTip: '当前未启用终端 I/O 日志，目录设置无效；先选择缓冲或原始流模式后再配置',
       logPathRejected: '所选目录不在允许范围内，会话日志将无法写入。',
       logPathValidateFail: '校验日志目录失败：{msg}',
       choose: '选择',
@@ -535,7 +535,7 @@ export const MESSAGES = {
       logDefaultDir: 'Downloads (default)',
       logResetDefault: 'Reset default directory to:\n{path}',
       logResetAria: 'Reset log directory to default',
-      logPathDisabledTip: 'Logging is off (“None”): the directory is ignored. Pick buffer or stream mode first to configure it.',
+      logPathDisabledTip: 'Logging is off, directory is ignored. Pick buffer or stream mode first to configure it.',
       logPathRejected: 'This folder is outside the allowed locations; session logs cannot be written there.',
       logPathValidateFail: 'Could not validate log folder: {msg}',
       choose: 'Browse',
@@ -701,8 +701,8 @@ export const MESSAGES = {
 /**
  * 翻译文案，根据语言和路径获取翻译后的文案
  * @param {'zh'|'en'} lang 语言
- * @param {string} path 路径
- * @param {Record<string, string|number>} [params] 参数
+ * @param {string} path 路径(如"zh.titlebar.close")
+ * @param {Record<string, string|number>} [params] 参数（如{name: '张三'}）
  * @returns {string} 翻译后的文案
  */
 export function translate(lang, path, params = {}) {
@@ -713,5 +713,5 @@ export function translate(lang, path, params = {}) {
     cur = cur?.[p]
   }
   if (typeof cur !== 'string') return path
-  return cur.replace(/\{(\w+)\}/g, (_, k) => (params[k] != null ? String(params[k]) : `{${k}}`))
+  return cur.replace(/\{(\w+)\}/g, (_, k) => (params[k] != null ? String(params[k]) : `{${k}}`))  // 替换占位符
 }

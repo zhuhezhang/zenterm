@@ -12,22 +12,13 @@ import {
   loadGroupPlaceholders, saveGroupPlaceholders, addGroupPlaceholder, prunePlaceholdersForOccupiedGroups
 } from './store/sessionStore.js'
 import {
-  syncSessionSecretsToVault,
-  resolveAffectedSavedId,
-  mergeSessionWithVaultSecrets,
-  removeVaultEntry,
-  duplicateVaultEntry,
-  reapplyVaultPoliciesForAllSessions,
+  syncSessionSecretsToVault, resolveAffectedSavedId, mergeSessionWithVaultSecrets,
+  removeVaultEntry, duplicateVaultEntry, reapplyVaultPoliciesForAllSessions,
 } from './store/credentialsBridge.js'
 import { loadSettings, saveSettings, clampSidebarWidthPx, DEFAULT_SIDEBAR_WIDTH } from './store/settingsStore.js'
 import { resolveEffectiveUiLanguage } from './i18n/resolveUiLanguage.js'
 import { resolveEffectiveAppTheme } from './theme/appTheme.js'
 import './styles/app.css'
-
-/** 生成唯一会话 ID，格式为 sess-时间戳-随机字符串 */
-function generateId() {
-  return `sess-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-}
 
 /**
  * 编辑已保存会话后，若原分组路径上已无任何会话，返回该路径以便添加占位分组
@@ -85,7 +76,7 @@ function useSyncedAppTheme(appTheme) {
       const eff = resolveEffectiveAppTheme(appTheme)
       setEffective(eff)
       const root = document.documentElement
-      root.dataset.appTheme = eff
+      root.dataset.appTheme = eff  // 使 html 标签变成类似<html data-app-theme="light" lang="zh-CN">这样的形式，方便在 CSS 中使用 [data-app-theme="light"] 选择器
       root.style.colorScheme = eff
       window.zterm?.window?.setBackgroundColor?.(eff === 'light' ? '#ffffff' : '#0d1117')
     }
@@ -141,7 +132,7 @@ function AppMain({ settings, setSettings }) {
    * 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听器
    * @param {MouseEvent} e 鼠标事件对象，包含鼠标位置等信息
    */
-  const handleDividerMouseDown = useCallback((e) => {
+  const handleDividerMouseDown = useCallback((e) => {  // useCallback：把函数做成稳定的、可重用的函数引用，让它在组件重渲染时不会不断变动，避免每次渲染都创建新的函数引用
     e.preventDefault()
     const startX = e.clientX
     const startW = sidebarWidth
@@ -186,7 +177,7 @@ function AppMain({ settings, setSettings }) {
    * @returns {string} 生成的会话 ID
    */
   const launchSession = useCallback((config) => {
-    const id = generateId()
+    const id = `sess-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`  // 生成唯一会话ID(格式为 sess-时间戳-4位随机字符串)
     // prev => ... 是函数形式的更新器，prev 代表更新前的旧 sessions 数组，使用函数形式可以确保你基于最新的状态更新，避免并发渲染时出现旧值问题
     // [...prev, {...}] 是使用展开运算符创建一个新的数组，包含旧数组的所有元素以及一个新的会话对象，这样做是为了保持状态的不可变性，确保 React 能正确检测到状态变化并重新渲染组件
     // { id, ...config, status: 'connecting' } 创建一个新的会话对象，包含生成的 ID、传入的配置（type、host、username 等）以及初始状态 'connecting'，然后添加到会话列表中
@@ -235,7 +226,10 @@ function AppMain({ settings, setSettings }) {
     terminalClearScreenRef.current[sessionId] = fn
   }, [])
 
-  /** 右键标签「清屏」：清当前标签对应 xterm 视口（含滚动缓冲由 xterm 行为决定） */
+  /**
+   * 右键标签「清屏」：清当前标签对应 xterm 视口（含滚动缓冲由 xterm 行为决定）
+   * @param {string} sessionId 会话 ID
+   */
   const handleClearTabScreen = useCallback((sessionId) => {
     terminalClearScreenRef.current[sessionId]?.()
   }, [])
@@ -300,7 +294,10 @@ function AppMain({ settings, setSettings }) {
    * 更新分组占位符列表变量，并保存到localStorage
    * @param {Array} next 新的占位符列表
    */
-  const updatePlaceholders = useCallback((next) => { setGroupPlaceholders(next); saveGroupPlaceholders(next) }, [])
+  const updatePlaceholders = useCallback((next) => {
+    setGroupPlaceholders(next)
+    saveGroupPlaceholders(next)
+  }, [])
 
   /**
    * 仅保存会话（编辑/新建）：若 initialData 有 savedId，则编辑该会话；否则新建。同时检查是否需要添加占位分组

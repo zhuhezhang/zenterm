@@ -3,7 +3,9 @@ import { useI18n } from '../context/I18nContext.jsx'
 import ConnectionTypeIcon from './common.jsx'
 import '../styles/tabbar.css'
 
+/** 状态点图标映射 */
 const STATUS_DOT = { connecting: '●', connected: '●', disconnected: '○', error: '●' }
+/** 状态点类名映射 */
 const STATUS_CLS = { connecting: 'connecting', connected: 'connected', disconnected: 'disconnected', error: 'error' }
 
 /**

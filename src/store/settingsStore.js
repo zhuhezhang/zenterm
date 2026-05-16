@@ -1,12 +1,25 @@
+import {
+  DEFAULT_ALGORITHM_PREFERENCES,
+  SSH_ALGORITHM_OPTION_POOL,
+  isWeakSshAlgorithm,
+} from '../../shared/sshAlgorithmDefaults.js'
+
 /** 本地存储设置的键名 */
 const SETTINGS_KEY = 'zterm_settings'
-
 /** 默认放在系统下载目录下的日志子文件夹名 */
 export const LOG_PATH_SUBFOLDER = 'zterm-session-log'
+export { DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm }
+/** 主界面左侧会话栏默认宽度（px），与 App 分割条逻辑一致 */
+export const DEFAULT_SIDEBAR_WIDTH = 300
+
+/** xterm 滚动缓冲区行数：内置默认与可配置范围上限（xterm 理论更大，此处控制内存与 UI） */
+export const TERMINAL_SCROLLBACK_DEFAULT = 20_000
+export const TERMINAL_SCROLLBACK_MIN = 0
+export const TERMINAL_SCROLLBACK_MAX = 500_000
 
 /**
  * 默认日志目录：系统下载目录下的 zterm-session-log（主进程会 mkdir 递归创建）
- * @returns {string}
+ * @returns {string} 默认日志目录
  */
 export function getDefaultLogPath() {
   try {
@@ -22,8 +35,8 @@ export function getDefaultLogPath() {
 
 /**
  * 解析实际用于写入日志的目录：自定义路径优先，否则为默认子目录，再否则退回下载根目录
- * @param {{ logPath?: string }} [settings]
- * @returns {string}
+ * @param {{ logPath?: string }} [settings] 当前应用设置
+ * @returns {string} 实际用于写入日志的目录
  */
 export function resolveLoggingDirectory(settings) {
   try {
@@ -34,17 +47,6 @@ export function resolveLoggingDirectory(settings) {
     return ''
   }
 }
-
-import {
-  DEFAULT_ALGORITHM_PREFERENCES,
-  SSH_ALGORITHM_OPTION_POOL,
-  isWeakSshAlgorithm,
-} from '../../shared/sshAlgorithmDefaults.js'
-
-export { DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm }
-
-/** 主界面左侧会话栏默认宽度（px），与 App 分割条逻辑一致 */
-export const DEFAULT_SIDEBAR_WIDTH = 300
 
 /**
  * 将侧边栏宽度限制在窗口可用范围内（与主界面分割条 min/max 一致）
@@ -61,15 +63,10 @@ export function clampSidebarWidthPx(width, innerWidth = typeof window !== 'undef
   return Math.min(max, Math.max(min, w))
 }
 
-/** xterm 滚动缓冲区行数：内置默认与可配置范围上限（xterm 理论更大，此处控制内存与 UI） */
-export const TERMINAL_SCROLLBACK_DEFAULT = 20_000
-export const TERMINAL_SCROLLBACK_MIN = 0
-export const TERMINAL_SCROLLBACK_MAX = 500_000
-
 /**
- * 将用户输入规范为合法滚动行数；无法解析时用内置默认。
- * @param {unknown} raw
- * @returns {number}
+ * 将用户输入规范为合法滚动行数；无法解析时用内置默认
+ * @param {unknown} raw 用户输入的滚动行数
+ * @returns {number} 规范后的滚动行数
  */
 export function clampTerminalScrollback(raw) {
   const n = Math.floor(Number(raw))
@@ -81,8 +78,8 @@ export function clampTerminalScrollback(raw) {
 
 /**
  * 会话日志：none = 关闭；buffer = 与 xterm 屏幕缓冲一致（整文件覆盖）；stream = 下行原始流去 ANSI 后追加
- * @param {unknown} m
- * @returns {'none'|'stream'|'buffer'}
+ * @param {unknown} m 用户输入的日志模式
+ * @returns {'none'|'stream'|'buffer'} 规范后的日志模式
  */
 export function normalizeLoggingMode(m) {
   const v = String(m ?? '').trim().toLowerCase()
@@ -93,8 +90,8 @@ export function normalizeLoggingMode(m) {
 
 /**
  * 将旧版 enableLogging 并入 loggingMode（删除 enableLogging），并规范 loggingMode
- * @param {Record<string, unknown>} settings 
- * @returns {Record<string, unknown>}
+ * @param {Record<string, unknown>} settings 旧版设置对象
+ * @returns {Record<string, unknown>} 规范后的设置对象
  */
 export function applyLegacyLoggingMigration(settings) {
   if (!settings || typeof settings !== 'object') return settings ?? {}
