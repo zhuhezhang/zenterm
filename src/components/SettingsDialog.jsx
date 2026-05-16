@@ -72,8 +72,9 @@ function HighlightCaseIcon() {
  * @param {Function} props.onUpdatePlaceholders 更新分组占位符的回调函数（可选）
  * @param {Function} props.onClose 关闭对话框的回调函数
  * @param {Function} props.onSave 保存设置的回调函数，参数为新的设置对象
+ * @param {Function} [props.onAppThemePreview] 应用主题预览（不写 localStorage），参数为 dark | light | auto
  */
-export default function SettingsDialog({ settings, savedSessions, onUpdateSessions, onUpdatePlaceholders, onClose, onSave }) {
+export default function SettingsDialog({ settings, savedSessions, onUpdateSessions, onUpdatePlaceholders, onClose, onSave, onAppThemePreview }) {
   const [form, setForm] = useState({
     ...settings,
     highlightRules: settings.highlightRules ? [...settings.highlightRules] : [],
@@ -197,7 +198,21 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
    * @param {string} key 设置项的键
    * @param {any} value 设置项的新值
    */
-  const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }))  // [key] 表示“用这个变量的值作为属性名”
+  const previewAppTheme = (theme) => {
+    if (typeof onAppThemePreview === 'function' && ['dark', 'light', 'auto'].includes(theme)) {
+      onAppThemePreview(theme)
+    }
+  }
+
+  /**
+   * 更新设置，同时预览应用主题
+   * @param {string} key 设置项的键
+   * @param {any} value 设置项的新值
+   */
+  const set = (key, value) => {
+    setForm(prev => ({ ...prev, [key]: value }))
+    if (key === 'appTheme') previewAppTheme(value)
+  }  // [key] 表示“用这个变量的值作为属性名”
 
   /** 算法类别列表 */
   const algorithmSections = [
@@ -456,6 +471,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
         terminalScrollback: clampTerminalScrollback(migrated.terminalScrollback),
         loggingMode: normalizeLoggingMode(migrated.loggingMode),
       })  // 更新表单状态
+      previewAppTheme(appTheme)
       alert(t('settings.importSettingsOk'))
     } catch (err) {
       alert(t('settings.importFail', { msg: err.message }))
@@ -469,6 +485,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     if (!confirm(t('settings.confirmRestore2'))) return
     const next = JSON.parse(JSON.stringify(DEFAULT_SETTINGS))
     setForm(next)
+    previewAppTheme(next.appTheme)
     saveSettings(next)
     onSave(next)
     alert(t('settings.restored'))

@@ -99,7 +99,8 @@ function useSyncedAppTheme(appTheme) {
  */
 function AppMain({ settings, setSettings }) {
   const { t } = useI18n()
-  const appThemeEffective = useSyncedAppTheme(settings.appTheme)
+  const [appThemePreview, setAppThemePreview] = useState(null)  // 设置弹窗内预览主题（未保存不写 localStorage）；关闭取消时清空
+  const appThemeEffective = useSyncedAppTheme(appThemePreview ?? settings.appTheme)  // ??表示如果 appThemePreview 为 null，则使用 settings.appTheme
   useEffect(() => {
     const eff = resolveEffectiveUiLanguage(settings.uiLanguage)
     document.documentElement.lang = eff === 'en' ? 'en' : 'zh-CN'
@@ -573,8 +574,13 @@ function AppMain({ settings, setSettings }) {
           savedSessions={savedSessions}
           onUpdateSessions={updateSaved}
           onUpdatePlaceholders={(ph) => { setGroupPlaceholders(ph); saveGroupPlaceholders(ph) }}
-          onClose={() => setShowSettings(false)}
+          onAppThemePreview={setAppThemePreview}
+          onClose={() => {
+            setAppThemePreview(null)
+            setShowSettings(false)
+          }}
           onSave={(s) => {
+            setAppThemePreview(null)
             setSettings(s)
             void reapplyVaultPoliciesForAllSessions(savedSessions, s)
           }}
