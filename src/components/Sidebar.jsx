@@ -627,6 +627,7 @@ export default function Sidebar(props) {
                       <>
                         <span>{t('sidebar.noSaved')}</span>
                         <button type="button" className="sb-link" onClick={() => onNewSession('ssh')}>{t('sidebar.newConnection')}</button>
+                        <button type="button" className="sb-link" onClick={() => importSessionsFileRef.current?.click()}>{t('settings.importSessions')}</button>
                       </>
                     ) : searchTrim ? (
                       <>
