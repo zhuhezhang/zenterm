@@ -2,13 +2,7 @@
 
 **[简体中文](README.zh-CN.md)** · English
 
-ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections in one app, with saved sessions, grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
-
-| | |
-|---|---|
-| **Version** | 1.2.3 |
-| **License** | MIT |
-| **Author** | [zhuhezhang](https://github.com/zhuhezhang) |
+ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections, with saved sessions, grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
 
 ---
 
@@ -20,14 +14,11 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 - [Project Structure](#project-structure)
 - [Requirements](#requirements)
 - [Quick Start](#quick-start)
-- [Development](#development)
-- [Building Installers](#building-installers)
 - [Usage Guide](#usage-guide)
 - [Settings Reference](#settings-reference)
 - [Security Model](#security-model)
 - [Data & Storage Locations](#data--storage-locations)
 - [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
 - [License](#license)
 
 ---
@@ -81,9 +72,9 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 ## Screenshots
 
-> Add screenshots to `docs/images/` and reference them here, for example:
->
-> `![ZTerm main window](docs/images/main.png)`
+![ZTerm main](docs/images/main.png)
+![ZTerm setting](docs/images/setting.png)
+![ZTerm connection](docs/images/connection.png)
 
 ---
 
@@ -104,7 +95,7 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 ## Project Structure
 
 ```
-01-zterm/
+zterm/
 ├── electron/                 # Main process
 │   ├── main.js               # Window, IPC, log writes, path policy
 │   ├── preload.cjs           # contextBridge API (window.zterm)
@@ -139,53 +130,13 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 ## Quick Start
 
 ```bash
-git clone <your-repo-url>
-cd 01-zterm
+git clone https://github.com/zhuhezhang/zterm(or git clone https://gitee.com/zhuhezhang/zterm)
+cd zterm
 npm install
 npm run dev
 ```
 
 This starts the Vite dev server on port **5173** and launches Electron with hot reload for the `electron/` folder.
-
----
-
-## Development
-
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Vite + Electron (with DevTools) |
-| `npm run dev:silent` | Same, but suppresses Electron security warnings in dev |
-| `npm run dev:renderer` | Vite only |
-| `npm run dev:electron` | Electron only (expects Vite on :5173) |
-| `npm run build` | Production Vite build + electron-builder (current OS) |
-| `npm run vite` | Vite CLI |
-| `npm run electron` | Run packaged app logic against `dist/` (after build) |
-
-### Environment notes
-
-- In development, the window loads `http://localhost:5173`.
-- In production, it loads `dist/index.html`.
-- DevTools are enabled only when `app.isPackaged` is false.
-
----
-
-## Building Installers
-
-Artifacts are written to **`dist-electron/`**.
-
-| Command | Output |
-|---------|--------|
-| `npm run build` | Default targets for current OS |
-| `npm run build:mac` | macOS DMG + ZIP |
-| `npm run build:mac:arm64` | Apple Silicon |
-| `npm run build:mac:universal` | Universal binary |
-| `npm run build:win` | NSIS, portable, ZIP |
-| `npm run build:win:x64` | 64-bit Windows |
-| `npm run build:win:x64:portable` | Portable EXE |
-| `npm run build:linux` | AppImage, deb, tar.gz |
-| `npm run build:linux:x64:appimage` | AppImage x64 |
-
-**Product name:** ZTerm · **App ID:** `com.zterm.app`
 
 ---
 
@@ -286,15 +237,6 @@ Typical `userData` paths:
 | SFTP “path not allowed” | Choose a directory under Downloads/Documents/home, not system paths |
 | Serial port not listed | Click **Refresh**; on Linux ensure user is in `dialout` group |
 | Host key prompt every time | Check write permissions for `userData`; do not run from read-only profiles |
-
----
-
-## Contributing
-
-1. Fork the repository and create a feature branch.
-2. Run `npm run dev` and verify SSH/Telnet/Serial/SFTP flows you touch.
-3. Keep changes focused; match existing code style and i18n keys in `src/i18n/translations.js`.
-4. Open a pull request with a clear description and test plan.
 
 ---
 

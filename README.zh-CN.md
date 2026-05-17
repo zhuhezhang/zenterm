@@ -2,13 +2,7 @@
 
 简体中文 · **[English](README.md)**
 
-ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。在同一应用中支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、分组管理、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
-
-| | |
-|---|---|
-| **版本** | 1.2.3 |
-| **许可证** | MIT |
-| **作者** | [zhuhezhang](https://github.com/zhuhezhang) |
+ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、分组管理、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
 
 ---
 
@@ -20,14 +14,11 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 - [项目结构](#项目结构)
 - [环境要求](#环境要求)
 - [快速开始](#快速开始)
-- [开发说明](#开发说明)
-- [打包发布](#打包发布)
 - [使用指南](#使用指南)
 - [设置项说明](#设置项说明)
 - [安全设计](#安全设计)
 - [数据与存储位置](#数据与存储位置)
 - [常见问题](#常见问题)
-- [参与贡献](#参与贡献)
 - [许可证](#许可证)
 
 ---
@@ -81,9 +72,9 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ## 界面预览
 
-> 可将截图放入 `docs/images/` 后在此引用，例如：
->
-> `![ZTerm 主界面](docs/images/main.png)`
+![ZTerm 主界面](docs/images/main.png)
+![ZTerm 设置界面](docs/images/setting.png)
+![ZTerm 连接界面](docs/images/connection.png)
 
 ---
 
@@ -104,7 +95,7 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 ## 项目结构
 
 ```
-01-zterm/
+zterm/
 ├── electron/                 # 主进程
 │   ├── main.js               # 窗口、IPC、日志写入、路径策略
 │   ├── preload.cjs           # contextBridge API（window.zterm）
@@ -139,53 +130,13 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 ## 快速开始
 
 ```bash
-git clone <你的仓库地址>
-cd 01-zterm
+git clone https://github.com/zhuhezhang/zterm(或者 git clone https://gitee.com/zhuhezhang/zterm)
+cd zterm
 npm install
 npm run dev
 ```
 
 将启动 Vite 开发服务（端口 **5173**），并以 nodemon 监听 `electron/` 目录后启动 Electron。
-
----
-
-## 开发说明
-
-| 脚本 | 说明 |
-|------|------|
-| `npm run dev` | Vite + Electron（含开发者工具） |
-| `npm run dev:silent` | 同上，开发时抑制 Electron 安全警告 |
-| `npm run dev:renderer` | 仅启动 Vite |
-| `npm run dev:electron` | 仅启动 Electron（需 Vite 已在 :5173 运行） |
-| `npm run build` | Vite 生产构建 + electron-builder（当前系统） |
-| `npm run vite` | Vite CLI |
-| `npm run electron` | 在已构建 `dist/` 后运行 Electron |
-
-### 运行模式
-
-- **开发环境**：窗口加载 `http://localhost:5173`
-- **生产环境**：加载 `dist/index.html`
-- 开发者工具仅在未打包（`!app.isPackaged`）时启用
-
----
-
-## 打包发布
-
-安装包输出目录：**`dist-electron/`**
-
-| 命令 | 产物 |
-|------|------|
-| `npm run build` | 当前系统默认目标 |
-| `npm run build:mac` | macOS DMG + ZIP |
-| `npm run build:mac:arm64` | Apple Silicon |
-| `npm run build:mac:universal` | Universal 通用包 |
-| `npm run build:win` | NSIS、便携版、ZIP |
-| `npm run build:win:x64` | Windows 64 位 |
-| `npm run build:win:x64:portable` | 便携 EXE |
-| `npm run build:linux` | AppImage、deb、tar.gz |
-| `npm run build:linux:x64:appimage` | AppImage x64 |
-
-**产品名：** ZTerm · **应用 ID：** `com.zterm.app`
 
 ---
 
@@ -286,15 +237,6 @@ npm run dev
 | SFTP 提示路径不允许 | 选择下载/文档/用户主目录下的路径，勿选系统目录 |
 | 串口列表为空 | 点击 **刷新**；Linux 用户需加入 `dialout` 组 |
 | 每次连接都提示主机密钥 | 检查 `userData` 是否可写；避免只读配置环境运行 |
-
----
-
-## 参与贡献
-
-1. Fork 仓库并创建功能分支。
-2. 运行 `npm run dev`，验证你修改的 SSH/Telnet/串口/SFTP 流程。
-3. 保持改动聚焦；新增 UI 文案请同步更新 `src/i18n/translations.js` 中英文键。
-4. 提交 Pull Request，说明变更内容与测试步骤。
 
 ---
 
