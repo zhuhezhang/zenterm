@@ -1,39 +1,26 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { useI18n } from '../context/I18nContext.jsx'
 import { fetchSessionSecrets } from '../store/credentialsBridge.js'
-import { TERMINAL_ENCODING_OPTIONS, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
+import { TERMINAL_ENCODING_OPTIONS } from '../../shared/terminalEncodings.js'
+import {
+  PORT_MIN,
+  PORT_MAX,
+  BAUD_RATES,
+  PARITIES,
+  SSH_FORM_DEFAULT,
+  TELNET_FORM_DEFAULT,
+  SERIAL_STORAGE_DEFAULT,
+} from '../lib/session/constants.js'
+import {
+  mergeSessionFormDefaults,
+  normalizeBackspaceMode,
+  clampPortFieldString,
+  parseSessionPort,
+  buildSessionLabel,
+  validateSessionGroupLabel,
+  SESSION_GROUP_LABEL_ERROR_KEYS,
+} from '../lib/session/utils.js'
 import '../styles/dialog.css'
-
-const SSH_DEFAULT = { host: '', port: '22', username: '', password: '', privateKey: '', passphrase: '', authType: 'password', label: '', group: '', enableSftp: false, encoding: DEFAULT_TERMINAL_ENCODING, backspaceMode: 'auto' }
-const TELNET_DEFAULT = { host: '', port: '23', label: '', group: '', encoding: DEFAULT_TERMINAL_ENCODING, backspaceMode: 'auto' }
-const SERIAL_DEFAULT = { path: '', baudRate: '9600', dataBits: '8', stopBits: '1', parity: 'none', label: '', group: '', encoding: DEFAULT_TERMINAL_ENCODING, backspaceMode: 'auto' }
-const BAUD_RATES = ['110','300','600','1200','2400','4800','9600','14400','19200','38400','57600','115200','128000','256000']
-const PARITIES = ['none','even','odd','mark','space']
-const PORT_MIN = 0
-const PORT_MAX = 65535
-
-/** 
- * 将退格模式字符串规范为合法值
- * @param {string} v 退格模式字符串
- * @returns {string|null} 规范后的退格模式字符串，如果 v 为空或不合法则返回 null
- */
-function normalizeBackspaceMode(v) {
-  const s = String(v ?? '').toLowerCase()
-  return s === 'auto' || s === 'del' || s === 'bs' ? s : null
-}
-
-/** 
- * 端口输入严格限制在 0–65535；空字符串保留便于清空重输
- * @param {string} raw 原始端口输入
- * @returns {string} 规范后的端口输入，如果输入不合法则返回空字符串
- */
-function clampPortFieldString(raw) {
-  const s = String(raw ?? '').trim()
-  if (s === '') return ''
-  const n = parseInt(s, 10)
-  if (Number.isNaN(n)) return ''
-  return String(Math.min(PORT_MAX, Math.max(PORT_MIN, n)))
-}
 
 /**
  * 串口路径是否与 listPorts 结果一致（与主进程 serial.js 判定对齐；Windows 上对 COM 路径不区分大小写）
@@ -54,35 +41,6 @@ function isSerialPathInEnumeratedList(requestedPath, ports) {
 }
 
 /**
- * 获取默认配置：根据协议类型返回对应的默认配置对象，如果传入 initial 则在默认配置基础上覆盖初始值
- * @param {string} tab 协议类型
- * @param {Object} initial 初始配置
- * @param {string} [globalBackspace] 旧版全局设置中的退格模式，用于新建会话默认值
- * @returns {Object} 默认配置
- */
-function getDefault(tab, initial, globalBackspace) {
-  const base = tab === 'ssh' ? { ...SSH_DEFAULT } : tab === 'telnet' ? { ...TELNET_DEFAULT } : { ...SERIAL_DEFAULT }
-  const merged = initial ? { ...base, ...initial } : { ...base }
-  merged.backspaceMode = normalizeBackspaceMode(merged.backspaceMode) ?? normalizeBackspaceMode(globalBackspace) ?? 'auto'
-  return merged
-}
-
-/**
- * 构建标签名称：根据协议类型和配置对象生成一个标签名称，去除非法字符并保证不为空
- * @param {string} tab 协议类型
- * @param {Object} form 配置对象
- * @returns {string} 标签名称
- */
-function buildLabel(tab, form) {
-  if (tab === 'serial') {
-    const raw = form.path || 'Serial'
-    return raw.replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '').trim() || 'Serial'
-  }
-  const raw = (form.username ? form.username + '@' : '') + (form.host || tab.toUpperCase())
-  return raw.replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '').trim() || tab.toUpperCase()
-}
-
-/**
  * 连接对话框组件：提供 SSH、Telnet、Serial 三种连接方式的配置界面，支持保存会话和直接连接
  * @param {Object} props 组件属性
  * @param {string} props.type 初始协议类型（ssh/telnet/serial）
@@ -97,7 +55,7 @@ function buildLabel(tab, form) {
 export default function ConnectDialog({ type, initialData, savedGroups, appBackspaceFallback, onConnect, onSaveAndConnect, onSaveOnly, onClose }) {
   const { t } = useI18n()  // 国际化翻译函数
   const [tab, setTab] = useState(type || 'ssh')  // 当前协议类型
-  const [form, setForm] = useState(() => getDefault(type || 'ssh', initialData, appBackspaceFallback))  // 表单数据
+  const [form, setForm] = useState(() => mergeSessionFormDefaults(type || 'ssh', initialData, appBackspaceFallback))  // 表单数据
   const [ports, setPorts] = useState([])  // 串口列表
   const [error, setError] = useState('')  // 错误信息
   const [credDialog, setCredDialog] = useState(null)  // { username, password, privateKey, passphrase, callback } 或 null，表示是否显示凭证输入对话框以及初始值和连接回调函数
@@ -111,7 +69,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
   /** 避免在凭证弹层内每次输入都重复 focus，只在本次打开时聚焦一次，用一个布尔值来记录是否已经聚焦过 */
   const credFocusAppliedRef = useRef(false)
   /** SSH / Telnet 各自上次在表单里编辑的端口；互切标签时不把对方的端口写进当前协议 */
-  const portByTabRef = useRef({ ssh: SSH_DEFAULT.port, telnet: TELNET_DEFAULT.port })
+  const portByTabRef = useRef({ ssh: SSH_FORM_DEFAULT.port, telnet: TELNET_FORM_DEFAULT.port })
 
   /**
    * 切换协议类型时更新表单数据。保留已有参数，补齐当前协议缺省字段，重置错误信息。
@@ -124,13 +82,13 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
     setForm((prev) => {
       if (from === 'ssh') {
         const s = String(prev.port ?? '').trim()
-        portByTabRef.current.ssh = s === '' ? SSH_DEFAULT.port : clampPortFieldString(s) || SSH_DEFAULT.port
+        portByTabRef.current.ssh = s === '' ? SSH_FORM_DEFAULT.port : clampPortFieldString(s) || SSH_FORM_DEFAULT.port
       }
       if (from === 'telnet') {
         const s = String(prev.port ?? '').trim()
-        portByTabRef.current.telnet = s === '' ? TELNET_DEFAULT.port : clampPortFieldString(s) || TELNET_DEFAULT.port
+        portByTabRef.current.telnet = s === '' ? TELNET_FORM_DEFAULT.port : clampPortFieldString(s) || TELNET_FORM_DEFAULT.port
       }
-      const merged = getDefault(next, prev, appBackspaceFallback)
+      const merged = mergeSessionFormDefaults(next, prev, appBackspaceFallback)
       const sshTelnetSwitch = (from === 'ssh' && next === 'telnet') || (from === 'telnet' && next === 'ssh')
       if (sshTelnetSwitch) {
         const p = next === 'ssh' ? portByTabRef.current.ssh : portByTabRef.current.telnet
@@ -164,7 +122,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
       if (cancelled) return
       const t = initialData.type || type || 'ssh'
       setTab(t)
-      setForm({ ...getDefault(t, initialData, appBackspaceFallback), ...sec })
+      setForm({ ...mergeSessionFormDefaults(t, initialData, appBackspaceFallback), ...sec })
     })()
     return () => { cancelled = true }
   }, [initialData?.savedId, initialData?.type, type, appBackspaceFallback])
@@ -189,10 +147,8 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
         return t('connect.errSerialList')
       }
     }
-    if (form.group?.startsWith('/')) return t('connect.errGroupSlashStart')
-    if (form.group?.endsWith('/')) return t('connect.errGroupSlashEnd')
-    if (form.group && /[\\:*?"\u003c\u003e|\x00]/.test(form.group)) return t('connect.errGroupChars')
-    if (form.label && /[\/\\:*?"\u003c\u003e|\x00]/.test(form.label)) return t('connect.errLabelChars')
+    const glErr = validateSessionGroupLabel(form.group, form.label)
+    if (glErr) return t(SESSION_GROUP_LABEL_ERROR_KEYS[glErr])
     return ''
   }
 
@@ -204,15 +160,11 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
     ...form,
     type: tab,
     backspaceMode: normalizeBackspaceMode(form.backspaceMode) ?? 'auto',
-    port: (() => {
-      const p = parseInt(form.port, 10)
-      if (Number.isNaN(p)) return undefined
-      return Math.min(PORT_MAX, Math.max(PORT_MIN, p))
-    })(),
-    baudRate: parseInt(form.baudRate) || 9600,
-    dataBits: parseInt(form.dataBits) || 8,
-    stopBits: parseInt(form.stopBits) || 1,
-    label: form.label?.trim() || buildLabel(tab, form),
+    port: parseSessionPort(form.port),
+    baudRate: parseInt(form.baudRate, 10) || SERIAL_STORAGE_DEFAULT.baudRate,
+    dataBits: parseInt(form.dataBits, 10) || SERIAL_STORAGE_DEFAULT.dataBits,
+    stopBits: parseInt(form.stopBits, 10) || SERIAL_STORAGE_DEFAULT.stopBits,
+    label: form.label?.trim() || buildSessionLabel(tab, form),
   })
 
   useLayoutEffect(() => {  // 凭证弹层内 HTML autoFocus 易被关闭按钮等抢占；打开时在 layout 阶段 + 下一帧主动 focus 一次（useLayoutEffect 在 DOM 渲染后执行，不会阻塞主线程，不会影响用户体验）

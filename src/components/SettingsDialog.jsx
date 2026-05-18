@@ -8,6 +8,7 @@ import {
 import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
 import { exportSessions, importSessions, saveSessions } from '../store/sessionStore.js'
+import { formatImportError } from '../lib/import/formatImportError.js'
 import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import '../styles/dialog.css'
 import '../styles/settings.css'
@@ -314,13 +315,18 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     const file = e.target.files[0]; if (!file) return
     try {
       const beforeCount = savedSessions.length
-      const imported = await importSessions(file)
+      const { sessions: imported, stats } = await importSessions(file)
       const merged = [...savedSessions]
       imported.forEach(s => { if (!merged.find(m => m.savedId === s.savedId) && !merged.find(m => m.label === s.label)) merged.push(s) })
       const sanitized = await absorbPlaintextSecretsFromImportedSessions(merged)
       onUpdateSessions(sanitized)
-      alert(t('settings.importSessionsOk', { n: sanitized.length - beforeCount }))
-    } catch (err) { alert(t('settings.importFail', { msg: err.message })) }
+      const n = sanitized.length - beforeCount
+      if (stats.skipped > 0) {
+        alert(t('settings.importSessionsPartial', { n, skipped: stats.skipped }))
+      } else {
+        alert(t('settings.importSessionsOk', { n }))
+      }
+    } catch (err) { alert(t('settings.importFail', { msg: formatImportError(t, err) })) }
     e.target.value = ''
   }
 
@@ -344,22 +350,15 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     if (!file) return
     try {
       const importedSettings = await importSettings(file)
-      const migrated = applyLegacyLoggingMigration(importedSettings)
-      const uiLanguage = ['auto', 'en', 'zh'].includes(migrated.uiLanguage) ? migrated.uiLanguage : 'auto'
-      const appTheme = ['dark', 'light', 'auto'].includes(migrated.appTheme) ? migrated.appTheme : 'auto'
       setForm({
-        ...migrated,
-        uiLanguage,
-        appTheme,
-        highlightRules: migrated.highlightRules ? [...migrated.highlightRules] : [],
-        algorithmPreferences: migrated.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
-        terminalScrollback: clampTerminalScrollback(migrated.terminalScrollback),
-        loggingMode: normalizeLoggingMode(migrated.loggingMode),
-      })  // 更新表单状态
-      previewAppTheme(appTheme)
+        ...importedSettings,
+        highlightRules: [...importedSettings.highlightRules],
+        algorithmPreferences: { ...importedSettings.algorithmPreferences },
+      })
+      previewAppTheme(importedSettings.appTheme)
       alert(t('settings.importSettingsOk'))
     } catch (err) {
-      alert(t('settings.importFail', { msg: err.message }))
+      alert(t('settings.importFail', { msg: formatImportError(t, err) }))
     }
     e.target.value = ''  // 重置文件输入
   }

@@ -3,6 +3,7 @@ import {
   SSH_ALGORITHM_OPTION_POOL,
   isWeakSshAlgorithm,
 } from '../../shared/sshAlgorithmDefaults.js'
+import { buildExportEnvelope } from '../lib/import/parseImportFile.js'
 
 /** 本地存储设置的键名 */
 const SETTINGS_KEY = 'zterm_settings'
@@ -183,7 +184,8 @@ export function saveSettings(settings) {
  * @param {Object} settings 要导出的设置对象
  */
 export function exportSettings(settings) {
-  const data = JSON.stringify(settings, null, 2)  // null, 2 表示美化缩进为 2 个空格，方便文件阅读
+  const payload = buildExportEnvelope('settings', settings)
+  const data = JSON.stringify(payload, null, 2)  // null, 2 表示美化缩进为 2 个空格，方便文件阅读
   const blob = new Blob([data], { type: 'application/json' })
   const url = URL.createObjectURL(blob)  // 生成一个本地可访问的临时 URL，指向这个内存中的文件内容
   const a = document.createElement('a')  // 创建一个隐藏的 <a> 元素，用于触发下载
@@ -199,23 +201,12 @@ export function exportSettings(settings) {
 }
 
 /**
- * 从 JSON 文件中导入设置项，返回一个 Promise，解析成功则返回设置对象，失败则抛出错误
+ * 从 JSON 文件中导入设置项（校验 envelope，未知键静默剥离）
  * @param {File} file 用户选择的 JSON 文件对象
- * @returns {Promise<Object>} 解析后的设置对象
+ * @returns {Promise<Object>} 规范后的设置对象
  */
 export function importSettings(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()  // 使用浏览器提供的 FileReader API 来读取用户选中的文件内容
-    reader.onload = (e) => {  // 绑定事件：文件读取后触发
-      try {
-        const imported = JSON.parse(e.target.result)  // e.target.result 是读取到的文本内容，尝试解析为 JSON 对象
-        if (typeof imported !== 'object' || imported === null) throw new Error('格式错误')
-        resolve(imported)
-      } catch (err) { reject(err) }
-    }
-    reader.onerror = reject
-    reader.readAsText(file) // 以文本形式读取文件内容，触发 onload 或 onerror 事件
-  })
+  return import('../lib/import/validateSettings.js').then((m) => m.validateAndParseSettingsImport(file))
 }
 
 /** 设置对话框三个标签页（labelKey 对应 settings.tabs.*） */

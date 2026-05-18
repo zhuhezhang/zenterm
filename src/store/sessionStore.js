@@ -1,32 +1,9 @@
+import { buildExportEnvelope } from '../lib/import/parseImportFile.js'
+import { validateAndParseSessionsImport } from '../lib/import/validateSessions.js'
+import { pickSessionStorageFields } from '../lib/session/utils.js'
+
 /** 本地存储会话的键名 */
 const STORAGE_KEY = 'zterm_saved_sessions'
-
-/** 各会话类型允许持久化到 localStorage 的字段（password/privateKey/passphrase 仅存主进程加密 vault，不写入此项） */
-const TYPE_FIELDS = {
-  ssh: ['host', 'port', 'username', 'authType', 'enableSftp', 'encoding', 'backspaceMode'],
-  telnet: ['host', 'port', 'username', 'encoding', 'backspaceMode'],
-  serial: ['path', 'baudRate', 'dataBits', 'stopBits', 'parity', 'encoding', 'backspaceMode'],
-}
-
-/**
- * 按会话类型裁剪配置字段，避免持久化无关参数
- * @param {Object} config 原始会话配置
- * @returns {Object} 裁剪后的会话配置
- */
-function normalizeSessionForStorage(config) {
-  const type = config?.type
-  const allowed = TYPE_FIELDS[type] || []
-  const picked = {}
-  for (const key of allowed) {
-    if (config[key] !== undefined) picked[key] = config[key]
-  }
-  return {
-    type,
-    label: config.label,
-    group: config.group,
-    ...picked,
-  }
-}
 
 /**
  * 从本地存储中加载已保存的会话（JSON数组）
@@ -74,7 +51,7 @@ export function uniqueLabelInGroup(sessions, group, label, excludeSavedId) {
  * @returns {Array} 更新后的会话列表
  */
 export function addSavedSession(sessions, config) {
-  const normalized = normalizeSessionForStorage(config)
+  const normalized = pickSessionStorageFields(config)
   const now = Date.now()
   const sid = config.savedId || ('saved-' + now + '-' + Math.random().toString(36).slice(2, 6))  // 不存在则生产新的 savedId，格式为 saved-时间戳-随机字符串
   const label = uniqueLabelInGroup(sessions, normalized.group, normalized.label, sid)
@@ -153,7 +130,8 @@ export function reorderSessions(sessions, fromId, toId, targetGroup) {
  * @param {Array} sessions 要导出的会话列表
  */
 export function exportSessions(sessions) {
-  const data = JSON.stringify(sessions, null, 2)  // null, 2 表示美化缩进为 2 个空格，方便文件阅读
+  const payload = buildExportEnvelope('sessions', sessions)
+  const data = JSON.stringify(payload, null, 2)  // null, 2 表示美化缩进为 2 个空格，方便文件阅读
   const blob = new Blob([data], { type: 'application/json' })
   const url = URL.createObjectURL(blob)  // 生成一个本地可访问的临时 URL，指向这个内存中的文件内容
   const a = document.createElement('a')  // 创建一个隐藏的 <a> 元素，用于触发下载
@@ -169,23 +147,12 @@ export function exportSessions(sessions) {
 }
 
 /**
- * 从 JSON 文件中导入会话列表，返回一个 Promise，解析成功则返回会话数组，失败则抛出错误
+ * 从 JSON 文件中导入会话列表（校验 envelope 与字段，跳过无效条目）
  * @param {File} file 用户选择的 JSON 文件对象
- * @returns {Promise<Array>} 解析后的会话列表
+ * @returns {Promise<{ sessions: Array, stats: { total: number, accepted: number, skipped: number } }>}
  */
 export function importSessions(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()  // 使用浏览器提供的 FileReader API 来读取用户选中的文件内容
-    reader.onload = (e) => {  // 绑定事件：文件读取后触发
-      try {
-        const imported = JSON.parse(e.target.result)  // e.target.result 是读取到的文本内容，尝试解析为 JSON 对象
-        if (!Array.isArray(imported)) throw new Error('格式错误')
-        resolve(imported)
-      } catch (err) { reject(err) }
-    }
-    reader.onerror = reject
-    reader.readAsText(file) // 以文本形式读取文件内容，触发 onload 或 onerror 事件
-  })
+  return validateAndParseSessionsImport(file)
 }
 
 /** 占位分组（没有会话的分组）的本地存储键名 */

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } fr
 import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
 import { addGroupPlaceholder, exportSessions, importSessions, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
+import { formatImportError } from '../lib/import/formatImportError.js'
 import { absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import SftpPanel from './SftpPanel.jsx'
 import ConnectionTypeIcon from './common.jsx'
@@ -162,16 +163,21 @@ export default function Sidebar(props) {
     if (!file) return
     try {
       const beforeCount = savedSessions.length
-      const imported = await importSessions(file)
+      const { sessions: imported, stats } = await importSessions(file)
       const merged = [...savedSessions]
       imported.forEach((s) => {
         if (!merged.find((m) => m.savedId === s.savedId) && !merged.find((m) => m.label === s.label)) merged.push(s)
       })
       const sanitized = await absorbPlaintextSecretsFromImportedSessions(merged)
       onUpdateSessions(sanitized)
-      alert(t('settings.importSessionsOk', { n: sanitized.length - beforeCount }))
+      const n = sanitized.length - beforeCount
+      if (stats.skipped > 0) {
+        alert(t('settings.importSessionsPartial', { n, skipped: stats.skipped }))
+      } else {
+        alert(t('settings.importSessionsOk', { n }))
+      }
     } catch (err) {
-      alert(t('settings.importFail', { msg: err.message }))
+      alert(t('settings.importFail', { msg: formatImportError(t, err) }))
     }
     e.target.value = ''
   }, [savedSessions, onUpdateSessions, t])
