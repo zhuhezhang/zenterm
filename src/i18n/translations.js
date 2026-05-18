@@ -192,7 +192,7 @@ export const MESSAGES = {
       logPathValidateFail: '校验日志目录失败：{msg}',
       choose: '选择',
       algoTitle: 'SSH/SFTP 算法',
-      algoIntro: '默认仅启用现代算法；若须连接老旧设备，可在下方勾选标记为「遗留」的算法（会降低协商强度）',
+      algoIntro: '默认仅启用现代算法；若须连接老旧设备，可在下方勾选标记为「不安全」的算法（会降低协商强度）',
       resetDefault: '重置默认',
       algoCategory: '算法类别',
       algoCategoryDesc: '先从下拉列表中选择要配置的算法类别',
@@ -541,7 +541,7 @@ export const MESSAGES = {
       choose: 'Browse',
       algoTitle: 'SSH/SFTP algorithms',
       algoIntro:
-        'Modern algorithms only by default; enable items marked “legacy” for old devices (weakens negotiation).',
+        'Modern algorithms only by default; enable items marked “weak” for old devices (weakens negotiation).',
       resetDefault: 'Reset defaults',
       algoCategory: 'Category',
       algoCategoryDesc: 'Pick a category to configure',

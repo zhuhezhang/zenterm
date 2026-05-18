@@ -221,7 +221,7 @@ export function importSettings(file) {
 /** 「常规」标签内区块顺序（与 SETTINGS_SCHEMA 中 section 字段对应） */
 export const SETTINGS_GENERAL_SECTION_IDS = ['confirm', 'terminal', 'logging', 'appearance']
 
-/** 设置项的定义和描述，用于在设置界面动态生成表单（文案由 i18n 按 section / key 解析） */
+/** 设置项「常规」标签内的区块定义和描述，用于在设置界面动态生成表单（文案由 i18n 按 section / key 解析） */
 export const SETTINGS_SCHEMA = [
   {
     section: 'confirm',
