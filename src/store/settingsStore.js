@@ -218,10 +218,29 @@ export function importSettings(file) {
   })
 }
 
-/** 「常规」标签内区块顺序（与 SETTINGS_SCHEMA 中 section 字段对应） */
-export const SETTINGS_GENERAL_SECTION_IDS = ['confirm', 'terminal', 'logging', 'appearance']
+/** 设置对话框三个标签页（labelKey 对应 settings.tabs.*） */
+export const SETTINGS_TABS = [
+  { key: 'general', labelKey: 'settings.tabs.general' },
+  { key: 'ssh-terminal', labelKey: 'settings.tabs.sshTerminal' },
+  { key: 'data-security', labelKey: 'settings.tabs.dataSecurity' },
+]
 
-/** 设置项「常规」标签内的区块定义和描述，用于在设置界面动态生成表单（文案由 i18n 按 section / key 解析） */
+/** 各标签内区块顺序（与 SETTINGS_SCHEMA 中 section 字段对应） */
+export const SETTINGS_TAB_SECTION_IDS = {
+  'general': ['confirm', 'terminal', 'logging', 'appearance'],
+  'ssh-terminal': ['algorithm', 'highlight'],
+  'data-security': ['credentials', 'sessions', 'settingsMgmt'],
+}
+
+/** SSH 算法子类别（与 settings.algo.* i18n 及 algorithmPreferences 键对应） */
+export const SSH_ALGORITHM_SECTION_KEYS = ['kex', 'serverHostKey', 'cipher', 'hmac', 'compress']
+
+/**
+ * 设置界面区块与表单项定义（文案由 i18n 解析）
+ * - 常规标签：items 为 boolean / number / select / path
+ * - SSH 与终端：kind 为 algorithm | highlight
+ * - 数据与安全：items 含 boolean 与 action（按钮操作，非表单字段）
+ */
 export const SETTINGS_SCHEMA = [
   {
     section: 'confirm',
@@ -281,5 +300,96 @@ export const SETTINGS_SCHEMA = [
         ],
       },
     ],
-  }
+  },
+  {
+    section: 'algorithm',
+    kind: 'algorithm',
+    header: {
+      labelKey: 'settings.algoTitle',
+      descKey: 'settings.algoIntro',
+      actions: [{ action: 'resetAlgorithmPreferences', buttonKey: 'settings.resetDefault' }],
+    },
+  },
+  {
+    section: 'highlight',
+    kind: 'highlight',
+    header: {
+      labelKey: 'settings.highlightRules',
+      descKey: 'settings.highlightDesc',
+      actions: [
+        { action: 'resetHighlightRules', buttonKey: 'settings.resetRules' },
+        { action: 'addHighlightRule', buttonKey: 'settings.addRule' },
+      ],
+    },
+  },
+  {
+    section: 'credentials',
+    items: [
+      { key: 'saveSecretsToVault', type: 'boolean' },
+      {
+        type: 'action',
+        action: 'clearVault',
+        labelKey: 'settings.clearSecrets',
+        descKey: 'settings.clearSecretsDesc',
+        buttonKey: 'settings.clear',
+        danger: true,
+      },
+    ],
+  },
+  {
+    section: 'sessions',
+    items: [
+      {
+        type: 'action',
+        action: 'exportSessions',
+        labelKey: 'settings.exportSessions',
+        descKey: 'settings.exportSessionsDesc',
+        buttonKey: 'settings.export',
+      },
+      {
+        type: 'action',
+        action: 'importSessions',
+        labelKey: 'settings.importSessions',
+        descKey: 'settings.importSessionsDesc',
+        buttonKey: 'settings.import',
+        fileInput: 'importSessions',
+      },
+      {
+        type: 'action',
+        action: 'clearAllSessions',
+        labelKey: 'settings.clearAllSessions',
+        descKey: 'settings.clearAllSessionsDesc',
+        buttonKey: 'settings.clearAll',
+        danger: true,
+      },
+    ],
+  },
+  {
+    section: 'settingsMgmt',
+    items: [
+      {
+        type: 'action',
+        action: 'exportSettings',
+        labelKey: 'settings.exportSettings',
+        descKey: 'settings.exportSettingsDesc',
+        buttonKey: 'settings.export',
+      },
+      {
+        type: 'action',
+        action: 'importSettings',
+        labelKey: 'settings.importSettings',
+        descKey: 'settings.importSettingsDesc',
+        buttonKey: 'settings.import',
+        fileInput: 'importSettings',
+      },
+      {
+        type: 'action',
+        action: 'restoreDefaultSettings',
+        labelKey: 'settings.restoreDefaults',
+        descKey: 'settings.restoreDefaultsDesc',
+        buttonKey: 'settings.restoreDefaultBtn',
+        danger: true,
+      },
+    ],
+  },
 ]

@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import {
-  SETTINGS_SCHEMA, SETTINGS_GENERAL_SECTION_IDS, saveSettings, exportSettings, importSettings, getDefaultLogPath,
+  SETTINGS_SCHEMA, SETTINGS_TABS, SETTINGS_TAB_SECTION_IDS, SSH_ALGORITHM_SECTION_KEYS,
+  saveSettings, exportSettings, importSettings, getDefaultLogPath,
   DEFAULT_SETTINGS, DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
   clampTerminalScrollback, normalizeLoggingMode, applyLegacyLoggingMigration,
 } from '../store/settingsStore.js'
@@ -87,12 +88,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   const importRef = useRef(null)
   /** 用于导入设置的文件输入引用 */
   const importSettingsRef = useRef(null)
-  /** 合并后的标签页：常规 / SSH 与终端 / 数据与安全（功能与原先 7 个 tab 一致） */
-  const tabs = [
-    { key: 'general', label: t('settings.tabs.general') },
-    { key: 'ssh-terminal', label: t('settings.tabs.sshTerminal') },
-    { key: 'data-security', label: t('settings.tabs.dataSecurity') },
-  ]
+  const tabs = SETTINGS_TABS.map((tab) => ({ key: tab.key, label: t(tab.labelKey) }))
   const [activeTab, setActiveTab] = useState('general')  // 当前选中的标签页
   const [settingsHoverTip, setSettingsHoverTip] = useState(null)  // 设置弹窗内浮动说明（原生 title 在 Electron 内不可靠，用 fixed 层统一展示）
   /** 设置悬停提示定时器引用 */
@@ -214,14 +210,11 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     if (key === 'appTheme') previewAppTheme(value)
   }  // [key] 表示“用这个变量的值作为属性名”
 
-  /** 算法类别列表 */
-  const algorithmSections = [
-    { key: 'kex', label: t('settings.algo.kex'), desc: t('settings.algo.kexDesc') },
-    { key: 'serverHostKey', label: t('settings.algo.serverHostKey'), desc: t('settings.algo.serverHostKeyDesc') },
-    { key: 'cipher', label: t('settings.algo.cipher'), desc: t('settings.algo.cipherDesc') },
-    { key: 'hmac', label: t('settings.algo.hmac'), desc: t('settings.algo.hmacDesc') },
-    { key: 'compress', label: t('settings.algo.compress'), desc: t('settings.algo.compressDesc') },
-  ]
+  const algorithmSections = SSH_ALGORITHM_SECTION_KEYS.map((key) => ({
+    key,
+    label: t(`settings.algo.${key}`),
+    desc: t(`settings.algo.${key}Desc`),
+  }))
   const [activeAlgoSection, setActiveAlgoSection] = useState('kex')  // 默认选中密钥交换算法类别
 
   /**
@@ -283,115 +276,6 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
         [type]: [...defaults],
       },
     }))
-  }
-
-  /**
-   * 渲染算法标签页的内容，根据当前选中的算法类别显示对应的算法选项列表
-   * @returns {JSX.Element} 渲染后的算法标签页内容
-   */
-  const renderAlgorithmTab = () => {
-    const section = algorithmSections.find(item => item.key === activeAlgoSection) || algorithmSections[0]  // 获取当前选中的算法类别，如果没有则使用第一个算法类别
-    const selected = form.algorithmPreferences?.[section.key] || []  // 获取当前选中的算法选项列表，如果没有则返回空数组
-    const options = SSH_ALGORITHM_OPTION_POOL[section.key] || []  // 可选全集（含遗留算法）；默认套件见 DEFAULT_ALGORITHM_PREFERENCES
-    return (
-      <div className="settings-section">
-        <div className="settings-section-title">{t('settings.algoTitle')}</div>
-        <div className="settings-items">
-          <div className="settings-item">
-            <div className="settings-item-info">
-              <span className="settings-item-label">{t('settings.algoTitle')}</span>
-              <span className="settings-item-desc">{t('settings.algoIntro')}</span>
-            </div>
-            <button className="settings-action-btn" onClick={resetAlgorithmPreferences}>{t('settings.resetDefault')}</button>
-          </div>
-          <div className="settings-item">
-            <div className="settings-item-info">
-              <span className="settings-item-label">{t('settings.algoCategory')}</span>
-              <span className="settings-item-desc">{t('settings.algoCategoryDesc')}</span>
-            </div>
-            <select className="settings-select" value={activeAlgoSection} onChange={(e) => setActiveAlgoSection(e.target.value)}>
-              {algorithmSections.map(item => (
-                <option key={item.key} value={item.key}>{item.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="settings-algo-block">
-            <div className="settings-algo-desc">
-              <div className="settings-item-info">
-                <span className="settings-item-desc">{section.desc}</span>
-              </div>
-              <button
-                type="button"
-                className="settings-action-btn"
-                onClick={() => resetAlgorithmSection(section.key)}
-              >
-                {t('settings.resetSection')}
-              </button>
-            </div>
-            {selected.map((value, index) => (
-              <div key={value} className="settings-algo-row">
-                <label className="settings-algo-label">
-                  <input
-                    type="checkbox"
-                    checked={true}
-                    onChange={() => toggleAlgorithmOption(section.key, value)}
-                  />
-                  <span>{value}</span>
-                  {isWeakSshAlgorithm(section.key, value) && (
-                    <span
-                      className="settings-algo-weak-badge"
-                      onMouseEnter={(e) => showSettingsHoverTip(e, t('settings.weakTip'))}
-                      onMouseLeave={hideSettingsHoverTip}
-                    >
-                      {t('settings.weakBadge')}
-                    </span>
-                  )}
-                </label>
-                <div className="settings-algo-actions">
-                  <button
-                    className="settings-algo-btn"
-                    type="button"
-                    disabled={index <= 0}
-                    onClick={() => moveAlgorithmOption(section.key, value, -1)}
-                  >↑</button>
-                  <button
-                    className="settings-algo-btn"
-                    type="button"
-                    disabled={index === selected.length - 1}
-                    onClick={() => moveAlgorithmOption(section.key, value, 1)}
-                  >↓</button>
-                </div>
-              </div>
-            ))}
-            {options.filter(value => !selected.includes(value)).map(value => (
-              <div key={value} className="settings-algo-row">
-                <label className="settings-algo-label">
-                  <input
-                    type="checkbox"
-                    checked={false}
-                    onChange={() => toggleAlgorithmOption(section.key, value)}
-                  />
-                  <span>{value}</span>
-                  {isWeakSshAlgorithm(section.key, value) && (
-                    <span
-                      className="settings-algo-weak-badge"
-                      onMouseEnter={(e) => showSettingsHoverTip(e, t('settings.weakTip'))}
-                      onMouseLeave={hideSettingsHoverTip}
-                    >
-                      {t('settings.weakBadge')}
-                    </span>
-                  )}
-                </label>
-                <div className="settings-algo-actions">
-                  <button className="settings-algo-btn" type="button" disabled>↑</button>
-                  <button className="settings-algo-btn" type="button" disabled>↓</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
   }
 
   /** 处理保存设置的操作，将当前表单数据保存到设置中，并调用 onSave 回调函数传递新的设置对象 */
@@ -549,127 +433,261 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   /** 处理重置日志路径的操作，将日志路径设置恢复为默认值 */
   const handleResetLogPath = () => set('logPath', '')
 
-  /**
-   * 渲染设置标签页的内容，根据传入的 section 对象动态生成设置项的表单元素，支持布尔值开关、路径选择和下拉选择等不同类型的设置项
-   * @param {*} section 
-   * @returns 
-   */
-  const renderSection = (section) => (
-    <div key={section.section} className="settings-section">
-      <div className="settings-section-title">{t(`settings.sections.${section.section}`)}</div>
-      <div className="settings-items">
-        {section.items.map(item => {
-          const label = t(`settings.fields.${item.key}.label`)
-          const desc = t(`settings.fields.${item.key}.desc`)
-          const logDisplay = form[item.key] || getDefaultLogPath() || t('settings.logDefaultDir')
-          const logTipPath = form[item.key] || getDefaultLogPath() || t('settings.logDefaultDir')
-          const logResetTip = t('settings.logResetDefault', { path: getDefaultLogPath() || t('settings.logDefaultDir') })
-          const logPathDisabled = item.key === 'logPath' && normalizeLoggingMode(form.loggingMode) === 'none'
-          return (
-            <div key={item.key} className="settings-item">
-              <div className="settings-item-info">
-                <span className="settings-item-label">{label}</span>
-                {desc ? <span className="settings-item-desc">{desc}</span> : null}
-              </div>
-              {item.type === 'boolean' && (
-                <button
-                  type="button"
-                  className={`settings-toggle ${form[item.key] ? 'on' : 'off'}`}
-                  onClick={() => set(item.key, !form[item.key])}
-                >
-                  <span className="settings-toggle-knob" />
-                </button>
-              )}
-              {item.type === 'path' && (
-                <div
-                  className={`settings-path-row${logPathDisabled ? ' is-log-path-disabled' : ''}`}
-                  onMouseEnter={logPathDisabled ? (e) => showSettingsHoverTip(e, t('settings.logPathDisabledTip')) : undefined}
-                  onMouseLeave={logPathDisabled ? hideSettingsHoverTip : undefined}
-                >
-                  <input
-                    className="settings-path-input"
-                    value={logDisplay}
-                    placeholder={getDefaultLogPath() || t('settings.logChooseDir')}
-                    readOnly
-                    disabled={logPathDisabled}
-                    aria-label={`${label}`}
-                    onMouseEnter={logPathDisabled ? undefined : (e) => showSettingsHoverTip(e, t('settings.logCurrentDir', { path: logTipPath }))}
-                    onMouseLeave={logPathDisabled ? undefined : hideSettingsHoverTip}
-                    onFocus={logPathDisabled ? undefined : (e) => showSettingsHoverTip(e, t('settings.logCurrentDir', { path: logTipPath }))}
-                    onBlur={logPathDisabled ? undefined : hideSettingsHoverTip}
-                  />
-                  <button type="button" className="settings-path-btn" disabled={logPathDisabled} onClick={handleChooseLogPath}>{t('settings.choose')}</button>
-                  <button
-                    type="button"
-                    className="settings-path-btn reset"
-                    aria-label={t('settings.logResetAria')}
-                    disabled={logPathDisabled}
-                    onClick={handleResetLogPath}
-                    onMouseEnter={logPathDisabled ? undefined : (e) => showSettingsHoverTip(e, logResetTip)}
-                    onMouseLeave={logPathDisabled ? undefined : hideSettingsHoverTip}
-                    onFocus={logPathDisabled ? undefined : (e) => showSettingsHoverTip(e, logResetTip)}
-                    onBlur={logPathDisabled ? undefined : hideSettingsHoverTip}
-                  >
-                    ↺
-                  </button>
-                </div>
-              )}
-              {item.type === 'select' && (
-                <select
-                  className="settings-select"
-                  value={form[item.key] ?? item.options?.[0]?.value ?? ''}
-                  onChange={(e) => set(item.key, e.target.value)}
-                >
-                  {(item.options || []).map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.labelKey ? t(opt.labelKey) : (opt.label ?? opt.value)}</option>
-                  ))}
-                </select>
-              )}
-              {item.type === 'number' && (
-                <input
-                  type="number"
-                  className="settings-number-input"
-                  min={item.min ?? 0}
-                  max={item.max}
-                  step={item.step ?? 1}
-                  value={form[item.key] ?? ''}
-                  aria-label={label}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    if (v === '' || v === '-') {
-                      set(item.key, v)
-                      return
-                    }
-                    const n = Number(v)
-                    if (!Number.isFinite(n)) return
-                    set(item.key, n)
-                  }}
-                  onBlur={() => set(item.key, clampTerminalScrollback(form[item.key]))}
-                  title=''
-                />
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
+  /** 清空主进程加密库中的全部敏感凭据（不删除已保存会话条目） */
+  const handleClearAllVaultSecrets = async () => {
+    if (!confirm(t('settings.confirmClearVault'))) return
+    if (!confirm(t('settings.confirmClearVault2'))) return
+    try {
+      await clearAllVaultEntries()
+      alert(t('settings.clearedVault'))
+    } catch (e) {
+      alert(t('settings.clearVaultFail', { msg: e?.message || String(e) }))
+    }
+  }
 
-  /** 渲染终端输出高亮标签页的内容，提供一个界面让用户添加、编辑和删除高亮规则，每个规则包含启用状态、匹配模式、是否使用正则表达式和高亮颜色等属性 */
-  const renderHighlightTab = () => (
-    <div className="settings-section">
-      <div className="settings-section-title">{t('settings.highlightTitle')}</div>
-      <div className="settings-items">
-        <div className="settings-item">
-          <div className="settings-item-info">
-            <span className="settings-item-label">{t('settings.highlightRules')}</span>
-            <span className="settings-item-desc">{t('settings.highlightDesc')}</span>
+  const settingsActions = {
+    resetAlgorithmPreferences,
+    resetHighlightRules: handleResetHighlightRules,
+    addHighlightRule,
+    clearVault: handleClearAllVaultSecrets,
+    exportSessions: handleExport,
+    importSessions: () => importRef.current?.click(),
+    clearAllSessions: handleClearAll,
+    exportSettings: handleExportSettings,
+    importSettings: () => importSettingsRef.current?.click(),
+    restoreDefaultSettings: handleRestoreDefaultSettings,
+  }
+
+  const renderSettingItem = (item) => {
+    const itemKey = item.key || item.action
+    const label = item.labelKey ? t(item.labelKey) : t(`settings.fields.${item.key}.label`)
+    const desc = item.descKey ? t(item.descKey) : (item.key ? t(`settings.fields.${item.key}.desc`) : '')
+    const logDisplay = form[item.key] || getDefaultLogPath() || t('settings.logDefaultDir')
+    const logTipPath = form[item.key] || getDefaultLogPath() || t('settings.logDefaultDir')
+    const logResetTip = t('settings.logResetDefault', { path: getDefaultLogPath() || t('settings.logDefaultDir') })
+    const logPathDisabled = item.key === 'logPath' && normalizeLoggingMode(form.loggingMode) === 'none'
+
+    return (
+      <div key={itemKey} className="settings-item">
+        <div className="settings-item-info">
+          <span className="settings-item-label">{label}</span>
+          {desc ? <span className="settings-item-desc">{desc}</span> : null}
+        </div>
+        {item.type === 'boolean' && (
+          <button
+            type="button"
+            className={`settings-toggle ${form[item.key] ? 'on' : 'off'}`}
+            onClick={() => set(item.key, !form[item.key])}
+          >
+            <span className="settings-toggle-knob" />
+          </button>
+        )}
+        {item.type === 'action' && (
+          <>
+            <button
+              type="button"
+              className={`settings-action-btn${item.danger ? ' danger' : ''}`}
+              onClick={() => settingsActions[item.action]?.()}
+            >
+              {t(item.buttonKey)}
+            </button>
+            {item.fileInput === 'importSessions' && (
+              <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
+            )}
+            {item.fileInput === 'importSettings' && (
+              <input ref={importSettingsRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportSettings} />
+            )}
+          </>
+        )}
+        {item.type === 'path' && (
+          <div
+            className={`settings-path-row${logPathDisabled ? ' is-log-path-disabled' : ''}`}
+            onMouseEnter={logPathDisabled ? (e) => showSettingsHoverTip(e, t('settings.logPathDisabledTip')) : undefined}
+            onMouseLeave={logPathDisabled ? hideSettingsHoverTip : undefined}
+          >
+            <input
+              className="settings-path-input"
+              value={logDisplay}
+              placeholder={getDefaultLogPath() || t('settings.logChooseDir')}
+              readOnly
+              disabled={logPathDisabled}
+              aria-label={label}
+              onMouseEnter={logPathDisabled ? undefined : (e) => showSettingsHoverTip(e, t('settings.logCurrentDir', { path: logTipPath }))}
+              onMouseLeave={logPathDisabled ? undefined : hideSettingsHoverTip}
+              onFocus={logPathDisabled ? undefined : (e) => showSettingsHoverTip(e, t('settings.logCurrentDir', { path: logTipPath }))}
+              onBlur={logPathDisabled ? undefined : hideSettingsHoverTip}
+            />
+            <button type="button" className="settings-path-btn" disabled={logPathDisabled} onClick={handleChooseLogPath}>{t('settings.choose')}</button>
+            <button
+              type="button"
+              className="settings-path-btn reset"
+              aria-label={t('settings.logResetAria')}
+              disabled={logPathDisabled}
+              onClick={handleResetLogPath}
+              onMouseEnter={logPathDisabled ? undefined : (e) => showSettingsHoverTip(e, logResetTip)}
+              onMouseLeave={logPathDisabled ? undefined : hideSettingsHoverTip}
+              onFocus={logPathDisabled ? undefined : (e) => showSettingsHoverTip(e, logResetTip)}
+              onBlur={logPathDisabled ? undefined : hideSettingsHoverTip}
+            >
+              ↺
+            </button>
           </div>
+        )}
+        {item.type === 'select' && (
+          <select
+            className="settings-select"
+            value={form[item.key] ?? item.options?.[0]?.value ?? ''}
+            onChange={(e) => set(item.key, e.target.value)}
+          >
+            {(item.options || []).map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.labelKey ? t(opt.labelKey) : (opt.label ?? opt.value)}</option>
+            ))}
+          </select>
+        )}
+        {item.type === 'number' && (
+          <input
+            type="number"
+            className="settings-number-input"
+            min={item.min ?? 0}
+            max={item.max}
+            step={item.step ?? 1}
+            value={form[item.key] ?? ''}
+            aria-label={label}
+            onChange={(e) => {
+              const v = e.target.value
+              if (v === '' || v === '-') {
+                set(item.key, v)
+                return
+              }
+              const n = Number(v)
+              if (!Number.isFinite(n)) return
+              set(item.key, n)
+            }}
+            onBlur={() => set(item.key, clampTerminalScrollback(form[item.key]))}
+            title=""
+          />
+        )}
+      </div>
+    )
+  }
+
+  const renderSectionHeader = (header) => {
+    if (!header) return null
+    const actions = header.actions || []
+    return (
+      <div className="settings-item">
+        <div className="settings-item-info">
+          <span className="settings-item-label">{t(header.labelKey)}</span>
+          {header.descKey ? <span className="settings-item-desc">{t(header.descKey)}</span> : null}
+        </div>
+        {actions.length > 1 ? (
           <div className="settings-item-actions">
-            <button type="button" className="settings-action-btn" onClick={handleResetHighlightRules}>{t('settings.resetRules')}</button>
-            <button type="button" className="settings-action-btn" onClick={addHighlightRule}>{t('settings.addRule')}</button>
+            {actions.map((act) => (
+              <button
+                key={act.action}
+                type="button"
+                className="settings-action-btn"
+                onClick={() => settingsActions[act.action]?.()}
+              >
+                {t(act.buttonKey)}
+              </button>
+            ))}
+          </div>
+        ) : actions.length === 1 ? (
+          <button
+            type="button"
+            className="settings-action-btn"
+            onClick={() => settingsActions[actions[0].action]?.()}
+          >
+            {t(actions[0].buttonKey)}
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+
+  const renderAlgorithmSection = (sectionDef) => {
+    const algoCategory = algorithmSections.find((item) => item.key === activeAlgoSection) || algorithmSections[0]
+    const selected = form.algorithmPreferences?.[algoCategory.key] || []
+    const options = SSH_ALGORITHM_OPTION_POOL[algoCategory.key] || []
+    return (
+      <div className="settings-section">
+        <div className="settings-section-title">{t(`settings.sections.${sectionDef.section}`)}</div>
+        <div className="settings-items">
+          {renderSectionHeader(sectionDef.header)}
+          <div className="settings-item">
+            <div className="settings-item-info">
+              <span className="settings-item-label">{t('settings.algoCategory')}</span>
+              <span className="settings-item-desc">{t('settings.algoCategoryDesc')}</span>
+            </div>
+            <select className="settings-select" value={activeAlgoSection} onChange={(e) => setActiveAlgoSection(e.target.value)}>
+              {algorithmSections.map((item) => (
+                <option key={item.key} value={item.key}>{item.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="settings-algo-block">
+            <div className="settings-algo-desc">
+              <div className="settings-item-info">
+                <span className="settings-item-desc">{algoCategory.desc}</span>
+              </div>
+              <button type="button" className="settings-action-btn" onClick={() => resetAlgorithmSection(algoCategory.key)}>
+                {t('settings.resetSection')}
+              </button>
+            </div>
+            {selected.map((value, index) => (
+              <div key={value} className="settings-algo-row">
+                <label className="settings-algo-label">
+                  <input type="checkbox" checked onChange={() => toggleAlgorithmOption(algoCategory.key, value)} />
+                  <span>{value}</span>
+                  {isWeakSshAlgorithm(algoCategory.key, value) && (
+                    <span
+                      className="settings-algo-weak-badge"
+                      onMouseEnter={(e) => showSettingsHoverTip(e, t('settings.weakTip'))}
+                      onMouseLeave={hideSettingsHoverTip}
+                    >
+                      {t('settings.weakBadge')}
+                    </span>
+                  )}
+                </label>
+                <div className="settings-algo-actions">
+                  <button className="settings-algo-btn" type="button" disabled={index <= 0} onClick={() => moveAlgorithmOption(algoCategory.key, value, -1)}>↑</button>
+                  <button className="settings-algo-btn" type="button" disabled={index === selected.length - 1} onClick={() => moveAlgorithmOption(algoCategory.key, value, 1)}>↓</button>
+                </div>
+              </div>
+            ))}
+            {options.filter((value) => !selected.includes(value)).map((value) => (
+              <div key={value} className="settings-algo-row">
+                <label className="settings-algo-label">
+                  <input type="checkbox" checked={false} onChange={() => toggleAlgorithmOption(algoCategory.key, value)} />
+                  <span>{value}</span>
+                  {isWeakSshAlgorithm(algoCategory.key, value) && (
+                    <span
+                      className="settings-algo-weak-badge"
+                      onMouseEnter={(e) => showSettingsHoverTip(e, t('settings.weakTip'))}
+                      onMouseLeave={hideSettingsHoverTip}
+                    >
+                      {t('settings.weakBadge')}
+                    </span>
+                  )}
+                </label>
+                <div className="settings-algo-actions">
+                  <button className="settings-algo-btn" type="button" disabled>↑</button>
+                  <button className="settings-algo-btn" type="button" disabled>↓</button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
+      </div>
+    )
+  }
+
+  const renderHighlightSection = (sectionDef) => (
+    <div className="settings-section">
+      <div className="settings-section-title">{t(`settings.sections.${sectionDef.section}`)}</div>
+      <div className="settings-items">
+        {renderSectionHeader(sectionDef.header)}
         {(form.highlightRules || []).map((rule, idx) => {
           const unnamed = translate(msgLang, 'settings.unnamedRule', { n: idx + 1 })
           return (
@@ -758,101 +776,19 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     </div>
   )
 
-  /** 清空主进程加密库中的全部敏感凭据（不删除已保存会话条目） */
-  const handleClearAllVaultSecrets = async () => {
-    if (!confirm(t('settings.confirmClearVault'))) return
-    if (!confirm(t('settings.confirmClearVault2'))) return
-    try {
-      await clearAllVaultEntries()
-      alert(t('settings.clearedVault'))
-    } catch (e) {
-      alert(t('settings.clearVaultFail', { msg: e?.message || String(e) }))
-    }
+  const renderSection = (sectionDef) => {
+    if (sectionDef.kind === 'algorithm') return renderAlgorithmSection(sectionDef)
+    if (sectionDef.kind === 'highlight') return renderHighlightSection(sectionDef)
+    return (
+      <div key={sectionDef.section} className="settings-section">
+        <div className="settings-section-title">{t(`settings.sections.${sectionDef.section}`)}</div>
+        <div className="settings-items">
+          {(sectionDef.items || []).map((item) => renderSettingItem(item))}
+        </div>
+      </div>
+    )
   }
 
-  /** 凭据存储：单一总开关 + 清空加密库 */
-  const renderCredentialsTab = () => (
-    <div className="settings-section">
-      <div className="settings-section-title">{t('settings.credentialsTitle')}</div>
-      <div className="settings-items">
-        <div className="settings-item">
-          <div className="settings-item-info">
-            <span className="settings-item-label">{t('settings.saveSecrets')}</span>
-            <span className="settings-item-desc">{t('settings.saveSecretsDesc')}</span>
-          </div>
-          <button
-            type="button"
-            className={`settings-toggle ${form.saveSecretsToVault ? 'on' : 'off'}`}
-            onClick={() => set('saveSecretsToVault', !form.saveSecretsToVault)}
-          >
-            <span className="settings-toggle-knob" />
-          </button>
-        </div>
-        <div className="settings-item">
-          <div className="settings-item-info">
-            <span className="settings-item-label">{t('settings.clearSecrets')}</span>
-            <span className="settings-item-desc">{t('settings.clearSecretsDesc')}</span>
-          </div>
-          <button type="button" className="settings-action-btn danger" onClick={handleClearAllVaultSecrets}>{t('settings.clear')}</button>
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderSessionTab = () => (
-    <div className="settings-section">
-      <div className="settings-section-title">{t('settings.sessionMgmt')}</div>
-      <div className="settings-items">
-        <div className="settings-item">
-          <div className="settings-item-info">
-            <span className="settings-item-label">{t('settings.exportSessions')}</span>
-            <span className="settings-item-desc">{t('settings.exportSessionsDesc')}</span>
-          </div>
-          <button type="button" className="settings-action-btn" onClick={handleExport}>{t('settings.export')}</button>
-        </div>
-        <div className="settings-item">
-          <div className="settings-item-info">
-            <span className="settings-item-label">{t('settings.importSessions')}</span>
-            <span className="settings-item-desc">{t('settings.importSessionsDesc')}</span>
-          </div>
-          <button type="button" className="settings-action-btn" onClick={() => importRef.current?.click()}>{t('settings.import')}</button>
-          <input ref={importRef} type="file" accept=".json" style={{display:'none'}} onChange={handleImport} />
-        </div>
-        <div className="settings-item">
-          <div className="settings-item-info">
-            <span className="settings-item-label">{t('settings.clearAllSessions')}</span>
-            <span className="settings-item-desc">{t('settings.clearAllSessionsDesc')}</span>
-          </div>
-          <button type="button" className="settings-action-btn danger" onClick={handleClearAll}>{t('settings.clearAll')}</button>
-        </div>
-      </div>
-      <div className="settings-section-title">{t('settings.settingsMgmt')}</div>
-      <div className="settings-items">
-        <div className="settings-item">
-          <div className="settings-item-info">
-            <span className="settings-item-label">{t('settings.exportSettings')}</span>
-            <span className="settings-item-desc">{t('settings.exportSettingsDesc')}</span>
-          </div>
-          <button type="button" className="settings-action-btn" onClick={handleExportSettings}>{t('settings.export')}</button>
-        </div>
-        <div className="settings-item">
-          <div className="settings-item-info">
-            <span className="settings-item-label">{t('settings.importSettings')}</span>
-            <span className="settings-item-desc">{t('settings.importSettingsDesc')}</span>
-          </div>
-          <button type="button" className="settings-action-btn" onClick={() => importSettingsRef.current?.click()}>{t('settings.import')}</button>
-          <input ref={importSettingsRef} type="file" accept=".json" style={{display:'none'}} onChange={handleImportSettings} />
-        </div>
-        <div className="settings-item">
-          <div className="settings-item-info">
-            <span className="settings-item-label">{t('settings.restoreDefaults')}</span>
-            <span className="settings-item-desc">{t('settings.restoreDefaultsDesc')}</span>
-          </div>
-          <button type="button" className="settings-action-btn danger" onClick={handleRestoreDefaultSettings}>{t('settings.restoreDefaultBtn')}</button>
-        </div>
-      </div>
-    </div>
-  )
 
   return (
     <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -886,22 +822,10 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
           </div>
 
           <div className="settings-tab-panels">
-            {activeTab === 'general' && SETTINGS_GENERAL_SECTION_IDS.map((id) => {
+            {(SETTINGS_TAB_SECTION_IDS[activeTab] || []).map((id) => {
               const section = SETTINGS_SCHEMA.find((s) => s.section === id)
               return section ? <Fragment key={id}>{renderSection(section)}</Fragment> : null
             })}
-            {activeTab === 'ssh-terminal' && (
-              <>
-                {renderAlgorithmTab()}
-                {renderHighlightTab()}
-              </>
-            )}
-            {activeTab === 'data-security' && (
-              <>
-                {renderSessionTab()}
-                {renderCredentialsTab()}
-              </>
-            )}
           </div>
         </div>
 

@@ -141,6 +141,11 @@ export const MESSAGES = {
         confirm: '操作确认',
         terminal: '终端行为',
         logging: '日志',
+        algorithm: 'SSH/SFTP 算法',
+        highlight: '终端输出高亮',
+        credentials: '凭据存储',
+        sessions: '会话管理',
+        settingsMgmt: '设置管理',
       },
       fields: {
         appTheme: {
@@ -166,6 +171,10 @@ export const MESSAGES = {
         logPath: {
           label: '日志保存目录',
           desc: '留空则保存至系统下载目录下的「zterm-session-log」文件夹。须选主目录/文稿/下载/桌面等用户目录下路径，否则写入会被主进程拒绝',
+        },
+        saveSecretsToVault: {
+          label: '保存敏感凭据到加密存储',
+          desc: '开启后，保存 SSH/Telnet 会话时会把密码、私钥路径或 PEM、私钥 passphrase 等一并写入系统加密存储。\n关闭并保存设置后，会按会话从加密库中移除这些字段；若系统不支持加密，保存会话时会提示且不会把明文写入磁盘',
         },
       },
       options: {
@@ -205,7 +214,7 @@ export const MESSAGES = {
       resetRules: '重置规则',
       addRule: '新增规则',
       ruleN: '规则 {n}',
-      ruleNamePh: '请输入规则名字',
+      ruleNamePh: '请输入规则名称',
       ruleNameTip: '规则名称',
       ruleEnabled: '规则已启用',
       ruleDisabled: '规则已禁用',
@@ -483,6 +492,11 @@ export const MESSAGES = {
         confirm: 'Confirmations',
         terminal: 'Terminal behavior',
         logging: 'Logging',
+        algorithm: 'SSH/SFTP algorithms',
+        highlight: 'Terminal highlighting',
+        credentials: 'Credential storage',
+        sessions: 'Sessions',
+        settingsMgmt: 'Settings file',
       },
       fields: {
         appTheme: {
@@ -514,6 +528,10 @@ export const MESSAGES = {
         logPath: {
           label: 'Log directory',
           desc: 'Empty = Downloads/zterm-session-log. Must be under a user-writable folder or the main process will reject writes.',
+        },
+        saveSecretsToVault: {
+          label: 'Save secrets to encrypted storage',
+          desc: 'When on, saving SSH/Telnet sessions stores password, private key / PEM, and passphrase in OS secure storage.\nWhen off and saved, those fields are removed from the vault; if encryption is unavailable, saving will warn and avoid writing plaintext.',
         },
       },
       options: {
