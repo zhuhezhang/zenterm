@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import {
   SETTINGS_SCHEMA, SETTINGS_TABS, SETTINGS_TAB_SECTION_IDS, SSH_ALGORITHM_SECTION_KEYS,
-  saveSettings, exportSettings, importSettings, getDefaultLogPath,
-  DEFAULT_SETTINGS, DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
+  DEFAULT_SETTINGS, DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, 
+  isWeakSshAlgorithm, saveSettings, exportSettings, importSettings, getDefaultLogPath,
   clampTerminalScrollback, normalizeLoggingMode, applyLegacyLoggingMigration,
 } from '../store/settingsStore.js'
 import { translate } from '../i18n/translations.js'
@@ -88,6 +88,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   const importRef = useRef(null)
   /** 用于导入设置的文件输入引用 */
   const importSettingsRef = useRef(null)
+  /** 设置标签页列表 */
   const tabs = SETTINGS_TABS.map((tab) => ({ key: tab.key, label: t(tab.labelKey) }))
   const [activeTab, setActiveTab] = useState('general')  // 当前选中的标签页
   const [settingsHoverTip, setSettingsHoverTip] = useState(null)  // 设置弹窗内浮动说明（原生 title 在 Electron 内不可靠，用 fixed 层统一展示）
@@ -445,26 +446,39 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     }
   }
 
+  /** 设置操作按钮回调函数 */
   const settingsActions = {
-    resetAlgorithmPreferences,
-    resetHighlightRules: handleResetHighlightRules,
-    addHighlightRule,
-    clearVault: handleClearAllVaultSecrets,
-    exportSessions: handleExport,
-    importSessions: () => importRef.current?.click(),
-    clearAllSessions: handleClearAll,
-    exportSettings: handleExportSettings,
-    importSettings: () => importSettingsRef.current?.click(),
-    restoreDefaultSettings: handleRestoreDefaultSettings,
+    resetAlgorithmPreferences,  // 重置算法偏好设置
+    resetHighlightRules: handleResetHighlightRules,  // 重置高亮规则
+    addHighlightRule,  // 添加高亮规则
+    clearVault: handleClearAllVaultSecrets,  // 清除加密库中的全部敏感凭据
+    exportSessions: handleExport,  // 导出会话
+    importSessions: () => importRef.current?.click(),  // 导入会话
+    clearAllSessions: handleClearAll,  // 清除所有会话
+    exportSettings: handleExportSettings,  // 导出设置
+    importSettings: () => importSettingsRef.current?.click(),  // 导入设置
+    restoreDefaultSettings: handleRestoreDefaultSettings,  // 恢复默认设置
   }
 
+  /** 
+   * 渲染设置项
+   * @param {Object} item 设置项对象
+   * @returns {React.ReactNode} 渲染后的设置项 
+   */
   const renderSettingItem = (item) => {
+    /** 设置项的键或操作名，如 'terminalScrollback'、'logPath'、'resetAlgorithmPreferences'、'resetHighlightRules'等 */
     const itemKey = item.key || item.action
+    /** 设置项的标签，如 '终端滚动缓冲区'、'日志路径'、'重置算法偏好设置'、'重置高亮规则'等 */
     const label = item.labelKey ? t(item.labelKey) : t(`settings.fields.${item.key}.label`)
+    /** 设置项的描述，如 '终端滚动缓冲区'、'日志路径'、'重置算法偏好设置'、'重置高亮规则'等 */
     const desc = item.descKey ? t(item.descKey) : (item.key ? t(`settings.fields.${item.key}.desc`) : '')
+    /** 日志路径的显示值，如 '~/Downloads/zterm-session-log'、'~/Downloads/zterm-session-log'、'系统下载目录（默认）'等 */
     const logDisplay = form[item.key] || getDefaultLogPath() || t('settings.logDefaultDir')
+    /** 日志路径的提示路径，如 '~/Downloads/zterm-session-log'、'~/Downloads/zterm-session-log'、'系统下载目录（默认）'等 */
     const logTipPath = form[item.key] || getDefaultLogPath() || t('settings.logDefaultDir')
+    /** 重置日志路径的提示文本，如 '恢复默认日志目录为：\n~/Downloads/zterm-session-log'等 */
     const logResetTip = t('settings.logResetDefault', { path: getDefaultLogPath() || t('settings.logDefaultDir') })
+    /** 日志路径是否禁用，如 true、false等 */
     const logPathDisabled = item.key === 'logPath' && normalizeLoggingMode(form.loggingMode) === 'none'
 
     return (
@@ -571,9 +585,14 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     )
   }
 
+  /** 
+   * 渲染区块标题
+   * @param {Object} header 区块标题对象
+   * @returns {React.ReactNode} 渲染后的区块标题 
+   */
   const renderSectionHeader = (header) => {
     if (!header) return null
-    const actions = header.actions || []
+    const actions = header.actions || []  // 区块标题的操作按钮列表，如 [ { action: 'resetAlgorithmPreferences', buttonKey: 'settings.resetDefault' } ] 即重置算法偏好设置
     return (
       <div className="settings-item">
         <div className="settings-item-info">
@@ -606,6 +625,11 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     )
   }
 
+  /** 
+   * 渲染算法区块
+   * @param {Object} sectionDef 算法区块定义
+   * @returns {React.ReactNode} 渲染后的算法区块 
+   */
   const renderAlgorithmSection = (sectionDef) => {
     const algoCategory = algorithmSections.find((item) => item.key === activeAlgoSection) || algorithmSections[0]
     const selected = form.algorithmPreferences?.[algoCategory.key] || []
@@ -683,6 +707,11 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     )
   }
 
+  /** 
+   * 渲染高亮区块
+   * @param {Object} sectionDef 高亮区块定义
+   * @returns {React.ReactNode} 渲染后的高亮区块 
+   */
   const renderHighlightSection = (sectionDef) => (
     <div className="settings-section">
       <div className="settings-section-title">{t(`settings.sections.${sectionDef.section}`)}</div>
@@ -776,9 +805,14 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     </div>
   )
 
+  /** 
+   * 渲染设置区块
+   * @param {Object} sectionDef 设置区块定义
+   * @returns {React.ReactNode} 渲染后的设置区块 
+   */
   const renderSection = (sectionDef) => {
-    if (sectionDef.kind === 'algorithm') return renderAlgorithmSection(sectionDef)
-    if (sectionDef.kind === 'highlight') return renderHighlightSection(sectionDef)
+    if (sectionDef.kind === 'algorithm') return renderAlgorithmSection(sectionDef)  // 渲染算法区块
+    if (sectionDef.kind === 'highlight') return renderHighlightSection(sectionDef)  // 渲染高亮区块
     return (
       <div key={sectionDef.section} className="settings-section">
         <div className="settings-section-title">{t(`settings.sections.${sectionDef.section}`)}</div>

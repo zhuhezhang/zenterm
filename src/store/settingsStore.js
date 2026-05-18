@@ -237,9 +237,9 @@ export const SSH_ALGORITHM_SECTION_KEYS = ['kex', 'serverHostKey', 'cipher', 'hm
 
 /**
  * 设置界面区块与表单项定义（文案由 i18n 解析）
- * - 常规标签：items 为 boolean / number / select / path
- * - SSH 与终端：kind 为 algorithm | highlight
- * - 数据与安全：items 含 boolean 与 action（按钮操作，非表单字段）
+ * - 【常规】标签：section 为 confirm、terminal、logging、appearance，即操作确认区块、终端行为区块、日志区块和外观与语言区块
+ * - 【SSH 与终端】标签：section 为 algorithm、highlight，即算法区块和高亮区块
+ * - 【数据与安全】标签：section 为 credentials、sessions、settingsMgmt，即凭据存储区块、会话管理区块和设置管理区块
  */
 export const SETTINGS_SCHEMA = [
   {
