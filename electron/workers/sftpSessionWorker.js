@@ -6,9 +6,7 @@ import { parentPort, workerData } from 'worker_threads'
 import { Client } from 'ssh2'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
 import {
-  assertSftpLocalDirAllowedForRoots,
-  assertSftpLocalFilePathAllowedForRoots,
-  safeJoinLocalDownloadPathForRoots,
+  assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, safeJoinLocalDownloadPathForRoots,
 } from '../lib/sftpLocalPathRoots.js'
 
 const { _sessionId, config, allowedRoots } = workerData

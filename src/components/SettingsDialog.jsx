@@ -1,23 +1,13 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import {
-  DEFAULT_ALGORITHM_PREFERENCES,
-  SSH_ALGORITHM_OPTION_POOL,
-  isWeakSshAlgorithm,
+  DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
 } from '../../shared/sshAlgorithmDefaults.js'
 import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS } from '../lib/settings/defaults.js'
 import {
-  clampTerminalScrollback,
-  normalizeLoggingMode,
-  applyLegacyLoggingMigration,
+  clampTerminalScrollback, normalizeLoggingMode, applyLegacyLoggingMigration,
 } from '../lib/settings/normalize.js'
 import {
-  SETTINGS_SCHEMA,
-  SETTINGS_TABS,
-  SETTINGS_TAB_SECTION_IDS,
-  saveSettings,
-  exportSettings,
-  importSettings,
-  getDefaultLogPath,
+  SETTINGS_SCHEMA, SETTINGS_TABS, SETTINGS_TAB_SECTION_IDS, saveSettings, exportSettings, importSettings, getDefaultLogPath,
 } from '../store/settingsStore.js'
 import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'

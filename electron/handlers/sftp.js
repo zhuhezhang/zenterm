@@ -5,9 +5,7 @@ import { Worker } from 'worker_threads'
 import { fileURLToPath } from 'url'
 import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
 import {
-  assertSftpLocalDirAllowed,
-  assertSftpLocalFilePathAllowed,
-  getAllowedUserRootPaths,
+  assertSftpLocalDirAllowed, assertSftpLocalFilePathAllowed, getAllowedUserRootPaths,
 } from '../lib/localPathPolicy.js'
 import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
 

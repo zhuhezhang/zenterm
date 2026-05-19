@@ -5,11 +5,8 @@
 import path from 'path'
 import { app } from 'electron'
 import {
-  assertSftpLocalDirAllowedForRoots,
-  assertSftpLocalFilePathAllowedForRoots,
-  isPathWithinResolvedRoots,
-  safeJoinLocalDownloadPathForRoots,
-  SFTP_PATH_ERR_HINT,
+  assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, isPathWithinResolvedRoots,
+  safeJoinLocalDownloadPathForRoots, SFTP_PATH_ERR_HINT,
 } from './sftpLocalPathRoots.js'
 
 export {

@@ -9,13 +9,10 @@ import { setupSerialHandlers } from './handlers/serial.js'
 import { setupCredentialHandlers } from './handlers/credentials.js'
 import { assertLogWriteDirectoryAllowed, validateLogWriteDirectory } from './lib/localPathPolicy.js'
 import {
-  setTrustedRendererWebContents,
-  clearTrustedRendererWebContents,
-  isTrustedIpcSender,
+  setTrustedRendererWebContents, clearTrustedRendererWebContents, isTrustedIpcSender,
 } from './lib/trustedSender.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))  // 当前文件的目录路径
-
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged  // 兼容开发环境和生产环境的判断(通过环境变量和是否打包判读)
 // const isDev = false  // 强制生产环境用于测试
 let mainWindow
