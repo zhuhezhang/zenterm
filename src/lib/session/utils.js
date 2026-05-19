@@ -1,5 +1,5 @@
 import {
-  PORT_MIN, PORT_MAX, SESSION_TYPE_FIELDS, AUTH_TYPES, BAUD_RATE_SET, PARITY_SET,
+  PORT_MIN, PORT_MAX, SESSION_TYPE_FIELDS, BAUD_RATE_SET, PARITY_SET,
   LABEL_ILLEGAL_CHARS_RE, GROUP_ILLEGAL_CHARS_RE, getSessionFormDefaults,
 } from './constants.js'
 
@@ -57,7 +57,6 @@ export function parseSessionPort(raw) {
  * @param {string} tab 会话类型
  * @param {Record<string, unknown>} form 表单数据
  * @returns {string} 构建后的会话标签
- * @param {Record<string, unknown>} form
  */
 export function buildSessionLabel(tab, form) {
   if (tab === 'serial') {
@@ -82,14 +81,6 @@ export function validateSessionGroupLabel(group, label) {
   if (g && GROUP_ILLEGAL_CHARS_RE.test(g)) return 'groupIllegalChars'
   if (l && LABEL_ILLEGAL_CHARS_RE.test(l)) return 'labelIllegalChars'
   return null
-}
-
-/** 验证会话分组和标签返回码 → connect.* i18n 键 */
-export const SESSION_GROUP_LABEL_ERROR_KEYS = {
-  groupSlashStart: 'connect.errGroupSlashStart',
-  groupSlashEnd: 'connect.errGroupSlashEnd',
-  groupIllegalChars: 'connect.errGroupChars',
-  labelIllegalChars: 'connect.errLabelChars',
 }
 
 /**
@@ -147,10 +138,3 @@ export function applySerialStorageFields(merged, item, base) {
     merged.baudRate = base.baudRate
   }
 }
-
-/** 认证类型集合 */
-const AUTH_TYPE_SET = new Set(AUTH_TYPES)
-/** 会话类型集合 */
-const SESSION_TYPE_SET = new Set(['ssh', 'telnet', 'serial'])
-
-export { SESSION_TYPE_SET, AUTH_TYPE_SET }

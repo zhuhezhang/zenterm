@@ -15,7 +15,9 @@ import {
   syncSessionSecretsToVault, resolveAffectedSavedId, mergeSessionWithVaultSecrets,
   removeVaultEntry, duplicateVaultEntry, reapplyVaultPoliciesForAllSessions,
 } from './store/credentialsBridge.js'
-import { loadSettings, saveSettings, clampSidebarWidthPx, DEFAULT_SIDEBAR_WIDTH } from './store/settingsStore.js'
+import { loadSettings, saveSettings } from './store/settingsStore.js'
+import { DEFAULT_SIDEBAR_WIDTH } from './lib/settings/defaults.js'
+import { clampSidebarWidthPx } from './lib/settings/normalize.js'
 import { resolveEffectiveUiLanguage } from './i18n/resolveUiLanguage.js'
 import { resolveEffectiveAppTheme } from './theme/appTheme.js'
 import './styles/app.css'

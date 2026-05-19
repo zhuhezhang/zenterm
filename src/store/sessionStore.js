@@ -1,5 +1,5 @@
 import { buildExportEnvelope } from '../lib/import/parseImportFile.js'
-import { validateAndParseSessionsImport } from '../lib/import/validateSessions.js'
+import { validateAndParseSessionsImport } from '../lib/import/parseSessionsImport.js'
 import { pickSessionStorageFields } from '../lib/session/utils.js'
 
 /** 本地存储会话的键名 */

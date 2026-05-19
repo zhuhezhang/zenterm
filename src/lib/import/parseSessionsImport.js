@@ -1,9 +1,7 @@
 import { createImportError } from './handleImportErrors.js'
 import { readImportJson, unwrapExportPayload } from './parseImportFile.js'
-import { normalizeImportedSession } from '../session/normalizeImport.js'
-
-/** 最大会话数量 */
-const MAX_SESSION_COUNT = 5000
+import { normalizeImportedSession } from '../session/normalizeSession.js'
+import { IMPORT_MAX_SESSION_COUNT } from '../session/constants.js'
 
 /**
  * 验证并解析会话导入文件
@@ -13,8 +11,8 @@ const MAX_SESSION_COUNT = 5000
 export async function validateAndParseSessionsImport(file) {
   const parsed = await readImportJson(file)
   const rows = unwrapExportPayload(parsed, 'sessions')
-  if (rows.length > MAX_SESSION_COUNT) {
-    throw createImportError('invalidPayload')
+  if (rows.length > IMPORT_MAX_SESSION_COUNT) {
+    throw createImportError('tooManySessions', { max: IMPORT_MAX_SESSION_COUNT })
   }
 
   const sessions = []  // 存储解析后的会话

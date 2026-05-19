@@ -13,7 +13,7 @@ export function readImportJson(file) {
       return
     }
     if (file.size > IMPORT_MAX_BYTES) {
-      reject(createImportError('fileTooLarge', { max: '8 MB' }))
+      reject(createImportError('fileTooLarge', { max: IMPORT_MAX_BYTES / 1024 / 1024 }))
       return
     }
     const reader = new FileReader()
@@ -37,14 +37,18 @@ export function readImportJson(file) {
  */
 export function unwrapExportPayload(parsed, expectedKind) {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {  // 如果解析后的 JSON 对象不是对象或数组，则抛出错误
-    throw createImportError('wrongFileType')
+    throw createImportError('invalidPayload')
   }
   const envelope = /** @type {Record<string, unknown>} */ (parsed)  // 将解析后的 JSON 对象转换为对象
-  if (envelope.ztermExport !== expectedKind) {
-    throw createImportError('wrongFileType')  // 如果 envelope 的 ztermExport 字段不等于期望的类型，则抛出错误
+  if (envelope.ztermExport !== expectedKind) {  // 如果 envelope 的 ztermExport 字段不等于期望的类型，则抛出错误
+    if (expectedKind === 'sessions') {
+      throw createImportError('wrongFileType', { kind: '会话' })
+    } else {
+      throw createImportError('wrongFileType', { kind: '设置' })
+    }
   }
   if (envelope.version !== 1) {
-    throw createImportError('unsupportedVersion')  // 如果 envelope 的 version 字段不等于 1，则抛出错误
+    throw createImportError('unsupportedVersion', { version: 1 })  // 如果 envelope 的 version 字段不等于 1，则抛出错误
   }
   const { data } = envelope
   if (expectedKind === 'sessions') {

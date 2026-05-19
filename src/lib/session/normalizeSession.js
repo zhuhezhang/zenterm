@@ -1,8 +1,8 @@
 import { normalizeTerminalEncoding } from '../../../shared/terminalEncodings.js'
-import { getSessionStorageDefaults } from './constants.js'
+import { getSessionStorageDefaults, SESSION_TYPE_SET, AUTH_TYPE_SET } from './constants.js'
 import {
   normalizeBackspaceMode, clampSessionPort, buildSessionLabel, validateSessionGroupLabel,
-  pickSessionStorageFields, applySerialStorageFields, SESSION_TYPE_SET, AUTH_TYPE_SET,
+  pickSessionStorageFields, applySerialStorageFields,
 } from './utils.js'
 
 /**

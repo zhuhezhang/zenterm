@@ -6,8 +6,12 @@ export const PORT_MIN = 0
 export const PORT_MAX = 65535
 /** 会话类型列表 */
 export const SESSION_TYPES = ['ssh', 'telnet', 'serial']
+/** 会话类型集合（用于快速判断是否为合法会话类型） */
+export const SESSION_TYPE_SET = new Set(SESSION_TYPES)
 /** SSH 认证类型列表 */
 export const AUTH_TYPES = ['password', 'privateKey']
+/** SSH 认证类型集合（用于快速判断是否为合法认证类型） */
+export const AUTH_TYPE_SET = new Set(AUTH_TYPES)
 
 /** 串口波特率列表 */
 export const BAUD_RATES = [ '110', '300', '600', '1200', '2400', '4800', '9600', '14400', '19200', '38400', '57600', '115200', '128000', '256000',]
@@ -32,6 +36,17 @@ export const SESSION_TYPE_FIELDS = {
 export const LABEL_ILLEGAL_CHARS_RE = /[/\\:*?"<>\x00]/
 /** 分组名非法字符 */
 export const GROUP_ILLEGAL_CHARS_RE = /[\\:*?"<>\x00]/
+
+/** 导入会话最大数量 */
+export const IMPORT_MAX_SESSION_COUNT = 5000
+
+/** 验证会话分组和标签返回码 → connect.* i18n 键 */
+export const SESSION_GROUP_LABEL_ERROR_KEYS = {
+  groupSlashStart: 'connect.errGroupSlashStart',
+  groupSlashEnd: 'connect.errGroupSlashEnd',
+  groupIllegalChars: 'connect.errGroupChars',
+  labelIllegalChars: 'connect.errLabelChars',
+}
 
 /** ssh 会话默认值（数值字段为 number；表单绑定经 getSessionFormDefaults 转为字符串） */
 export const SSH_SESSION_DEFAULT = {

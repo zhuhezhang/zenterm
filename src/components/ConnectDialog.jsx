@@ -3,12 +3,12 @@ import { useI18n } from '../context/I18nContext.jsx'
 import { fetchSessionSecrets } from '../store/credentialsBridge.js'
 import { TERMINAL_ENCODING_OPTIONS } from '../../shared/terminalEncodings.js'
 import {
-  PORT_MIN, PORT_MAX, BAUD_RATES, PARITIES,
+  PORT_MIN, PORT_MAX, BAUD_RATES, PARITIES, SESSION_GROUP_LABEL_ERROR_KEYS,
   SSH_SESSION_DEFAULT, TELNET_SESSION_DEFAULT, SERIAL_SESSION_DEFAULT,
 } from '../lib/session/constants.js'
 import {
   mergeSessionFormDefaults, normalizeBackspaceMode, clampPortFieldString, parseSessionPort,
-  buildSessionLabel, validateSessionGroupLabel, SESSION_GROUP_LABEL_ERROR_KEYS,
+  buildSessionLabel, validateSessionGroupLabel,
 } from '../lib/session/utils.js'
 import '../styles/dialog.css'
 
@@ -141,7 +141,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
       }
     }
     const glErr = validateSessionGroupLabel(form.group, form.label)
-    if (glErr) return t(SESSION_GROUP_LABEL_ERROR_KEYS[glErr])
+    if (glErr) return t(SESSION_GROUP_LABEL_ERROR_KEYS[glErr]) // 根据错误码获取错误信息
     return ''
   }
 
