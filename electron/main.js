@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, nativeImage } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
@@ -15,15 +15,26 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url))  // 当前文件的目录路径
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged  // 兼容开发环境和生产环境的判断(通过环境变量和是否打包判读)
 // const isDev = false  // 强制生产环境用于测试
+const appIconPath = path.join(__dirname, '../build/icon.png')
+
+/** 开发环境窗口 / 任务栏图标；打包后由 electron-builder 写入应用包 */
+function resolveAppIcon() {
+  if (!fs.existsSync(appIconPath)) return undefined
+  const image = nativeImage.createFromPath(appIconPath)
+  return image.isEmpty() ? undefined : image
+}
+
 let mainWindow
 
 /** 创建主窗口，设置窗口属性和事件处理 */
 function createWindow() {
+  const icon = resolveAppIcon()
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    ...(icon ? { icon } : {}),
     frame: false,  // 无系统边框，自定义标题栏
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 16, y: 14 },  // macOS 左上角按钮位置调整
@@ -133,6 +144,10 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  if (isDev && process.platform === 'darwin') {
+    const icon = resolveAppIcon()
+    if (icon) app.dock?.setIcon(icon)
+  }
   createWindow()
   setupSSHHandlers(ipcMain, mainWindow)  // 设置 SSH 相关的 IPC 处理函数，传入 ipcMain 和 mainWindow 以便在处理函数中使用 IPC 和窗口通信
   setupSFTPHandlers(ipcMain, mainWindow)

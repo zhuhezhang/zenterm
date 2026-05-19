@@ -49,8 +49,10 @@
   "build": {
     "appId": "com.zterm.app",
     "productName": "ZTerm",
+    "icon": "build/icon.png",
     "directories": {
-      "output": "dist-electron"
+      "output": "dist-electron",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
@@ -58,6 +60,7 @@
       "shared/**/*"
     ],
     "win": {
+      "icon": "build/icon.png",
       "target": [ "nsis", "portable", "zip" ]
     },
     "nsis": {
@@ -67,10 +70,12 @@
       "allowToChangeInstallationDirectory": true
     },
     "linux": {
+      "icon": "build/icon.png",
       "target": [ "AppImage", "deb", "tar.gz" ],
       "category": "Utility"
     },
     "mac": {
+      "icon": "build/icon.icns",
       "target": [ "dmg", "zip" ]
     },
     "dmg": {
