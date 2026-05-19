@@ -58,11 +58,21 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
   const credPassInputRef = useRef(null)
   /** 避免在凭证弹层内每次输入都重复 focus，只在本次打开时聚焦一次，用一个布尔值来记录是否已经聚焦过 */
   const credFocusAppliedRef = useRef(false)
-  /** SSH / Telnet 各自上次在表单里编辑的端口；互切标签时不把对方的端口写进当前协议 */
-  const portByTabRef = useRef({
-    ssh: String(SSH_SESSION_DEFAULT.port),
-    telnet: String(TELNET_SESSION_DEFAULT.port),
-  })
+  /** SSH / Telnet 各自上次在表单里编辑的端口；经 Serial 中转切换时也须恢复，不能沿用表单里残留的 port */
+  const portByTabRef = useRef(null)
+  if (!portByTabRef.current) {
+    const initialTab = type || 'ssh'
+    const initialForm = mergeSessionFormDefaults(initialTab, initialData, appBackspaceFallback)
+    const toRefPort = (tab, raw) => {
+      const fallback = tab === 'ssh' ? SSH_SESSION_DEFAULT.port : TELNET_SESSION_DEFAULT.port
+      const s = String(raw ?? '').trim()
+      return s === '' ? String(fallback) : clampPortFieldString(s) || String(fallback)
+    }
+    portByTabRef.current = {
+      ssh: initialTab === 'ssh' ? toRefPort('ssh', initialForm.port) : String(SSH_SESSION_DEFAULT.port),
+      telnet: initialTab === 'telnet' ? toRefPort('telnet', initialForm.port) : String(TELNET_SESSION_DEFAULT.port),
+    }
+  }
 
   /**
    * 切换协议类型时更新表单数据。保留已有参数，补齐当前协议缺省字段，重置错误信息。
@@ -82,8 +92,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
         portByTabRef.current.telnet = s === '' ? String(TELNET_SESSION_DEFAULT.port) : clampPortFieldString(s) || String(TELNET_SESSION_DEFAULT.port)
       }
       const merged = mergeSessionFormDefaults(next, prev, appBackspaceFallback)
-      const sshTelnetSwitch = (from === 'ssh' && next === 'telnet') || (from === 'telnet' && next === 'ssh')
-      if (sshTelnetSwitch) {
+      if (next === 'ssh' || next === 'telnet') {
         const p = next === 'ssh' ? portByTabRef.current.ssh : portByTabRef.current.telnet
         return { ...merged, port: p }
       }
@@ -114,8 +123,14 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
       const sec = await fetchSessionSecrets(sid)
       if (cancelled) return
       const t = initialData.type || type || 'ssh'
+      const merged = { ...mergeSessionFormDefaults(t, initialData, appBackspaceFallback), ...sec }
+      if (t === 'ssh' || t === 'telnet') {
+        const s = String(merged.port ?? '').trim()
+        const fallback = t === 'ssh' ? SSH_SESSION_DEFAULT.port : TELNET_SESSION_DEFAULT.port
+        portByTabRef.current[t] = s === '' ? String(fallback) : clampPortFieldString(s) || String(fallback)
+      }
       setTab(t)
-      setForm({ ...mergeSessionFormDefaults(t, initialData, appBackspaceFallback), ...sec })
+      setForm(merged)
     })()
     return () => { cancelled = true }
   }, [initialData?.savedId, initialData?.type, type, appBackspaceFallback])

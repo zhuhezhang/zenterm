@@ -1,8 +1,8 @@
 # ZTerm
 
-简体中文 · **[English](README.md)**
+简体中文 · **[English](README.md)** · v1.2.3
 
-ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、分组管理、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
+ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、层级分组、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
 
 ---
 
@@ -16,6 +16,7 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 - [快速开始](#快速开始)
 - [使用指南](#使用指南)
 - [设置项说明](#设置项说明)
+- [导入 / 导出格式](#导入--导出格式)
 - [安全设计](#安全设计)
 - [数据与存储位置](#数据与存储位置)
 - [常见问题](#常见问题)
@@ -37,27 +38,30 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 ### 会话管理
 
 - 保存会话：**标签名**、**分组**（层级路径）、连接参数
+- **空分组占位**：可先创建文件夹式分组，再向其中添加会话
 - **搜索**已保存会话（按名称、主机或串口路径）
 - **复制**、**重命名**、**编辑**、**删除**；可配置删除确认
-- **导出 / 导入**会话列表（JSON）
+- **导出 / 导入**会话列表（JSON envelope，v1）；可在 **设置** 或 **侧边栏** 中导入
+- 连接对话框支持 **直接连接**、**保存并连接**、**仅保存**
 - 连接时可弹出 **凭据输入**；支持 **「保存并连接」** 写入加密库
 
 ### 终端体验
 
 - **xterm.js**，含 Fit、Web Links 插件，可配置回滚行数（0～500,000）
 - **字符编码**：UTF-8、GBK、GB18030、GB2312、Big5、UTF-16 LE、Latin-1（主进程 `iconv-lite`）
-- **退格键模式**：自动（SSH 发 DEL，Telnet/串口发 BS），或强制 DEL / BS
+- **退格键模式**（按会话）：自动（SSH 发 DEL，Telnet/串口发 BS），或强制 DEL / BS
 - **终端交互**：选中复制、右键粘贴（可在设置中关闭）
 - **输出高亮**：正则规则着色（内置错误/成功/警告/IP 等默认规则）
 - **标签栏**：新建连接、关闭当前/其他/左侧/右侧/全部、清屏、保存终端输出
-- **会话日志**：关闭 / 缓冲模式（与屏幕一致）/ 流模式（原始下行，去除 ANSI）
+- **会话日志**：关闭 / 缓冲模式（与屏幕一致）/ 流模式（原始下行，去除 ANSI）；日志目录经路径策略校验
 
 ### 界面与国际化
 
 - 自定义 **无边框标题栏**（最小化 / 最大化 / 关闭）
-- **深色**、**浅色** 或 **跟随系统** 主题
+- **深色**、**浅色** 或 **跟随系统** 主题；设置中支持 **实时预览**（保存前生效）
 - **界面语言**：简体中文、English 或自动跟随系统
 - 可拖拽调整 **侧边栏** 宽度（会话列表与 SFTP 树）
+- **设置对话框** 分为「常规」「SSH 与终端」「数据与安全」三个标签页
 
 ### 安全相关能力
 
@@ -96,22 +100,103 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ```
 zterm/
-├── electron/                 # 主进程
-│   ├── main.js               # 窗口、IPC、日志写入、路径策略
-│   ├── preload.cjs           # contextBridge API（window.zterm）
-│   ├── handlers/             # ssh、sftp、telnet、serial、credentials
-│   ├── workers/              # sshSessionWorker、sftpSessionWorker
-│   └── lib/                  # 已知主机、路径策略、可信发送方
-├── src/                      # 渲染进程（React）
-│   ├── App.jsx
-│   ├── components/           # 终端、侧边栏、SFTP、对话框等
-│   ├── store/                # 会话、设置、凭据桥接
-│   ├── i18n/                 # 中英文文案
-│   └── styles/
-├── shared/                   # terminalEncodings、sshAlgorithmDefaults
-├── index.html
-├── vite.config.js
-└── package.json
+├── electron/                          # 主进程（Node.js + Electron API）
+│   ├── main.js                        # 应用入口：无边框窗口、IPC 路由、会话日志写入
+│   ├── preload.cjs                    # contextBridge → window.zterm（SSH/SFTP/Telnet/串口/凭据/窗口/日志）
+│   ├── handlers/                      # 由 main.js 注册的 IPC 处理程序
+│   │   ├── ssh.js                     # SSH 连接/断开、PTY 读写、resize；委托 Worker 执行
+│   │   ├── sftp.js                    # SFTP 列表/上传/下载/建目录/重命名/删除；委托 Worker 执行
+│   │   ├── telnet.js                  # Telnet TCP 连接与字节流 I/O
+│   │   ├── serial.js                  # 串口枚举/打开/写入；路径须与 listPorts 白名单一致
+│   │   └── credentials.js             # safeStorage 凭据库：get/sync/remove/duplicate/clearAll
+│   ├── workers/                       # Worker 线程（将阻塞的 ssh2 I/O 移出主循环）
+│   │   ├── sshSessionWorker.js        # 每个会话独立的 SSH Shell Worker
+│   │   └── sftpSessionWorker.js       # 每个会话独立的 SFTP 客户端 Worker
+│   └── lib/                           # 主进程公共工具
+│       ├── trustedSender.js           # 仅允许已注册主窗口发起的 IPC
+│       ├── localPathPolicy.js         # 校验日志/SFTP 本地路径是否在允许根目录内
+│       ├── sftpLocalPathRoots.js      # 解析系统用户目录（主目录、下载、文档等）
+│       ├── sshKnownHosts.js           # SSH 主机公钥持久化与校验（zterm-known-hosts.json）
+│       └── encodeTerminalWrite.js     # 终端上行按键编码（iconv-lite）
+│
+├── src/                               # 渲染进程（React 18 + Vite）
+│   ├── main.jsx                       # React 入口、ErrorBoundary、挂载 App
+│   ├── App.jsx                        # 主布局：标题栏、侧边栏、标签、终端、各类对话框
+│   ├── components/
+│   │   ├── TitleBar.jsx               # 自定义窗口控制（最小化/最大化/关闭）
+│   │   ├── Sidebar.jsx                # 已保存会话树、分组、SFTP 宿主、导入会话
+│   │   ├── TabBar.jsx                 # 会话标签、拖拽排序、右键菜单
+│   │   ├── TerminalPanel.jsx          # xterm 实例、编码、日志、高亮、退格键
+│   │   ├── SftpPanel.jsx              # 远程文件树与传输界面
+│   │   ├── ConnectDialog.jsx          # SSH / Telnet / Serial 表单、凭据子弹窗
+│   │   ├── SettingsDialog.jsx         # 分标签设置、算法、导入导出、主题预览
+│   │   └── common.jsx                 # 公共 UI（如连接类型图标）
+│   ├── store/                         # 客户端持久化与 IPC 桥接
+│   │   ├── sessionStore.js            # localStorage 会话、分组、导出/导入 envelope
+│   │   ├── settingsStore.js           # localStorage 设置、schema、导出/导入
+│   │   └── credentialsBridge.js       # 凭据库同步：解析/合并已保存会话的密钥
+│   ├── lib/
+│   │   ├── import/
+│   │   │   ├── parseImportFile.js     # readImportJson、解包/构造导出 envelope（v1）
+│   │   │   ├── parseSessionsImport.js # 会话导入流水线入口
+│   │   │   ├── parseSettingsImport.js # 设置导入流水线入口
+│   │   │   ├── validateSessions.js    # 单条会话校验规则
+│   │   │   ├── validateSettings.js    # 设置结构校验
+│   │   │   └── handleImportErrors.js  # 本地化导入错误码
+│   │   ├── session/
+│   │   │   ├── constants.js           # 协议默认值、持久化字段、导入大小上限
+│   │   │   ├── utils.js               # 标签/分组/端口/退格等工具、提取存储字段
+│   │   │   ├── normalizeSession.js    # 规范化导入的会话对象
+│   │   │   └── normalizeImport.js     # 旧版导入兼容
+│   │   └── settings/
+│   │       ├── defaults.js            # DEFAULT_SETTINGS、回滚上下限、默认高亮规则
+│   │       ├── normalize.js           # 钳制回滚/侧栏宽度、日志模式迁移
+│   │       └── sanitizeImport.js      # 设置导入时剥离未知键
+│   ├── context/
+│   │   └── I18nContext.jsx            # React 上下文 + useI18n() 文案钩子
+│   ├── i18n/
+│   │   ├── translations.js            # 中/英文字符串表
+│   │   └── resolveUiLanguage.js       # 将 auto 解析为实际界面语言
+│   ├── theme/
+│   │   └── appTheme.js                # 解析 dark / light / auto 实际主题
+│   └── styles/                        # 按界面拆分的样式
+│       ├── global.css                 # 基础重置与排版
+│       ├── app.css                    # 主布局
+│       ├── titlebar.css
+│       ├── sidebar.css
+│       ├── tabbar.css
+│       ├── terminal.css
+│       ├── sftp.css
+│       ├── dialog.css
+│       └── settings.css
+│
+├── shared/                            # 主进程与渲染进程共用（模块内不直接依赖 Electron）
+│   ├── terminalEncodings.js           # 编码列表、xterm 二进制串解码辅助
+│   └── sshAlgorithmDefaults.js        # 默认 KEX/加密/MAC 池与弱算法标记
+│
+├── docs/
+│   └── images/                        # README 截图（主界面、设置、连接）
+│
+├── index.html                         # Vite HTML 入口（CSP 由 vite 插件注入）
+├── vite.config.js                     # React (oxc) 插件、开发服务器、Electron CSP 插件
+├── jsconfig.json                      # 路径别名 / JS 工具提示
+├── package.json                       # 脚本、依赖、electron-builder 配置
+├── package-lock.json
+├── README.md                          # 英文文档
+├── README.zh-CN.md                    # 简体中文文档
+└── LICENSE                            # MIT 许可证
+```
+
+**运行时数据流（简图）：**
+
+```
+渲染进程（React / xterm）
+    │  window.zterm.* （preload.cjs）
+    ▼
+主进程（main.js + handlers）
+    │  Worker 线程（SSH / SFTP）
+    ▼
+远程主机 / 本地串口 / 系统钥匙串（safeStorage）
 ```
 
 ---
@@ -130,13 +215,27 @@ zterm/
 ## 快速开始
 
 ```bash
-git clone https://github.com/zhuhezhang/zterm(或者 git clone https://gitee.com/zhuhezhang/zterm)
+# GitHub
+git clone https://github.com/zhuhezhang/zterm.git
 cd zterm
+
+# 或 Gitee
+# git clone https://gitee.com/zhuhezhang/zterm.git
+# cd zterm
+
 npm install
 npm run dev
 ```
 
 将启动 Vite 开发服务（端口 **5173**），并以 nodemon 监听 `electron/` 目录后启动 Electron。
+
+其他开发脚本：
+
+| 脚本 | 说明 |
+|------|------|
+| `npm run dev:silent` | 同 `dev`，但屏蔽 Electron 安全警告 |
+| `npm run dev:renderer` | 仅启动 Vite |
+| `npm run dev:electron` | 仅启动 Electron（需 Vite 已在 5173 运行） |
 
 ---
 
@@ -146,15 +245,16 @@ npm run dev
 
 1. 在侧边栏或标签栏点击 **新建连接**。
 2. 选择 **SSH**、**Telnet** 或 **Serial**。
-3. 填写主机/端口（或从刷新后的列表选择串口）、标签、分组、编码与认证信息。
+3. 填写主机/端口（或从刷新后的列表选择串口）、标签、分组、编码、退格模式与认证信息。
 4. SSH 可勾选 **启用 SFTP**，在同一会话侧边栏显示远程文件。
-5. **直接连接**（不强制写库）或 **保存并连接**（写入已保存会话；若开启凭据库可能保存密码/密钥）。
+5. 使用 **直接连接**、**保存**（仅写入库不连接）或 **保存并连接**（写入已保存会话；若开启凭据库可能保存密码/密钥）。
 
 ### 已保存会话
 
 - 使用 **分组** 组织（如 `生产环境/Web`）。分组名不得包含：`\ / : * ? " < > |`
-- 右键菜单：连接、编辑、复制、删除等。
-- 搜索框可按会话名、主机或串口路径过滤。
+- 通过侧边栏右键可 **创建空分组**（占位符），待后续添加会话
+- 右键菜单：连接、编辑、复制、删除等；在侧边栏根区域右键可 **导入会话**
+- 搜索框可按会话名、主机或串口路径过滤
 
 ### SFTP
 
@@ -170,29 +270,56 @@ npm run dev
 
 ### 凭据
 
-- 在 **设置 → 安全** 中开启 **「保存敏感凭据到加密存储」** 后，密码与私钥可写入系统加密存储。
+- 在 **设置 → 数据与安全** 中开启 **「保存敏感凭据到加密存储」** 后，密码与私钥可写入系统加密存储。
 - 使用凭据库时，**localStorage 中的会话 JSON 不含明文密钥**。
+- 导入会话时，若开启凭据库，会尽量将 JSON 中的明文敏感字段吸入 vault。
 - 设置中可在支持时 **清除全部凭据库条目**。
 
 ---
 
 ## 设置项说明
 
+设置分为三个标签页：
+
+| 标签 | 包含区块 |
+|------|----------|
+| **常规** | 删除确认、终端交互与回滚、日志、外观（主题预览、语言） |
+| **SSH 与终端** | SSH 算法偏好（KEX、主机密钥、加密、HMAC、压缩）、高亮规则 |
+| **数据与安全** | 凭据库、会话导入/导出、设置导入/导出 |
+
 | 设置 | 说明 |
 |------|------|
-| **应用主题** | `dark` / `light` / `auto`（跟随系统） |
+| **应用主题** | `dark` / `light` / `auto`（保存前可预览） |
 | **界面语言** | `zh` / `en` / `auto` |
 | **终端回滚行数** | 视口上方保留的历史行数（默认 20,000） |
 | **终端交互** | 选中复制、右键粘贴 |
 | **日志模式** | `none` 关闭 / `buffer` 缓冲 / `stream` 流式 |
-| **日志目录** | 默认：`下载目录/zterm-session-log` |
+| **日志目录** | 默认：`下载目录/zterm-session-log`；须通过路径策略校验 |
 | **高亮规则** | 正则、大小写、颜色 |
-| **SSH 算法** | KEX、主机密钥、加密、HMAC 优先级列表 |
+| **SSH 算法** | KEX、主机密钥、加密、HMAC、压缩优先级列表 |
 | **保存凭据到加密存储** | 使用 `safeStorage` |
 | **删除确认** | 删除会话/分组时是否弹窗 |
+| **删除分组时同时删除会话** | 关闭时仅删除分组，组内会话变为未分组 |
 | **侧边栏宽度** | 布局宽度持久化 |
 
-可在设置对话框中 **导入/导出** 设置与会话 JSON。
+---
+
+## 导入 / 导出格式
+
+导出的 **会话** 与 **设置** 使用带版本号的 JSON envelope（单文件上限 **8 MB**）：
+
+```json
+{
+  "ztermExport": "sessions",
+  "version": 1,
+  "exportedAt": "Mon May 19 2026 ...",
+  "data": [ /* 会话对象数组或设置对象 */ ]
+}
+```
+
+- `ztermExport` 须为 `"sessions"` 或 `"settings"`（类型不匹配会报错）。
+- `version` 须为 `1`。
+- 导入设置时会剥离未知键；无效会话条目会跳过并在完成后提示统计。
 
 ---
 
@@ -213,8 +340,9 @@ npm run dev
 
 | 数据 | 位置 |
 |------|------|
-| 已保存会话（不含密钥） | 浏览器 `localStorage`（`zterm_sessions`） |
-| 应用设置 | `localStorage`（`zterm_settings`） |
+| 已保存会话（不含密钥） | `localStorage` → `zterm_saved_sessions` |
+| 空分组占位符 | `localStorage` → `__zterm_group_placeholders__` |
+| 应用设置 | `localStorage` → `zterm_settings` |
 | SSH 已知主机 | `{userData}/zterm-known-hosts.json` |
 | 加密凭据 | 系统钥匙串（Electron `safeStorage`，可用时） |
 | 会话日志 | 用户配置目录或 `下载/zterm-session-log/` |
@@ -232,17 +360,18 @@ npm run dev
 | 现象 | 处理建议 |
 |------|----------|
 | `npm install` 在 `serialport` 处失败 | 安装对应平台编译工具；Linux 需 `libudev-dev` |
-| SSH 算法协商失败 | 打开 **设置 → SSH 算法**，勾选服务器所需的遗留 KEX/加密 |
+| SSH 算法协商失败 | 打开 **设置 → SSH 与终端 → 算法**，勾选服务器所需的遗留 KEX/加密 |
 | 中文乱码 | 将会话编码设为 **GBK** 或 **GB18030** |
 | SFTP 提示路径不允许 | 选择下载/文档/用户主目录下的路径，勿选系统目录 |
 | 串口列表为空 | 点击 **刷新**；Linux 用户需加入 `dialout` 组 |
 | 每次连接都提示主机密钥 | 检查 `userData` 是否可写；避免只读配置环境运行 |
+| 导入失败 / 文件类型错误 | 确认使用正确的导出文件（会话 vs 设置）；单文件不超过 8 MB |
 
 ---
 
 ## 许可证
 
-MIT 许可证 — Copyright © zhuhezhang
+[MIT 许可证](LICENSE) — Copyright © 2026 [zhuhezhang](https://github.com/zhuhezhang)
 
 ---
 

@@ -1,8 +1,8 @@
 # ZTerm
 
-**[简体中文](README.zh-CN.md)** · English
+**[简体中文](README.zh-CN.md)** · English · v1.2.3
 
-ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections, with saved sessions, grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
+ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
 
 ---
 
@@ -16,6 +16,7 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 - [Quick Start](#quick-start)
 - [Usage Guide](#usage-guide)
 - [Settings Reference](#settings-reference)
+- [Import / Export Format](#import--export-format)
 - [Security Model](#security-model)
 - [Data & Storage Locations](#data--storage-locations)
 - [Troubleshooting](#troubleshooting)
@@ -37,27 +38,30 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 ### Session management
 
 - Save sessions with **label**, **group** (hierarchical paths), and connection parameters
+- **Empty group placeholders** — create folder-like groups before adding sessions
 - **Search** saved sessions by name, host, or serial path
 - **Duplicate**, **rename**, **edit**, **delete** sessions; optional confirm dialogs
-- **Export / import** session lists (JSON)
+- **Export / import** session lists (JSON envelope, v1); import from **Settings** or the **sidebar**
+- **Connect**, **Save & connect**, or **Save only** from the connection dialog
 - **Credential prompt** on connect when secrets are not stored; optional **“Save & connect”** to update vault
 
 ### Terminal experience
 
 - **xterm.js** with Fit addon, web links, configurable scrollback (0–500,000 lines)
 - **Character encodings**: UTF-8, GBK, GB18030, GB2312, Big5, UTF-16 LE, Latin-1 (via `iconv-lite` in the main process)
-- **Backspace mode**: Auto (DEL for SSH, BS for Telnet/Serial), or force DEL / BS per session
+- **Backspace mode** (per session): Auto (DEL for SSH, BS for Telnet/Serial), or force DEL / BS
 - **Terminal interaction**: select-to-copy and right-click paste (toggle in settings)
 - **Output highlighting**: regex rules with colors (defaults for error/success/warning/IP)
 - **Tab bar**: new connection, close tab/others/left/right/all, clear screen, save terminal output to file
-- **Session logging**: off, buffer (matches screen), or stream (raw downstream, ANSI stripped)
+- **Session logging**: off, buffer (matches screen), or stream (raw downstream, ANSI stripped); log path validated against allowed directories
 
 ### UI & i18n
 
 - Custom **frameless title bar** (minimize / maximize / close)
-- **Dark**, **light**, or **auto** theme (follows OS)
+- **Dark**, **light**, or **auto** theme (follows OS); **live preview** in Settings before saving
 - **UI language**: English, 简体中文, or auto (follows system)
 - Resizable **sidebar** for saved sessions and SFTP tree
+- **Settings dialog** organized into General, SSH & Terminal, and Data & Security tabs
 
 ### Security-related behavior
 
@@ -96,22 +100,103 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 ```
 zterm/
-├── electron/                 # Main process
-│   ├── main.js               # Window, IPC, log writes, path policy
-│   ├── preload.cjs           # contextBridge API (window.zterm)
-│   ├── handlers/             # ssh, sftp, telnet, serial, credentials
-│   ├── workers/              # sshSessionWorker, sftpSessionWorker
-│   └── lib/                  # known hosts, path policy, trusted sender
-├── src/                      # Renderer (React)
-│   ├── App.jsx
-│   ├── components/           # Terminal, Sidebar, SFTP, dialogs, …
-│   ├── store/                # sessions, settings, credentials bridge
-│   ├── i18n/                 # zh / en translations
-│   └── styles/
-├── shared/                   # terminalEncodings, sshAlgorithmDefaults
-├── index.html
-├── vite.config.js
-└── package.json
+├── electron/                          # Main process (Node.js + Electron APIs)
+│   ├── main.js                        # App entry: frameless window, IPC routing, session log I/O
+│   ├── preload.cjs                    # contextBridge → window.zterm (SSH/SFTP/Telnet/Serial/credentials/window/log)
+│   ├── handlers/                      # IPC handlers registered from main.js
+│   │   ├── ssh.js                     # SSH connect/disconnect, PTY I/O, resize; delegates to worker
+│   │   ├── sftp.js                    # SFTP list/upload/download/mkdir/rename/delete; delegates to worker
+│   │   ├── telnet.js                  # Telnet TCP socket connect and byte stream I/O
+│   │   ├── serial.js                  # Serial port enumerate/open/write; path whitelist vs listPorts
+│   │   └── credentials.js             # safeStorage vault: get/sync/remove/duplicate/clearAll
+│   ├── workers/                       # Worker threads (isolate blocking ssh2 I/O from main loop)
+│   │   ├── sshSessionWorker.js        # Per-session SSH shell in a worker
+│   │   └── sftpSessionWorker.js       # Per-session SFTP client in a worker
+│   └── lib/                           # Shared main-process utilities
+│       ├── trustedSender.js           # Allow IPC only from the registered main BrowserWindow
+│       ├── localPathPolicy.js         # Validate log/SFTP local paths against allowed roots
+│       ├── sftpLocalPathRoots.js      # Resolve OS user folders (home, Downloads, Documents, …)
+│       ├── sshKnownHosts.js           # Persist and verify SSH host keys (zterm-known-hosts.json)
+│       └── encodeTerminalWrite.js     # Encode outgoing terminal keystrokes (iconv-lite)
+│
+├── src/                               # Renderer (React 18 + Vite)
+│   ├── main.jsx                       # React root, ErrorBoundary, mounts App
+│   ├── App.jsx                        # Shell layout: title bar, sidebar, tabs, terminal, dialogs
+│   ├── components/
+│   │   ├── TitleBar.jsx               # Custom window controls (min/max/close)
+│   │   ├── Sidebar.jsx                # Saved sessions tree, groups, SFTP host, import sessions
+│   │   ├── TabBar.jsx                 # Session tabs, reorder, context menu actions
+│   │   ├── TerminalPanel.jsx          # xterm.js instance, encoding, logging, highlights, backspace
+│   │   ├── SftpPanel.jsx              # Remote file tree and transfer UI
+│   │   ├── ConnectDialog.jsx          # SSH / Telnet / Serial form, credentials sub-dialog
+│   │   ├── SettingsDialog.jsx         # Tabbed settings, algorithms, import/export, theme preview
+│   │   └── common.jsx                 # Shared UI bits (e.g. connection type icons)
+│   ├── store/                         # Client-side persistence and IPC bridges
+│   │   ├── sessionStore.js            # localStorage sessions, groups, export/import envelope
+│   │   ├── settingsStore.js           # localStorage settings, schema, export/import
+│   │   └── credentialsBridge.js       # Vault sync: resolve/merge secrets for saved sessions
+│   ├── lib/
+│   │   ├── import/
+│   │   │   ├── parseImportFile.js     # readImportJson, unwrap/build export envelope (v1)
+│   │   │   ├── parseSessionsImport.js # Session import pipeline entry
+│   │   │   ├── parseSettingsImport.js # Settings import pipeline entry
+│   │   │   ├── validateSessions.js    # Per-item session validation rules
+│   │   │   ├── validateSettings.js    # Settings shape validation
+│   │   │   └── handleImportErrors.js  # Localized import error codes
+│   │   ├── session/
+│   │   │   ├── constants.js           # Protocol defaults, storage fields, import size limit
+│   │   │   ├── utils.js               # Label/group/port/backspace helpers, pick storage fields
+│   │   │   ├── normalizeSession.js    # Normalize imported session objects
+│   │   │   └── normalizeImport.js     # Legacy import compatibility
+│   │   └── settings/
+│   │       ├── defaults.js            # DEFAULT_SETTINGS, scrollback bounds, default highlight rules
+│   │       ├── normalize.js           # Clamp scrollback, sidebar width, logging mode migration
+│   │       └── sanitizeImport.js      # Strip unknown keys on settings import
+│   ├── context/
+│   │   └── I18nContext.jsx            # React context + useI18n() for UI strings
+│   ├── i18n/
+│   │   ├── translations.js            # zh / en string tables
+│   │   └── resolveUiLanguage.js       # Resolve auto → effective language
+│   ├── theme/
+│   │   └── appTheme.js                # Resolve dark / light / auto effective theme
+│   └── styles/                        # CSS split by surface
+│       ├── global.css                 # Base reset and typography
+│       ├── app.css                    # Main layout
+│       ├── titlebar.css
+│       ├── sidebar.css
+│       ├── tabbar.css
+│       ├── terminal.css
+│       ├── sftp.css
+│       ├── dialog.css
+│       └── settings.css
+│
+├── shared/                            # Imported by both main and renderer (no Electron in module graph)
+│   ├── terminalEncodings.js           # Encoding list, decode helpers for xterm binary strings
+│   └── sshAlgorithmDefaults.js        # Default KEX/cipher/MAC pools and weak-algorithm flags
+│
+├── docs/
+│   └── images/                        # README screenshots (main, settings, connection)
+│
+├── index.html                         # Vite HTML entry (CSP injected by vite plugin)
+├── vite.config.js                     # React (oxc) plugin, dev server, Electron CSP plugin
+├── jsconfig.json                      # Path aliases / JS tooling hints
+├── package.json                       # Scripts, dependencies, electron-builder config
+├── package-lock.json
+├── README.md                          # English documentation
+├── README.zh-CN.md                    # 简体中文文档
+└── LICENSE                            # MIT License
+```
+
+**Runtime data flow (simplified):**
+
+```
+Renderer (React/xterm)
+    │  window.zterm.*  (preload.cjs)
+    ▼
+Main process (main.js + handlers)
+    │  worker threads (SSH/SFTP)
+    ▼
+Remote host / local serial port / OS keychain (safeStorage)
 ```
 
 ---
@@ -130,13 +215,27 @@ zterm/
 ## Quick Start
 
 ```bash
-git clone https://github.com/zhuhezhang/zterm(or git clone https://gitee.com/zhuhezhang/zterm)
+# GitHub
+git clone https://github.com/zhuhezhang/zterm.git
 cd zterm
+
+# or Gitee
+# git clone https://gitee.com/zhuhezhang/zterm.git
+# cd zterm
+
 npm install
 npm run dev
 ```
 
 This starts the Vite dev server on port **5173** and launches Electron with hot reload for the `electron/` folder.
+
+Other dev scripts:
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev:silent` | Same as `dev`, but suppresses Electron security warnings |
+| `npm run dev:renderer` | Vite only |
+| `npm run dev:electron` | Electron only (expects Vite on 5173) |
 
 ---
 
@@ -146,15 +245,16 @@ This starts the Vite dev server on port **5173** and launches Electron with hot 
 
 1. Click **New connection** in the sidebar or tab bar.
 2. Choose **SSH**, **Telnet**, or **Serial**.
-3. Fill host/port (or serial port from the refreshed list), label, group, encoding, and auth.
+3. Fill host/port (or serial port from the refreshed list), label, group, encoding, backspace mode, and auth.
 4. For SSH, optionally enable **SFTP** to show remote files for that session.
-5. Use **Connect** (one-shot) or **Save & connect** (persists session; may store secrets if vault is enabled).
+5. Use **Connect** (one-shot), **Save** (persist without connecting), or **Save & connect** (persists session; may store secrets if vault is enabled).
 
 ### Saved sessions
 
 - Organize with **groups** (e.g. `Production/Web`). Invalid characters: `\ / : * ? " < > |`
-- Right-click sessions for connect, edit, duplicate, delete.
-- Use the search box to filter by name, host, or serial path.
+- Create **empty groups** via the sidebar context menu; they persist as placeholders until sessions are added
+- Right-click sessions for connect, edit, duplicate, delete; right-click the sidebar root to **import sessions**
+- Use the search box to filter by name, host, or serial path
 
 ### SFTP
 
@@ -170,29 +270,56 @@ This starts the Vite dev server on port **5173** and launches Electron with hot 
 
 ### Credentials
 
-- If **Save secrets to encrypted storage** is on (Settings → Security), passwords and private keys can be stored in the OS-backed vault.
+- If **Save secrets to encrypted storage** is on (Settings → Data & Security), passwords and private keys can be stored in the OS-backed vault.
 - Plain session JSON in `localStorage` does **not** contain secrets when vault is used.
+- Importing sessions may absorb plaintext secrets into the vault when that option is enabled.
 - **Clear all vault entries** is available in Settings when vault is available.
 
 ---
 
 ## Settings Reference
 
+Settings are grouped into three tabs:
+
+| Tab | Sections |
+|-----|----------|
+| **General** | Confirm dialogs, terminal interaction & scrollback, logging, appearance (theme preview, language) |
+| **SSH & Terminal** | SSH algorithm preferences (KEX, host key, cipher, HMAC, compression), highlight rules |
+| **Data & Security** | Credential vault, session import/export, settings import/export |
+
 | Setting | Description |
 |---------|-------------|
-| **App theme** | `dark` / `light` / `auto` |
+| **App theme** | `dark` / `light` / `auto` (preview before save) |
 | **UI language** | `en` / `zh` / `auto` |
 | **Terminal scrollback** | Lines kept above viewport (default 20,000) |
 | **Terminal interact** | Select to copy, right-click to paste |
 | **Logging mode** | `none` / `buffer` / `stream` |
-| **Log directory** | Default: `Downloads/zterm-session-log` |
+| **Log directory** | Default: `Downloads/zterm-session-log`; must pass path policy validation |
 | **Highlight rules** | Regex, case sensitivity, color per rule |
-| **SSH algorithms** | KEX, host key, cipher, HMAC preference lists |
+| **SSH algorithms** | KEX, host key, cipher, HMAC, compression preference lists |
 | **Save secrets to vault** | Use `safeStorage` for sensitive fields |
 | **Confirm delete** | Session / group deletion prompts |
+| **Delete group with sessions** | When off, deleting a group only ungroups its sessions |
 | **Sidebar width** | Persisted layout width |
 
-Import/export **settings** and **sessions** as JSON from the Settings dialog.
+---
+
+## Import / Export Format
+
+Exported **sessions** and **settings** use a versioned JSON envelope (max file size **8 MB**):
+
+```json
+{
+  "ztermExport": "sessions",
+  "version": 1,
+  "exportedAt": "Mon May 19 2026 ...",
+  "data": [ /* session objects or settings object */ ]
+}
+```
+
+- `ztermExport` must be `"sessions"` or `"settings"` (cross-import is rejected).
+- `version` must be `1`.
+- Unknown settings keys are stripped on import; invalid sessions are skipped with a summary alert.
 
 ---
 
@@ -213,8 +340,9 @@ This app is a convenience tool, not a full security audit. Review your threat mo
 
 | Data | Location |
 |------|----------|
-| Saved sessions (no secrets) | Browser `localStorage` (`zterm_sessions`) |
-| App settings | `localStorage` (`zterm_settings`) |
+| Saved sessions (no secrets) | `localStorage` → `zterm_saved_sessions` |
+| Empty group placeholders | `localStorage` → `__zterm_group_placeholders__` |
+| App settings | `localStorage` → `zterm_settings` |
 | SSH known hosts | `{userData}/zterm-known-hosts.json` |
 | Encrypted credentials | OS keychain via Electron `safeStorage` (when available) |
 | Session logs | User-configured or `Downloads/zterm-session-log/` |
@@ -232,17 +360,18 @@ Typical `userData` paths:
 | Issue | Suggestions |
 |-------|-------------|
 | `npm install` fails on `serialport` | Install platform build tools; on Linux install `libudev-dev` |
-| SSH algorithm mismatch | Open Settings → SSH algorithms; enable legacy KEX/cipher required by the server |
+| SSH algorithm mismatch | Open Settings → SSH & Terminal → algorithms; enable legacy KEX/cipher required by the server |
 | Garbled Chinese output | Set session encoding to **GBK** or **GB18030** |
 | SFTP “path not allowed” | Choose a directory under Downloads/Documents/home, not system paths |
 | Serial port not listed | Click **Refresh**; on Linux ensure user is in `dialout` group |
 | Host key prompt every time | Check write permissions for `userData`; do not run from read-only profiles |
+| Import fails / wrong file type | Use the correct export file (`sessions` vs `settings`); max 8 MB |
 
 ---
 
 ## License
 
-MIT License — Copyright © zhuhezhang
+[MIT License](LICENSE) — Copyright © 2026 [zhuhezhang](https://github.com/zhuhezhang)
 
 ---
 
