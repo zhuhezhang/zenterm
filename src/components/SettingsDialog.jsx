@@ -8,7 +8,7 @@ import {
 import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
 import { exportSessions, importSessions, saveSessions } from '../store/sessionStore.js'
-import { formatImportError } from '../lib/import/formatImportError.js'
+import { formatImportError } from '../lib/import/handleImportErrors.js'
 import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import '../styles/dialog.css'
 import '../styles/settings.css'
@@ -212,11 +212,13 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     if (key === 'appTheme') previewAppTheme(value)
   }  // [key] 表示“用这个变量的值作为属性名”
 
+  /** 算法选项列表 */
   const algorithmSections = SSH_ALGORITHM_SECTION_KEYS.map((key) => ({
     key,
     label: t(`settings.algo.${key}`),
     desc: t(`settings.algo.${key}Desc`),
   }))
+  
   const [activeAlgoSection, setActiveAlgoSection] = useState('kex')  // 默认选中密钥交换算法类别
 
   /**

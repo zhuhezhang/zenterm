@@ -38,7 +38,7 @@ function vacatedGroupPathIfEmpty(beforeSession, newConfig, nextSessions) {
 
 /**
  * 生成 YYYYMMDD_HHMMSS 格式时间戳
- * @returns {string}
+ * @returns {string} 时间字符串
  */
 function fileTimestamp() {
   const now = new Date()

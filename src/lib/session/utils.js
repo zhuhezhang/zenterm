@@ -1,18 +1,12 @@
 import {
-  PORT_MIN,
-  PORT_MAX,
-  SESSION_TYPE_FIELDS,
-  AUTH_TYPES,
-  BAUD_RATE_SET,
-  PARITY_SET,
-  LABEL_ILLEGAL_CHARS_RE,
-  GROUP_ILLEGAL_CHARS_RE,
-  getSessionFormDefaults,
+  PORT_MIN, PORT_MAX, SESSION_TYPE_FIELDS, AUTH_TYPES, BAUD_RATE_SET, PARITY_SET,
+  LABEL_ILLEGAL_CHARS_RE, GROUP_ILLEGAL_CHARS_RE, getSessionFormDefaults,
 } from './constants.js'
 
 /**
- * @param {string} v
- * @returns {'auto'|'del'|'bs'|null}
+ * 规范化退格模式
+ * @param {string} v 待规范的退格模式
+ * @returns {'auto'|'del'|'bs'|null} 规范化后的退格模式
  */
 export function normalizeBackspaceMode(v) {
   const s = String(v ?? '').toLowerCase()
@@ -21,8 +15,8 @@ export function normalizeBackspaceMode(v) {
 
 /**
  * 端口输入框：严格限制在 0–65535；空字符串保留便于清空重输
- * @param {string} raw
- * @returns {string}
+ * @param {string} raw 待规范的端口
+ * @returns {string} 规范化后的端口
  */
 export function clampPortFieldString(raw) {
   const s = String(raw ?? '').trim()
@@ -34,9 +28,9 @@ export function clampPortFieldString(raw) {
 
 /**
  * 保存/导入：无效或空值时使用 fallback
- * @param {unknown} raw
- * @param {number} fallback
- * @returns {number}
+ * @param {unknown} raw 待规范的端口
+ * @param {number} fallback 默认端口
+ * @returns {number} 规范化后的端口
  */
 export function clampSessionPort(raw, fallback) {
   if (raw === '' || raw == null) return fallback
@@ -47,8 +41,8 @@ export function clampSessionPort(raw, fallback) {
 
 /**
  * 构建连接配置：空或非法端口返回 undefined
- * @param {unknown} raw
- * @returns {number|undefined}
+ * @param {unknown} raw 待规范的端口
+ * @returns {number|undefined} 规范化后的端口
  */
 export function parseSessionPort(raw) {
   const s = String(raw ?? '').trim()
@@ -59,9 +53,11 @@ export function parseSessionPort(raw) {
 }
 
 /**
- * @param {string} tab
+ * 构建会话标签
+ * @param {string} tab 会话类型
+ * @param {Record<string, unknown>} form 表单数据
+ * @returns {string} 构建后的会话标签
  * @param {Record<string, unknown>} form
- * @returns {string}
  */
 export function buildSessionLabel(tab, form) {
   if (tab === 'serial') {
@@ -73,9 +69,10 @@ export function buildSessionLabel(tab, form) {
 }
 
 /**
- * @param {string} [group]
- * @param {string} [label]
- * @returns {string|null}
+ * 验证会话分组和标签
+ * @param {string} [group] 会话分组
+ * @param {string} [label] 会话标签
+ * @returns {string|null} 验证结果
  */
 export function validateSessionGroupLabel(group, label) {
   const g = group ?? ''
@@ -87,7 +84,7 @@ export function validateSessionGroupLabel(group, label) {
   return null
 }
 
-/** validateSessionGroupLabel 返回码 → connect.* i18n 键 */
+/** 验证会话分组和标签返回码 → connect.* i18n 键 */
 export const SESSION_GROUP_LABEL_ERROR_KEYS = {
   groupSlashStart: 'connect.errGroupSlashStart',
   groupSlashEnd: 'connect.errGroupSlashEnd',
@@ -96,10 +93,11 @@ export const SESSION_GROUP_LABEL_ERROR_KEYS = {
 }
 
 /**
- * @param {string} tab
- * @param {Object} [initial]
- * @param {string} [globalBackspace]
- * @returns {Object}
+ * 合并表单默认值和初始值
+ * @param {string} tab 会话类型
+ * @param {Object} [initial] 初始表单数据
+ * @param {string} [globalBackspace] 全局退格模式
+ * @returns {Record<string, unknown>} 合并后的表单数据
  */
 export function mergeSessionFormDefaults(tab, initial, globalBackspace) {
   const base = getSessionFormDefaults(tab)
@@ -111,8 +109,9 @@ export function mergeSessionFormDefaults(tab, initial, globalBackspace) {
 }
 
 /**
- * @param {Record<string, unknown>} config
- * @returns {Record<string, unknown>}
+ * 选择需要保存的字段
+ * @param {Record<string, unknown>} config 待选择的字段
+ * @returns {Record<string, unknown>} 选择后的字段
  */
 export function pickSessionStorageFields(config) {
   const type = config?.type
@@ -130,9 +129,9 @@ export function pickSessionStorageFields(config) {
 }
 
 /**
- * @param {Record<string, unknown>} item
- * @param {Record<string, unknown>} base
- * @returns {void}
+ * 应用串口存储字段
+ * @param {Record<string, unknown>} item 待应用的字段
+ * @param {Record<string, unknown>} base 基础字段
  */
 export function applySerialStorageFields(merged, item, base) {
   merged.path = String(item.path).trim()
@@ -149,7 +148,9 @@ export function applySerialStorageFields(merged, item, base) {
   }
 }
 
+/** 认证类型集合 */
 const AUTH_TYPE_SET = new Set(AUTH_TYPES)
+/** 会话类型集合 */
 const SESSION_TYPE_SET = new Set(['ssh', 'telnet', 'serial'])
 
 export { SESSION_TYPE_SET, AUTH_TYPE_SET }

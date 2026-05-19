@@ -1,12 +1,10 @@
-import { createImportError } from './importErrors.js'
-
-/** 导入 JSON 文件大小上限（字节） */
-export const IMPORT_MAX_BYTES = 8 * 1024 * 1024
+import { createImportError } from './handleImportErrors.js'
+import { IMPORT_MAX_BYTES } from '../session/constants.js'
 
 /**
  * 读取并解析导入用 JSON 文件
- * @param {File} file
- * @returns {Promise<unknown>}
+ * @param {File} file 导入的 JSON 文件
+ * @returns {Promise<unknown>} 解析后的 JSON 对象
  */
 export function readImportJson(file) {
   return new Promise((resolve, reject) => {
@@ -19,41 +17,41 @@ export function readImportJson(file) {
       return
     }
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = (e) => {  // 绑定事件：文件读取后触发
       try {
-        resolve(JSON.parse(String(e.target?.result ?? '')))
+        resolve(JSON.parse(String(e.target?.result ?? '')))  // e.target.result 是读取到的文本内容，尝试解析为 JSON 对象
       } catch {
         reject(createImportError('invalidJson'))
       }
     }
     reader.onerror = () => reject(createImportError('readFailed'))
-    reader.readAsText(file)
+    reader.readAsText(file)  // 以文本形式读取文件内容，触发 onload 或 onerror 事件
   })
 }
 
 /**
  * 解包 zterm 导出 envelope（仅支持 version 1）
- * @param {unknown} parsed
- * @param {'sessions'|'settings'} expectedKind
- * @returns {unknown}
+ * @param {unknown} parsed 解析后的 JSON 对象
+ * @param {'sessions'|'settings'} expectedKind 期望的类型
+ * @returns {unknown} 解包后的数据（会话列表或设置对象）
  */
 export function unwrapExportPayload(parsed, expectedKind) {
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {  // 如果解析后的 JSON 对象不是对象或数组，则抛出错误
     throw createImportError('wrongFileType')
   }
-  const envelope = /** @type {Record<string, unknown>} */ (parsed)
+  const envelope = /** @type {Record<string, unknown>} */ (parsed)  // 将解析后的 JSON 对象转换为对象
   if (envelope.ztermExport !== expectedKind) {
-    throw createImportError('wrongFileType')
+    throw createImportError('wrongFileType')  // 如果 envelope 的 ztermExport 字段不等于期望的类型，则抛出错误
   }
   if (envelope.version !== 1) {
-    throw createImportError('unsupportedVersion')
+    throw createImportError('unsupportedVersion')  // 如果 envelope 的 version 字段不等于 1，则抛出错误
   }
   const { data } = envelope
   if (expectedKind === 'sessions') {
-    if (!Array.isArray(data)) throw createImportError('invalidPayload')
+    if (!Array.isArray(data)) throw createImportError('invalidPayload')  // 如果 data 不是数组，则抛出错误
     return data
   }
-  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {  // 如果 data 不是对象或数组，则抛出错误
     throw createImportError('invalidPayload')
   }
   return data
@@ -61,14 +59,15 @@ export function unwrapExportPayload(parsed, expectedKind) {
 
 /**
  * 构造导出 envelope
- * @param {'sessions'|'settings'} kind
- * @param {unknown} data
+ * @param {'sessions'|'settings'} kind 类型
+ * @param {unknown} data 数据
+ * @returns {Record<string, unknown>} 导出 envelope
  */
 export function buildExportEnvelope(kind, data) {
   return {
     ztermExport: kind,
     version: 1,
-    exportedAt: new Date().toISOString(),
+    exportedAt: new Date().toString(),
     data,
   }
 }

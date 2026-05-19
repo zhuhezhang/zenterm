@@ -1,19 +1,25 @@
 import { DEFAULT_TERMINAL_ENCODING } from '../../../shared/terminalEncodings.js'
 
+/** 端口最小值 */
 export const PORT_MIN = 0
+/** 端口最大值 */
 export const PORT_MAX = 65535
-
+/** 会话类型列表 */
 export const SESSION_TYPES = ['ssh', 'telnet', 'serial']
+/** SSH 认证类型列表 */
 export const AUTH_TYPES = ['password', 'privateKey']
 
-export const BAUD_RATES = [
-  '110', '300', '600', '1200', '2400', '4800', '9600', '14400', '19200',
-  '38400', '57600', '115200', '128000', '256000',
-]
+/** 串口波特率列表 */
+export const BAUD_RATES = [ '110', '300', '600', '1200', '2400', '4800', '9600', '14400', '19200', '38400', '57600', '115200', '128000', '256000',]
+/** 串口波特率集合（用于快速判断是否为合法波特率） */
 export const BAUD_RATE_SET = new Set(BAUD_RATES)
-
+/** 串口校验位列表 */
 export const PARITIES = ['none', 'even', 'odd', 'mark', 'space']
+/** 串口校验位集合（用于快速判断是否为合法校验位） */
 export const PARITY_SET = new Set(PARITIES)
+
+/** 导入会话/设置 JSON 文件大小上限（8 MB） */
+export const IMPORT_MAX_BYTES = 8 * 1024 * 1024
 
 /** 各会话类型允许持久化到 localStorage 的字段 */
 export const SESSION_TYPE_FIELDS = {
@@ -27,67 +33,38 @@ export const LABEL_ILLEGAL_CHARS_RE = /[/\\:*?"<>\x00]/
 /** 分组名非法字符 */
 export const GROUP_ILLEGAL_CHARS_RE = /[\\:*?"<>\x00]/
 
-/** 连接对话框表单默认值（端口等为字符串，便于输入框绑定） */
-export const SSH_FORM_DEFAULT = {
-  host: '',
-  port: '22',
-  username: '',
-  password: '',
-  privateKey: '',
-  passphrase: '',
-  authType: 'password',
+/** ssh 会话默认值（数值字段为 number；表单绑定经 getSessionFormDefaults 转为字符串） */
+export const SSH_SESSION_DEFAULT = {
   label: '',
   group: '',
-  enableSftp: false,
-  encoding: DEFAULT_TERMINAL_ENCODING,
-  backspaceMode: 'auto',
-}
-
-export const TELNET_FORM_DEFAULT = {
-  host: '',
-  port: '23',
-  label: '',
-  group: '',
-  encoding: DEFAULT_TERMINAL_ENCODING,
-  backspaceMode: 'auto',
-}
-
-export const SERIAL_FORM_DEFAULT = {
-  path: '',
-  baudRate: '9600',
-  dataBits: '8',
-  stopBits: '1',
-  parity: 'none',
-  label: '',
-  group: '',
-  encoding: DEFAULT_TERMINAL_ENCODING,
-  backspaceMode: 'auto',
-}
-
-/** 保存/导入会话时的数值型默认值 */
-export const SSH_STORAGE_DEFAULT = {
   host: '',
   port: 22,
   username: '',
   authType: 'password',
+  password: '',
+  privateKey: '',
+  passphrase: '',
   enableSftp: false,
   encoding: DEFAULT_TERMINAL_ENCODING,
   backspaceMode: 'auto',
-  label: '',
-  group: '',
 }
 
-export const TELNET_STORAGE_DEFAULT = {
+/** telnet 会话默认值 */
+export const TELNET_SESSION_DEFAULT = {
+  label: '',
+  group: '',
   host: '',
   port: 23,
   username: '',
+  password: '',
   encoding: DEFAULT_TERMINAL_ENCODING,
   backspaceMode: 'auto',
-  label: '',
-  group: '',
 }
 
-export const SERIAL_STORAGE_DEFAULT = {
+/** serial 会话默认值 */
+export const SERIAL_SESSION_DEFAULT = {
+  label: '',
+  group: '',
   path: '',
   baudRate: 9600,
   dataBits: 8,
@@ -95,26 +72,45 @@ export const SERIAL_STORAGE_DEFAULT = {
   parity: 'none',
   encoding: DEFAULT_TERMINAL_ENCODING,
   backspaceMode: 'auto',
-  label: '',
-  group: '',
+}
+
+/** 表单输入框绑定时需为字符串的数值字段 */
+const SESSION_FORM_NUMERIC_KEYS = {
+  ssh: ['port'],
+  telnet: ['port'],
+  serial: ['baudRate', 'dataBits', 'stopBits'],
 }
 
 /**
- * @param {'ssh'|'telnet'|'serial'} type
- * @returns {Record<string, unknown>}
+ * 将数值型默认值转换为字符串型默认值
+ * @param {Record<string, unknown>} defaults 数值型默认值
+ * @param {'ssh'|'telnet'|'serial'} type 会话类型
+ * @returns {Record<string, unknown>} 字符串型默认值
+ */
+function toSessionFormDefaults(defaults, type) {
+  const out = { ...defaults }
+  for (const key of SESSION_FORM_NUMERIC_KEYS[type] ?? []) {
+    if (typeof out[key] === 'number') out[key] = String(out[key])
+  }
+  return out
+}
+
+/**
+ * 获取会话保存/导入时的数值型默认值
+ * @param {'ssh'|'telnet'|'serial'} type 会话类型
+ * @returns {Record<string, unknown>} 数值型默认值
  */
 export function getSessionStorageDefaults(type) {
-  if (type === 'ssh') return { ...SSH_STORAGE_DEFAULT }
-  if (type === 'telnet') return { ...TELNET_STORAGE_DEFAULT }
-  return { ...SERIAL_STORAGE_DEFAULT }
+  if (type === 'ssh') return { ...SSH_SESSION_DEFAULT }
+  if (type === 'telnet') return { ...TELNET_SESSION_DEFAULT }
+  return { ...SERIAL_SESSION_DEFAULT }
 }
 
 /**
- * @param {'ssh'|'telnet'|'serial'} type
- * @returns {Record<string, unknown>}
+ * 获取会话连接对话框表单默认值（端口等为字符串，便于输入框绑定）
+ * @param {'ssh'|'telnet'|'serial'} type 会话类型
+ * @returns {Record<string, unknown>} 表单默认值
  */
 export function getSessionFormDefaults(type) {
-  if (type === 'ssh') return { ...SSH_FORM_DEFAULT }
-  if (type === 'telnet') return { ...TELNET_FORM_DEFAULT }
-  return { ...SERIAL_FORM_DEFAULT }
+  return toSessionFormDefaults(getSessionStorageDefaults(type), type)
 }

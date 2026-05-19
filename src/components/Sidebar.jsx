@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } fr
 import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
 import { addGroupPlaceholder, exportSessions, importSessions, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
-import { formatImportError } from '../lib/import/formatImportError.js'
+import { formatImportError } from '../lib/import/handleImportErrors.js'
 import { absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import SftpPanel from './SftpPanel.jsx'
 import ConnectionTypeIcon from './common.jsx'

@@ -3,22 +3,12 @@ import { useI18n } from '../context/I18nContext.jsx'
 import { fetchSessionSecrets } from '../store/credentialsBridge.js'
 import { TERMINAL_ENCODING_OPTIONS } from '../../shared/terminalEncodings.js'
 import {
-  PORT_MIN,
-  PORT_MAX,
-  BAUD_RATES,
-  PARITIES,
-  SSH_FORM_DEFAULT,
-  TELNET_FORM_DEFAULT,
-  SERIAL_STORAGE_DEFAULT,
+  PORT_MIN, PORT_MAX, BAUD_RATES, PARITIES,
+  SSH_SESSION_DEFAULT, TELNET_SESSION_DEFAULT, SERIAL_SESSION_DEFAULT,
 } from '../lib/session/constants.js'
 import {
-  mergeSessionFormDefaults,
-  normalizeBackspaceMode,
-  clampPortFieldString,
-  parseSessionPort,
-  buildSessionLabel,
-  validateSessionGroupLabel,
-  SESSION_GROUP_LABEL_ERROR_KEYS,
+  mergeSessionFormDefaults, normalizeBackspaceMode, clampPortFieldString, parseSessionPort,
+  buildSessionLabel, validateSessionGroupLabel, SESSION_GROUP_LABEL_ERROR_KEYS,
 } from '../lib/session/utils.js'
 import '../styles/dialog.css'
 
@@ -69,7 +59,10 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
   /** 避免在凭证弹层内每次输入都重复 focus，只在本次打开时聚焦一次，用一个布尔值来记录是否已经聚焦过 */
   const credFocusAppliedRef = useRef(false)
   /** SSH / Telnet 各自上次在表单里编辑的端口；互切标签时不把对方的端口写进当前协议 */
-  const portByTabRef = useRef({ ssh: SSH_FORM_DEFAULT.port, telnet: TELNET_FORM_DEFAULT.port })
+  const portByTabRef = useRef({
+    ssh: String(SSH_SESSION_DEFAULT.port),
+    telnet: String(TELNET_SESSION_DEFAULT.port),
+  })
 
   /**
    * 切换协议类型时更新表单数据。保留已有参数，补齐当前协议缺省字段，重置错误信息。
@@ -82,11 +75,11 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
     setForm((prev) => {
       if (from === 'ssh') {
         const s = String(prev.port ?? '').trim()
-        portByTabRef.current.ssh = s === '' ? SSH_FORM_DEFAULT.port : clampPortFieldString(s) || SSH_FORM_DEFAULT.port
+        portByTabRef.current.ssh = s === '' ? String(SSH_SESSION_DEFAULT.port) : clampPortFieldString(s) || String(SSH_SESSION_DEFAULT.port)
       }
       if (from === 'telnet') {
         const s = String(prev.port ?? '').trim()
-        portByTabRef.current.telnet = s === '' ? TELNET_FORM_DEFAULT.port : clampPortFieldString(s) || TELNET_FORM_DEFAULT.port
+        portByTabRef.current.telnet = s === '' ? String(TELNET_SESSION_DEFAULT.port) : clampPortFieldString(s) || String(TELNET_SESSION_DEFAULT.port)
       }
       const merged = mergeSessionFormDefaults(next, prev, appBackspaceFallback)
       const sshTelnetSwitch = (from === 'ssh' && next === 'telnet') || (from === 'telnet' && next === 'ssh')
@@ -161,9 +154,9 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
     type: tab,
     backspaceMode: normalizeBackspaceMode(form.backspaceMode) ?? 'auto',
     port: parseSessionPort(form.port),
-    baudRate: parseInt(form.baudRate, 10) || SERIAL_STORAGE_DEFAULT.baudRate,
-    dataBits: parseInt(form.dataBits, 10) || SERIAL_STORAGE_DEFAULT.dataBits,
-    stopBits: parseInt(form.stopBits, 10) || SERIAL_STORAGE_DEFAULT.stopBits,
+    baudRate: parseInt(form.baudRate, 10) || SERIAL_SESSION_DEFAULT.baudRate,
+    dataBits: parseInt(form.dataBits, 10) || SERIAL_SESSION_DEFAULT.dataBits,
+    stopBits: parseInt(form.stopBits, 10) || SERIAL_SESSION_DEFAULT.stopBits,
     label: form.label?.trim() || buildSessionLabel(tab, form),
   })
 
