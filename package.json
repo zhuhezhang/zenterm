@@ -58,11 +58,7 @@
       "shared/**/*"
     ],
     "win": {
-      "target": [
-        "nsis",
-        "portable",
-        "zip"
-      ]
+      "target": [ "nsis", "portable", "zip" ]
     },
     "nsis": {
       "oneClick": false,
@@ -71,32 +67,16 @@
       "allowToChangeInstallationDirectory": true
     },
     "linux": {
-      "target": [
-        "AppImage",
-        "deb",
-        "tar.gz"
-      ],
+      "target": [ "AppImage", "deb", "tar.gz" ],
       "category": "Utility"
     },
     "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ]
+      "target": [ "dmg", "zip" ]
     },
     "dmg": {
       "contents": [
-        {
-          "x": 130,
-          "y": 220,
-          "type": "file"
-        },
-        {
-          "x": 410,
-          "y": 220,
-          "type": "link",
-          "path": "/Applications"
-        }
+        { "x": 130, "y": 220, "type": "file" },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
       ]
     }
   },
