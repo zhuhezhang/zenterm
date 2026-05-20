@@ -132,6 +132,18 @@ function AppMain({ settings, setSettings }) {
   const terminalClearScreenRef = useRef({})  // 每个标签页清屏回调（xterm.clear）
 
   /**
+   * 处理终端字号变化：更新设置并保存到 localStorage
+   * @param {number} terminalFontSize 终端字号
+   */
+  const handleTerminalFontSizeChange = useCallback((terminalFontSize) => {
+    setSettings((prev) => {
+      const next = { ...prev, terminalFontSize }
+      saveSettings(next)
+      return next
+    })
+  }, [setSettings])
+
+    /**
    * 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听器
    * @param {MouseEvent} e 鼠标事件对象，包含鼠标位置等信息
    */
@@ -515,6 +527,7 @@ function AppMain({ settings, setSettings }) {
                     settings={settings} appThemeEffective={appThemeEffective}
                     onRegisterExport={registerTerminalExporter}
                     onRegisterClearScreen={registerTerminalClearScreen}
+                    onTerminalFontSizeChange={handleTerminalFontSizeChange}
                     onUpdate={(upd) => { updateSession(s.id, upd) }}
                   />
                 ))

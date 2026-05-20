@@ -5,7 +5,7 @@ import {
  DEFAULT_SETTINGS, TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX,
 } from '../lib/settings/defaults.js'
 import {
-  clampSidebarWidthPx, clampTerminalScrollback, applyLegacyLoggingMigration,
+  clampSidebarWidthPx, clampTerminalScrollback, clampTerminalFontSize, applyLegacyLoggingMigration,
 } from '../lib/settings/normalize.js'
 
 /** 本地存储设置的键名 */
@@ -65,6 +65,7 @@ export function loadSettings() {
     }
     let merged = { ...DEFAULT_SETTINGS, ...saved }
     merged.terminalScrollback = clampTerminalScrollback(merged.terminalScrollback)
+    merged.terminalFontSize = clampTerminalFontSize(merged.terminalFontSize)
     merged = applyLegacyLoggingMigration(merged)
     if (!('logPath' in saved)) merged.logPath = getDefaultLogPath()
     if (!['auto', 'en', 'zh'].includes(merged.uiLanguage)) merged.uiLanguage = 'auto'

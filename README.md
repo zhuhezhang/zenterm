@@ -176,6 +176,8 @@ zterm/
 │
 ├── docs/
 │   └── images/                        # README screenshots (main, settings, connection)
+|
+├── build/                             # icon
 │
 ├── index.html                         # Vite HTML entry (CSP injected by vite plugin)
 ├── vite.config.js                     # React (oxc) plugin, dev server, Electron CSP plugin

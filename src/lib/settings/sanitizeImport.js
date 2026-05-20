@@ -1,7 +1,8 @@
 import { DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, } from '../../../shared/sshAlgorithmDefaults.js'
 import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS } from './defaults.js'
 import {
-  applyLegacyLoggingMigration, clampSidebarWidthPx, clampTerminalScrollback, normalizeLoggingMode,
+  applyLegacyLoggingMigration, clampSidebarWidthPx, clampTerminalScrollback, 
+  clampTerminalFontSize, normalizeLoggingMode,
 } from './normalize.js'
 
 /**
@@ -81,6 +82,7 @@ export function sanitizeImportedSettings(raw) {
   out.terminalInteract = out.terminalInteract !== false
   out.saveSecretsToVault = !!out.saveSecretsToVault
   out.terminalScrollback = clampTerminalScrollback(out.terminalScrollback)
+  out.terminalFontSize = clampTerminalFontSize(out.terminalFontSize)
   out.loggingMode = normalizeLoggingMode(out.loggingMode)
   out.logPath = typeof out.logPath === 'string' ? out.logPath : ''
   out.sidebarWidth = clampSidebarWidthPx(out.sidebarWidth, typeof window !== 'undefined' ? window.innerWidth : 1200)

@@ -1,10 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
 import { resolveLoggingDirectory } from '../store/settingsStore.js'
-import { clampTerminalScrollback, normalizeLoggingMode } from '../lib/settings/normalize.js'
+import { TERMINAL_FONT_SIZE_DEFAULT } from '../lib/settings/defaults.js'
+import { clampTerminalFontSize, clampTerminalScrollback, normalizeLoggingMode } from '../lib/settings/normalize.js'
 import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
 import { getXtermTheme } from '../theme/appTheme.js'
@@ -136,10 +137,13 @@ function mapSerialError(err, lang) {
  * @param {'dark'|'light'} props.appThemeEffective 应用亮暗（与界面 CSS 变量一致），用于 xterm 配色
  * @param {Function} props.onRegisterExport 注册导出终端输出函数的回调，参数为 (sessionId, getter|null)
  * @param {Function} [props.onRegisterClearScreen] 注册清屏函数的回调，参数为 (sessionId, fn|null)
+ * @param {Function} [props.onTerminalFontSizeChange] 终端字号变化时回调（写入设置并持久化）
  */
-export default function TerminalPanel({ session, active, onUpdate, settings, appThemeEffective = 'dark', onRegisterExport, onRegisterClearScreen }) {
+export default function TerminalPanel({ session, active, onUpdate, settings, appThemeEffective = 'dark', onRegisterExport, onRegisterClearScreen, onTerminalFontSizeChange }) {
   /** 终端容器的 DOM 引用，用于挂载 xterm 实例 */
   const containerRef = useRef(null)
+  /** 指针是否在终端区域上方（用于 Ctrl+/-/= 缩放） */
+  const pointerOverRef = useRef(false)
   /** Terminal 实例引用，保存对 xterm 实例的访问以便在不同函数中使用 */
   const termRef      = useRef(null)
   /** FitAddon 实例引用，用于在窗口大小变化时调整终端尺寸 */
@@ -156,9 +160,53 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
   const settingsRef  = useRef(settings)
   useEffect(() => { settingsRef.current = settings }, [settings])
 
+  /**
+   * 应用终端字号：更新终端字号并保存到设置
+   * @param {number} size 终端字号
+   */
+  const applyFontSize = useCallback((size) => {
+    const term = termRef.current
+    const fit = fitAddonRef.current
+    if (!term) return clampTerminalFontSize(size)
+    const next = clampTerminalFontSize(size)
+    if (term.options.fontSize === next) return next
+    term.options.fontSize = next
+    try { fit?.fit() } catch (_) {}
+    return next
+  }, [])
+
+  /**
+   * 调整终端字号：根据 delta 调整终端字号
+   * @param {number} delta 调整量
+   */
+  const bumpFontSize = useCallback((delta) => {
+    const term = termRef.current
+    if (!term) return
+    const current = clampTerminalFontSize(term.options.fontSize ?? settingsRef.current?.terminalFontSize)
+    const next = clampTerminalFontSize(current + delta)
+    if (next === current) return
+    applyFontSize(next)
+    onTerminalFontSizeChange?.(next)
+  }, [applyFontSize, onTerminalFontSizeChange])
+
+  /** 重置终端字号：重置为默认字号 */
+  const resetFontSize = useCallback(() => {
+    const term = termRef.current
+    if (!term) return
+    const next = TERMINAL_FONT_SIZE_DEFAULT
+    const current = clampTerminalFontSize(term.options.fontSize ?? settingsRef.current?.terminalFontSize)
+    if (next === current) return
+    applyFontSize(next)
+    onTerminalFontSizeChange?.(next)
+  }, [applyFontSize, onTerminalFontSizeChange])
+
   useEffect(() => {  // 组件初次挂载时：创建终端实例、连接会话，并设置相关事件监听器；组件卸载时：调用 cleanupRef 中的函数进行清理
     if (!containerRef.current) return
-    const term = createTerminal(appThemeEffective, clampTerminalScrollback(settingsRef.current?.terminalScrollback))
+    const term = createTerminal(
+      appThemeEffective,
+      clampTerminalScrollback(settingsRef.current?.terminalScrollback),
+      clampTerminalFontSize(settingsRef.current?.terminalFontSize),
+    )
     const fitAddon = new FitAddon()
     term.loadAddon(fitAddon)
     term.loadAddon(new WebLinksAddon())  // WebLinksAddon 负责将终端中的 URL 自动识别为可点击链接
@@ -213,6 +261,49 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
       term.options.scrollback = sb
     }
   }, [settings?.terminalScrollback])
+
+  useEffect(() => {  // 终端字号：设置变化或快捷键缩放后同步到 xterm 并 refit
+    applyFontSize(settings?.terminalFontSize)
+  }, [settings?.terminalFontSize, applyFontSize])
+
+  useEffect(() => {  // Ctrl+滚轮 / Ctrl+-/=/0：仅在指针位于本终端区域时缩放或恢复默认字号
+    const el = containerRef.current
+    if (!el) return
+
+    const onEnter = () => { pointerOverRef.current = true }
+    const onLeave = () => { pointerOverRef.current = false }
+    const onWheel = (e) => {
+      if (!e.ctrlKey) return
+      e.preventDefault()
+      bumpFontSize(e.deltaY < 0 ? 1 : -1)
+    }
+    const onKeyDown = (e) => {
+      if (!pointerOverRef.current || !e.ctrlKey || e.metaKey || e.altKey) return
+      if (e.key === '0') {
+        e.preventDefault()
+        resetFontSize()
+        return
+      }
+      let delta = 0
+      if (e.key === '-' || e.key === '_') delta = -1
+      else if (e.key === '=' || e.key === '+' || e.code === 'Equal') delta = 1
+      if (!delta) return
+      e.preventDefault()
+      bumpFontSize(delta)
+    }
+
+    el.addEventListener('mouseenter', onEnter)
+    el.addEventListener('mouseleave', onLeave)
+    el.addEventListener('wheel', onWheel, { passive: false })
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      el.removeEventListener('mouseenter', onEnter)
+      el.removeEventListener('mouseleave', onLeave)
+      el.removeEventListener('wheel', onWheel)
+      window.removeEventListener('keydown', onKeyDown)
+      if (!el.matches(':hover')) pointerOverRef.current = false
+    }
+  }, [bumpFontSize, resetFontSize])
 
   useEffect(() => {  // 监听当应用主题变化时，更新终端主题，确保终端主题与应用主题一致
     const term = termRef.current
@@ -390,12 +481,13 @@ function nextLineBreakEndIndex(s) {
  * 创建并配置 xterm 终端实例
  * @param {'dark'|'light'} themeMode 主题名称
  * @param {number} scrollback 滚动缓冲行数（由设置 clamp）
+ * @param {number} fontSize 字号（px，由设置 clamp）
  * @returns {Terminal} 配置好的 Terminal 实例
  */
-function createTerminal(themeMode, scrollback) {
+function createTerminal(themeMode, scrollback, fontSize) {
   return new Terminal({
     fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", Menlo, monospace',  // 左到右为字体的优先级
-    fontSize: 14,
+    fontSize: clampTerminalFontSize(fontSize),
     lineHeight: 1.4,
     cursorBlink: true,  // 启用光标闪烁，增强可见性
     cursorStyle: 'bar',  // 光标样式为竖线，适合现代终端习惯

@@ -1,5 +1,7 @@
 import {
-  DEFAULT_SIDEBAR_WIDTH, TERMINAL_SCROLLBACK_DEFAULT, TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX,
+  DEFAULT_SIDEBAR_WIDTH,
+  TERMINAL_SCROLLBACK_DEFAULT, TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX,
+  TERMINAL_FONT_SIZE_DEFAULT, TERMINAL_FONT_SIZE_MIN, TERMINAL_FONT_SIZE_MAX,
 } from './defaults.js'
 
 /**
@@ -27,6 +29,19 @@ export function clampTerminalScrollback(raw) {
   if (!Number.isFinite(n)) return TERMINAL_SCROLLBACK_DEFAULT
   if (n < TERMINAL_SCROLLBACK_MIN) return TERMINAL_SCROLLBACK_MIN
   if (n > TERMINAL_SCROLLBACK_MAX) return TERMINAL_SCROLLBACK_MAX
+  return n
+}
+
+/**
+ * 将用户输入规范为合法终端字号（px）；无法解析时用内置默认
+ * @param {unknown} raw 字号
+ * @returns {number} 规范后的字号
+ */
+export function clampTerminalFontSize(raw) {
+  const n = Math.floor(Number(raw))
+  if (!Number.isFinite(n)) return TERMINAL_FONT_SIZE_DEFAULT
+  if (n < TERMINAL_FONT_SIZE_MIN) return TERMINAL_FONT_SIZE_MIN
+  if (n > TERMINAL_FONT_SIZE_MAX) return TERMINAL_FONT_SIZE_MAX
   return n
 }
 
