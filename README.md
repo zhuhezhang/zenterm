@@ -301,6 +301,7 @@ Typical `userData` paths:
 | Serial port not listed | Click **Refresh**; on Linux ensure user is in `dialout` group |
 | Host key prompt every time | Check write permissions for `userData`; do not run from read-only profiles |
 | Import fails / wrong file type | Use the correct export file (`sessions` vs `settings`); max 8 MB |
+| Windows portable `ZTerm x.x.x.exe` shows the wrong icon in File Explorer, but **Properties** shows the correct icon; `win-unpacked\ZTerm.exe` and `ZTerm Setup x.x.x.exe` look fine | The icon is embedded in the EXE; this is usually the Windows Shell **icon cache** (common when rebuilding the same portable file name). Copy and rename the file (e.g. `ZTerm-test.exe`) to verify. If that fixes it, restart `explorer.exe`, delete `iconcache*` and `thumbcache*` under `%LocalAppData%\Microsoft\Windows\Explorer\`, then open File Explorer again |
 
 ---
 

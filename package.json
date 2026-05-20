@@ -57,10 +57,11 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "shared/**/*"
+      "shared/**/*",
+      "build/**/*"
     ],
     "win": {
-      "icon": "build/icon.png",
+      "icon": "build/icon.ico",
       "target": [ "nsis", "portable", "zip" ]
     },
     "nsis": {
