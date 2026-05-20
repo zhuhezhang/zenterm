@@ -14,13 +14,17 @@ function isPlainObject(raw) {
 /**
  * 验证并解析设置导入文件
  * @param {File} file 导入的 JSON 文件对象
+ * @param {Record<string, unknown>} currentSettings 导入前的当前设置
  * @returns {Promise<Record<string, unknown>>} 规范后的设置对象
  */
-export async function validateAndParseSettingsImport(file) {
+export async function validateAndParseSettingsImport(file, currentSettings) {
   const parsed = await readImportJson(file)
   const data = unwrapExportPayload(parsed, 'settings')
   if (!isPlainObject(data)) {
     throw createImportError('invalidPayload')
   }
-  return sanitizeImportedSettings(/** @type {Record<string, unknown>} */ (data))
+  return await sanitizeImportedSettings(
+    /** @type {Record<string, unknown>} */ (data),
+    currentSettings ?? {},
+  )
 }

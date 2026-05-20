@@ -106,12 +106,13 @@ export function exportSettings(settings) {
 }
 
 /**
- * 从 JSON 文件中导入设置项（校验 envelope，未知键静默剥离）
+ * 从 JSON 文件中导入设置项（校验 envelope，未知键静默剥离；非法字段保留 currentSettings）
  * @param {File} file 用户选择的 JSON 文件对象
+ * @param {Object} currentSettings 导入前的当前设置
  * @returns {Promise<Object>} 规范后的设置对象
  */
-export function importSettings(file) {
-  return validateAndParseSettingsImport(file)
+export function importSettings(file, currentSettings) {
+  return validateAndParseSettingsImport(file, currentSettings)
 }
 
 /** 设置对话框三个标签页（labelKey 对应 settings.tabs.*） */

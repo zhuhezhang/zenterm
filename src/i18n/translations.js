@@ -250,7 +250,7 @@ export const MESSAGES = {
       restoreDefaultBtn: '恢复默认',
       confirmResetHighlight: '确定将高亮规则重置为内置默认列表吗？\n当前列表中的规则会被全部替换；重置后请点击「保存」或「保存并关闭」写入本地',
       importSessionsOk: '已导入 {n} 个新会话',
-      importSessionsPartial: '已导入 {n} 个新会话，跳过 {skipped} 条无效记录（相同 ID 或名称的会话已被忽略）',
+      importSessionsPartial: '已导入 {n} 个新会话，跳过 {skipped} 条无效记录',
       importFail: '导入失败：{msg}',
       importErrors: {
         invalidJson: '不是有效的 JSON 文件',
@@ -613,7 +613,7 @@ export const MESSAGES = {
       confirmResetHighlight:
         'Reset highlight rules to built-in defaults?\nCurrent rules will be replaced; click Save or Save & close to persist',
       importSessionsOk: 'Imported {n} new session(s)',
-      importSessionsPartial: 'Imported {n} new session(s); skipped {skipped} invalid record(s) (duplicates by ID or label were ignored)',
+      importSessionsPartial: 'Imported {n} new session(s); skipped {skipped} invalid record(s)',
       importFail: 'Import failed: {msg}',
       importErrors: {
         invalidJson: 'Not a valid JSON file',

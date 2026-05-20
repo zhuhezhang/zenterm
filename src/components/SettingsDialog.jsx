@@ -355,7 +355,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     const file = e.target.files[0]
     if (!file) return
     try {
-      const importedSettings = await importSettings(file)
+      const importedSettings = await importSettings(file, form)
       setForm({
         ...importedSettings,
         highlightRules: [...importedSettings.highlightRules],

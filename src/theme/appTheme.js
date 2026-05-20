@@ -1,6 +1,3 @@
-/** @typedef {'dark'|'light'|'auto'} AppThemeSetting */
-/** @typedef {'dark'|'light'} AppThemeResolved */
-
 /**
  * 根据设置解析当前应使用的亮/暗主题（auto 时读取系统 prefers-color-scheme）
  * @param {AppThemeSetting} appTheme 主题名称
