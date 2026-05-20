@@ -197,7 +197,7 @@ export const MESSAGES = {
       logResetDefault: '恢复默认目录为：\n{path}',
       logResetAria: '恢复默认日志目录',
       logPathDisabledTip: '当前未启用终端 I/O 日志，目录设置无效；先选择缓冲或原始流模式后再配置',
-      logPathRejected: '所选目录不在允许范围内，会话日志将无法写入。',
+      logPathRejected: '所选目录不在允许范围内，会话日志将无法写入',
       logPathValidateFail: '校验日志目录失败：{msg}',
       choose: '选择',
       algoTitle: 'SSH/SFTP 算法',
@@ -249,8 +249,8 @@ export const MESSAGES = {
         '将本地保存的全部选项重置为应用内置默认值（会同时清除保存的密钥等敏感信息，但不影响已保存的会话列表）',
       restoreDefaultBtn: '恢复默认',
       confirmResetHighlight: '确定将高亮规则重置为内置默认列表吗？\n当前列表中的规则会被全部替换；重置后请点击「保存」或「保存并关闭」写入本地',
-      importSessionsOk: '已导入 {n} 个新会话，相同 ID 或名称的会话已被忽略',
-      importSessionsPartial: '已导入 {n} 个新会话，跳过 {skipped} 条无效记录；相同 ID 或名称的会话已被忽略',
+      importSessionsOk: '已导入 {n} 个新会话',
+      importSessionsPartial: '已导入 {n} 个新会话，跳过 {skipped} 条无效记录（相同 ID 或名称的会话已被忽略）',
       importFail: '导入失败：{msg}',
       importErrors: {
         invalidJson: '不是有效的 JSON 文件',
@@ -378,8 +378,8 @@ export const MESSAGES = {
       serialDesc: 'Serial port',
     },
     app: {
-      saveOutputNotReady: 'Terminal output is not ready on this tab yet.',
-      saveOutputEmpty: 'No terminal output to save on this tab.',
+      saveOutputNotReady: 'Terminal output is not ready on this tab yet',
+      saveOutputEmpty: 'No terminal output to save on this tab',
     },
     credential: {
       title: 'Enter credentials',
@@ -391,9 +391,9 @@ export const MESSAGES = {
       keyPassphrase: 'Key passphrase',
       optional: 'Optional',
       hintSaveOn:
-        '“Save & connect” stores the username and secrets in encrypted storage (same as “Save secrets to encrypted storage” in Settings). “Connect” does not write to the vault.',
+        '“Save & connect” stores the username and secrets in encrypted storage (same as “Save secrets to encrypted storage” in Settings). “Connect” does not write to the vault',
       hintSaveOff:
-        '“Save secrets to encrypted storage” is off. “Save & connect” only updates the saved username; “Connect” does not write to the vault.',
+        '“Save secrets to encrypted storage” is off. “Save & connect” only updates the saved username; “Connect” does not write to the vault',
       cancel: 'Cancel',
       connect: 'Connect',
       saveConnect: 'Save & connect',
@@ -436,11 +436,11 @@ export const MESSAGES = {
       save: 'Save',
       connectDirect: 'Connect',
       saveAndConnect: 'Save & connect',
-      errHost: 'Host is required.',
-      errSerial: 'Please select a serial device.',
-      errSerialList: 'Serial path must come from the enumerated list; click Refresh and pick a path from the list.',
-      errGroupSlashStart: 'Group cannot start with "/".',
-      errGroupSlashEnd: 'Group cannot end with "/" (empty segment).',
+      errHost: 'Host is required',
+      errSerial: 'Please select a serial device',
+      errSerialList: 'Serial path must come from the enumerated list; click Refresh and pick a path from the list',
+      errGroupSlashStart: 'Group cannot start with "/"',
+      errGroupSlashEnd: 'Group cannot end with "/" (empty segment)',
       errGroupChars: 'Group cannot contain: \\ : * ? " < > |',
       errLabelChars: 'Label cannot contain: / \\ : * ? " < > |',
     },
@@ -462,7 +462,7 @@ export const MESSAGES = {
       namePh: 'Enter name…',
       cancel: 'Cancel',
       confirm: 'OK',
-      groupNameEmpty: 'Group name cannot be empty.',
+      groupNameEmpty: 'Group name cannot be empty',
       groupNameInvalid: 'Group name cannot contain: / \\ : * ? " < > |',
       newConnectionMenu: 'New connection',
       newGroup: 'New group',
@@ -480,7 +480,7 @@ export const MESSAGES = {
       collapseGroup: 'Collapse this group',
       deleteGroup: 'Delete group',
       deleteGroupWithKids: 'Delete group “{name}” and everything inside?',
-      deleteGroupOnly: 'Delete group “{name}”? Sessions inside become ungrouped.',
+      deleteGroupOnly: 'Delete group “{name}”? Sessions inside become ungrouped',
       deleteSession: 'Delete session “{label}”?',
       renameGroupInvalid: 'Group name cannot contain: / \\ : * ? " < > |',
       renameSessionInvalid: 'Label cannot contain: / \\ : * ? " < > |',
@@ -505,11 +505,11 @@ export const MESSAGES = {
       fields: {
         appTheme: {
           label: 'App theme',
-          desc: 'Dark, light, or match the system. Default is follow system; applies after you save.',
+          desc: 'Dark, light, or match the system. Default is follow system; applies after you save',
         },
         uiLanguage: {
           label: '语言 / Language',
-          desc: 'With Automatic, the UI follows the system locale (Simplified Chinese vs English). Applies after you save.',
+          desc: 'With Automatic, the UI follows the system locale (Simplified Chinese vs English). Applies after you save',
         },
         confirmDeleteSession: { label: 'Confirm before deleting a session', desc: 'Ask before removing a saved session' },
         confirmDeleteGroup: { label: 'Confirm before deleting a group', desc: 'Ask before removing a group' },
@@ -523,19 +523,19 @@ export const MESSAGES = {
         },
         terminalScrollback: {
           label: 'Scrollback (lines above viewport)',
-          desc: 'Rows kept after they scroll off the top—not the on-screen rows (those depend on window height). Total lines you can scroll through is about this value plus the terminal row count. Higher uses more RAM. Takes effect after you save.',
+          desc: 'Rows kept after they scroll off the top—not the on-screen rows (those depend on window height). Total lines you can scroll through is about this value plus the terminal row count. Higher uses more RAM. Takes effect after you save',
         },
         loggingMode: {
           label: 'Terminal I/O logging',
-          desc: 'Choose “None” to disable. Otherwise each session is written to its own .log file under the directory below. Buffer snapshot overwrite: export plain text from the xterm buffer and overwrite the file (matches the screen, but scrollback limits history and overwrite is heavier on disk). Raw stream append: strip ANSI and append chunks (can diverge from what you see, e.g. zsh redraws).',
+          desc: 'Choose “None” to disable. Otherwise each session is written to its own .log file under the directory below. Buffer snapshot overwrite: export plain text from the xterm buffer and overwrite the file (matches the screen, but scrollback limits history and overwrite is heavier on disk). Raw stream append: strip ANSI and append chunks (can diverge from what you see, e.g. zsh redraws)',
         },
         logPath: {
           label: 'Log directory',
-          desc: 'Empty = Downloads/zterm-session-log. Must be under a user-writable folder or the main process will reject writes.',
+          desc: 'Empty = Downloads/zterm-session-log. Must be under a user-writable folder or the main process will reject writes',
         },
         saveSecretsToVault: {
           label: 'Save secrets to encrypted storage',
-          desc: 'When on, saving SSH sessions stores password, private key / PEM, and passphrase in OS secure storage.\nWhen off and saved, those fields are removed from the vault; if encryption is unavailable, saving will warn and avoid writing plaintext.',
+          desc: 'When on, saving SSH sessions stores password, private key / PEM, and passphrase in OS secure storage.\nWhen off and saved, those fields are removed from the vault; if encryption is unavailable, saving will warn and avoid writing plaintext',
         },
       },
       options: {
@@ -557,19 +557,19 @@ export const MESSAGES = {
       logDefaultDir: 'Downloads (default)',
       logResetDefault: 'Reset default directory to:\n{path}',
       logResetAria: 'Reset log directory to default',
-      logPathDisabledTip: 'Logging is off, directory is ignored. Pick buffer or stream mode first to configure it.',
-      logPathRejected: 'This folder is outside the allowed locations; session logs cannot be written there.',
+      logPathDisabledTip: 'Logging is off, directory is ignored. Pick buffer or stream mode first to configure it',
+      logPathRejected: 'This folder is outside the allowed locations; session logs cannot be written there',
       logPathValidateFail: 'Could not validate log folder: {msg}',
       choose: 'Browse',
       algoTitle: 'SSH/SFTP algorithms',
       algoIntro:
-        'Modern algorithms only by default; enable items marked “weak” for old devices (weakens negotiation).',
+        'Modern algorithms only by default; enable items marked “weak” for old devices (weakens negotiation)',
       resetDefault: 'Reset defaults',
       algoCategory: 'Category',
       algoCategoryDesc: 'Pick a category to configure',
       resetSection: 'Reset category defaults',
       weakBadge: 'Weak',
-      weakTip: 'Legacy or weak algorithm; security risk—enable only for old SSH servers.',
+      weakTip: 'Legacy or weak algorithm; security risk—enable only for old SSH servers',
       highlightRules: 'Highlight rules',
       highlightDesc: 'Patterns and colors for terminal output',
       resetRules: 'Reset rules',
@@ -611,9 +611,9 @@ export const MESSAGES = {
         'Reset all local options to app defaults (also clears stored keys; saved session list is kept)',
       restoreDefaultBtn: 'Restore defaults',
       confirmResetHighlight:
-        'Reset highlight rules to built-in defaults?\nCurrent rules will be replaced; click Save or Save & close to persist.',
-      importSessionsOk: 'Imported {n} new session(s); duplicates by ID or label were skipped.',
-      importSessionsPartial: 'Imported {n} new session(s); skipped {skipped} invalid record(s). Duplicates by ID or label were ignored.',
+        'Reset highlight rules to built-in defaults?\nCurrent rules will be replaced; click Save or Save & close to persist',
+      importSessionsOk: 'Imported {n} new session(s)',
+      importSessionsPartial: 'Imported {n} new session(s); skipped {skipped} invalid record(s) (duplicates by ID or label were ignored)',
       importFail: 'Import failed: {msg}',
       importErrors: {
         invalidJson: 'Not a valid JSON file',
@@ -625,18 +625,18 @@ export const MESSAGES = {
         invalidPayload: 'Invalid file contents',
         noValidSessions: 'No importable sessions in file ({skipped} invalid record(s) skipped)',
       },
-      confirmClearSessions: 'Delete all saved sessions and groups?\nThis cannot be undone.',
+      confirmClearSessions: 'Delete all saved sessions and groups?\nThis cannot be undone',
       confirmClearSessions2: 'Confirm again: all session data will be removed. Continue?',
-      clearedSessions: 'All sessions and groups cleared.',
-      importSettingsOk: 'Settings imported—click Save to apply.',
+      clearedSessions: 'All sessions and groups cleared',
+      importSettingsOk: 'Settings imported—click Save to apply',
       confirmRestore:
-        'Restore all local settings to defaults?\nHighlight rules, SSH algorithms, log path, confirmations, vault toggle and stored keys will reset. Cannot undo.',
+        'Restore all local settings to defaults?\nHighlight rules, SSH algorithms, log path, confirmations, vault toggle and stored keys will reset. Cannot undo',
       confirmRestore2: 'Confirm again: defaults will be written immediately. Continue?',
-      restored: 'Restored default settings.',
+      restored: 'Restored default settings',
       confirmClearVault:
-        'Clear all encrypted secrets?\nSaved sessions remain, but SSH passwords, keys, and passphrases must be re-entered.',
+        'Clear all encrypted secrets?\nSaved sessions remain, but SSH passwords, keys, and passphrases must be re-entered',
       confirmClearVault2: 'This cannot be undone. Continue?',
-      clearedVault: 'All secrets cleared.',
+      clearedVault: 'All secrets cleared',
       clearVaultFail: 'Clear failed: {msg}',
       unnamedRule: 'Unnamed rule {n}',
       algo: {
@@ -679,8 +679,8 @@ export const MESSAGES = {
     },
     terminal: {
       pressR: 'Press R to reconnect…',
-      closed: 'Connection closed.',
-      portClosed: 'Port closed.',
+      closed: 'Connection closed',
+      portClosed: 'Port closed',
       reconnecting: 'Reconnecting…',
       sshConnecting: 'Connecting to {host}:{port}…',
       telnetConnecting: 'Connecting to {host}:{port}…',
@@ -717,7 +717,7 @@ export const MESSAGES = {
         unknown: 'Serial failed: unknown error',
         access: 'Serial open failed: busy or permission denied',
         missing: 'Serial port missing: check the device path',
-        baud: 'Serial misconfigured: check baud rate, etc.',
+        baud: 'Serial misconfigured: check baud rate, etc',
         generic: 'Serial failed: check device and parameters',
       },
     },
@@ -739,8 +739,8 @@ export function translate(lang, path, params = {}) {
     cur = cur?.[p]
   }
   if (typeof cur !== 'string') return path
-  // 替换占位符，例如 cur 为 importSessionsOk: '已导入 {n} 个新会话，相同 ID 或名称的会话已被忽略'
-  // 那么当传入 params 为 {n: 1} 时，k=n，返回 "已导入 1 个新会话，相同 ID 或名称的会话已被忽略"
-  // 若传入 params 为 {m: 1} 时，k=m，返回 "已导入 {m} 个新会话，相同 ID 或名称的会话已被忽略"
+  // 替换占位符，例如 cur 为 importSessionsOk: '已导入 {n} 个新会话'
+  // 那么当传入 params 为 {n: 1} 时，k=n，返回 "已导入 1 个新会话"
+  // 若传入 params 为 {m: 1} 时，k=m，返回 "已导入 {m} 个新会话"
   return cur.replace(/\{(\w+)\}/g, (_, k) => (params[k] != null ? String(params[k]) : `{${k}}`))
 }

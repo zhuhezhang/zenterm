@@ -10,13 +10,6 @@ export const TERMINAL_SCROLLBACK_MIN = 0
 /** xterm 滚动缓冲区行数最大值 */
 export const TERMINAL_SCROLLBACK_MAX = 500_000
 
-/** xterm 终端字号默认值（px） */
-export const TERMINAL_FONT_SIZE_DEFAULT = 14
-/** xterm 终端字号最小值 */
-export const TERMINAL_FONT_SIZE_MIN = 8
-/** xterm 终端字号最大值 */
-export const TERMINAL_FONT_SIZE_MAX = 32
-
 /** SSH 算法子类别（与 settings.algo.* i18n 及 algorithmPreferences 键对应） */
 export const SSH_ALGORITHM_SECTION_KEYS = ['kex', 'serverHostKey', 'cipher', 'hmac', 'compress']
 
@@ -30,7 +23,6 @@ export const DEFAULT_SETTINGS = {
   confirmDeleteGroup: true,
   deleteGroupWithSessions: false,
   terminalInteract: true,
-  terminalFontSize: TERMINAL_FONT_SIZE_DEFAULT,
   terminalScrollback: TERMINAL_SCROLLBACK_DEFAULT,
   loggingMode: 'none',
   logPath: '',
