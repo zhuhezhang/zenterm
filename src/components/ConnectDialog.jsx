@@ -115,14 +115,14 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
     if (tab === 'serial') refreshSerialPorts()
   }, [tab, refreshSerialPorts])
 
-  useEffect(() => {  // 编辑已保存会话时从主进程 vault 拉取敏感字段合并到表单
+  useEffect(() => {  // 编辑已保存 SSH 会话时从 vault 拉取敏感字段合并到表单
     let cancelled = false
     const sid = initialData?.savedId
     if (!sid) return
     void (async () => {
-      const sec = await fetchSessionSecrets(sid)
-      if (cancelled) return
       const t = initialData.type || type || 'ssh'
+      const sec = t === 'telnet' ? {} : await fetchSessionSecrets(sid)
+      if (cancelled) return
       const merged = { ...mergeSessionFormDefaults(t, initialData, appBackspaceFallback), ...sec }
       if (t === 'ssh' || t === 'telnet') {
         const s = String(merged.port ?? '').trim()
@@ -210,9 +210,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
    * @returns {boolean} 是否需要输入凭证
    */
   const needsCredentials = (config) => {
-    if (config.type === 'telnet') {
-      return !config.username?.trim() || !config.password?.trim()
-    }
+    if (config.type === 'telnet') return false
     if (config.type === 'ssh') {
       if (!config.username?.trim()) return true
       if (config.authType === 'privateKey') return !config.privateKey?.trim()
@@ -444,12 +442,6 @@ function TelnetForm({ form, set, visible }) {
       </FormRow>
       <FormRow label={t('connect.port')}>
         <input type="number" min={PORT_MIN} max={PORT_MAX} value={form.port} onChange={e => set('port', clampPortFieldString(e.target.value))} style={{width:80}} />
-      </FormRow>
-      <FormRow label={t('connect.username')}>
-        <input placeholder={t('connect.usernamePh')} value={form.username || ''} onChange={e => set('username', e.target.value)} />
-      </FormRow>
-      <FormRow label={t('connect.password')}>
-        <input type="password" placeholder={t('connect.passwordPh')} value={form.password || ''} onChange={e => set('password', e.target.value)} />
       </FormRow>
     </>
   )

@@ -378,28 +378,16 @@ function AppMain({ settings, setSettings }) {
   }, [savedSessions, updateSaved, settings, launchSession])
 
   /**
-   * 连接已保存会话：如果是 SSH/Telnet 且缺少用户名或密码，弹出凭证对话框；否则直接启动会话
+   * 连接已保存会话：SSH 缺凭据时弹出凭证对话框；Telnet/Serial 直接启动
    * @param {Object} s 会话配置对象
    */
   const handleConnSaved = useCallback((s) => {
     void (async () => {
+      if (s.type === 'serial' || s.type === 'telnet') {
+        launchSession(s)
+        return
+      }
       const merged = await mergeSessionWithVaultSecrets(s)
-      if (merged.type === 'serial') {
-        launchSession(merged)
-        return
-      }
-      if (merged.type === 'telnet') {
-        if (!merged.username?.trim() || !merged.password?.trim()) {
-          setCredDialogState({
-            session: merged,
-            username: merged.username || '',
-            password: merged.password || '',
-          })
-          return
-        }
-        launchSession(merged)
-        return
-      }
       if (merged.type === 'ssh') {
         if (!merged.username?.trim()) {
           setCredDialogState({

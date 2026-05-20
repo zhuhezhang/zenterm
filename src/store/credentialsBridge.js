@@ -13,13 +13,7 @@ export function buildSecretsSyncPayload(config, settings) {
     keys.passphrase = persist && config.passphrase ? config.passphrase : null
     return keys
   }
-  if (config.type === 'telnet') {
-    keys.password = persist && config.password ? config.password : null
-    keys.privateKey = null
-    keys.passphrase = null
-    return keys
-  }
-  return keys // serial 等：不写入凭据；若误传 savedId 仅清空无关字段
+  return keys // telnet / serial 等：不写入凭据；若误传 savedId 仅清空无关字段
 }
 
 /**
@@ -103,7 +97,7 @@ export async function reapplyVaultPoliciesForAllSessions(savedSessions, settings
   const avail = await api.isAvailable?.()
   if (avail === false) return
   for (const s of savedSessions) {
-    if (!s.savedId || (s.type !== 'ssh' && s.type !== 'telnet')) continue
+    if (!s.savedId || s.type !== 'ssh') continue
     const sec = await fetchSessionSecrets(s.savedId)
     const full = { ...s, ...sec }
     await api.sync(s.savedId, buildSecretsSyncPayload(full, settings))
@@ -137,14 +131,12 @@ export async function absorbPlaintextSecretsFromImportedSessions(sessions) {
   for (const s of sessions) {
     const copy = { ...s }
     if (avail && api?.sync && s.savedId) {
-      if (s.type === 'ssh') {
+      if (s.type === 'ssh') {  // 如果是 SSH 会话，则设置凭据
         const partial = {}
         if (typeof s.password === 'string' && s.password) partial.password = s.password
         if (typeof s.privateKey === 'string' && s.privateKey) partial.privateKey = s.privateKey
         if (typeof s.passphrase === 'string' && s.passphrase) partial.passphrase = s.passphrase
         if (Object.keys(partial).length) await api.sync(s.savedId, partial)
-      } else if (s.type === 'telnet' && typeof s.password === 'string' && s.password) {
-        await api.sync(s.savedId, { password: s.password, privateKey: null, passphrase: null })
       }
     }
     delete copy.password

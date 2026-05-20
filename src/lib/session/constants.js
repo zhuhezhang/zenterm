@@ -28,7 +28,7 @@ export const IMPORT_MAX_BYTES = 8 * 1024 * 1024
 /** 各会话类型允许持久化到 localStorage 的字段 */
 export const SESSION_TYPE_FIELDS = {
   ssh: ['host', 'port', 'username', 'authType', 'enableSftp', 'encoding', 'backspaceMode'],
-  telnet: ['host', 'port', 'username', 'encoding', 'backspaceMode'],
+  telnet: ['host', 'port', 'encoding', 'backspaceMode'],
   serial: ['path', 'baudRate', 'dataBits', 'stopBits', 'parity', 'encoding', 'backspaceMode'],
 }
 
@@ -70,8 +70,6 @@ export const TELNET_SESSION_DEFAULT = {
   group: '',
   host: '',
   port: 23,
-  username: '',
-  password: '',
   encoding: DEFAULT_TERMINAL_ENCODING,
   backspaceMode: 'auto',
 }

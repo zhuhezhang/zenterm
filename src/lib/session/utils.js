@@ -63,6 +63,10 @@ export function buildSessionLabel(tab, form) {
     const raw = String(form.path || 'Serial')
     return raw.replace(new RegExp(LABEL_ILLEGAL_CHARS_RE.source, 'g'), '').trim() || 'Serial'
   }
+  if (tab === 'telnet') {
+    const raw = String(form.host || 'Telnet')
+    return raw.replace(new RegExp(LABEL_ILLEGAL_CHARS_RE.source, 'g'), '').trim() || 'Telnet'
+  }
   const raw = (form.username ? String(form.username) + '@' : '') + (form.host || tab.toUpperCase())
   return raw.replace(new RegExp(LABEL_ILLEGAL_CHARS_RE.source, 'g'), '').trim() || tab.toUpperCase()
 }

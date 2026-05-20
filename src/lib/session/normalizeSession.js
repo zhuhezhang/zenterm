@@ -36,19 +36,17 @@ export function normalizeImportedSession(raw) {
   if (type === 'ssh' || type === 'telnet') {  // 如果是 SSH 或 Telnet 会话，则设置主机和端口
     merged.host = String(item.host).trim()
     merged.port = clampSessionPort(item.port, type === 'ssh' ? 22 : 23)
-    if (type === 'ssh') {
+    if (type === 'ssh') {  // 如果是 SSH 会话，则设置认证类型、用户名和启用 SFTP
       const auth = String(item.authType ?? base.authType).trim()
       merged.authType = AUTH_TYPE_SET.has(auth) ? auth : 'password'
-      merged.username = String(item.username ?? '').trim()
-      merged.enableSftp = Boolean(item.enableSftp)
-    } else {
-      merged.username = String(item.username ?? '').trim()
+      merged.username = String(item.username ?? '').trim()  // 设置用户名
+      merged.enableSftp = Boolean(item.enableSftp)  // 设置启用 SFTP
     }
-  } else {
+  } else {  // 如果是串口会话，则设置串口相关字段
     applySerialStorageFields(merged, item, base)
   }
 
-  merged.encoding = normalizeTerminalEncoding(  // 规范化终端编码
+  merged.encoding = normalizeTerminalEncoding(  // 规范化终端编码，如果编码为字符串，则规范化编码，否则使用默认编码
     typeof item.encoding === 'string' ? item.encoding : base.encoding,
   )
   merged.backspaceMode = normalizeBackspaceMode(item.backspaceMode) ?? 'auto'  // 规范化退格模式
@@ -62,12 +60,10 @@ export function normalizeImportedSession(raw) {
   const stored = pickSessionStorageFields(merged)  // 选择需要保存的字段
   const session = { ...stored, label: merged.label, savedId, savedAt }  // 合并保存 ID 和保存时间
 
-  if (type === 'ssh') {  // 如果是 SSH 会话，则设置密码
+  if (type === 'ssh') {
     if (typeof item.password === 'string') session.password = item.password
-    if (typeof item.privateKey === 'string') session.privateKey = item.privateKey  // 设置私钥
-    if (typeof item.passphrase === 'string') session.passphrase = item.passphrase  // 设置 passphrase
-  } else if (type === 'telnet') {  // 如果是 Telnet 会话，则设置密码
-    if (typeof item.password === 'string') session.password = item.password  // 设置密码
+    if (typeof item.privateKey === 'string') session.privateKey = item.privateKey
+    if (typeof item.passphrase === 'string') session.passphrase = item.passphrase
   }
 
   return { ok: true, session }  // 返回规范后的会话

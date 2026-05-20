@@ -174,7 +174,7 @@ export const MESSAGES = {
         },
         saveSecretsToVault: {
           label: '保存敏感凭据到加密存储',
-          desc: '开启后，保存 SSH/Telnet 会话时会把密码、私钥路径或 PEM、私钥 passphrase 等一并写入系统加密存储。\n关闭并保存设置后，会按会话从加密库中移除这些字段；若系统不支持加密，保存会话时会提示且不会把明文写入磁盘',
+          desc: '开启后，保存 SSH 会话时会把密码、私钥路径或 PEM、私钥 passphrase 等一并写入系统加密存储。\n关闭并保存设置后，会按会话从加密库中移除这些字段；若系统不支持加密，保存会话时会提示且不会把明文写入磁盘',
         },
       },
       options: {
@@ -269,7 +269,7 @@ export const MESSAGES = {
       confirmRestore: '确定将所有本地设置恢复为默认值吗？\n终端高亮规则、SSH 算法偏好、日志路径、确认选项、凭据存储开关与存储的密钥等都会重置，此操作不可撤销',
       confirmRestore2: '再次确认：将立即把默认设置写入本机存储并生效，是否继续？',
       restored: '已恢复为默认设置',
-      confirmClearVault: '确定清空全部已加密保存的敏感信息？\n已保存的会话列表仍会保留，但 SSH/Telnet 的密码、私钥与 passphrase 需重新输入或重新保存',
+      confirmClearVault: '确定清空全部已加密保存的敏感信息？\n已保存的会话列表仍会保留，但 SSH 的密码、私钥与 passphrase 需重新输入或重新保存',
       confirmClearVault2: '再次确认：此操作不可恢复',
       clearedVault: '已清空全部敏感信息',
       clearVaultFail: '清空失败：{msg}',
@@ -535,7 +535,7 @@ export const MESSAGES = {
         },
         saveSecretsToVault: {
           label: 'Save secrets to encrypted storage',
-          desc: 'When on, saving SSH/Telnet sessions stores password, private key / PEM, and passphrase in OS secure storage.\nWhen off and saved, those fields are removed from the vault; if encryption is unavailable, saving will warn and avoid writing plaintext.',
+          desc: 'When on, saving SSH sessions stores password, private key / PEM, and passphrase in OS secure storage.\nWhen off and saved, those fields are removed from the vault; if encryption is unavailable, saving will warn and avoid writing plaintext.',
         },
       },
       options: {
@@ -634,7 +634,7 @@ export const MESSAGES = {
       confirmRestore2: 'Confirm again: defaults will be written immediately. Continue?',
       restored: 'Restored default settings.',
       confirmClearVault:
-        'Clear all encrypted secrets?\nSaved sessions remain, but SSH/Telnet passwords, keys, and passphrases must be re-entered.',
+        'Clear all encrypted secrets?\nSaved sessions remain, but SSH passwords, keys, and passphrases must be re-entered.',
       confirmClearVault2: 'This cannot be undone. Continue?',
       clearedVault: 'All secrets cleared.',
       clearVaultFail: 'Clear failed: {msg}',
