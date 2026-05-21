@@ -11,6 +11,7 @@ import { assertLogWriteDirectoryAllowed, validateLogWriteDirectory } from './lib
 import {
   setTrustedRendererWebContents, clearTrustedRendererWebContents, isTrustedIpcSender,
 } from './lib/trustedSender.js'
+import { setStoredUiLanguage } from './lib/uiLanguageState.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))  // 当前文件的目录路径
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged  // 兼容开发环境和生产环境的判断(通过环境变量和是否打包判读)
@@ -89,6 +90,11 @@ function createWindow() {
   mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized', true))  // 当窗口被最大化时，向渲染进程发送 window:maximized 消息
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximized', false))
 
+
+  ipcMain.on('app:setUiLanguage', (e, uiLanguage) => {  // 同步渲染进程 settings.uiLanguage，供主进程对话框 i18n
+    if (!isTrustedIpcSender(e.sender)) return
+    setStoredUiLanguage(uiLanguage)
+  })
 
   ipcMain.on('app:getDownloadsPath', (e) => {  // 获取下载目录路径
     if (!isTrustedIpcSender(e.sender)) {

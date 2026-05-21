@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import { translate } from '../i18n/translations.js'
-import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
+import { resolveEffectiveUiLanguage } from '../../shared/resolveUiLanguage.js'
 import { exportSessions, saveSessions } from '../store/sessionStore.js'
 import { IMPORT_JSON_ACCEPT } from '../lib/import/constants.js'
 import { reportSettingsImportResult, reportSettingsImportError } from '../lib/import/reportSettingsImport.js'
@@ -19,6 +19,7 @@ import {
 import {
   applySessionsImport, reportSessionsImportResult, reportSessionsImportError, resetImportFileInput,
 } from '../lib/import/applySessionsImport.js'
+import { formatSftpPathError } from '../lib/sftp/formatSftpPathError.js'
 import '../styles/dialog.css'
 import '../styles/settings.css'
 
@@ -383,7 +384,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
       if (window.zterm?.validateLogDirectory && likelyAbsolute) {
         const vr = await window.zterm.validateLogDirectory(p)
         if (!vr?.ok) {
-          alert(vr?.message || t('settings.logPathRejected'))
+          alert(formatSftpPathError(t, vr) || t('settings.logPathRejected'))
           return
         }
       }

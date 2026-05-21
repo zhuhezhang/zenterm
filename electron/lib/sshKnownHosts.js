@@ -7,11 +7,13 @@ import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 import ssh2 from 'ssh2'
+import { translateKnownHosts } from '../i18n/knownHosts.js'
+import { getEffectiveUiLanguage } from './uiLanguageState.js'
 
 /** ssh2 的 utils 模块，用于解析 SSH 主机公钥 */
 const ssh2utils = ssh2.utils
 
-/** 
+/**
  * 获取存储路径
  * mac 示例：/Users/zhuhezhang/Library/Application Support/zterm/zterm-known-hosts.json
  * windows 示例：C:\Users\zhuhezhang\AppData\Roaming\zterm\zterm-known-hosts.json
@@ -108,13 +110,22 @@ export async function verifySshHostKeyTrust(mainWindow, host, port, rawKey) {
   }
 
   try {
+    const lang = getEffectiveUiLanguage()
     if (existing && existing.sha256 !== fp) {
       const { response } = await dialog.showMessageBox(parent, {
         type: 'error',
-        title: 'SSH 主机密钥已变更',
-        message: '与本地已保存的指纹不一致，可能存在中间人攻击。',
-        detail: `主机: ${hp}\n密钥类型: ${keyType}\n已保存 SHA256: ${existing.sha256}\n当前 SHA256: ${fp}`,
-        buttons: ['断开连接', '信任新密钥并继续'],
+        title: translateKnownHosts(lang, 'changed.title'),
+        message: translateKnownHosts(lang, 'changed.message'),
+        detail: translateKnownHosts(lang, 'changed.detail', {
+          host: hp,
+          keyType,
+          savedSha256: existing.sha256,
+          currentSha256: fp,
+        }),
+        buttons: [
+          translateKnownHosts(lang, 'changed.disconnect'),
+          translateKnownHosts(lang, 'changed.trustNew'),
+        ],
         defaultId: 0,
         cancelId: 0,
         noLink: true,
@@ -129,10 +140,17 @@ export async function verifySshHostKeyTrust(mainWindow, host, port, rawKey) {
 
     const { response } = await dialog.showMessageBox(parent, {
       type: 'question',
-      title: '未知 SSH 主机',
-      message: '尚未记录该主机的公钥指纹，是否信任并保存？',
-      detail: `主机: ${hp}\n密钥类型: ${keyType}\nSHA256: ${fp}`,
-      buttons: ['取消', '信任并保存'],
+      title: translateKnownHosts(lang, 'unknown.title'),
+      message: translateKnownHosts(lang, 'unknown.message'),
+      detail: translateKnownHosts(lang, 'unknown.detail', {
+        host: hp,
+        keyType,
+        sha256: fp,
+      }),
+      buttons: [
+        translateKnownHosts(lang, 'unknown.cancel'),
+        translateKnownHosts(lang, 'unknown.trustSave'),
+      ],
       defaultId: 0,
       cancelId: 0,
       noLink: true,

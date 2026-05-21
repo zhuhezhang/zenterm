@@ -5,6 +5,7 @@ import fs from 'fs'
 import { parentPort, workerData } from 'worker_threads'
 import { Client } from 'ssh2'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
+import { SFTP_PATH_KIND, sftpErrorToIpcPayload } from '../../shared/sftpErrorCodes.js'
 import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, safeJoinLocalDownloadPathForRoots,
 } from '../lib/sftpLocalPathRoots.js'
@@ -174,13 +175,13 @@ async function deleteRecursive(remotePath) {
  * @returns {Promise<void>}
  */
 async function downloadDirRecursive(remoteDir, localDir) {
-  assertSftpLocalDirAllowedForRoots(localDir, allowedRoots, '下载')
+  assertSftpLocalDirAllowedForRoots(localDir, allowedRoots, SFTP_PATH_KIND.DOWNLOAD)
   fs.mkdirSync(localDir, { recursive: true })
   const list = await sftpReaddir(remoteDir)
   for (const item of list) {
     const name = remoteEntryName(item.filename)
     const remotePath = remoteDir === '/' ? `/${name}` : `${remoteDir}/${name}`
-    const localPath = safeJoinLocalDownloadPathForRoots(localDir, name, allowedRoots, '下载')
+    const localPath = safeJoinLocalDownloadPathForRoots(localDir, name, allowedRoots, SFTP_PATH_KIND.DOWNLOAD)
     if (item.attrs.isDirectory()) {
       await downloadDirRecursive(remotePath, localPath)
     } else {
@@ -263,7 +264,7 @@ async function handleCmd(msg) {
         break
       }
       case 'DOWNLOAD': {
-        assertSftpLocalFilePathAllowedForRoots(msg.localPath, allowedRoots, '下载')
+        assertSftpLocalFilePathAllowedForRoots(msg.localPath, allowedRoots, SFTP_PATH_KIND.DOWNLOAD)
         await new Promise((resolve, reject) => {
           state.sftp.fastGet(msg.remotePath, msg.localPath, {
             step: (transferred, _chunk, total_size) => {
@@ -286,7 +287,7 @@ async function handleCmd(msg) {
         break
       }
       case 'UPLOAD': {
-        assertSftpLocalFilePathAllowedForRoots(msg.localPath, allowedRoots, '上传')
+        assertSftpLocalFilePathAllowedForRoots(msg.localPath, allowedRoots, SFTP_PATH_KIND.UPLOAD)
         await new Promise((resolve, reject) => {
           state.sftp.fastPut(msg.localPath, msg.remotePath, {
             step: (transferred, _chunk, total_size) => {
@@ -326,7 +327,7 @@ async function handleCmd(msg) {
         postCmdResult(reqId, false, { error: `Unknown cmd: ${cmd}` })
     }
   } catch (e) {
-    postCmdResult(reqId, false, { error: e?.message || String(e) })
+    postCmdResult(reqId, false, sftpErrorToIpcPayload(e))
   }
 }
 

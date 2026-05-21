@@ -2,9 +2,7 @@
  * SFTP 本地路径校验（仅 path，无 Electron）。供 Worker 与主进程共用。
  */
 import path from 'path'
-
-/** 与 localPathPolicy 中 ERR_HINT 保持一致 */
-export const SFTP_PATH_ERR_HINT = '路径须位于用户主目录、文稿/文档、下载、桌面、图片、音乐、影片或本应用用户数据目录下'
+import { createSftpPathError, SFTP_ERROR, SFTP_PATH_KIND, } from '../../shared/sftpErrorCodes.js'
 
 /**
  * 检查给定路径是否位于允许的用户根目录范围内
@@ -22,53 +20,53 @@ export function isPathWithinResolvedRoots(resolvedPath, roots) {
 }
 
 /**
- * 检查给定路径是否位于允许的用户根目录范围内
+ * 检查给定上传/下载的文件路径是否位于允许的用户根目录范围内
  * @param {string} localPath 本地路径
  * @param {string[]} roots 允许的用户根目录列表
- * @param {string} [kind] 错误前缀，如「下载」「上传」
+ * @param {string} [kind] SFTP_PATH_KIND 中的值
  * @throws {Error} 如果路径不在允许的用户根目录范围内
  */
-export function assertSftpLocalFilePathAllowedForRoots(localPath, roots, kind = 'SFTP') {
+export function assertSftpLocalFilePathAllowedForRoots(localPath, roots, kind = SFTP_PATH_KIND.SFTP) {
   const resolved = path.resolve(String(localPath))
   if (!isPathWithinResolvedRoots(resolved, roots)) {
-    throw new Error(`${kind} 本地路径被拒绝：${SFTP_PATH_ERR_HINT}`)
+    throw createSftpPathError(SFTP_ERROR.LOCAL_FILE_PATH_DENIED, { kind })
   }
 }
 
 /**
- * 检查给定路径是否位于允许的用户根目录范围内
+ * 检查给定上传/下载文件夹的路径是否位于允许的用户根目录范围内
  * @param {string} localDir 本地目录
  * @param {string[]} roots 允许的用户根目录列表
- * @param {string} [kind] 错误前缀，如「下载」「上传」
+ * @param {string} [kind] SFTP_PATH_KIND 中的值
  * @throws {Error} 如果路径不在允许的用户根目录范围内
  */
-export function assertSftpLocalDirAllowedForRoots(localDir, roots, kind = 'SFTP') {
+export function assertSftpLocalDirAllowedForRoots(localDir, roots, kind = SFTP_PATH_KIND.SFTP) {
   const resolved = path.resolve(String(localDir))
   if (!isPathWithinResolvedRoots(resolved, roots)) {
-    throw new Error(`${kind} 本地目录被拒绝：${SFTP_PATH_ERR_HINT}`)
+    throw createSftpPathError(SFTP_ERROR.LOCAL_DIR_PATH_DENIED, { kind })
   }
 }
 
 /**
- * 安全地拼接本地下载路径 
+ * 安全地拼接本地下载路径
  * @param {string} parentDir 父目录
  * @param {string} remoteEntryName 远程文件名
  * @param {string[]} roots 允许的用户根目录列表
- * @param {string} [kind] 错误前缀，如「下载」「上传」
+ * @param {string} [kind] SFTP_PATH_KIND 中的值
  * @returns {string} 拼接后的本地路径
  */
-export function safeJoinLocalDownloadPathForRoots(parentDir, remoteEntryName, roots, kind = '下载') {
+export function safeJoinLocalDownloadPathForRoots(parentDir, remoteEntryName, roots, kind = SFTP_PATH_KIND.DOWNLOAD) {
   const base = path.resolve(String(parentDir))
   assertSftpLocalDirAllowedForRoots(base, roots, kind)
   const segment = path.basename(String(remoteEntryName))
   if (!segment || segment === '.' || segment === '..') {
-    throw new Error(`${kind}：非法文件名`)
+    throw createSftpPathError(SFTP_ERROR.INVALID_FILENAME, { kind })
   }
   const out = path.resolve(base, segment)
   assertSftpLocalFilePathAllowedForRoots(out, roots, kind)
   const rel = path.relative(base, out)
   if (rel.startsWith('..') || path.isAbsolute(rel)) {
-    throw new Error(`${kind}：路径跳出目标目录`)
+    throw createSftpPathError(SFTP_ERROR.PATH_ESCAPE_TARGET, { kind })
   }
   return out
 }

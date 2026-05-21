@@ -18,7 +18,7 @@ import {
 import { loadSettings, saveSettings } from './store/settingsStore.js'
 import { DEFAULT_SIDEBAR_WIDTH } from './lib/settings/defaults.js'
 import { clampSidebarWidthPx } from './lib/settings/normalize.js'
-import { resolveEffectiveUiLanguage } from './i18n/resolveUiLanguage.js'
+import { resolveEffectiveUiLanguage } from '../shared/resolveUiLanguage.js'
 import { resolveEffectiveAppTheme } from './theme/appTheme.js'
 import './styles/app.css'
 
@@ -106,6 +106,7 @@ function AppMain({ settings, setSettings }) {
   useEffect(() => {
     const eff = resolveEffectiveUiLanguage(settings.uiLanguage)
     document.documentElement.lang = eff === 'en' ? 'en' : 'zh-CN'
+    window.zterm?.setUiLanguage?.(settings.uiLanguage)
   }, [settings.uiLanguage])
 
   // 局部变量无法在多次渲染中持久保存、更改局部变量不会触发渲染，因此使用 useState 来管理组件状态，
@@ -582,7 +583,11 @@ function AppMain({ settings, setSettings }) {
 
 /** 应用主组件 */
 export default function App() {
-  const [settings, setSettings] = useState(() => loadSettings())
+  const [settings, setSettings] = useState(() => {
+    const s = loadSettings()
+    try { window.zterm?.setUiLanguage?.(s.uiLanguage) } catch (_) {}
+    return s
+  })
   return (
     <I18nProvider language={settings.uiLanguage}>
       <AppMain settings={settings} setSettings={setSettings} />

@@ -82,6 +82,7 @@ export function loadSettings() {
  */
 export function saveSettings(settings) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)) } catch (e) {}
+  try { window.zterm?.setUiLanguage?.(settings?.uiLanguage) } catch (_) {}
 }
 
 /**

@@ -4,9 +4,10 @@
  */
 import path from 'path'
 import { app } from 'electron'
+import { createSftpPathError, SFTP_ERROR, SFTP_PATH_KIND, sftpErrorToIpcPayload, } from '../../shared/sftpErrorCodes.js'
 import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, isPathWithinResolvedRoots,
-  safeJoinLocalDownloadPathForRoots, SFTP_PATH_ERR_HINT,
+  safeJoinLocalDownloadPathForRoots,
 } from './sftpLocalPathRoots.js'
 
 export {
@@ -27,9 +28,6 @@ const PATH_NAMES = [
   'pictures',
   'videos',
 ]
-
-/** 错误提示文本（与 SFTP_PATH_ERR_HINT 一致） */
-const ERR_HINT = SFTP_PATH_ERR_HINT
 
 /**
  * 收集所有已解析的允许根目录
@@ -72,40 +70,43 @@ export function isPathWithinAllowedUserRoots(resolvedPath) {
 export function assertLogWriteDirectoryAllowed(logDir) {
   const resolved = path.resolve(String(logDir))
   if (!isPathWithinAllowedUserRoots(resolved)) {
-    throw new Error(`日志目录被拒绝：${ERR_HINT}`)
+    throw createSftpPathError(SFTP_ERROR.LOG_DIR_DENIED)
   }
 }
 
 /**
  * 校验日志目录是否允许写入（供设置界面等展示提示，不抛错）
  * @param {string} logDir 日志目录（来自设置）
- * @returns {{ ok: true } | { ok: false, message: string }} 如果日志目录允许写入则返回 { ok: true }，否则返回 { ok: false, message: string }
+ * @returns {{ ok: true } | { ok: false, errorCode: string, errorParams?: Record<string, string> }} 如果日志目录允许写入则返回 { ok: true }，否则返回错误码供前端 i18n
  */
 export function validateLogWriteDirectory(logDir) {
   try {
     assertLogWriteDirectoryAllowed(logDir)
     return { ok: true }
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
-    return { ok: false, message }
+    const payload = sftpErrorToIpcPayload(e)
+    if ('errorCode' in payload) {
+      return { ok: false, errorCode: payload.errorCode, errorParams: payload.errorParams }
+    }
+    return { ok: false, errorCode: SFTP_ERROR.LOG_DIR_DENIED }
   }
 }
 
 /**
  * SFTP 上传/下载涉及的本地文件路径（源文件或目标文件）
- * @param {string} localPath
+ * @param {string} localPath 本地路径
  * @param {string} kind 错误前缀，如「下载」「上传」
  */
-export function assertSftpLocalFilePathAllowed(localPath, kind = 'SFTP') {
+export function assertSftpLocalFilePathAllowed(localPath, kind = SFTP_PATH_KIND.SFTP) {
   assertSftpLocalFilePathAllowedForRoots(localPath, collectResolvedRoots(), kind)
 }
 
 /**
  * SFTP 下载目录等本地目录
- * @param {string} localDir
- * @param {string} kind
+ * @param {string} localDir 本地目录
+ * @param {string} kind 错误前缀，如「下载」「上传」
  */
-export function assertSftpLocalDirAllowed(localDir, kind = 'SFTP') {
+export function assertSftpLocalDirAllowed(localDir, kind = SFTP_PATH_KIND.SFTP) {
   assertSftpLocalDirAllowedForRoots(localDir, collectResolvedRoots(), kind)
 }
 
@@ -116,6 +117,6 @@ export function assertSftpLocalDirAllowed(localDir, kind = 'SFTP') {
  * @param {string} kind 错误前缀，如「下载」「上传」
  * @returns {string} 解析后的本地路径
  */
-export function safeJoinLocalDownloadPath(parentDir, remoteEntryName, kind = '下载') {
+export function safeJoinLocalDownloadPath(parentDir, remoteEntryName, kind = SFTP_PATH_KIND.DOWNLOAD) {
   return safeJoinLocalDownloadPathForRoots(parentDir, remoteEntryName, collectResolvedRoots(), kind)
 }

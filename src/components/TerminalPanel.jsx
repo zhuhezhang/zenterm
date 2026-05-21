@@ -6,7 +6,7 @@ import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../../sha
 import { resolveLoggingDirectory } from '../store/settingsStore.js'
 import { clampTerminalScrollback, normalizeLoggingMode } from '../lib/settings/normalize.js'
 import { translate } from '../i18n/translations.js'
-import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
+import { resolveEffectiveUiLanguage } from '../../shared/resolveUiLanguage.js'
 import { getXtermTheme } from '../theme/appTheme.js'
 import '@xterm/xterm/css/xterm.css'
 import '../styles/terminal.css'

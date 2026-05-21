@@ -345,6 +345,19 @@ export const MESSAGES = {
       downloadFail: '下载失败',
       uploadFail: '上传失败：{name}',
       mkdirFail: 'mkdir失败: {path}',
+      pathKind: {
+        download: '下载',
+        upload: '上传',
+        sftp: 'SFTP',
+      },
+      pathErrors: {
+        allowedRootsHint: '路径须位于用户主目录、文稿/文档、下载、桌面、图片、音乐、影片或本应用用户数据目录下',
+        localFileDenied: '{kindLabel}本地路径被拒绝：{hint}',
+        localDirDenied: '{kindLabel}本地目录被拒绝：{hint}',
+        invalidFilename: '{kindLabel}：非法文件名',
+        pathEscapeTarget: '{kindLabel}：路径跳出目标目录',
+        logDirDenied: '日志目录被拒绝：{hint}',
+      },
     },
     terminal: {
       pressR: '按 R 重连…',
@@ -744,6 +757,19 @@ export const MESSAGES = {
       downloadFail: 'Download failed',
       uploadFail: 'Upload failed: {name}',
       mkdirFail: 'mkdir failed: {path}',
+      pathKind: {
+        download: 'Download',
+        upload: 'Upload',
+        sftp: 'SFTP',
+      },
+      pathErrors: {
+        allowedRootsHint: 'Path must be under your home, Documents, Downloads, Desktop, Pictures, Music, Movies, or this app\'s user data folder',
+        localFileDenied: '{kindLabel} local file path denied: {hint}',
+        localDirDenied: '{kindLabel} local folder denied: {hint}',
+        invalidFilename: '{kindLabel}: invalid file name',
+        pathEscapeTarget: '{kindLabel}: path escapes target folder',
+        logDirDenied: 'Log folder denied: {hint}',
+      },
     },
     terminal: {
       pressR: 'Press R to reconnect…',

@@ -4,13 +4,26 @@
 import { Worker } from 'worker_threads'
 import { fileURLToPath } from 'url'
 import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
-import {
-  assertSftpLocalDirAllowed, assertSftpLocalFilePathAllowed, getAllowedUserRootPaths,
-} from '../lib/localPathPolicy.js'
+import { assertSftpLocalDirAllowed, assertSftpLocalFilePathAllowed, getAllowedUserRootPaths, } from '../lib/localPathPolicy.js'
 import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
+import { SFTP_PATH_KIND, sftpErrorToIpcPayload } from '../../shared/sftpErrorCodes.js'
 
 /** 存储每个 SFTP 会话对应的 Worker 与会话状态 */
 const sftpSessions = new Map()
+
+/**
+ * 处理命令失败
+ * @param {object} msg Worker CMD_RESULT 消息体
+ * @returns {{ success: false, errorCode?: string, errorParams?: Record<string, string>, error?: string }} IPC 载荷
+ */
+function sftpCmdFailure(msg) {
+  if (msg.errorCode) {
+    const out = { success: false, errorCode: msg.errorCode }
+    if (msg.errorParams) out.errorParams = msg.errorParams
+    return out
+  }
+  return { success: false, error: msg.error || 'Unknown error' }
+}
 
 /** Worker 入口文件 */
 const workerEntry = fileURLToPath(new URL('../workers/sftpSessionWorker.js', import.meta.url))
@@ -185,7 +198,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     const msg = await workerCommand(session, { cmd: 'LIST', remotePath })
-    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    if (!msg.success) return sftpCmdFailure(msg)
     return { success: true, items: msg.items }
   })
 
@@ -194,12 +207,12 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     try {
-      assertSftpLocalFilePathAllowed(localPath, '下载')
+      assertSftpLocalFilePathAllowed(localPath, SFTP_PATH_KIND.DOWNLOAD)
     } catch (e) {
-      return { success: false, error: e.message }
+      return { success: false, ...sftpErrorToIpcPayload(e) }
     }
     const msg = await workerCommand(session, { cmd: 'DOWNLOAD', remotePath, localPath })
-    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    if (!msg.success) return sftpCmdFailure(msg)
     return { success: true }
   })
 
@@ -208,12 +221,12 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     try {
-      assertSftpLocalDirAllowed(localDir, '下载')
+      assertSftpLocalDirAllowed(localDir, SFTP_PATH_KIND.DOWNLOAD)
     } catch (e) {
-      return { success: false, error: e.message }
+      return { success: false, ...sftpErrorToIpcPayload(e) }
     }
     const msg = await workerCommand(session, { cmd: 'DOWNLOAD_DIR', remoteDir, localDir })
-    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    if (!msg.success) return sftpCmdFailure(msg)
     return { success: true }
   })
 
@@ -222,12 +235,12 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     try {
-      assertSftpLocalFilePathAllowed(localPath, '上传')
+      assertSftpLocalFilePathAllowed(localPath, SFTP_PATH_KIND.UPLOAD)
     } catch (e) {
-      return { success: false, error: e.message }
+      return { success: false, ...sftpErrorToIpcPayload(e) }
     }
     const msg = await workerCommand(session, { cmd: 'UPLOAD', localPath, remotePath })
-    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    if (!msg.success) return sftpCmdFailure(msg)
     return { success: true }
   })
 
@@ -236,7 +249,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     const msg = await workerCommand(session, { cmd: 'MKDIR', remotePath })
-    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    if (!msg.success) return sftpCmdFailure(msg)
     return { success: true }
   })
 
@@ -245,7 +258,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     const msg = await workerCommand(session, { cmd: 'DELETE', remotePath })
-    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    if (!msg.success) return sftpCmdFailure(msg)
     return { success: true }
   })
 
@@ -254,7 +267,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     const msg = await workerCommand(session, { cmd: 'RENAME', oldPath, newPath })
-    if (!msg.success) return { success: false, error: msg.error || 'Unknown error' }
+    if (!msg.success) return sftpCmdFailure(msg)
     return { success: true }
   })
 }

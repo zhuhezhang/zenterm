@@ -1,5 +1,5 @@
 import { DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, } from '../../../shared/sshAlgorithmDefaults.js'
-import { resolveEffectiveUiLanguage } from '../../i18n/resolveUiLanguage.js'
+import { resolveEffectiveUiLanguage } from '../../../shared/resolveUiLanguage.js'
 import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS, TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX } from './defaults.js'
 import { resolveHighlightRuleId, resolveHighlightRuleName } from './highlightRules.js'
 import { pushSettingsImportWarning } from './importWarnings.js'

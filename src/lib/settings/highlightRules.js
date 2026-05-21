@@ -1,5 +1,5 @@
 import { translate } from '../../i18n/translations.js'
-import { resolveEffectiveUiLanguage } from '../../i18n/resolveUiLanguage.js'
+import { resolveEffectiveUiLanguage } from '../../../shared/resolveUiLanguage.js'
 
 /** 与设置界面「新增规则」一致的唯一 id */
 export function createHighlightRuleId() {
