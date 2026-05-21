@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
-import { addGroupPlaceholder, exportSessions, importSessions, uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
+import { addGroupPlaceholder, exportSessions, importSessions, uniqueLabelInGroup, ungroupSessionsUnderPath, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
 import { formatImportError } from '../lib/import/handleImportErrors.js'
+import { mergeImportedSessions } from '../lib/import/mergeImportedSessions.js'
+import { formatSessionImportWarnings } from '../lib/session/importWarnings.js'
 import { absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import SftpPanel from './SftpPanel.jsx'
 import ConnectionTypeIcon from './common.jsx'
@@ -163,16 +165,18 @@ export default function Sidebar(props) {
     if (!file) return
     try {
       const beforeCount = savedSessions.length
-      const { sessions: imported, stats } = await importSessions(file)
-      const merged = [...savedSessions]
-      imported.forEach((s) => {
-        if (!merged.find((m) => m.savedId === s.savedId) && !merged.find((m) => m.label === s.label)) merged.push(s)
-      })
+      const { sessions: imported, warnings: parseWarnings } = await importSessions(file)
+      const mergeWarnings = []
+      const merged = mergeImportedSessions(savedSessions, imported, mergeWarnings)
       const sanitized = await absorbPlaintextSecretsFromImportedSessions(merged)
       onUpdateSessions(sanitized)
       const n = sanitized.length - beforeCount
-      if (stats.skipped > 0) {
-        alert(t('settings.importSessionsPartial', { n, skipped: stats.skipped }))
+      const allWarnings = [...parseWarnings, ...mergeWarnings]
+      if (allWarnings.length) {
+        alert(t('settings.importSessionsPartial', {
+          n,
+          details: formatSessionImportWarnings(t, allWarnings),
+        }))
       } else {
         alert(t('settings.importSessionsOk', { n }))
       }
@@ -312,8 +316,8 @@ export default function Sidebar(props) {
     if (settings?.confirmDeleteGroup !== false && !confirm(msg)) return  // 如果配置了不确认删除，则不删除
     if (w)  // 如果配置了删除分组时连带删除其下的所有会话，则删除所有会话
       onUpdateSessions(savedSessions.filter(s => s.group !== path && !s.group?.startsWith(path + '/')))
-    else // 如果配置了不删除分组时连带删除其下的所有会话，则将所有会话的 group 路径设置为空
-      onUpdateSessions(savedSessions.map(s => (s.group === path || s.group?.startsWith(path + '/')) ? { ...s, group: '' } : s))
+    else // 不删除会话：移为未分组，并与已有未分组会话去重标签名
+      onUpdateSessions(ungroupSessionsUnderPath(savedSessions, path))
     onUpdatePlaceholders?.(groupPlaceholders.filter(g => g !== path && !g.startsWith(path + '/')))  // 更新占位分组（用于下次新增分组时自动补全）
   }
 

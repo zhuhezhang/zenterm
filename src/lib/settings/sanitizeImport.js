@@ -1,5 +1,8 @@
 import { DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, } from '../../../shared/sshAlgorithmDefaults.js'
-import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS } from './defaults.js'
+import { resolveEffectiveUiLanguage } from '../../i18n/resolveUiLanguage.js'
+import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS, TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX } from './defaults.js'
+import { resolveHighlightRuleId, resolveHighlightRuleName } from './highlightRules.js'
+import { pushSettingsImportWarning } from './importWarnings.js'
 import {
   applyLegacyLoggingMigration, clampSidebarWidthPx, clampTerminalScrollback, normalizeImportedLogPath,
 } from './normalize.js'
@@ -60,7 +63,7 @@ function collectHighlightRuleKeys(rules) {
  * 导入时规范布尔字段：仅接受 boolean，否则用默认值
  * @param {unknown} raw 原始值
  * @param {boolean} fallback 默认值
- * @returns {boolean}
+ * @returns {boolean} 规范化后的布尔值
  */
 function normalizeImportedHighlightBoolean(raw, fallback) {
   return typeof raw === 'boolean' ? raw : fallback
@@ -70,7 +73,7 @@ function normalizeImportedHighlightBoolean(raw, fallback) {
  * 导入时规范颜色：非字符串或 trim 后为空则用默认值
  * @param {unknown} raw 原始值
  * @param {string} fallback 默认值
- * @returns {string}
+ * @returns {string} 规范化后的颜色
  */
 function normalizeImportedHighlightColor(raw, fallback) {
   if (typeof raw !== 'string') return fallback
@@ -79,53 +82,88 @@ function normalizeImportedHighlightColor(raw, fallback) {
 }
 
 /**
- * 规范化导入的高亮规则：id / name / pattern 须有效；其余字段缺省或非法时用默认值
- * @param {unknown} raw 待规范的高亮规则
- * @returns {Record<string, unknown>|null} 规范化后的高亮规则
+ * 获取高亮规则的拒绝原因
+ * @param {unknown} raw 原始高亮规则
+ * @returns {string|null} 拒绝原因码；null 表示可继续规范化
  */
-function normalizeImportedHighlightRule(raw) {
-  if (!isPlainObject(raw)) return null
-  if (typeof raw.id !== 'string' || !raw.id.trim()) return null
-  if (typeof raw.name !== 'string' || !raw.name.trim()) return null
-  if (typeof raw.pattern !== 'string' || !raw.pattern) return null
-
-  const id = raw.id.trim()
-  const name = raw.name.trim()
-  const pattern = raw.pattern
-  const enabled = normalizeImportedHighlightBoolean(raw.enabled, HIGHLIGHT_RULE_FIELD_DEFAULTS.enabled)
+function getHighlightRuleRejectReason(raw) {
+  if (!isPlainObject(raw)) return 'invalidFormat'
+  if (typeof raw.pattern !== 'string' || !raw.pattern) return 'missingPattern'
   const useRegex = normalizeImportedHighlightBoolean(raw.useRegex, HIGHLIGHT_RULE_FIELD_DEFAULTS.useRegex)
-  const caseSensitive = normalizeImportedHighlightBoolean(
-    raw.caseSensitive,
-    HIGHLIGHT_RULE_FIELD_DEFAULTS.caseSensitive,
-  )
-  const color = normalizeImportedHighlightColor(raw.color, HIGHLIGHT_RULE_FIELD_DEFAULTS.color)
   if (useRegex) {
     try {
-      new RegExp(pattern)
+      new RegExp(raw.pattern)
     } catch {
-      return null
+      return 'invalidRegex'
     }
   }
-  return { id, name, enabled, useRegex, caseSensitive, pattern, color, }
+  return null
 }
 
 /**
- * 将导入文件中合法且不重复的高亮规则追加到现有列表
+ * 规范化导入的高亮规则：pattern 须有效；id 由调用方解析；其余字段缺省或非法时用默认值
+ * @param {unknown} raw 待规范的高亮规则
+ * @param {string} id 已解析的规则 id
+ * @returns {Record<string, unknown>|null} 规范化后的高亮规则
+ */
+function normalizeImportedHighlightRule(raw, id) {
+  if (getHighlightRuleRejectReason(raw)) return null
+  const r = /** @type {Record<string, unknown>} */ (raw)
+  const pattern = r.pattern
+  const enabled = normalizeImportedHighlightBoolean(r.enabled, HIGHLIGHT_RULE_FIELD_DEFAULTS.enabled)
+  const useRegex = normalizeImportedHighlightBoolean(r.useRegex, HIGHLIGHT_RULE_FIELD_DEFAULTS.useRegex)
+  const caseSensitive = normalizeImportedHighlightBoolean(
+    r.caseSensitive,
+    HIGHLIGHT_RULE_FIELD_DEFAULTS.caseSensitive,
+  )
+  const color = normalizeImportedHighlightColor(r.color, HIGHLIGHT_RULE_FIELD_DEFAULTS.color)
+  return { id, enabled, useRegex, caseSensitive, pattern, color, name: r.name }
+}
+
+/**
+ * 将导入文件中合法且不重复的高亮规则追加到现有列表；名称为空或缺失时自动生成「未命名规则 n」
  * @param {unknown[]} imported 导入文件中的规则数组
  * @param {unknown[]} currentRules 当前高亮规则
- * @returns {Record<string, unknown>[]}
+ * @param {'zh'|'en'} lang 用于自动生成规则名的界面语言
+ * @param {import('./importWarnings.js').SettingsImportWarning[]} warnings 导入警告列表
+ * @returns {Record<string, unknown>[]} 规范化后的高亮规则列表
  */
-function mergeImportedHighlightRules(imported, currentRules) {
+function mergeImportedHighlightRules(imported, currentRules, lang, warnings) {
   const base = currentRules.map((r) => ({ ...r }))
   const { ids, names } = collectHighlightRuleKeys(base)
-  for (const raw of imported) {
-    const rule = normalizeImportedHighlightRule(raw)
-    if (!rule) continue
-    if (ids.has(rule.id) || names.has(rule.name)) continue
-    base.push(rule)
+  imported.forEach((raw, index) => {
+    const oneBased = index + 1
+    const reject = getHighlightRuleRejectReason(raw)
+    if (reject) {
+      pushSettingsImportWarning(warnings, 'highlightRuleSkipped', { index: oneBased, reason: reject })
+      return
+    }
+    const id = resolveHighlightRuleId(
+      isPlainObject(raw) ? raw.id : undefined,
+      ids,
+    )
+    if (ids.has(id)) {
+      pushSettingsImportWarning(warnings, 'highlightRuleSkipped', {
+        index: oneBased, reason: 'duplicateId', id,
+      })
+      return
+    }
+
+    const rule = normalizeImportedHighlightRule(raw, id)
+    if (!rule) return
+
+    const name = resolveHighlightRuleName(rule.name, names, lang)
+    if (names.has(name)) {
+      pushSettingsImportWarning(warnings, 'highlightRuleSkipped', {
+        index: oneBased, reason: 'duplicateName', name,
+      })
+      return
+    }
+
+    base.push({ ...rule, name })
     ids.add(rule.id)
-    names.add(rule.name)
-  }
+    names.add(name)
+  })
   return base
 }
 
@@ -133,9 +171,10 @@ function mergeImportedHighlightRules(imported, currentRules) {
  * 规范化算法偏好（非法段或空列表保留 current 中对应项）
  * @param {unknown} raw 待规范的算法偏好
  * @param {Record<string, string[]>} current 当前算法偏好
- * @returns {Record<string, string[]>}
+ * @param {import('./importWarnings.js').SettingsImportWarning[]} warnings 导入警告列表
+ * @returns {Record<string, string[]>} 规范化后的算法偏好
  */
-function normalizeAlgorithmPreferences(raw, current) {
+function normalizeAlgorithmPreferences(raw, current, warnings) {
   const base = {
     ...DEFAULT_ALGORITHM_PREFERENCES,
     ...(isPlainObject(current) ? current : {}),
@@ -143,25 +182,55 @@ function normalizeAlgorithmPreferences(raw, current) {
   if (!isPlainObject(raw)) return base
   const out = { ...base }
   for (const key of SSH_ALGORITHM_SECTION_KEYS) {
-    if (!Array.isArray(raw[key])) continue
+    if (!(key in raw)) continue
+    if (!Array.isArray(raw[key])) {
+      pushSettingsImportWarning(warnings, 'algorithmSectionInvalidType', { section: key })
+      continue
+    }
     const pool = SSH_ALGORITHM_OPTION_POOL[key]
-    const picked = raw[key].filter((v) => typeof v === 'string' && pool.includes(v))
-    if (picked.length) out[key] = [...new Set(picked)]
+    const rawList = raw[key]
+    const picked = rawList.filter((v) => typeof v === 'string' && pool.includes(v))
+    const unique = [...new Set(picked)]
+    if (!unique.length) {
+      if (rawList.length > 0) {
+        pushSettingsImportWarning(warnings, 'algorithmSectionAllInvalid', { section: key })
+      }
+      continue
+    }
+    const skipped = rawList.length - unique.length
+    if (skipped > 0) {
+      pushSettingsImportWarning(warnings, 'algorithmSectionPartialInvalid', { section: key, skipped })
+    }
+    out[key] = unique
   }
   return out
 }
 
+/** 应用主题的值集合 */
 const APP_THEME_SET = new Set(['dark', 'light', 'auto'])
+/** 界面语言的值集合 */
 const UI_LANGUAGE_SET = new Set(['auto', 'en', 'zh'])
+/** 日志模式的值集合 */
 const LOGGING_MODE_SET = new Set(['none', 'stream', 'buffer'])
+
+/** 布尔设置项的键 */
+const BOOLEAN_SETTING_KEYS = [
+  'confirmDeleteSession',
+  'confirmDeleteGroup',
+  'deleteGroupWithSessions',
+  'terminalInteract',
+  'saveSecretsToVault',
+]
 
 /**
  * 剥离未知键并规范各字段；非法字段保留 current，未出现在导入文件中的键不变
  * @param {Record<string, unknown>} raw 待剥离的设置
  * @param {Record<string, unknown>} currentSettings 导入前的当前设置
- * @returns {Promise<Record<string, unknown>>} 剥离后的设置
+ * @returns {Promise<{ settings: Record<string, unknown>, warnings: import('./importWarnings.js').SettingsImportWarning[] }>}
  */
 export async function sanitizeImportedSettings(raw, currentSettings) {
+  /** @type {import('./importWarnings.js').SettingsImportWarning[]} */
+  const warnings = []
   const current = cloneCurrentSettings(currentSettings)
   const stripped = {}
   for (const key of new Set(Object.keys(DEFAULT_SETTINGS))) {
@@ -170,78 +239,112 @@ export async function sanitizeImportedSettings(raw, currentSettings) {
 
   let out = { ...current, ...stripped }
 
-  if ('appTheme' in stripped) {
+  if ('appTheme' in stripped) {  // 应用主题是否在导入文件中
     const v = String(out.appTheme)
-    if (!APP_THEME_SET.has(v)) out.appTheme = current.appTheme
+    if (!APP_THEME_SET.has(v)) {
+      out.appTheme = current.appTheme
+      pushSettingsImportWarning(warnings, 'invalidEnum', { field: 'appTheme', value: v })
+    }
   }
-  if ('uiLanguage' in stripped) {
+  if ('uiLanguage' in stripped) {  // 界面语言是否在导入文件中
     const v = String(out.uiLanguage)
-    if (!UI_LANGUAGE_SET.has(v)) out.uiLanguage = current.uiLanguage
-  }
-  if ('confirmDeleteSession' in stripped) {
-    if (typeof stripped.confirmDeleteSession !== 'boolean') {
-      out.confirmDeleteSession = current.confirmDeleteSession
+    if (!UI_LANGUAGE_SET.has(v)) {
+      out.uiLanguage = current.uiLanguage
+      pushSettingsImportWarning(warnings, 'invalidEnum', { field: 'uiLanguage', value: v })
     }
   }
-  if ('confirmDeleteGroup' in stripped) {
-    if (typeof stripped.confirmDeleteGroup !== 'boolean') {
-      out.confirmDeleteGroup = current.confirmDeleteGroup
-    }
-  }
-  if ('deleteGroupWithSessions' in stripped) {
-    if (typeof stripped.deleteGroupWithSessions !== 'boolean') {
-      out.deleteGroupWithSessions = current.deleteGroupWithSessions
-    }
-  }
-  if ('terminalInteract' in stripped) {
-    if (typeof stripped.terminalInteract !== 'boolean') {
-      out.terminalInteract = current.terminalInteract
-    }
-  }
-  if ('saveSecretsToVault' in stripped) {
-    if (typeof stripped.saveSecretsToVault !== 'boolean') {
-      out.saveSecretsToVault = current.saveSecretsToVault
+  for (const key of BOOLEAN_SETTING_KEYS) {
+    if (!(key in stripped)) continue
+    if (typeof stripped[key] !== 'boolean') {
+      out[key] = current[key]
+      pushSettingsImportWarning(warnings, 'invalidBoolean', { field: key })
     }
   }
   if ('terminalScrollback' in stripped) {
-    out.terminalScrollback = clampTerminalScrollback(
-      stripped.terminalScrollback,
-      /** @type {number} */ (current.terminalScrollback),
-    )
+    const rawVal = stripped.terminalScrollback
+    const next = clampTerminalScrollback(rawVal, /** @type {number} */ (current.terminalScrollback))
+    out.terminalScrollback = next
+    const n = Math.floor(Number(rawVal))
+    if (!Number.isFinite(n) || n < TERMINAL_SCROLLBACK_MIN || n > TERMINAL_SCROLLBACK_MAX) {
+      pushSettingsImportWarning(warnings, 'valueClamped', {
+        field: 'terminalScrollback',
+        value: String(rawVal),
+        result: next,
+      })
+    }
   }
   if ('loggingMode' in stripped) {
     const v = String(stripped.loggingMode ?? '').trim().toLowerCase()
     if (!LOGGING_MODE_SET.has(v)) {
       out.loggingMode = current.loggingMode
+      pushSettingsImportWarning(warnings, 'invalidEnum', { field: 'loggingMode', value: String(stripped.loggingMode ?? '') })
     } else {
       out.loggingMode = v
     }
   }
   if ('logPath' in stripped) {
-    out.logPath = await normalizeImportedLogPath(stripped.logPath, String(current.logPath ?? ''))
+    const fallback = String(current.logPath ?? '')
+    const importedRaw = stripped.logPath
+    if (typeof importedRaw !== 'string') {
+      out.logPath = await normalizeImportedLogPath(importedRaw, fallback)
+      pushSettingsImportWarning(warnings, 'logPathNotString', { field: 'logPath' })
+    } else {
+      const trimmed = importedRaw.trim()
+      const next = await normalizeImportedLogPath(importedRaw, fallback)
+      out.logPath = next
+      if (trimmed && next === fallback && trimmed !== fallback) {
+        pushSettingsImportWarning(warnings, 'logPathRejected', { field: 'logPath', value: trimmed })
+      }
+    }
   }
   if ('sidebarWidth' in stripped) {
-    out.sidebarWidth = clampSidebarWidthPx(
-      stripped.sidebarWidth,
-      typeof window !== 'undefined' ? window.innerWidth : 1200,
+    const rawVal = stripped.sidebarWidth
+    const innerW = typeof window !== 'undefined' ? window.innerWidth : 1200
+    const next = clampSidebarWidthPx(
+      rawVal,
+      innerW,
       /** @type {number} */ (current.sidebarWidth),
     )
+    out.sidebarWidth = next
+    const w = Math.floor(Number(rawVal))
+    if (!Number.isFinite(w) || w !== next) {
+      pushSettingsImportWarning(warnings, 'valueClamped', {
+        field: 'sidebarWidth',
+        value: String(rawVal),
+        result: next,
+      })
+    }
   }
   if ('highlightRules' in stripped) {
     if (!Array.isArray(stripped.highlightRules)) {
       out.highlightRules = current.highlightRules.map((r) => ({ ...r }))
+      pushSettingsImportWarning(warnings, 'highlightRulesNotArray')
     } else {
+      const importLang = resolveEffectiveUiLanguage(
+        'uiLanguage' in stripped ? String(out.uiLanguage) : String(current.uiLanguage ?? 'auto'),
+      )
       out.highlightRules = mergeImportedHighlightRules(
         stripped.highlightRules,
         /** @type {unknown[]} */ (current.highlightRules),
+        importLang,
+        warnings,
       )
     }
   }
   if ('algorithmPreferences' in stripped) {
-    out.algorithmPreferences = normalizeAlgorithmPreferences(
-      stripped.algorithmPreferences,
-      /** @type {Record<string, string[]>} */ (current.algorithmPreferences),
-    )
+    if (!isPlainObject(stripped.algorithmPreferences)) {
+      out.algorithmPreferences = {
+        ...DEFAULT_ALGORITHM_PREFERENCES,
+        ...(isPlainObject(current.algorithmPreferences) ? current.algorithmPreferences : {}),
+      }
+      pushSettingsImportWarning(warnings, 'algorithmPreferencesNotObject')
+    } else {
+      out.algorithmPreferences = normalizeAlgorithmPreferences(
+        stripped.algorithmPreferences,
+        /** @type {Record<string, string[]>} */ (current.algorithmPreferences),
+        warnings,
+      )
+    }
   }
 
   if ('enableLogging' in raw) {
@@ -250,5 +353,5 @@ export async function sanitizeImportedSettings(raw, currentSettings) {
     out = applyLegacyLoggingMigration(out)
   }
 
-  return out
+  return { settings: out, warnings }
 }

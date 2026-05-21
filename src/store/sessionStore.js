@@ -45,6 +45,27 @@ export function uniqueLabelInGroup(sessions, group, label, excludeSavedId) {
 }
 
 /**
+ * 将指定分组路径（含子路径）下的会话移为未分组，并保证未分组区内标签名唯一
+ * @param {Array} sessions 当前会话列表
+ * @param {string} groupPath 分组路径
+ * @returns {Array} 更新后的会话列表
+ */
+export function ungroupSessionsUnderPath(sessions, groupPath) {
+  const prefix = groupPath + '/'
+  const inGroup = (s) => s.group === groupPath || s.group?.startsWith(prefix)
+  const ids = new Set(sessions.filter(inGroup).map(s => s.savedId))
+  if (!ids.size) return sessions
+
+  let next = sessions.map(s => (ids.has(s.savedId) ? { ...s, group: '' } : s))
+  for (let i = 0; i < next.length; i++) {
+    if (!ids.has(next[i].savedId)) continue
+    const label = uniqueLabelInGroup(next, '', next[i].label, next[i].savedId)
+    if (label !== next[i].label) next[i] = { ...next[i], label }
+  }
+  return next
+}
+
+/**
  * 添加或更新已保存的会话，如果 config 中有 savedId 则更新对应会话，否则新建一个会话
  * @param {Array} sessions 当前会话列表
  * @param {Object} config 会话配置对象，必须包含 group、label 等属性，编辑时必须包含 savedId
@@ -149,7 +170,7 @@ export function exportSessions(sessions) {
 /**
  * 从 JSON 文件中导入会话列表（校验 envelope 与字段，跳过无效条目）
  * @param {File} file 用户选择的 JSON 文件对象
- * @returns {Promise<{ sessions: Array, stats: { total: number, accepted: number, skipped: number } }>}
+ * @returns {Promise<{ sessions: Array, stats: { total: number, accepted: number, skipped: number }, warnings: import('../lib/session/importWarnings.js').SessionImportWarning[] }>} 导入后的会话列表、统计信息和导入警告列表
  */
 export function importSessions(file) {
   return validateAndParseSessionsImport(file)

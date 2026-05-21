@@ -6,7 +6,7 @@ import { IMPORT_MAX_SESSION_COUNT } from '../session/constants.js'
 /**
  * 验证并解析会话导入文件
  * @param {File} file 导入的 JSON 文件对象
- * @returns {Promise<{ sessions: Record<string, unknown>[], stats: { total: number, accepted: number, skipped: number } }>} 验证并解析会话导入文件的结果
+ * @returns {Promise<{ sessions: Record<string, unknown>[], stats: { total: number, accepted: number, skipped: number }, warnings: import('../session/importWarnings.js').SessionImportWarning[] }>} 解析后的会话列表、统计信息和导入警告列表
  */
 export async function validateAndParseSessionsImport(file) {
   const parsed = await readImportJson(file)
@@ -15,22 +15,35 @@ export async function validateAndParseSessionsImport(file) {
     throw createImportError('tooManySessions', { max: IMPORT_MAX_SESSION_COUNT })
   }
 
-  const sessions = []  // 存储解析后的会话
-  let skipped = 0  // 存储跳过的会话数量
+  const sessions = []
+  let skipped = 0
+  /** @type {import('../session/importWarnings.js').SessionImportWarning[]} */
+  const warnings = []
 
-  for (const raw of rows) {  // 遍历解析后的会话
-    const result = normalizeImportedSession(raw)  // 规范化会话
+  rows.forEach((raw, index) => {
+    const oneBased = index + 1
+    const result = normalizeImportedSession(raw)
     if (result.ok) {
-      sessions.push(result.session)  // 添加到会话列表
+      sessions.push(result.session)
+      for (const w of result.warnings) {
+        warnings.push({
+          code: w.code,
+          params: { index: oneBased, ...(w.params || {}) },
+        })
+      }
     } else {
-      skipped += 1  // 跳过会话
+      skipped += 1
+      warnings.push({
+        code: 'sessionSkipped',
+        params: { index: oneBased, reason: result.reason },
+      })
     }
-  }
+  })
 
-  const stats = { total: rows.length, accepted: sessions.length, skipped }  // 统计会话数量
-  if (sessions.length === 0) {  // 如果没有有效的会话，则抛出错误
+  const stats = { total: rows.length, accepted: sessions.length, skipped }
+  if (sessions.length === 0) {
     throw createImportError('noValidSessions', { skipped })
   }
 
-  return { sessions, stats }  // 返回会话列表和统计结果
+  return { sessions, stats, warnings }
 }

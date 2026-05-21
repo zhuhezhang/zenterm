@@ -13,26 +13,13 @@ import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
 import { exportSessions, importSessions, saveSessions } from '../store/sessionStore.js'
 import { formatImportError } from '../lib/import/handleImportErrors.js'
+import { mergeImportedSessions } from '../lib/import/mergeImportedSessions.js'
+import { formatSettingsImportWarnings } from '../lib/settings/importWarnings.js'
+import { formatSessionImportWarnings } from '../lib/session/importWarnings.js'
+import { createHighlightRuleId, normalizeHighlightRulesForSave } from '../lib/settings/highlightRules.js'
 import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import '../styles/dialog.css'
 import '../styles/settings.css'
-
-/** 
- * 终端文本高亮规则名称规范化：规则名称为空则按当前语言设为「未命名规则 n」
- * @param {Array} rules 高亮规则列表
- * @param {string} lang 语言
- * @returns {Array} 规范后的高亮规则列表
- */
-function normalizeHighlightRulesForSave(rules, lang) {
-  const locale = lang === 'en' ? 'en' : 'zh'
-  const safeList = rules ?? []
-
-  return safeList.map((rule, index) => {
-    const trimmed = String(rule?.name ?? '').trim() // 去除规则名称两端的空白字符
-    const displayName = trimmed || translate(locale, 'settings.unnamedRule', { n: index + 1 }) // 如果规则名称为空，则按当前语言设为「未命名规则 n」
-    return { ...rule, name: displayName } // 返回规范后的高亮规则对象
-  })
-}
 
 /** 高亮规则：正则模式（.* 字形图标） */
 function HighlightRegexIcon() {
@@ -143,7 +130,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 创建一个新的高亮规则对象，包含唯一的 ID、启用状态、是否使用正则表达式、匹配模式和颜色 */
   const createHighlightRule = () => ({
-    id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    id: createHighlightRuleId(),
     name: '',
     enabled: true,
     useRegex: true,
@@ -321,14 +308,18 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     const file = e.target.files[0]; if (!file) return
     try {
       const beforeCount = savedSessions.length
-      const { sessions: imported, stats } = await importSessions(file)
-      const merged = [...savedSessions]
-      imported.forEach(s => { if (!merged.find(m => m.savedId === s.savedId) && !merged.find(m => m.label === s.label)) merged.push(s) })
+      const { sessions: imported, warnings: parseWarnings } = await importSessions(file)
+      const mergeWarnings = []
+      const merged = mergeImportedSessions(savedSessions, imported, mergeWarnings)
       const sanitized = await absorbPlaintextSecretsFromImportedSessions(merged)
       onUpdateSessions(sanitized)
       const n = sanitized.length - beforeCount
-      if (stats.skipped > 0) {
-        alert(t('settings.importSessionsPartial', { n, skipped: stats.skipped }))
+      const allWarnings = [...parseWarnings, ...mergeWarnings]
+      if (allWarnings.length) {
+        alert(t('settings.importSessionsPartial', {
+          n,
+          details: formatSessionImportWarnings(t, allWarnings),
+        }))
       } else {
         alert(t('settings.importSessionsOk', { n }))
       }
@@ -355,14 +346,18 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     const file = e.target.files[0]
     if (!file) return
     try {
-      const importedSettings = await importSettings(file, form)
+      const { settings: importedSettings, warnings } = await importSettings(file, form)
       setForm({
         ...importedSettings,
         highlightRules: [...importedSettings.highlightRules],
         algorithmPreferences: { ...importedSettings.algorithmPreferences },
       })
       previewAppTheme(importedSettings.appTheme)
-      alert(t('settings.importSettingsOk'))
+      if (warnings.length) {
+        alert(t('settings.importSettingsPartial', { details: formatSettingsImportWarnings(t, warnings) }))
+      } else {
+        alert(t('settings.importSettingsOk'))
+      }
     } catch (err) {
       alert(t('settings.importFail', { msg: formatImportError(t, err) }))
     }
