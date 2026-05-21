@@ -1,7 +1,7 @@
 import {
   PORT_MIN, PORT_MAX, SESSION_TYPE_FIELDS, BAUD_RATE_SET, PARITY_SET,
   LABEL_ILLEGAL_CHARS_RE, GROUP_ILLEGAL_CHARS_RE, getSessionFormDefaults,
-} from './constants.js'
+} from './defaults.js'
 
 /**
  * 规范化退格模式

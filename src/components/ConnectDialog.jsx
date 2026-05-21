@@ -5,7 +5,7 @@ import { TERMINAL_ENCODING_OPTIONS } from '../../shared/terminalEncodings.js'
 import {
   PORT_MIN, PORT_MAX, BAUD_RATES, PARITIES, SESSION_GROUP_LABEL_ERROR_KEYS,
   SSH_SESSION_DEFAULT, TELNET_SESSION_DEFAULT, SERIAL_SESSION_DEFAULT,
-} from '../lib/session/constants.js'
+} from '../lib/session/defaults.js'
 import {
   mergeSessionFormDefaults, normalizeBackspaceMode, clampPortFieldString, parseSessionPort,
   buildSessionLabel, validateSessionGroupLabel,

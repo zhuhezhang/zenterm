@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
-import { addGroupPlaceholder, exportSessions, importSessions, uniqueLabelInGroup, ungroupSessionsUnderPath, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
-import { formatImportError } from '../lib/import/handleImportErrors.js'
-import { mergeImportedSessions } from '../lib/import/mergeImportedSessions.js'
-import { formatSessionImportWarnings } from '../lib/session/importWarnings.js'
+import { addGroupPlaceholder, exportSessions, uniqueLabelInGroup, ungroupSessionsUnderPath, vacatedNamedGroupIfEmpty } from '../store/sessionStore.js'
+import {
+  applySessionsImport, reportSessionsImportResult, reportSessionsImportError, resetImportFileInput,
+} from '../lib/import/applySessionsImport.js'
+import { IMPORT_JSON_ACCEPT } from '../lib/import/constants.js'
 import { absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import SftpPanel from './SftpPanel.jsx'
 import ConnectionTypeIcon from './common.jsx'
@@ -164,26 +165,17 @@ export default function Sidebar(props) {
     const file = e.target.files?.[0]
     if (!file) return
     try {
-      const beforeCount = savedSessions.length
-      const { sessions: imported, warnings: parseWarnings } = await importSessions(file)
-      const mergeWarnings = []
-      const merged = mergeImportedSessions(savedSessions, imported, mergeWarnings)
-      const sanitized = await absorbPlaintextSecretsFromImportedSessions(merged)
-      onUpdateSessions(sanitized)
-      const n = sanitized.length - beforeCount
-      const allWarnings = [...parseWarnings, ...mergeWarnings]
-      if (allWarnings.length) {
-        alert(t('settings.importSessionsPartial', {
-          n,
-          details: formatSessionImportWarnings(t, allWarnings),
-        }))
-      } else {
-        alert(t('settings.importSessionsOk', { n }))
-      }
+      const result = await applySessionsImport(
+        file,
+        savedSessions,
+        absorbPlaintextSecretsFromImportedSessions,
+      )
+      onUpdateSessions(result.sessions)
+      reportSessionsImportResult(t, result)
     } catch (err) {
-      alert(t('settings.importFail', { msg: formatImportError(t, err) }))
+      reportSessionsImportError(t, err)
     }
-    e.target.value = ''
+    resetImportFileInput(e)
   }, [savedSessions, onUpdateSessions, t])
 
   useEffect(() => {  // 右键菜单打开后，点击菜单外区域自动关闭
@@ -589,7 +581,7 @@ export default function Sidebar(props) {
 
   return (
     <div className={`sidebar ${open ? 'open' : 'closed'}`} style={open ? style : undefined} onClick={closeCtx}>
-      <input ref={importSessionsFileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportSessionsFile} aria-hidden />
+      <input ref={importSessionsFileRef} type="file" accept={IMPORT_JSON_ACCEPT} style={{ display: 'none' }} onChange={handleImportSessionsFile} aria-hidden />
       <SidebarTop open={open} onToggle={onToggle} onOpenSettings={onOpenSettings} t={t} />
       {open && (
         <div className="sidebar-content">

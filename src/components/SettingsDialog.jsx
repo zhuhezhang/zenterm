@@ -11,11 +11,12 @@ import {
 } from '../store/settingsStore.js'
 import { translate } from '../i18n/translations.js'
 import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
-import { exportSessions, importSessions, saveSessions } from '../store/sessionStore.js'
-import { formatImportError } from '../lib/import/handleImportErrors.js'
-import { mergeImportedSessions } from '../lib/import/mergeImportedSessions.js'
-import { formatSettingsImportWarnings } from '../lib/settings/importWarnings.js'
-import { formatSessionImportWarnings } from '../lib/session/importWarnings.js'
+import { exportSessions, saveSessions } from '../store/sessionStore.js'
+import {
+  applySessionsImport, reportSessionsImportResult, reportSessionsImportError, resetImportFileInput,
+} from '../lib/import/applySessionsImport.js'
+import { IMPORT_JSON_ACCEPT } from '../lib/import/constants.js'
+import { reportSettingsImportResult, reportSettingsImportError } from '../lib/import/reportSettingsImport.js'
 import { createHighlightRuleId, normalizeHighlightRulesForSave } from '../lib/settings/highlightRules.js'
 import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import '../styles/dialog.css'
@@ -305,26 +306,20 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 处理导入会话的操作，触发文件选择对话框，选择 JSON 文件后将其内容导入并与现有会话合并，最后更新会话列表 */
   const handleImport = async (e) => {
-    const file = e.target.files[0]; if (!file) return
+    const file = e.target.files?.[0]
+    if (!file) return
     try {
-      const beforeCount = savedSessions.length
-      const { sessions: imported, warnings: parseWarnings } = await importSessions(file)
-      const mergeWarnings = []
-      const merged = mergeImportedSessions(savedSessions, imported, mergeWarnings)
-      const sanitized = await absorbPlaintextSecretsFromImportedSessions(merged)
-      onUpdateSessions(sanitized)
-      const n = sanitized.length - beforeCount
-      const allWarnings = [...parseWarnings, ...mergeWarnings]
-      if (allWarnings.length) {
-        alert(t('settings.importSessionsPartial', {
-          n,
-          details: formatSessionImportWarnings(t, allWarnings),
-        }))
-      } else {
-        alert(t('settings.importSessionsOk', { n }))
-      }
-    } catch (err) { alert(t('settings.importFail', { msg: formatImportError(t, err) })) }
-    e.target.value = ''
+      const result = await applySessionsImport(
+        file,
+        savedSessions,
+        absorbPlaintextSecretsFromImportedSessions,
+      )
+      onUpdateSessions(result.sessions)
+      reportSessionsImportResult(t, result)
+    } catch (err) {
+      reportSessionsImportError(t, err)
+    }
+    resetImportFileInput(e)
   }
 
   /** 处理清除所有会话的操作，弹出两次确认对话框，确认后清除所有保存的会话和分组占位符，并更新会话列表和占位符列表 */
@@ -353,15 +348,11 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
         algorithmPreferences: { ...importedSettings.algorithmPreferences },
       })
       previewAppTheme(importedSettings.appTheme)
-      if (warnings.length) {
-        alert(t('settings.importSettingsPartial', { details: formatSettingsImportWarnings(t, warnings) }))
-      } else {
-        alert(t('settings.importSettingsOk'))
-      }
+      reportSettingsImportResult(t, warnings)
     } catch (err) {
-      alert(t('settings.importFail', { msg: formatImportError(t, err) }))
+      reportSettingsImportError(t, err)
     }
-    e.target.value = ''  // 重置文件输入
+    resetImportFileInput(e)
   }
 
   /** 将所有设置恢复为内置默认值；二次确认后立即写入本地并同步到应用 */
@@ -506,10 +497,10 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
               {t(item.buttonKey)}
             </button>
             {item.fileInput === 'importSessions' && (
-              <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
+              <input ref={importRef} type="file" accept={IMPORT_JSON_ACCEPT} style={{ display: 'none' }} onChange={handleImport} />
             )}
             {item.fileInput === 'importSettings' && (
-              <input ref={importSettingsRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImportSettings} />
+              <input ref={importSettingsRef} type="file" accept={IMPORT_JSON_ACCEPT} style={{ display: 'none' }} onChange={handleImportSettings} />
             )}
           </>
         )}

@@ -1,5 +1,5 @@
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
-import { buildExportEnvelope } from '../lib/import/parseImportFile.js'
+import { downloadJsonExport } from '../lib/import/downloadJsonExport.js'
 import { validateAndParseSettingsImport } from '../lib/import/parseSettingsImport.js'
 import {
  DEFAULT_SETTINGS, TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX,
@@ -89,20 +89,7 @@ export function saveSettings(settings) {
  * @param {Object} settings 要导出的设置对象
  */
 export function exportSettings(settings) {
-  const payload = buildExportEnvelope('settings', settings)
-  const data = JSON.stringify(payload, null, 2)
-  const blob = new Blob([data], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  const now = new Date()
-  const date = now.toISOString().slice(0, 10).replace(/-/g, '')
-  const hh = String(now.getHours()).padStart(2, '0')
-  const mm = String(now.getMinutes()).padStart(2, '0')
-  const ss = String(now.getSeconds()).padStart(2, '0')
-  a.download = `zterm-settings-${date}-${hh}${mm}${ss}.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  downloadJsonExport('settings', settings)
 }
 
 /**

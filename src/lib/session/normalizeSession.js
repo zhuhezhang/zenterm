@@ -1,7 +1,7 @@
 import { TERMINAL_ENCODING_OPTIONS, normalizeTerminalEncoding } from '../../../shared/terminalEncodings.js'
 import {
   getSessionStorageDefaults, SESSION_TYPE_SET, AUTH_TYPE_SET, BAUD_RATE_SET, PARITY_SET, PORT_MIN, PORT_MAX,
-} from './constants.js'
+} from './defaults.js'
 import { pushSessionImportWarning } from './importWarnings.js'
 import {
   normalizeBackspaceMode, clampSessionPort, buildSessionLabel, validateSessionGroupLabel,

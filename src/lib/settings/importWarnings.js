@@ -1,3 +1,5 @@
+import { pushImportWarning } from '../import/pushImportWarning.js'
+
 /**
  * 添加导入警告
  * @param {SettingsImportWarning[]} warnings 导入警告列表
@@ -5,7 +7,7 @@
  * @param {Record<string, string|number>} [params] 警告参数
  */
 export function pushSettingsImportWarning(warnings, code, params) {
-  warnings.push({ code, ...(params ? { params } : {}) })
+  pushImportWarning(warnings, code, params)
 }
 
 /**

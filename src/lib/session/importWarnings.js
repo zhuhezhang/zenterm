@@ -1,3 +1,6 @@
+import { pushImportWarning } from '../import/pushImportWarning.js'
+import { SESSION_GROUP_LABEL_ERROR_KEYS } from './defaults.js'
+
 /**
  * 添加导入警告
  * @param {SessionImportWarning[]} warnings 导入警告列表
@@ -5,7 +8,7 @@
  * @param {Record<string, string|number>} [params] 警告参数
  */
 export function pushSessionImportWarning(warnings, code, params) {
-  warnings.push({ code, ...(params ? { params } : {}) })
+  pushImportWarning(warnings, code, params)
 }
 
 /**
@@ -26,24 +29,11 @@ function resolveConnectFieldLabel(t, fieldKey) {
  * @param {string} reason 原因
  * @returns {string} 原因文本
  */
-const SKIP_REASON_CONNECT_KEYS = {
-  groupSlashStart: 'errGroupSlashStart',
-  groupSlashEnd: 'errGroupSlashEnd',
-  groupIllegalChars: 'errGroupChars',
-  labelIllegalChars: 'errLabelChars',
-}
-
-/**
- * 格式化连接原因
- * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {string} reason 原因
- * @returns {string} 原因文本
- */
 function formatSessionSkipReason(t, reason) {
-  const connectSuffix = SKIP_REASON_CONNECT_KEYS[reason]
-  if (connectSuffix) {
-    const msg = t(`connect.${connectSuffix}`)
-    if (msg !== `connect.${connectSuffix}`) return msg
+  const connectKey = SESSION_GROUP_LABEL_ERROR_KEYS[reason]
+  if (connectKey) {
+    const msg = t(connectKey)
+    if (msg !== connectKey) return msg
   }
   const key = `settings.importSessionWarnings.skipReason.${reason}`
   const msg = t(key)

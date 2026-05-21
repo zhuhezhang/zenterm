@@ -1,5 +1,6 @@
 import { createImportError } from './handleImportErrors.js'
-import { IMPORT_MAX_BYTES } from '../session/constants.js'
+import { EXPORT_ENVELOPE_VERSION, IMPORT_MAX_BYTES, IMPORT_WRONG_FILE_KIND_LABEL,
+} from './constants.js'
 
 /**
  * 读取并解析导入用 JSON 文件
@@ -40,15 +41,11 @@ export function unwrapExportPayload(parsed, expectedKind) {
     throw createImportError('invalidPayload')
   }
   const envelope = /** @type {Record<string, unknown>} */ (parsed)  // 将解析后的 JSON 对象转换为对象
-  if (envelope.ztermExport !== expectedKind) {  // 如果 envelope 的 ztermExport 字段不等于期望的类型，则抛出错误
-    if (expectedKind === 'sessions') {
-      throw createImportError('wrongFileType', { kind: '会话' })
-    } else {
-      throw createImportError('wrongFileType', { kind: '设置' })
-    }
+  if (envelope.ztermExport !== expectedKind) {
+    throw createImportError('wrongFileType', { kind: IMPORT_WRONG_FILE_KIND_LABEL[expectedKind] })
   }
-  if (envelope.version !== 1) {
-    throw createImportError('unsupportedVersion', { version: 1 })  // 如果 envelope 的 version 字段不等于 1，则抛出错误
+  if (envelope.version !== EXPORT_ENVELOPE_VERSION) {
+    throw createImportError('unsupportedVersion', { version: EXPORT_ENVELOPE_VERSION })
   }
   const { data } = envelope
   if (expectedKind === 'sessions') {
@@ -70,7 +67,7 @@ export function unwrapExportPayload(parsed, expectedKind) {
 export function buildExportEnvelope(kind, data) {
   return {
     ztermExport: kind,
-    version: 1,
+    version: EXPORT_ENVELOPE_VERSION,
     exportedAt: new Date().toString(),
     data,
   }

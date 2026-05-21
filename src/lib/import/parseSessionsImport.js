@@ -1,7 +1,7 @@
 import { createImportError } from './handleImportErrors.js'
 import { readImportJson, unwrapExportPayload } from './parseImportFile.js'
 import { normalizeImportedSession } from '../session/normalizeSession.js'
-import { IMPORT_MAX_SESSION_COUNT } from '../session/constants.js'
+import { IMPORT_MAX_SESSION_COUNT } from '../session/defaults.js'
 
 /**
  * 验证并解析会话导入文件

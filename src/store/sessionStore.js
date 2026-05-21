@@ -1,5 +1,4 @@
-import { buildExportEnvelope } from '../lib/import/parseImportFile.js'
-import { validateAndParseSessionsImport } from '../lib/import/parseSessionsImport.js'
+import { downloadJsonExport } from '../lib/import/downloadJsonExport.js'
 import { pickSessionStorageFields } from '../lib/session/utils.js'
 
 /** 本地存储会话的键名 */
@@ -151,29 +150,7 @@ export function reorderSessions(sessions, fromId, toId, targetGroup) {
  * @param {Array} sessions 要导出的会话列表
  */
 export function exportSessions(sessions) {
-  const payload = buildExportEnvelope('sessions', sessions)
-  const data = JSON.stringify(payload, null, 2)  // null, 2 表示美化缩进为 2 个空格，方便文件阅读
-  const blob = new Blob([data], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)  // 生成一个本地可访问的临时 URL，指向这个内存中的文件内容
-  const a = document.createElement('a')  // 创建一个隐藏的 <a> 元素，用于触发下载
-  a.href = url
-  const now = new Date()
-  const date = now.toISOString().slice(0, 10).replace(/-/g, '')
-  const hh = String(now.getHours()).padStart(2, '0')
-  const mm = String(now.getMinutes()).padStart(2, '0')
-  const ss = String(now.getSeconds()).padStart(2, '0')
-  a.download = `zterm-sessions-${date}-${hh}${mm}${ss}.json`
-  a.click()  // 程序性地“点击”这个链接，启动浏览器下载流程
-  URL.revokeObjectURL(url)  // 释放创建的临时 URL，避免内存泄漏
-}
-
-/**
- * 从 JSON 文件中导入会话列表（校验 envelope 与字段，跳过无效条目）
- * @param {File} file 用户选择的 JSON 文件对象
- * @returns {Promise<{ sessions: Array, stats: { total: number, accepted: number, skipped: number }, warnings: import('../lib/session/importWarnings.js').SessionImportWarning[] }>} 导入后的会话列表、统计信息和导入警告列表
- */
-export function importSessions(file) {
-  return validateAndParseSessionsImport(file)
+  downloadJsonExport('sessions', sessions)
 }
 
 /** 占位分组（没有会话的分组）的本地存储键名 */

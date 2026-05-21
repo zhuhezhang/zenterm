@@ -4,6 +4,8 @@ import { DEFAULT_TERMINAL_ENCODING } from '../../../shared/terminalEncodings.js'
 export const PORT_MIN = 0
 /** 端口最大值 */
 export const PORT_MAX = 65535
+/** 单次导入会话条数上限 */
+export const IMPORT_MAX_SESSION_COUNT = 5000
 /** 会话类型列表 */
 export const SESSION_TYPES = ['ssh', 'telnet', 'serial']
 /** 会话类型集合（用于快速判断是否为合法会话类型） */
@@ -22,9 +24,6 @@ export const PARITIES = ['none', 'even', 'odd', 'mark', 'space']
 /** 串口校验位集合（用于快速判断是否为合法校验位） */
 export const PARITY_SET = new Set(PARITIES)
 
-/** 导入会话/设置 JSON 文件大小上限（8 MB） */
-export const IMPORT_MAX_BYTES = 8 * 1024 * 1024
-
 /** 各会话类型允许持久化到 localStorage 的字段 */
 export const SESSION_TYPE_FIELDS = {
   ssh: ['host', 'port', 'username', 'authType', 'enableSftp', 'encoding', 'backspaceMode'],
@@ -36,9 +35,6 @@ export const SESSION_TYPE_FIELDS = {
 export const LABEL_ILLEGAL_CHARS_RE = /[/\\:*?"<>\x00]/
 /** 分组名非法字符 */
 export const GROUP_ILLEGAL_CHARS_RE = /[\\:*?"<>\x00]/
-
-/** 导入会话最大数量 */
-export const IMPORT_MAX_SESSION_COUNT = 5000
 
 /** 验证会话分组和标签返回码 → connect.* i18n 键 */
 export const SESSION_GROUP_LABEL_ERROR_KEYS = {
@@ -87,27 +83,6 @@ export const SERIAL_SESSION_DEFAULT = {
   backspaceMode: 'auto',
 }
 
-/** 表单输入框绑定时需为字符串的数值字段 */
-const SESSION_FORM_NUMERIC_KEYS = {
-  ssh: ['port'],
-  telnet: ['port'],
-  serial: ['baudRate', 'dataBits', 'stopBits'],
-}
-
-/**
- * 将数值型默认值转换为字符串型默认值
- * @param {Record<string, unknown>} defaults 数值型默认值
- * @param {'ssh'|'telnet'|'serial'} type 会话类型
- * @returns {Record<string, unknown>} 字符串型默认值
- */
-function toSessionFormDefaults(defaults, type) {
-  const out = { ...defaults }
-  for (const key of SESSION_FORM_NUMERIC_KEYS[type] ?? []) {
-    if (typeof out[key] === 'number') out[key] = String(out[key])
-  }
-  return out
-}
-
 /**
  * 获取会话保存/导入时的数值型默认值
  * @param {'ssh'|'telnet'|'serial'} type 会话类型
@@ -125,5 +100,15 @@ export function getSessionStorageDefaults(type) {
  * @returns {Record<string, unknown>} 表单默认值
  */
 export function getSessionFormDefaults(type) {
-  return toSessionFormDefaults(getSessionStorageDefaults(type), type)
+  /** 表单输入框绑定时需为字符串的数值字段，与 SESSION_TYPE_FIELDS 对应 */
+  const SESSION_FORM_NUMERIC_KEYS = {
+    ssh: ['port'],
+    telnet: ['port'],
+    serial: ['baudRate', 'dataBits', 'stopBits'],
+  }
+  const out = { ...getSessionStorageDefaults(type) }
+  for (const key of SESSION_FORM_NUMERIC_KEYS[type] ?? []) {
+    if (typeof out[key] === 'number') out[key] = String(out[key])
+  }
+  return out
 }
