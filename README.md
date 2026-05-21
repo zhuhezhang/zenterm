@@ -26,12 +26,14 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 ### Connection types
 
-| Protocol | Description |
-|----------|-------------|
-| **SSH** | Interactive shell over SSH (`ssh2`), PTY resize, password or private-key auth, configurable KEX/cipher/MAC algorithms |
-| **SFTP** | File browser in the sidebar: list, upload, download, mkdir, rename, delete; progress events; local paths restricted to safe user directories |
-| **Telnet** | Raw TCP Telnet client |
-| **Serial** | Local serial ports via `serialport` (baud rate, data/stop bits, parity); port list must be chosen from enumerated devices |
+
+| Protocol   | Description                                                                                                                                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **SSH**    | Interactive shell over SSH (`ssh2`), PTY resize, password or private-key auth, configurable KEX/cipher/MAC algorithms                        |
+| **SFTP**   | File browser in the sidebar: list, upload, download, mkdir, rename, delete; progress events; local paths restricted to safe user directories |
+| **Telnet** | Raw TCP Telnet client                                                                                                                        |
+| **Serial** | Local serial ports via `serialport` (baud rate, data/stop bits, parity); port list must be chosen from enumerated devices                    |
+
 
 ### Session management
 
@@ -74,23 +76,25 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 ## Screenshots
 
-![ZTerm main](docs/images/main.png)
-![ZTerm setting](docs/images/setting.png)
-![ZTerm connection](docs/images/connection.png)
+ZTerm main
+ZTerm setting
+ZTerm connection
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Desktop shell | Electron 42 |
-| UI | React 18, Vite 8 |
-| Terminal | @xterm/xterm 5, Fit addon, Web Links addon |
-| SSH / SFTP | ssh2 |
-| Serial | serialport 12 |
-| Encoding | iconv-lite |
-| Packaging | electron-builder |
+
+| Layer         | Technology                                 |
+| ------------- | ------------------------------------------ |
+| Desktop shell | Electron 42                                |
+| UI            | React 18, Vite 8                           |
+| Terminal      | @xterm/xterm 5, Fit addon, Web Links addon |
+| SSH / SFTP    | ssh2                                       |
+| Serial        | serialport 12                              |
+| Encoding      | iconv-lite                                 |
+| Packaging     | electron-builder                           |
+
 
 ---
 
@@ -98,68 +102,74 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 ```
 zterm/
-├── electron/                          # Main process (Node.js + Electron APIs)
-│   ├── main.js                        # App entry: frameless window, IPC routing, session log I/O
-│   ├── preload.cjs                    # contextBridge → window.zterm (SSH/SFTP/Telnet/Serial/credentials/window/log)
-│   ├── handlers/                      # IPC handlers registered from main.js
-│   │   ├── ssh.js                     # SSH connect/disconnect, PTY I/O, resize; delegates to worker
-│   │   ├── sftp.js                    # SFTP list/upload/download/mkdir/rename/delete; delegates to worker
-│   │   ├── telnet.js                  # Telnet TCP socket connect and byte stream I/O
-│   │   ├── serial.js                  # Serial port enumerate/open/write; path whitelist vs listPorts
-│   │   └── credentials.js             # safeStorage vault: get/sync/remove/duplicate/clearAll
-│   ├── workers/                       # Worker threads (isolate blocking ssh2 I/O from main loop)
-│   │   ├── sshSessionWorker.js        # Per-session SSH shell in a worker
-│   │   └── sftpSessionWorker.js       # Per-session SFTP client in a worker
-│   └── lib/                           # Shared main-process utilities
-│       ├── trustedSender.js           # Allow IPC only from the registered main BrowserWindow
-│       ├── localPathPolicy.js         # Validate log/SFTP local paths against allowed roots
-│       ├── sftpLocalPathRoots.js      # Resolve OS user folders (home, Downloads, Documents, …)
-│       ├── sshKnownHosts.js           # Persist and verify SSH host keys (zterm-known-hosts.json)
-│       └── encodeTerminalWrite.js     # Encode outgoing terminal keystrokes (iconv-lite)
+├── electron/                            # Main process (Node.js + Electron APIs)
+│   ├── main.js                          # App entry: frameless window, IPC routing, session log I/O
+│   ├── preload.cjs                      # contextBridge → window.zterm (SSH/SFTP/Telnet/Serial/credentials/window/log)
+│   ├── handlers/                        # IPC handlers registered from main.js
+│   │   ├── ssh.js                       # SSH connect/disconnect, PTY I/O, resize; delegates to worker
+│   │   ├── sftp.js                      # SFTP list/upload/download/mkdir/rename/delete; delegates to worker
+│   │   ├── telnet.js                    # Telnet TCP socket connect and byte stream I/O
+│   │   ├── serial.js                    # Serial port enumerate/open/write; path whitelist vs listPorts
+│   │   └── credentials.js               # safeStorage vault: get/sync/remove/duplicate/clearAll
+│   ├── workers/                         # Worker threads (isolate blocking ssh2 I/O from main loop)
+│   │   ├── sshSessionWorker.js          # Per-session SSH shell in a worker
+│   │   └── sftpSessionWorker.js         # Per-session SFTP client in a worker
+│   └── lib/                             # Shared main-process utilities
+│       ├── trustedSender.js             # Allow IPC only from the registered main BrowserWindow
+│       ├── localPathPolicy.js           # Validate log/SFTP local paths against allowed roots
+│       ├── sftpLocalPathRoots.js        # Resolve OS user folders (home, Downloads, Documents, …)
+│       ├── sshKnownHosts.js             # Persist and verify SSH host keys (zterm-known-hosts.json)
+│       └── encodeTerminalWrite.js       # Encode outgoing terminal keystrokes (iconv-lite)
 │
-├── src/                               # Renderer (React 18 + Vite)
-│   ├── main.jsx                       # React root, ErrorBoundary, mounts App
-│   ├── App.jsx                        # Shell layout: title bar, sidebar, tabs, terminal, dialogs
+├── src/                                 # Renderer (React 18 + Vite)
+│   ├── main.jsx                         # React root, ErrorBoundary, mounts App
+│   ├── App.jsx                          # Shell layout: title bar, sidebar, tabs, terminal, dialogs
 │   ├── components/
-│   │   ├── TitleBar.jsx               # Custom window controls (min/max/close)
-│   │   ├── Sidebar.jsx                # Saved sessions tree, groups, SFTP host, import sessions
-│   │   ├── TabBar.jsx                 # Session tabs, reorder, context menu actions
-│   │   ├── TerminalPanel.jsx          # xterm.js instance, encoding, logging, highlights, backspace
-│   │   ├── SftpPanel.jsx              # Remote file tree and transfer UI
-│   │   ├── ConnectDialog.jsx          # SSH / Telnet / Serial form, credentials sub-dialog
-│   │   ├── SettingsDialog.jsx         # Tabbed settings, algorithms, import/export, theme preview
-│   │   └── common.jsx                 # Shared UI bits (e.g. connection type icons)
-│   ├── store/                         # Client-side persistence and IPC bridges
-│   │   ├── sessionStore.js            # localStorage sessions, groups, export/import envelope
-│   │   ├── settingsStore.js           # localStorage settings, schema, export/import
-│   │   └── credentialsBridge.js       # Vault sync: resolve/merge secrets for saved sessions
-│   ├── lib/
-│   │   ├── import/
-│   │   │   ├── parseImportFile.js     # readImportJson, unwrap/build export envelope (v1)
-│   │   │   ├── parseSessionsImport.js # Session import pipeline entry
-│   │   │   ├── parseSettingsImport.js # Settings import pipeline entry
-│   │   │   ├── validateSessions.js    # Per-item session validation rules
-│   │   │   ├── validateSettings.js    # Settings shape validation
-│   │   │   └── handleImportErrors.js  # Localized import error codes
-│   │   ├── session/
-│   │   │   ├── constants.js           # Protocol defaults, storage fields, import size limit
-│   │   │   ├── utils.js               # Label/group/port/backspace helpers, pick storage fields
-│   │   │   ├── normalizeSession.js    # Normalize imported session objects
-│   │   │   └── normalizeImport.js     # Legacy import compatibility
-│   │   └── settings/
-│   │       ├── defaults.js            # DEFAULT_SETTINGS, scrollback bounds, default highlight rules
-│   │       ├── normalize.js           # Clamp scrollback, sidebar width, logging mode migration
-│   │       └── sanitizeImport.js      # Strip unknown keys on settings import
+│   │   ├── TitleBar.jsx                 # Custom window controls (min/max/close)
+│   │   ├── Sidebar.jsx                  # Saved sessions tree, groups, SFTP host, import sessions
+│   │   ├── TabBar.jsx                   # Session tabs, reorder, context menu actions
+│   │   ├── TerminalPanel.jsx            # xterm.js instance, encoding, logging, highlights, backspace
+│   │   ├── SftpPanel.jsx                # Remote file tree and transfer UI
+│   │   ├── ConnectDialog.jsx            # SSH / Telnet / Serial form, credentials sub-dialog
+│   │   ├── SettingsDialog.jsx           # Tabbed settings, algorithms, import/export, theme preview
+│   │   └── common.jsx                   # Shared UI bits (e.g. connection type icons)
+│   ├── store/                           # Client-side persistence and IPC bridges
+│   │   ├── sessionStore.js              # localStorage sessions, groups, export via downloadJsonExport
+│   │   ├── settingsStore.js             # localStorage settings, SETTINGS_SCHEMA, export/import
+│   │   └── credentialsBridge.js         # Vault sync: resolve/merge secrets for saved sessions
+│   ├── lib/                             # Pure logic (no React); split by domain + import/export
+│   │   ├── import/                      # Cross-cutting import/export (sessions & settings)
+│   │   │   ├── constants.js             # File size/count limits, envelope version, export filenames
+│   │   │   ├── parseImportFile.js       # readImportJson, unwrap/build export envelope (v1)
+│   │   │   ├── handleImportErrors.js    # Import error codes → i18n messages
+│   │   │   ├── parseSessionsImport.js   # Validate & normalize session rows from JSON
+│   │   │   ├── parseSettingsImport.js   # Settings import pipeline entry
+│   │   │   ├── mergeImportedSessions.js # Merge imported sessions; dedupe by savedId / label+group
+│   │   │   ├── downloadJsonExport.js    # Trigger browser download of export envelope
+│   │   │   ├── pushImportWarning.js     # Append warning entries (shared by session/settings)
+│   │   │   ├── applySessionsImport.js   # Parse → merge → vault absorb; UI result helpers
+│   │   │   └── reportSettingsImport.js  # Settings import success/error alerts
+│   │   ├── session/                     # Session domain
+│   │   │   ├── defaults.js              # Protocol defaults, validation constants, form defaults
+│   │   │   ├── utils.js                 # Label/group/port/backspace helpers, pick storage fields
+│   │   │   ├── normalizeSession.js      # Normalize a single imported session object
+│   │   │   └── importWarnings.js        # Format session import warnings for display
+│   │   └── settings/                    # Settings domain
+│   │       ├── defaults.js              # DEFAULT_SETTINGS, scrollback bounds, default highlight rules
+│   │       ├── normalize.js             # Clamp scrollback, sidebar width, logging mode migration
+│   │       ├── highlightRules.js        # Highlight rule IDs and save-time normalization
+│   │       ├── sanitizeImport.js        # Strip unknown keys; merge imported settings safely
+│   │       └── importWarnings.js        # Format settings import warnings for display
 │   ├── context/
-│   │   └── I18nContext.jsx            # React context + useI18n() for UI strings
+│   │   └── I18nContext.jsx              # React context + useI18n() for UI strings
 │   ├── i18n/
-│   │   ├── translations.js            # zh / en string tables
-│   │   └── resolveUiLanguage.js       # Resolve auto → effective language
+│   │   ├── translations.js              # zh / en string tables
+│   │   └── resolveUiLanguage.js         # Resolve auto → effective language
 │   ├── theme/
-│   │   └── appTheme.js                # Resolve dark / light / auto effective theme
-│   └── styles/                        # CSS split by surface
-│       ├── global.css                 # Base reset and typography
-│       ├── app.css                    # Main layout
+│   │   └── appTheme.js                  # Resolve dark / light / auto effective theme
+│   └── styles/                          # CSS split by surface
+│       ├── global.css                   # Base reset and typography
+│       ├── app.css                      # Main layout
 │       ├── titlebar.css
 │       ├── sidebar.css
 │       ├── tabbar.css
@@ -168,23 +178,23 @@ zterm/
 │       ├── dialog.css
 │       └── settings.css
 │
-├── shared/                            # Imported by both main and renderer (no Electron in module graph)
-│   ├── terminalEncodings.js           # Encoding list, decode helpers for xterm binary strings
-│   └── sshAlgorithmDefaults.js        # Default KEX/cipher/MAC pools and weak-algorithm flags
+├── shared/                              # Imported by both main and renderer (no Electron in module graph)
+│   ├── terminalEncodings.js             # Encoding list, decode helpers for xterm binary strings
+│   └── sshAlgorithmDefaults.js          # Default KEX/cipher/MAC pools and weak-algorithm flags
 │
 ├── docs/
-│   └── images/                        # README screenshots (main, settings, connection)
-|
-├── build/                             # icon
+│   └── images/                          # README screenshots (main, settings, connection)
 │
-├── index.html                         # Vite HTML entry (CSP injected by vite plugin)
-├── vite.config.js                     # React (oxc) plugin, dev server, Electron CSP plugin
-├── jsconfig.json                      # Path aliases / JS tooling hints
-├── package.json                       # Scripts, dependencies, electron-builder config
+├── build/                               # App icons for electron-builder
+│
+├── index.html                           # Vite HTML entry (CSP injected by vite plugin)
+├── vite.config.js                       # React (oxc) plugin, dev server, Electron CSP plugin
+├── jsconfig.json                        # Path aliases / JS tooling hints
+├── package.json                         # Scripts, dependencies, electron-builder config
 ├── package-lock.json
-├── README.md                          # English documentation
-├── README.zh-CN.md                    # 简体中文文档
-└── LICENSE                            # MIT License
+├── README.md                            # English documentation
+├── README.zh-CN.md                      # 简体中文文档
+└── LICENSE                              # MIT License
 ```
 
 **Runtime data flow (simplified):**
@@ -231,11 +241,13 @@ This starts the Vite dev server on port **5173** and launches Electron with hot 
 
 Other dev scripts:
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev:silent` | Same as `dev`, but suppresses Electron security warnings |
-| `npm run dev:renderer` | Vite only |
-| `npm run dev:electron` | Electron only (expects Vite on 5173) |
+
+| Script                 | Description                                              |
+| ---------------------- | -------------------------------------------------------- |
+| `npm run dev:silent`   | Same as `dev`, but suppresses Electron security warnings |
+| `npm run dev:renderer` | Vite only                                                |
+| `npm run dev:electron` | Electron only (expects Vite on 5173)                     |
+
 
 ---
 
@@ -255,6 +267,7 @@ Exported **sessions** and **settings** use a versioned JSON envelope (max file s
 - `ztermExport` must be `"sessions"` or `"settings"` (cross-import is rejected).
 - `version` must be `1`.
 - Unknown settings keys are stripped on import; invalid sessions are skipped with a summary alert.
+- Session imports are capped at **5000** entries per file (see `src/lib/import/constants.js`).
 
 ---
 
@@ -273,14 +286,16 @@ This app is a convenience tool, not a full security audit. Review your threat mo
 
 ## Data & Storage Locations
 
-| Data | Location |
-|------|----------|
-| Saved sessions (no secrets) | `localStorage` → `zterm_saved_sessions` |
-| Empty group placeholders | `localStorage` → `__zterm_group_placeholders__` |
-| App settings | `localStorage` → `zterm_settings` |
-| SSH known hosts | `{userData}/zterm-known-hosts.json` |
-| Encrypted credentials | OS keychain via Electron `safeStorage` (when available) |
-| Session logs | User-configured or `Downloads/zterm-session-log/` |
+
+| Data                        | Location                                                |
+| --------------------------- | ------------------------------------------------------- |
+| Saved sessions (no secrets) | `localStorage` → `zterm_saved_sessions`                 |
+| Empty group placeholders    | `localStorage` → `__zterm_group_placeholders__`         |
+| App settings                | `localStorage` → `zterm_settings`                       |
+| SSH known hosts             | `{userData}/zterm-known-hosts.json`                     |
+| Encrypted credentials       | OS keychain via Electron `safeStorage` (when available) |
+| Session logs                | User-configured or `Downloads/zterm-session-log/`       |
+
 
 Typical `userData` paths:
 
@@ -292,16 +307,18 @@ Typical `userData` paths:
 
 ## Troubleshooting
 
-| Issue | Suggestions |
-|-------|-------------|
-| `npm install` fails on `serialport` | Install platform build tools; on Linux install `libudev-dev` |
-| SSH algorithm mismatch | Open Settings → SSH & Terminal → algorithms; enable legacy KEX/cipher required by the server |
-| Garbled Chinese output | Set session encoding to **GBK** or **GB18030** |
-| SFTP “path not allowed” | Choose a directory under Downloads/Documents/home, not system paths |
-| Serial port not listed | Click **Refresh**; on Linux ensure user is in `dialout` group |
-| Host key prompt every time | Check write permissions for `userData`; do not run from read-only profiles |
-| Import fails / wrong file type | Use the correct export file (`sessions` vs `settings`); max 8 MB |
-| Windows portable `ZTerm x.x.x.exe` shows the wrong icon in File Explorer, but **Properties** shows the correct icon; `win-unpacked\ZTerm.exe` and `ZTerm Setup x.x.x.exe` look fine | The icon is embedded in the EXE; this is usually the Windows Shell **icon cache** (common when rebuilding the same portable file name). Copy and rename the file (e.g. `ZTerm-test.exe`) to verify. If that fixes it, restart `explorer.exe`, delete `iconcache*` and `thumbcache*` under `%LocalAppData%\Microsoft\Windows\Explorer\`, then open File Explorer again |
+
+| Issue                                                                                                                                                                               | Suggestions                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm install` fails on `serialport`                                                                                                                                                 | Install platform build tools; on Linux install `libudev-dev`                                                                                                                                                                                                                                                                                                          |
+| SSH algorithm mismatch                                                                                                                                                              | Open Settings → SSH & Terminal → algorithms; enable legacy KEX/cipher required by the server                                                                                                                                                                                                                                                                          |
+| Garbled Chinese output                                                                                                                                                              | Set session encoding to **GBK** or **GB18030**                                                                                                                                                                                                                                                                                                                        |
+| SFTP “path not allowed”                                                                                                                                                             | Choose a directory under Downloads/Documents/home, not system paths                                                                                                                                                                                                                                                                                                   |
+| Serial port not listed                                                                                                                                                              | Click **Refresh**; on Linux ensure user is in `dialout` group                                                                                                                                                                                                                                                                                                         |
+| Host key prompt every time                                                                                                                                                          | Check write permissions for `userData`; do not run from read-only profiles                                                                                                                                                                                                                                                                                            |
+| Import fails / wrong file type                                                                                                                                                      | Use the correct export file (`sessions` vs `settings`); max 8 MB                                                                                                                                                                                                                                                                                                      |
+| Windows portable `ZTerm x.x.x.exe` shows the wrong icon in File Explorer, but **Properties** shows the correct icon; `win-unpacked\ZTerm.exe` and `ZTerm Setup x.x.x.exe` look fine | The icon is embedded in the EXE; this is usually the Windows Shell **icon cache** (common when rebuilding the same portable file name). Copy and rename the file (e.g. `ZTerm-test.exe`) to verify. If that fixes it, restart `explorer.exe`, delete `iconcache`* and `thumbcache*` under `%LocalAppData%\Microsoft\Windows\Explorer\`, then open File Explorer again |
+
 
 ---
 

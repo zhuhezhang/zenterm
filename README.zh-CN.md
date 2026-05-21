@@ -26,12 +26,14 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ### 连接类型
 
-| 协议 | 说明 |
-|------|------|
-| **SSH** | 基于 `ssh2` 的交互式 Shell，支持 PTY 尺寸同步、密码或私钥认证，可配置 KEX/加密/MAC 算法 |
-| **SFTP** | 侧边栏远程文件管理：列表、上传、下载、新建目录、重命名、删除；传输进度；本地路径限制在安全用户目录内 |
-| **Telnet** | 原生 TCP Telnet 客户端 |
-| **Serial** | 通过 `serialport` 访问本地串口（波特率、数据位、停止位、校验位）；须从枚举列表中选择端口 |
+
+| 协议         | 说明                                                         |
+| ---------- | ---------------------------------------------------------- |
+| **SSH**    | 基于 `ssh2` 的交互式 Shell，支持 PTY 尺寸同步、密码或私钥认证，可配置 KEX/加密/MAC 算法 |
+| **SFTP**   | 侧边栏远程文件管理：列表、上传、下载、新建目录、重命名、删除；传输进度；本地路径限制在安全用户目录内         |
+| **Telnet** | 原生 TCP Telnet 客户端                                          |
+| **Serial** | 通过 `serialport` 访问本地串口（波特率、数据位、停止位、校验位）；须从枚举列表中选择端口        |
+
 
 ### 会话管理
 
@@ -74,23 +76,25 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ## 界面预览
 
-![ZTerm 主界面](docs/images/main.png)
-![ZTerm 设置界面](docs/images/setting.png)
-![ZTerm 连接界面](docs/images/connection.png)
+ZTerm 主界面
+ZTerm 设置界面
+ZTerm 连接界面
 
 ---
 
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 桌面壳 | Electron 42 |
-| 界面 | React 18、Vite 8 |
-| 终端 | @xterm/xterm 5、Fit 插件、Web Links 插件 |
-| SSH / SFTP | ssh2 |
-| 串口 | serialport 12 |
-| 编码 | iconv-lite |
-| 打包 | electron-builder |
+
+| 层级         | 技术                                 |
+| ---------- | ---------------------------------- |
+| 桌面壳        | Electron 42                        |
+| 界面         | React 18、Vite 8                    |
+| 终端         | @xterm/xterm 5、Fit 插件、Web Links 插件 |
+| SSH / SFTP | ssh2                               |
+| 串口         | serialport 12                      |
+| 编码         | iconv-lite                         |
+| 打包         | electron-builder                   |
+
 
 ---
 
@@ -98,68 +102,74 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ```
 zterm/
-├── electron/                          # 主进程（Node.js + Electron API）
-│   ├── main.js                        # 应用入口：无边框窗口、IPC 路由、会话日志写入
-│   ├── preload.cjs                    # contextBridge → window.zterm（SSH/SFTP/Telnet/串口/凭据/窗口/日志）
-│   ├── handlers/                      # 由 main.js 注册的 IPC 处理程序
-│   │   ├── ssh.js                     # SSH 连接/断开、PTY 读写、resize；委托 Worker 执行
-│   │   ├── sftp.js                    # SFTP 列表/上传/下载/建目录/重命名/删除；委托 Worker 执行
-│   │   ├── telnet.js                  # Telnet TCP 连接与字节流 I/O
-│   │   ├── serial.js                  # 串口枚举/打开/写入；路径须与 listPorts 白名单一致
-│   │   └── credentials.js             # safeStorage 凭据库：get/sync/remove/duplicate/clearAll
-│   ├── workers/                       # Worker 线程（将阻塞的 ssh2 I/O 移出主循环）
-│   │   ├── sshSessionWorker.js        # 每个会话独立的 SSH Shell Worker
-│   │   └── sftpSessionWorker.js       # 每个会话独立的 SFTP 客户端 Worker
-│   └── lib/                           # 主进程公共工具
-│       ├── trustedSender.js           # 仅允许已注册主窗口发起的 IPC
-│       ├── localPathPolicy.js         # 校验日志/SFTP 本地路径是否在允许根目录内
-│       ├── sftpLocalPathRoots.js      # 解析系统用户目录（主目录、下载、文档等）
-│       ├── sshKnownHosts.js           # SSH 主机公钥持久化与校验（zterm-known-hosts.json）
-│       └── encodeTerminalWrite.js     # 终端上行按键编码（iconv-lite）
+├── electron/                            # 主进程（Node.js + Electron API）
+│   ├── main.js                          # 应用入口：无边框窗口、IPC 路由、会话日志写入
+│   ├── preload.cjs                      # contextBridge → window.zterm（SSH/SFTP/Telnet/串口/凭据/窗口/日志）
+│   ├── handlers/                        # 由 main.js 注册的 IPC 处理程序
+│   │   ├── ssh.js                       # SSH 连接/断开、PTY 读写、resize；委托 Worker 执行
+│   │   ├── sftp.js                      # SFTP 列表/上传/下载/建目录/重命名/删除；委托 Worker 执行
+│   │   ├── telnet.js                    # Telnet TCP 连接与字节流 I/O
+│   │   ├── serial.js                    # 串口枚举/打开/写入；路径须与 listPorts 白名单一致
+│   │   └── credentials.js               # safeStorage 凭据库：get/sync/remove/duplicate/clearAll
+│   ├── workers/                         # Worker 线程（将阻塞的 ssh2 I/O 移出主循环）
+│   │   ├── sshSessionWorker.js          # 每个会话独立的 SSH Shell Worker
+│   │   └── sftpSessionWorker.js         # 每个会话独立的 SFTP 客户端 Worker
+│   └── lib/                             # 主进程公共工具
+│       ├── trustedSender.js             # 仅允许已注册主窗口发起的 IPC
+│       ├── localPathPolicy.js           # 校验日志/SFTP 本地路径是否在允许根目录内
+│       ├── sftpLocalPathRoots.js        # 解析系统用户目录（主目录、下载、文档等）
+│       ├── sshKnownHosts.js             # SSH 主机公钥持久化与校验（zterm-known-hosts.json）
+│       └── encodeTerminalWrite.js       # 终端上行按键编码（iconv-lite）
 │
-├── src/                               # 渲染进程（React 18 + Vite）
-│   ├── main.jsx                       # React 入口、ErrorBoundary、挂载 App
-│   ├── App.jsx                        # 主布局：标题栏、侧边栏、标签、终端、各类对话框
+├── src/                                 # 渲染进程（React 18 + Vite）
+│   ├── main.jsx                         # React 入口、ErrorBoundary、挂载 App
+│   ├── App.jsx                          # 主布局：标题栏、侧边栏、标签、终端、各类对话框
 │   ├── components/
-│   │   ├── TitleBar.jsx               # 自定义窗口控制（最小化/最大化/关闭）
-│   │   ├── Sidebar.jsx                # 已保存会话树、分组、SFTP 宿主、导入会话
-│   │   ├── TabBar.jsx                 # 会话标签、拖拽排序、右键菜单
-│   │   ├── TerminalPanel.jsx          # xterm 实例、编码、日志、高亮、退格键
-│   │   ├── SftpPanel.jsx              # 远程文件树与传输界面
-│   │   ├── ConnectDialog.jsx          # SSH / Telnet / Serial 表单、凭据子弹窗
-│   │   ├── SettingsDialog.jsx         # 分标签设置、算法、导入导出、主题预览
-│   │   └── common.jsx                 # 公共 UI（如连接类型图标）
-│   ├── store/                         # 客户端持久化与 IPC 桥接
-│   │   ├── sessionStore.js            # localStorage 会话、分组、导出/导入 envelope
-│   │   ├── settingsStore.js           # localStorage 设置、schema、导出/导入
-│   │   └── credentialsBridge.js       # 凭据库同步：解析/合并已保存会话的密钥
-│   ├── lib/
-│   │   ├── import/
-│   │   │   ├── parseImportFile.js     # readImportJson、解包/构造导出 envelope（v1）
-│   │   │   ├── parseSessionsImport.js # 会话导入流水线入口
-│   │   │   ├── parseSettingsImport.js # 设置导入流水线入口
-│   │   │   ├── validateSessions.js    # 单条会话校验规则
-│   │   │   ├── validateSettings.js    # 设置结构校验
-│   │   │   └── handleImportErrors.js  # 本地化导入错误码
-│   │   ├── session/
-│   │   │   ├── constants.js           # 协议默认值、持久化字段、导入大小上限
-│   │   │   ├── utils.js               # 标签/分组/端口/退格等工具、提取存储字段
-│   │   │   ├── normalizeSession.js    # 规范化导入的会话对象
-│   │   │   └── normalizeImport.js     # 旧版导入兼容
-│   │   └── settings/
-│   │       ├── defaults.js            # DEFAULT_SETTINGS、回滚上下限、默认高亮规则
-│   │       ├── normalize.js           # 钳制回滚/侧栏宽度、日志模式迁移
-│   │       └── sanitizeImport.js      # 设置导入时剥离未知键
+│   │   ├── TitleBar.jsx                 # 自定义窗口控制（最小化/最大化/关闭）
+│   │   ├── Sidebar.jsx                  # 已保存会话树、分组、SFTP 宿主、导入会话
+│   │   ├── TabBar.jsx                   # 会话标签、拖拽排序、右键菜单
+│   │   ├── TerminalPanel.jsx            # xterm 实例、编码、日志、高亮、退格键
+│   │   ├── SftpPanel.jsx                # 远程文件树与传输界面
+│   │   ├── ConnectDialog.jsx            # SSH / Telnet / Serial 表单、凭据子弹窗
+│   │   ├── SettingsDialog.jsx           # 分标签设置、算法、导入导出、主题预览
+│   │   └── common.jsx                   # 公共 UI（如连接类型图标）
+│   ├── store/                           # 客户端持久化与 IPC 桥接
+│   │   ├── sessionStore.js              # localStorage 会话、分组；导出走 downloadJsonExport
+│   │   ├── settingsStore.js             # localStorage 设置、SETTINGS_SCHEMA、导入导出
+│   │   └── credentialsBridge.js         # 凭据库同步：解析/合并已保存会话的密钥
+│   ├── lib/                             # 纯逻辑（无 React）；按领域 + 导入导出划分
+│   │   ├── import/                      # 跨领域导入/导出（会话与设置共用）
+│   │   │   ├── constants.js             # 文件大小/条数上限、envelope 版本、导出文件名
+│   │   │   ├── parseImportFile.js       # readImportJson、解包/构造导出 envelope（v1）
+│   │   │   ├── handleImportErrors.js    # 导入错误码 → 国际化文案
+│   │   │   ├── parseSessionsImport.js   # 校验并规范化 JSON 中的会话列表
+│   │   │   ├── parseSettingsImport.js   # 设置导入流水线入口
+│   │   │   ├── mergeImportedSessions.js # 合并导入会话；按 savedId / 名称+分组 去重
+│   │   │   ├── downloadJsonExport.js    # 触发浏览器下载导出文件
+│   │   │   ├── pushImportWarning.js     # 追加导入警告（会话/设置共用）
+│   │   │   ├── applySessionsImport.js   # 解析 → 合并 → 吸入 vault；UI 结果提示
+│   │   │   └── reportSettingsImport.js  # 设置导入成功/失败提示
+│   │   ├── session/                     # 会话领域
+│   │   │   ├── defaults.js              # 协议默认值、校验常量、表单默认值
+│   │   │   ├── utils.js                 # 标签/分组/端口/退格等工具、提取存储字段
+│   │   │   ├── normalizeSession.js      # 规范化单条导入会话
+│   │   │   └── importWarnings.js        # 格式化会话导入警告供界面显示
+│   │   └── settings/                    # 设置领域
+│   │       ├── defaults.js              # DEFAULT_SETTINGS、回滚上下限、默认高亮规则
+│   │       ├── normalize.js             # 钳制回滚/侧栏宽度、日志模式迁移
+│   │       ├── highlightRules.js        # 高亮规则 ID 与保存时规范化
+│   │       ├── sanitizeImport.js        # 剥离未知键、安全合并导入设置
+│   │       └── importWarnings.js        # 格式化设置导入警告供界面显示
 │   ├── context/
-│   │   └── I18nContext.jsx            # React 上下文 + useI18n() 文案钩子
+│   │   └── I18nContext.jsx              # React 上下文 + useI18n() 文案钩子
 │   ├── i18n/
-│   │   ├── translations.js            # 中/英文字符串表
-│   │   └── resolveUiLanguage.js       # 将 auto 解析为实际界面语言
+│   │   ├── translations.js              # 中/英文字符串表
+│   │   └── resolveUiLanguage.js         # 将 auto 解析为实际界面语言
 │   ├── theme/
-│   │   └── appTheme.js                # 解析 dark / light / auto 实际主题
-│   └── styles/                        # 按界面拆分的样式
-│       ├── global.css                 # 基础重置与排版
-│       ├── app.css                    # 主布局
+│   │   └── appTheme.js                  # 解析 dark / light / auto 实际主题
+│   └── styles/                          # 按界面拆分的样式
+│       ├── global.css                   # 基础重置与排版
+│       ├── app.css                      # 主布局
 │       ├── titlebar.css
 │       ├── sidebar.css
 │       ├── tabbar.css
@@ -168,23 +178,23 @@ zterm/
 │       ├── dialog.css
 │       └── settings.css
 │
-├── shared/                            # 主进程与渲染进程共用（模块内不直接依赖 Electron）
-│   ├── terminalEncodings.js           # 编码列表、xterm 二进制串解码辅助
-│   └── sshAlgorithmDefaults.js        # 默认 KEX/加密/MAC 池与弱算法标记
+├── shared/                              # 主进程与渲染进程共用（模块内不直接依赖 Electron）
+│   ├── terminalEncodings.js             # 编码列表、xterm 二进制串解码辅助
+│   └── sshAlgorithmDefaults.js          # 默认 KEX/加密/MAC 池与弱算法标记
 │
 ├── docs/
-│   └── images/                        # README 截图（主界面、设置、连接）
-|
-├── build/                             # 应用图标
+│   └── images/                          # README 截图（主界面、设置、连接）
 │
-├── index.html                         # Vite HTML 入口（CSP 由 vite 插件注入）
-├── vite.config.js                     # React (oxc) 插件、开发服务器、Electron CSP 插件
-├── jsconfig.json                      # 路径别名 / JS 工具提示
-├── package.json                       # 脚本、依赖、electron-builder 配置
+├── build/                               # electron-builder 应用图标
+│
+├── index.html                           # Vite HTML 入口（CSP 由 vite 插件注入）
+├── vite.config.js                       # React (oxc) 插件、开发服务器、Electron CSP 插件
+├── jsconfig.json                        # 路径别名 / JS 工具提示
+├── package.json                         # 脚本、依赖、electron-builder 配置
 ├── package-lock.json
-├── README.md                          # 英文文档
-├── README.zh-CN.md                    # 简体中文文档
-└── LICENSE                            # MIT 许可证
+├── README.md                            # 英文文档
+├── README.zh-CN.md                      # 简体中文文档
+└── LICENSE                              # MIT 许可证
 ```
 
 **运行时数据流（简图）：**
@@ -231,11 +241,13 @@ npm run dev
 
 其他开发脚本：
 
-| 脚本 | 说明 |
-|------|------|
-| `npm run dev:silent` | 同 `dev`，但屏蔽 Electron 安全警告 |
-| `npm run dev:renderer` | 仅启动 Vite |
+
+| 脚本                     | 说明                              |
+| ---------------------- | ------------------------------- |
+| `npm run dev:silent`   | 同 `dev`，但屏蔽 Electron 安全警告       |
+| `npm run dev:renderer` | 仅启动 Vite                        |
 | `npm run dev:electron` | 仅启动 Electron（需 Vite 已在 5173 运行） |
+
 
 ---
 
@@ -255,6 +267,7 @@ npm run dev
 - `ztermExport` 须为 `"sessions"` 或 `"settings"`（类型不匹配会报错）。
 - `version` 须为 `1`。
 - 导入设置时会剥离未知键；无效会话条目会跳过并在完成后提示统计。
+- 单次会话导入上限 **5000** 条（见 `src/lib/import/constants.js`）。
 
 ---
 
@@ -273,14 +286,16 @@ npm run dev
 
 ## 数据与存储位置
 
-| 数据 | 位置 |
-|------|------|
-| 已保存会话（不含密钥） | `localStorage` → `zterm_saved_sessions` |
-| 空分组占位符 | `localStorage` → `__zterm_group_placeholders__` |
-| 应用设置 | `localStorage` → `zterm_settings` |
-| SSH 已知主机 | `{userData}/zterm-known-hosts.json` |
-| 加密凭据 | 系统钥匙串（Electron `safeStorage`，可用时） |
-| 会话日志 | 用户配置目录或 `下载/zterm-session-log/` |
+
+| 数据          | 位置                                              |
+| ----------- | ----------------------------------------------- |
+| 已保存会话（不含密钥） | `localStorage` → `zterm_saved_sessions`         |
+| 空分组占位符      | `localStorage` → `__zterm_group_placeholders__` |
+| 应用设置        | `localStorage` → `zterm_settings`               |
+| SSH 已知主机    | `{userData}/zterm-known-hosts.json`             |
+| 加密凭据        | 系统钥匙串（Electron `safeStorage`，可用时）               |
+| 会话日志        | 用户配置目录或 `下载/zterm-session-log/`                 |
+
 
 典型 **userData** 路径：
 
@@ -292,16 +307,18 @@ npm run dev
 
 ## 常见问题
 
-| 现象 | 处理建议 |
-|------|----------|
-| `npm install` 在 `serialport` 处失败 | 安装对应平台编译工具；Linux 需 `libudev-dev` |
-| SSH 算法协商失败 | 打开 **设置 → SSH 与终端 → 算法**，勾选服务器所需的遗留 KEX/加密 |
-| 中文乱码 | 将会话编码设为 **GBK** 或 **GB18030** |
-| SFTP 提示路径不允许 | 选择下载/文档/用户主目录下的路径，勿选系统目录 |
-| 串口列表为空 | 点击 **刷新**；Linux 用户需加入 `dialout` 组 |
-| 每次连接都提示主机密钥 | 检查 `userData` 是否可写；避免只读配置环境运行 |
-| 导入失败 / 文件类型错误 | 确认使用正确的导出文件（会话 vs 设置）；单文件不超过 8 MB |
-| Windows 便携版 `ZTerm x.x.x.exe` 在资源管理器中图标异常，但右键 **属性** 里图标正常；`win-unpacked\ZTerm.exe` 与 `ZTerm Setup x.x.x.exe` 显示正常 | 图标已写入 exe，多为 Windows Shell **图标缓存**（反复用同名覆盖打包时常见）。将文件复制并改名为 `ZTerm-test.exe` 可快速验证；若改名后正常，结束并重启 `explorer.exe`，删除 `%LocalAppData%\Microsoft\Windows\Explorer\` 下的 `iconcache*`、`thumbcache*` 后再打开资源管理器 |
+
+| 现象                                                                                                                 | 处理建议                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm install` 在 `serialport` 处失败                                                                                   | 安装对应平台编译工具；Linux 需 `libudev-dev`                                                                                                                                                                       |
+| SSH 算法协商失败                                                                                                         | 打开 **设置 → SSH 与终端 → 算法**，勾选服务器所需的遗留 KEX/加密                                                                                                                                                             |
+| 中文乱码                                                                                                               | 将会话编码设为 **GBK** 或 **GB18030**                                                                                                                                                                          |
+| SFTP 提示路径不允许                                                                                                       | 选择下载/文档/用户主目录下的路径，勿选系统目录                                                                                                                                                                               |
+| 串口列表为空                                                                                                             | 点击 **刷新**；Linux 用户需加入 `dialout` 组                                                                                                                                                                      |
+| 每次连接都提示主机密钥                                                                                                        | 检查 `userData` 是否可写；避免只读配置环境运行                                                                                                                                                                          |
+| 导入失败 / 文件类型错误                                                                                                      | 确认使用正确的导出文件（会话 vs 设置）；单文件不超过 8 MB                                                                                                                                                                      |
+| Windows 便携版 `ZTerm x.x.x.exe` 在资源管理器中图标异常，但右键 **属性** 里图标正常；`win-unpacked\ZTerm.exe` 与 `ZTerm Setup x.x.x.exe` 显示正常 | 图标已写入 exe，多为 Windows Shell **图标缓存**（反复用同名覆盖打包时常见）。将文件复制并改名为 `ZTerm-test.exe` 可快速验证；若改名后正常，结束并重启 `explorer.exe`，删除 `%LocalAppData%\Microsoft\Windows\Explorer\` 下的 `iconcache`*、`thumbcache*` 后再打开资源管理器 |
+
 
 ---
 

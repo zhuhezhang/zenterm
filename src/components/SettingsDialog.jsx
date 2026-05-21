@@ -1,24 +1,24 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
+import { translate } from '../i18n/translations.js'
+import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
+import { exportSessions, saveSessions } from '../store/sessionStore.js'
+import { IMPORT_JSON_ACCEPT } from '../lib/import/constants.js'
+import { reportSettingsImportResult, reportSettingsImportError } from '../lib/import/reportSettingsImport.js'
+import { createHighlightRuleId, normalizeHighlightRulesForSave } from '../lib/settings/highlightRules.js'
+import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
+import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS } from '../lib/settings/defaults.js'
 import {
   DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
 } from '../../shared/sshAlgorithmDefaults.js'
-import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS } from '../lib/settings/defaults.js'
 import {
   clampTerminalScrollback, normalizeLoggingMode, applyLegacyLoggingMigration,
 } from '../lib/settings/normalize.js'
 import {
   SETTINGS_SCHEMA, SETTINGS_TABS, SETTINGS_TAB_SECTION_IDS, saveSettings, exportSettings, importSettings, getDefaultLogPath,
 } from '../store/settingsStore.js'
-import { translate } from '../i18n/translations.js'
-import { resolveEffectiveUiLanguage } from '../i18n/resolveUiLanguage.js'
-import { exportSessions, saveSessions } from '../store/sessionStore.js'
 import {
   applySessionsImport, reportSessionsImportResult, reportSessionsImportError, resetImportFileInput,
 } from '../lib/import/applySessionsImport.js'
-import { IMPORT_JSON_ACCEPT } from '../lib/import/constants.js'
-import { reportSettingsImportResult, reportSettingsImportError } from '../lib/import/reportSettingsImport.js'
-import { createHighlightRuleId, normalizeHighlightRulesForSave } from '../lib/settings/highlightRules.js'
-import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import '../styles/dialog.css'
 import '../styles/settings.css'
 

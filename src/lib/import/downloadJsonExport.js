@@ -17,8 +17,8 @@ export function buildExportFilename(kind) {
 
 /**
  * 将 envelope 数据触发为浏览器 JSON 下载
- * @param {keyof typeof EXPORT_FILENAME_PREFIX} kind 导出类型
- * @param {unknown} data 导出数据
+ * @param {keyof typeof EXPORT_FILENAME_PREFIX} kind 导出类型（设置/会话）
+ * @param {unknown} data 导出数据（设置/会话）
  */
 export function downloadJsonExport(kind, data) {
   const payload = buildExportEnvelope(kind, data)

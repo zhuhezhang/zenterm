@@ -4,8 +4,6 @@ import { DEFAULT_TERMINAL_ENCODING } from '../../../shared/terminalEncodings.js'
 export const PORT_MIN = 0
 /** 端口最大值 */
 export const PORT_MAX = 65535
-/** 单次导入会话条数上限 */
-export const IMPORT_MAX_SESSION_COUNT = 5000
 /** 会话类型列表 */
 export const SESSION_TYPES = ['ssh', 'telnet', 'serial']
 /** 会话类型集合（用于快速判断是否为合法会话类型） */
