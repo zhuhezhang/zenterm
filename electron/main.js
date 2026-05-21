@@ -8,9 +8,7 @@ import { setupTelnetHandlers } from './handlers/telnet.js'
 import { setupSerialHandlers } from './handlers/serial.js'
 import { setupCredentialHandlers } from './handlers/credentials.js'
 import { assertLogWriteDirectoryAllowed, validateLogWriteDirectory } from './lib/localPathPolicy.js'
-import {
-  setTrustedRendererWebContents, clearTrustedRendererWebContents, isTrustedIpcSender,
-} from './lib/trustedSender.js'
+import { setTrustedRendererWebContents, clearTrustedRendererWebContents, isTrustedIpcSender, } from './lib/trustedSender.js'
 import { setStoredUiLanguage } from './lib/uiLanguageState.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))  // 当前文件的目录路径
