@@ -18,6 +18,9 @@
     "build:mac": "vite build && electron-builder --mac",
     "build:mac:arm64": "vite build && electron-builder --mac --arm64",
     "build:mac:universal": "vite build && electron-builder --mac --universal",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src electron shared tests",
     "build:x64:linux-appimage-win-portable-nsis": "vite build && electron-builder --win portable nsis --x64 --linux AppImage --x64",
     "vite": "vite",
     "electron": "electron .",
@@ -44,7 +47,11 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "vite": "^8.0.11",
-    "wait-on": "^7.2.0"
+    "vitest": "^3.2.4",
+    "wait-on": "^7.2.0",
+    "eslint": "^9.28.0",
+    "@eslint/js": "^9.28.0",
+    "globals": "^16.2.0"
   },
   "build": {
     "appId": "com.zterm.app",

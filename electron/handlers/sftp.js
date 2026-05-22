@@ -153,7 +153,6 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
         worker = new Worker(workerEntry, {  // 创建 Worker
           type: 'module',
           workerData: {
-            sessionId: id,
             config,
             allowedRoots: getAllowedUserRootPaths(),
           },

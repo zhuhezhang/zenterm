@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, nativeImage } from 'electron'
+import { app, BrowserWindow, ipcMain, nativeImage } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
@@ -7,9 +7,10 @@ import { setupSFTPHandlers } from './handlers/sftp.js'
 import { setupTelnetHandlers } from './handlers/telnet.js'
 import { setupSerialHandlers } from './handlers/serial.js'
 import { setupCredentialHandlers } from './handlers/credentials.js'
-import { assertLogWriteDirectoryAllowed, validateLogWriteDirectory } from './lib/localPathPolicy.js'
-import { setTrustedRendererWebContents, clearTrustedRendererWebContents, isTrustedIpcSender, } from './lib/trustedSender.js'
-import { setStoredUiLanguage } from './lib/uiLanguageState.js'
+import { setupWindowHandlers, attachWindowMaximizeEvents } from './handlers/window.js'
+import { setupAppHandlers } from './handlers/app.js'
+import { setupLogHandlers } from './handlers/log.js'
+import { setTrustedRendererWebContents, clearTrustedRendererWebContents, } from './lib/trustedSender.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))  // 当前文件的目录路径
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged  // 兼容开发环境和生产环境的判断(通过环境变量和是否打包判读)
@@ -55,96 +56,14 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))  // 生产环境加载打包后的静态文件
   }
 
-  setTrustedRendererWebContents(mainWindow.webContents)  // 设置渲染进程可信任的 IPC 发送者
-  mainWindow.on('closed', () => clearTrustedRendererWebContents())  // 当窗口关闭时，清除渲染进程可信任的 IPC 发送者
+  setTrustedRendererWebContents(mainWindow.webContents)
+  mainWindow.on('closed', () => clearTrustedRendererWebContents())
 
-  // 监听渲染进程发送的窗口操作指令（最小化、最大化、关闭）
-  ipcMain.on('window:minimize', (e) => {
-    if (!isTrustedIpcSender(e.sender)) return
-    mainWindow.minimize()
-  })
-  ipcMain.on('window:maximize', (e) => {
-    if (!isTrustedIpcSender(e.sender)) return
-    if (mainWindow.isMaximized()) mainWindow.unmaximize()
-    else mainWindow.maximize()
-  })
-  ipcMain.on('window:close', (e) => {
-    if (!isTrustedIpcSender(e.sender)) return
-    mainWindow.close()
-  })
-  ipcMain.handle('window:isMaximized', (e) => {
-    if (!isTrustedIpcSender(e.sender)) return false
-    return mainWindow.isMaximized()
-  })
-
-  ipcMain.on('window:setBackgroundColor', (e, hex) => {  // 监听渲染进程发送的窗口背景色设置请求，设置窗口背景色
-    if (!isTrustedIpcSender(e.sender)) return
-    if (!mainWindow || typeof hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(hex)) return  // 如果窗口不存在或 hex 不是有效的十六进制颜色，则返回
-    try {
-      mainWindow.setBackgroundColor(hex)
-    } catch (_) {}
-  })
-
-  mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized', true))  // 当窗口被最大化时，向渲染进程发送 window:maximized 消息
-  mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximized', false))
-
-
-  ipcMain.on('app:setUiLanguage', (e, uiLanguage) => {  // 同步渲染进程 settings.uiLanguage，供主进程对话框 i18n
-    if (!isTrustedIpcSender(e.sender)) return
-    setStoredUiLanguage(uiLanguage)
-  })
-
-  ipcMain.on('app:getDownloadsPath', (e) => {  // 获取下载目录路径
-    if (!isTrustedIpcSender(e.sender)) {
-      e.returnValue = ''
-      return
-    }
-    e.returnValue = app.getPath('downloads')
-  })
-
-  ipcMain.handle('app:chooseDirectory', async (event) => {  // 选择日志保存目录
-    if (!isTrustedIpcSender(event.sender)) return null
-    const result = await dialog.showOpenDialog(mainWindow, {
-      properties: ['openDirectory', 'createDirectory'],
-      title: '选择日志保存目录',
-    })
-    return result.canceled ? null : result.filePaths[0]
-  })
-
-  ipcMain.handle('app:validateLogDirectory', (event, dir) => {  // 校验日志目录是否在允许的用户目录范围内（与 log:write 一致）
-    if (!isTrustedIpcSender(event.sender)) return { ok: false, message: '无效的请求。' }
-    const s = dir == null ? '' : String(dir).trim()
-    if (!s) return { ok: true }
-    return validateLogWriteDirectory(s)
-  })
-
-  ipcMain.on('log:write', (e, logDir, logFileName, data) => {  // 写入日志
-    try {
-      if (!isTrustedIpcSender(e.sender)) return
-      if (!logDir) return
-      assertLogWriteDirectoryAllowed(logDir)
-      fs.mkdirSync(logDir, { recursive: true })  // 确保日志目录存在（recursive可以创建多级目录）
-      const safeFileName = String(logFileName).replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '_').trim() || 'session'  // 只过滤真正的文件名非法字符，保留汉字等 Unicode 字符
-      const filePath = path.join(logDir, `${safeFileName}.log`)
-      fs.writeFileSync(filePath, data, 'utf8')
-    } catch (err) {
-      console.error('log:write error', err)
-    }
-  })
-
-  ipcMain.on('log:append', (e, logDir, logFileName, data) => {  // 追加写入会话日志（与 log:write 相同路径校验），用于保留已滚出 xterm 缓冲区的历史输出
-    try {
-      if (!isTrustedIpcSender(e.sender)) return
-      if (!logDir || data == null || data === '') return
-      assertLogWriteDirectoryAllowed(logDir)
-      fs.mkdirSync(logDir, { recursive: true })
-      const safeFileName = String(logFileName).replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '_').trim() || 'session'
-      const filePath = path.join(logDir, `${safeFileName}.log`)
-      fs.appendFileSync(filePath, String(data), 'utf8')
-    } catch (err) {
-      console.error('log:append error', err)
-    }
-  })
+  const getMainWindow = () => mainWindow
+  setupWindowHandlers(ipcMain, getMainWindow)
+  attachWindowMaximizeEvents(mainWindow)
+  setupAppHandlers(ipcMain, getMainWindow)
+  setupLogHandlers(ipcMain)
 }
 
 app.whenReady().then(async () => {
@@ -153,7 +72,7 @@ app.whenReady().then(async () => {
     if (icon) app.dock?.setIcon(icon)
   }
   createWindow()
-  setupSSHHandlers(ipcMain, mainWindow)  // 设置 SSH 相关的 IPC 处理函数，传入 ipcMain 和 mainWindow 以便在处理函数中使用 IPC 和窗口通信
+  setupSSHHandlers(ipcMain, mainWindow)
   setupSFTPHandlers(ipcMain, mainWindow)
   setupTelnetHandlers(ipcMain, mainWindow)
   setupSerialHandlers(ipcMain, mainWindow)

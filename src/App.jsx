@@ -1,12 +1,17 @@
-import { useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react'
-import { I18nProvider, useI18n } from './context/I18nContext.jsx'
-import TitleBar from './components/TitleBar.jsx'
-import Sidebar from './components/Sidebar.jsx'
-import TabBar from './components/TabBar.jsx'
-import TerminalPanel from './components/TerminalPanel.jsx'
-import ConnectDialog from './components/ConnectDialog.jsx'
-import SettingsDialog from './components/SettingsDialog.jsx'
-import ConnectionTypeIcon from './components/common.jsx'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { I18nProvider, useI18n } from '@/context/I18nContext.jsx'
+import TitleBar from '@/components/TitleBar.jsx'
+import Sidebar from '@/components/Sidebar.jsx'
+import TabBar from '@/components/TabBar.jsx'
+import TerminalPanel from '@/components/TerminalPanel.jsx'
+import ConnectDialog from '@/components/ConnectDialog.jsx'
+import SettingsDialog from '@/components/SettingsDialog.jsx'
+import WelcomeScreen from '@/components/app/WelcomeScreen.jsx'
+import CredentialDialog from '@/components/app/CredentialDialog.jsx'
+import { useSyncedAppTheme } from '@/hooks/useSyncedAppTheme.js'
+import { useSidebarResize } from '@/hooks/useSidebarResize.js'
+import { fileTimestamp } from '@/lib/util/fileTimestamp.js'
+import { safeFileToken } from '../shared/safeFileName.js'
 import {
   loadSavedSessions, addSavedSession, removeSavedSession, duplicateSavedSession, saveSessions, getGroups,
   loadGroupPlaceholders, saveGroupPlaceholders, addGroupPlaceholder, prunePlaceholdersForOccupiedGroups
@@ -19,7 +24,6 @@ import { loadSettings, saveSettings } from './store/settingsStore.js'
 import { DEFAULT_SIDEBAR_WIDTH } from './lib/settings/defaults.js'
 import { clampSidebarWidthPx } from './lib/settings/normalize.js'
 import { resolveEffectiveUiLanguage } from '../shared/resolveUiLanguage.js'
-import { resolveEffectiveAppTheme } from './theme/appTheme.js'
 import './styles/app.css'
 
 /**
@@ -39,60 +43,7 @@ function vacatedGroupPathIfEmpty(beforeSession, newConfig, nextSessions) {
 }
 
 /**
- * 生成 YYYYMMDD_HHMMSS 格式时间戳
- * @returns {string} 时间字符串
- */
-function fileTimestamp() {
-  const now = new Date()
-  return now.getFullYear() +
-    String(now.getMonth() + 1).padStart(2, '0') +
-    String(now.getDate()).padStart(2, '0') + '_' +
-    String(now.getHours()).padStart(2, '0') +
-    String(now.getMinutes()).padStart(2, '0') +
-    String(now.getSeconds()).padStart(2, '0')
-}
 
-/**
- * 过滤文件名非法字符，保留可读标签
- * @param {string} raw 原始文件名
- * @returns {string} 安全文件名
- */
-function safeFileToken(raw) {
-  return (raw || 'session')
-    .replace(/[\/\\:*?"\u003c\u003e|\x00]/g, '')
-    .replace(/\s+/g, '_')
-    .replace(/^[._]+|[._]+$/g, '')
-    .trim() || 'session'
-}
-
-/**
- * 同步应用主题到 document、原生窗口底色，并在 auto 时监听系统主题变化
- * @param {'dark'|'light'|'auto'} appTheme
- * @returns {'dark'|'light'} 当前实际亮暗
- */
-function useSyncedAppTheme(appTheme) {
-  const [effective, setEffective] = useState(() => resolveEffectiveAppTheme(appTheme))
-
-  useLayoutEffect(() => {
-    const apply = () => {
-      const eff = resolveEffectiveAppTheme(appTheme)
-      setEffective(eff)
-      const root = document.documentElement
-      root.dataset.appTheme = eff  // 使 html 标签变成类似<html data-app-theme="light" lang="zh-CN">这样的形式，方便在 CSS 中使用 [data-app-theme="light"] 选择器
-      root.style.colorScheme = eff
-      window.zterm?.window?.setBackgroundColor?.(eff === 'light' ? '#ffffff' : '#0d1117')
-    }
-    apply()
-    if (appTheme !== 'auto') return undefined
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    mq.addEventListener('change', apply)
-    return () => mq.removeEventListener('change', apply)
-  }, [appTheme])
-
-  return effective
-}
-
-/**
  * 主界面（在 I18nProvider 内，可使用 useI18n）
  * @param {{ settings: object, setSettings: function }} props
  * @param {Object} props.settings 设置
@@ -136,29 +87,7 @@ function AppMain({ settings, setSettings }) {
    * 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听器
    * @param {MouseEvent} e 鼠标事件对象，包含鼠标位置等信息
    */
-  const handleDividerMouseDown = useCallback((e) => {  // useCallback：把函数做成稳定的、可重用的函数引用，让它在组件重渲染时不会不断变动，避免每次渲染都创建新的函数引用
-    e.preventDefault()
-    const startX = e.clientX
-    const startW = sidebarWidth
-    let latest = startW
-    /** 鼠标移动时更新侧边栏宽度 */
-    const onMove = (ev) => {
-      latest = clampSidebarWidthPx(startW + ev.clientX - startX, window.innerWidth)
-      setSidebarWidth(latest)
-    }
-    /** 鼠标释放时移除监听器，并保存设置 */
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-      setSettings((prev) => {
-        const next = { ...prev, sidebarWidth: latest }
-        saveSettings(next)
-        return next
-      })
-    }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-  }, [sidebarWidth, setSettings])
+  const handleDividerMouseDown = useSidebarResize(sidebarWidth, setSidebarWidth, setSettings)
 
   /** 从已保存会话和分组占位符生成分组列表 */
   const savedGroups    = getGroups(savedSessions, groupPlaceholders)
@@ -595,136 +524,3 @@ export default function App() {
   )
 }
 
-/**
- * 欢迎界面组件
- * 显示在没有打开任何会话时，提供新建会话的入口
- * @param {Function} onNewSession 新建会话的回调函数
- */
-function WelcomeScreen({ onNewSession }) {
-  const { t } = useI18n()
-  return (
-    <div className="welcome">
-      <div className="welcome-logo">
-        <span className="welcome-title">ZTerm</span>
-        <span className="welcome-sub">{t('welcome.subtitle')}</span>
-      </div>
-      <div className="welcome-actions">
-        {[{type:'ssh',icon:ConnectionTypeIcon.ssh,label:'SSH',desc:t('welcome.sshDesc')},
-          {type:'telnet',icon:ConnectionTypeIcon.telnet,label:'Telnet',desc:t('welcome.telnetDesc')},
-          {type:'serial',icon:ConnectionTypeIcon.serial,label:'Serial',desc:t('welcome.serialDesc')}].map(b => (
-          <button key={b.type} className="welcome-btn" onClick={() => onNewSession(b.type)}>
-            <span className="welcome-btn-icon">{b.icon}</span>
-            <span className="welcome-btn-label">{b.label}</span>
-            <span className="welcome-btn-desc">{b.desc}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/**
- * 连接已保存会话时补充缺失的认证信息（用户名、密码或私钥路径等）
- * @param {Object} props 组件属性
- * @param {string} props.username 用户名
- * @param {string} props.password 密码
- * @param {string} props.privateKey 私钥路径
- * @param {string} props.passphrase 私钥密码短语
- * @param {Object} props.session 会话配置对象 { type, host, port, username, password, privateKey, passphrase, savedId, group, output }
- * @param {boolean} props.saveSecretsToVault 设置中是否开启「保存敏感凭据到加密存储」
- * @param {Function} props.onConnect 仅连接，不把本次输入的敏感信息写入加密库
- * @param {Function} props.onSaveAndConnect 更新已保存会话并连接；仅当 saveSecretsToVault 为 true 时由上层把敏感信息写入 vault
- * @param {Function} props.onClose 关闭对话框
- */
-function CredentialDialog({ username, password, privateKey, passphrase, session, saveSecretsToVault, onConnect, onSaveAndConnect, onClose }) {
-  const { t } = useI18n()
-  const [user, setUser] = useState(username || '')
-  const [pass, setPass] = useState(password || '')
-  const [pkey, setPkey] = useState(privateKey || '')
-  const [pphrase, setPphrase] = useState(passphrase || '')
-  const keyAuth = session?.authType === 'privateKey'
-  const hasUser = user?.trim()
-  const hasPass = pass?.trim()
-  const hasPkey = pkey?.trim()
-  const autoFocusUser = !hasUser
-  const canSave = !!session?.savedId
-  const submitConnect = () => onConnect(user, pass, pkey, pphrase)
-  const submitSaveAndConnect = () => void onSaveAndConnect(user, pass, pkey, pphrase)
-
-  return (
-    <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="dialog">
-        <div className="dialog-header">
-          <div className="dialog-tabs">{t('credential.title')}</div>
-          <button className="dialog-close" onClick={onClose}>×</button>
-        </div>
-        <div className="dialog-body">
-          <div className="form-row">
-            <label className="form-label">{t('credential.username')}</label>
-            <div className="form-control">
-              <input
-                placeholder={t('credential.usernamePh')}
-                value={user}
-                autoFocus={autoFocusUser}
-                onChange={e => setUser(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && submitSaveAndConnect()}
-              />
-            </div>
-          </div>
-          {keyAuth ? (
-            <>
-              <div className="form-row">
-                <label className="form-label">{t('credential.privateKeyPath')}</label>
-                <div className="form-control">
-                  <input
-                    placeholder="/path/to/id_rsa"
-                    value={pkey}
-                    autoFocus={hasUser && !hasPkey}
-                    onChange={e => setPkey(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && submitSaveAndConnect()}
-                  />
-                </div>
-              </div>
-              <div className="form-row">
-                <label className="form-label">{t('credential.keyPassphrase')}</label>
-                <div className="form-control">
-                  <input
-                    type="password"
-                    placeholder={t('credential.optional')}
-                    value={pphrase}
-                    onChange={e => setPphrase(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && submitSaveAndConnect()}
-                  />
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="form-row">
-              <label className="form-label">{t('credential.password')}</label>
-              <div className="form-control">
-                <input
-                  type="password"
-                  placeholder={t('credential.passwordPh')}
-                  value={pass}
-                  autoFocus={!autoFocusUser && !hasPass}
-                  onChange={e => setPass(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && submitSaveAndConnect()}
-                />
-              </div>
-            </div>
-          )}
-          {canSave && (
-            <p className="cred-dialog-hint">
-              {saveSecretsToVault ? t('credential.hintSaveOn') : t('credential.hintSaveOff')}
-            </p>
-          )}
-        </div>
-        <div className="dialog-footer">
-          <button type="button" className="btn-cancel" onClick={onClose}>{t('credential.cancel')}</button>
-          <button type="button" className="btn-connect" onClick={submitConnect}>{t('credential.connect')}</button>
-          <button type="button" className="btn-save-connect" disabled={!canSave} onClick={submitSaveAndConnect} title={canSave ? '' : t('credential.notSavedSession')}>{t('credential.saveConnect')}</button>
-        </div>
-      </div>
-    </div>
-  )
-}

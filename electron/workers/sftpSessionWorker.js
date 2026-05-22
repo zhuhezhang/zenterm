@@ -10,7 +10,7 @@ import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, safeJoinLocalDownloadPathForRoots,
 } from '../lib/sftpLocalPathRoots.js'
 
-const { _sessionId, config, allowedRoots } = workerData
+const { config, allowedRoots } = workerData
 
 /** 
  * 发送消息到主线程

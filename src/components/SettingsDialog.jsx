@@ -20,42 +20,9 @@ import {
   applySessionsImport, reportSessionsImportResult, reportSessionsImportError, resetImportFileInput,
 } from '../lib/import/applySessionsImport.js'
 import { formatSftpPathError } from '../lib/sftp/formatSftpPathError.js'
+import { HighlightRegexIcon, HighlightCaseIcon } from './settings/HighlightRuleIcons.jsx'
 import '../styles/dialog.css'
 import '../styles/settings.css'
-
-/** 高亮规则：正则模式（.* 字形图标） */
-function HighlightRegexIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <text
-        x="12"
-        y="17.5"
-        textAnchor="middle"
-        fill="currentColor"
-        fontSize="17px"
-      >
-        .*
-      </text>
-    </svg>
-  )
-}
-
-/** 高亮规则：区分大小写（Aa 字形图标） */
-function HighlightCaseIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <text
-        x="12"
-        y="17.5"
-        textAnchor="middle"
-        fill="currentColor"
-        fontSize="11px"
-      >
-        Aa
-      </text>
-    </svg>
-  )
-}
 
 /**
  * 设置对话框组件
