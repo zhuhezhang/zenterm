@@ -70,7 +70,7 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 - **SSH 主机公钥校验**（类似 known_hosts，`userData/zterm-known-hosts.json`）；首次连接与指纹变更时弹窗确认
 - 设置中可标记 **弱 SSH 算法**；默认优先现代 AEAD / EtM，排除常见遗留弱算法
 - 可选 **加密凭据库**（系统支持时使用 `safeStorage`）
-- 日志与 SFTP 的 **本地路径策略**：仅允许用户主目录、文档、下载、桌面、userData 等范围
+- 日志与 SFTP 的 **本地路径策略**：用户主目录、文档、下载、桌面、音乐/图片/视频、userData；Windows 上另允许非系统盘根目录（如 `D:\`）
 
 ---
 
@@ -103,7 +103,7 @@ ZTerm 连接界面
 ```
 zterm/
 ├── electron/                            # 主进程（Node.js + Electron API）
-│   ├── main.js                          # 应用入口：无边框窗口、IPC 路由、会话日志写入
+│   ├── main.js                          # 应用入口：无边框窗口、IPC 路由、会话日志、界面语言同步
 │   ├── preload.cjs                      # contextBridge → window.zterm（SSH/SFTP/Telnet/串口/凭据/窗口/日志）
 │   ├── handlers/                        # 由 main.js 注册的 IPC 处理程序
 │   │   ├── ssh.js                       # SSH 连接/断开、PTY 读写、resize；委托 Worker 执行
@@ -113,12 +113,15 @@ zterm/
 │   │   └── credentials.js               # safeStorage 凭据库：get/sync/remove/duplicate/clearAll
 │   ├── workers/                         # Worker 线程（将阻塞的 ssh2 I/O 移出主循环）
 │   │   ├── sshSessionWorker.js          # 每个会话独立的 SSH Shell Worker
-│   │   └── sftpSessionWorker.js         # 每个会话独立的 SFTP 客户端 Worker
+│   │   └── sftpSessionWorker.js         # 每个会话独立的 SFTP Worker（本地路径校验走 shared 根目录逻辑）
+│   ├── i18n/
+│   │   └── knownHosts.js                # SSH 主机公钥确认对话框文案（主进程 dialog，中英双语）
 │   └── lib/                             # 主进程公共工具
 │       ├── trustedSender.js             # 仅允许已注册主窗口发起的 IPC
-│       ├── localPathPolicy.js           # 校验日志/SFTP 本地路径是否在允许根目录内
-│       ├── sftpLocalPathRoots.js        # 解析系统用户目录（主目录、下载、文档等）
+│       ├── localPathPolicy.js           # 解析允许根目录；校验日志/SFTP 路径；结构化 SFTP 错误
+│       ├── sftpLocalPathRoots.js        # 纯路径包含性检查（主进程与 Worker 复用，由 localPathPolicy 再导出）
 │       ├── sshKnownHosts.js             # SSH 主机公钥持久化与校验（zterm-known-hosts.json）
+│       ├── uiLanguageState.js           # 缓存 settings.uiLanguage，供主进程对话框（已知主机等）取语言
 │       └── encodeTerminalWrite.js       # 终端上行按键编码（iconv-lite）
 │
 ├── src/                                 # 渲染进程（React 18 + Vite）
@@ -126,10 +129,10 @@ zterm/
 │   ├── App.jsx                          # 主布局：标题栏、侧边栏、标签、终端、各类对话框
 │   ├── components/
 │   │   ├── TitleBar.jsx                 # 自定义窗口控制（最小化/最大化/关闭）
-│   │   ├── Sidebar.jsx                  # 已保存会话树、分组、SFTP 宿主、导入会话
+│   │   ├── Sidebar.jsx                  # 已保存会话树、分组、搜索、导入；内嵌 SftpPanel
 │   │   ├── TabBar.jsx                   # 会话标签、拖拽排序、右键菜单
 │   │   ├── TerminalPanel.jsx            # xterm 实例、编码、日志、高亮、退格键
-│   │   ├── SftpPanel.jsx                # 远程文件树与传输界面
+│   │   ├── SftpPanel.jsx                # 远程文件树、上传/下载、拖放、传输进度
 │   │   ├── ConnectDialog.jsx            # SSH / Telnet / Serial 表单、凭据子弹窗
 │   │   ├── SettingsDialog.jsx           # 分标签设置、算法、导入导出、主题预览
 │   │   └── common.jsx                   # 公共 UI（如连接类型图标）
@@ -154,17 +157,18 @@ zterm/
 │   │   │   ├── utils.js                 # 标签/分组/端口/退格等工具、提取存储字段
 │   │   │   ├── normalizeSession.js      # 规范化单条导入会话
 │   │   │   └── importWarnings.js        # 格式化会话导入警告供界面显示
-│   │   └── settings/                    # 设置领域
-│   │       ├── defaults.js              # DEFAULT_SETTINGS、回滚上下限、默认高亮规则
-│   │       ├── normalize.js             # 钳制回滚/侧栏宽度、日志模式迁移
-│   │       ├── highlightRules.js        # 高亮规则 ID 与保存时规范化
-│   │       ├── sanitizeImport.js        # 剥离未知键、安全合并导入设置
-│   │       └── importWarnings.js        # 格式化设置导入警告供界面显示
+│   │   ├── settings/                    # 设置领域
+│   │   │   ├── defaults.js              # DEFAULT_SETTINGS、回滚上下限、默认高亮规则
+│   │   │   ├── normalize.js             # 钳制回滚/侧栏宽度、日志模式迁移
+│   │   │   ├── highlightRules.js        # 高亮规则 ID 与保存时规范化
+│   │   │   ├── sanitizeImport.js        # 剥离未知键、安全合并导入设置
+│   │   │   └── importWarnings.js        # 格式化设置导入警告供界面显示
+│   │   └── sftp/                        # SFTP 界面辅助（仅渲染进程）
+│   │       └── formatSftpPathError.js   # 将 shared 中的 SFTP 路径错误码映射为 i18n 提示
 │   ├── context/
-│   │   └── I18nContext.jsx              # React 上下文 + useI18n() 文案钩子
+│   │   └── I18nContext.jsx              # React 上下文 + useI18n()；语言解析走 shared
 │   ├── i18n/
-│   │   ├── translations.js              # 中/英文字符串表
-│   │   └── resolveUiLanguage.js         # 将 auto 解析为实际界面语言
+│   │   └── translations.js              # 中/英文字符串表（含 SFTP 路径错误文案）
 │   ├── theme/
 │   │   └── appTheme.js                  # 解析 dark / light / auto 实际主题
 │   └── styles/                          # 按界面拆分的样式
@@ -178,9 +182,11 @@ zterm/
 │       ├── dialog.css
 │       └── settings.css
 │
-├── shared/                              # 主进程与渲染进程共用（模块内不直接依赖 Electron）
+├── shared/                              # 主进程、Worker 与渲染进程共用（模块内不直接依赖 Electron）
 │   ├── terminalEncodings.js             # 编码列表、xterm 二进制串解码辅助
-│   └── sshAlgorithmDefaults.js          # 默认 KEX/加密/MAC 池与弱算法标记
+│   ├── sshAlgorithmDefaults.js          # 默认 KEX/加密/MAC 池与弱算法标记
+│   ├── resolveUiLanguage.js             # detectLangFromLocaleTags、auto → zh / en
+│   └── sftpErrorCodes.js                # SFTP/日志路径错误码、SFTP_PATH_KIND、IPC 错误载荷
 │
 ├── docs/
 │   └── images/                          # README 截图（主界面、设置、连接）
@@ -188,7 +194,7 @@ zterm/
 ├── build/                               # electron-builder 应用图标
 │
 ├── index.html                           # Vite HTML 入口（CSP 由 vite 插件注入）
-├── vite.config.js                       # React (oxc) 插件、开发服务器、Electron CSP 插件
+├── vite.config.js                       # React (oxc) 插件、开发服务器、内联 Electron CSP 插件
 ├── jsconfig.json                        # 路径别名 / JS 工具提示
 ├── package.json                         # 脚本、依赖、electron-builder 配置
 ├── package-lock.json
@@ -207,6 +213,8 @@ zterm/
     │  Worker 线程（SSH / SFTP）
     ▼
 远程主机 / 本地串口 / 系统钥匙串（safeStorage）
+
+shared/*  ── 主进程、Worker、渲染进程共用（编码、算法、界面语言、SFTP 错误码）
 ```
 
 ---
@@ -277,7 +285,7 @@ npm run dev
 2. **可信 IPC**：窗口控制、日志、凭据等接口拒绝非主窗口来源的调用。
 3. **SSH 中间人防护**：记录主机公钥；未知或变更指纹需用户在原生对话框中确认。
 4. **算法策略**：默认优先现代 AEAD 与 EtM MAC；为兼容旧设备仍可选遗留算法，界面会标注弱算法。
-5. **路径沙箱**：会话日志与 SFTP 本地读写路径须解析到标准用户目录或应用 `userData` 之下。
+5. **路径沙箱**：会话日志与 SFTP 本地路径须落在允许的用户目录、`userData` 或（Windows）非系统盘根目录内；拒绝时返回结构化 `SFTP_ERROR` 错误码，由渲染进程映射为 i18n 提示。
 6. **串口安全**：仅允许连接 `listPorts` 枚举结果中的路径，降低任意设备打开风险。
 
 本应用为日常运维工具，不能替代完整安全审计。在生产环境保存密钥前请评估自身威胁模型。

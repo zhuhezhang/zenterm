@@ -1,7 +1,8 @@
 /**
  * 限制可写/可读的本地路径范围，降低渲染进程被滥用时任意读写磁盘的风险。
- * 仅允许位于常见用户目录及本应用 userData 之下。
+ * 允许常见用户目录、本应用 userData；Windows 上另允许系统盘以外的整盘路径。
  */
+import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
 import { createSftpPathError, SFTP_ERROR, SFTP_PATH_KIND, sftpErrorToIpcPayload, } from '../../shared/sftpErrorCodes.js'
@@ -30,6 +31,42 @@ const PATH_NAMES = [
 ]
 
 /**
+ * 获取 Windows 系统盘根路径（如 C:\），用于排除整盘放行
+ * @returns {string}
+ */
+function getWindowsSystemDriveRoot() {
+  const fromEnv = process.env.SystemDrive || process.env.systemdrive
+  if (fromEnv) {
+    const letter = String(fromEnv).replace(/:.*$/, '').trim()
+    if (letter) return path.resolve(`${letter}:\\`)
+  }
+  const windir = process.env.windir || process.env.WINDIR
+  if (windir) return path.parse(path.resolve(windir)).root
+  return path.resolve('C:\\')
+}
+
+/**
+ * Windows：枚举已挂载且非系统盘的盘符根（如 D:\、E:\）
+ * @returns {string[]}
+ */
+function collectWindowsNonSystemDriveRoots() {
+  if (process.platform !== 'win32') return []
+  const systemRoot = getWindowsSystemDriveRoot().toUpperCase()
+  const roots = []
+  for (let code = 65; code <= 90; code++) {
+    const driveRoot = path.resolve(`${String.fromCharCode(code)}:\\`)
+    if (driveRoot.toUpperCase() === systemRoot) continue
+    try {
+      fs.accessSync(driveRoot, fs.constants.F_OK)
+      roots.push(driveRoot)
+    } catch {
+      /* 盘符未挂载或不可访问 */
+    }
+  }
+  return roots
+}
+
+/**
  * 收集所有已解析的允许根目录
  * @returns {string[]} 已解析的允许根目录列表，绝对路径且不含重复项
  */
@@ -42,6 +79,9 @@ function collectResolvedRoots() {
     } catch {
       /* ignore */
     }
+  }
+  for (const driveRoot of collectWindowsNonSystemDriveRoots()) {
+    set.add(driveRoot)
   }
   return [...set]
 }

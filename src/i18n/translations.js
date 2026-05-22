@@ -170,7 +170,7 @@ export const MESSAGES = {
         },
         logPath: {
           label: '日志保存目录',
-          desc: '留空则保存至系统下载目录下的「zterm-session-log」文件夹。须选主目录/文稿/下载/桌面等用户目录下路径，否则写入会被主进程拒绝',
+          desc: '留空则保存至系统下载目录下的「zterm-session-log」文件夹。须选主目录/文稿/下载/桌面等用户目录下路径，否则写入会被主进程拒绝。Windows 上还可使用系统盘（通常为 C 盘）以外的整盘路径',
         },
         saveSecretsToVault: {
           label: '保存敏感凭据到加密存储',
@@ -340,6 +340,7 @@ export const MESSAGES = {
       rename: '重命名',
       delete: '删除',
       empty: '此目录为空',
+      errorTitle: '错误',
       confirmDelete: '确认删除 {name}?',
       nameInvalid: '名称不允许包含以下字符：/ \\ : * ? " < > |',
       downloadFail: '下载失败',
@@ -351,7 +352,7 @@ export const MESSAGES = {
         sftp: 'SFTP',
       },
       pathErrors: {
-        allowedRootsHint: '路径须位于用户主目录、文稿/文档、下载、桌面、图片、音乐、影片或本应用用户数据目录下',
+        allowedRootsHint: '路径须位于用户主目录、文稿/文档、下载、桌面、图片、音乐、影片、本应用用户数据目录下。Windows 上还可使用系统盘（通常为 C 盘）以外的整盘路径',
         localFileDenied: '{kindLabel}本地路径被拒绝：{hint}',
         localDirDenied: '{kindLabel}本地目录被拒绝：{hint}',
         invalidFilename: '{kindLabel}：非法文件名',
@@ -578,7 +579,7 @@ export const MESSAGES = {
         },
         logPath: {
           label: 'Log directory',
-          desc: 'Empty = Downloads/zterm-session-log. Must be under a user-writable folder or the main process will reject writes',
+          desc: 'Empty = Downloads/zterm-session-log. Must be under a user-writable folder or the main process will reject writes. Windows can use any drive letter other than the system drive (usually C:)',
         },
         saveSecretsToVault: {
           label: 'Save secrets to encrypted storage',
@@ -752,6 +753,7 @@ export const MESSAGES = {
       rename: 'Rename',
       delete: 'Delete',
       empty: 'This folder is empty',
+      errorTitle: 'Error',
       confirmDelete: 'Delete {name}?',
       nameInvalid: 'Name cannot contain: / \\ : * ? " < > |',
       downloadFail: 'Download failed',
@@ -763,7 +765,7 @@ export const MESSAGES = {
         sftp: 'SFTP',
       },
       pathErrors: {
-        allowedRootsHint: 'Path must be under your home, Documents, Downloads, Desktop, Pictures, Music, Movies, or this app\'s user data folder',
+        allowedRootsHint: 'Path must be under your home, Documents, Downloads, Desktop, Pictures, Music, Movies, this app\'s user data folder, or (on Windows) any drive letter other than the system drive (usually C:)',
         localFileDenied: '{kindLabel} local file path denied: {hint}',
         localDirDenied: '{kindLabel} local folder denied: {hint}',
         invalidFilename: '{kindLabel}: invalid file name',

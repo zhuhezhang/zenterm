@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
 import { formatSftpOperationError } from '../lib/sftp/formatSftpPathError.js'
 import '../styles/sftp.css'
+import '../styles/dialog.css'
 
 /** 非法文件名字符正则表达式 */
 const INVALID_NAME_CHARS = /[\/\\:*?"\u003c\u003e|\x00]/
@@ -177,6 +178,15 @@ export default function SftpPanel({ session }) {
       document.removeEventListener('keydown', onEscape)
     }
   }, [])
+
+  useEffect(() => {  // 监听错误信息变化，按下 Escape 键关闭错误提示
+    if (!error) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') setError('')
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [error])
 
   /** 上移到父目录 */
   const goUp = () => {
@@ -545,8 +555,6 @@ export default function SftpPanel({ session }) {
         })}
       </div>
 
-      {error && <div className="sftp-error">{error}</div>}
-
       {progress && (
         <div className="sftp-progress">
           <span>{progress.type === 'upload' ? t('sftp.progressUp') : t('sftp.progressDown')}: {progress.file.split('/').pop()}</span>
@@ -632,6 +640,28 @@ export default function SftpPanel({ session }) {
           >
             {t('sftp.delete')}
           </button>
+        </div>,
+        document.body
+      )}
+      {error && document.body && createPortal(
+        <div
+          className="dialog-overlay"
+          onClick={e => e.target === e.currentTarget && setError('')}
+        >
+          <div className="dialog">
+            <div className="dialog-header">
+              <div className="dialog-tabs">{t('sftp.errorTitle')}</div>
+              <button type="button" className="dialog-close" onClick={() => setError('')}>×</button>
+            </div>
+            <div className="dialog-body">
+              <div className="dialog-error">{error}</div>
+            </div>
+            <div className="dialog-footer">
+              <button type="button" className="btn-cancel" onClick={() => setError('')}>
+                {t('sidebar.confirm')}
+              </button>
+            </div>
+          </div>
         </div>,
         document.body
       )}

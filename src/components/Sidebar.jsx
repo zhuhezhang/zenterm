@@ -93,6 +93,24 @@ function buildTree(savedSessions, groupPlaceholders) {
 }
 
 /**
+ * 按当前展开状态深度优先扁平化可见树节点（供搜索框键盘导航）
+ * @param {Array} nodes 树根节点列表
+ * @param {function} isExp 分组是否展开
+ * @returns {Array<{ id: string, type: string, node: object }>}
+ */
+function flattenVisibleTree(nodes, isExp) {
+  const out = []
+  const walk = (list) => {
+    for (const node of list) {
+      out.push({ id: node.id, type: node.type, node })
+      if (node.type === 'group' && isExp(node.path)) walk(node.children)
+    }
+  }
+  walk(nodes)
+  return out
+}
+
+/**
  * 侧边栏组件
  * @param {object} props 组件属性
  * @param {boolean} props.open 侧边栏是否展开
@@ -128,14 +146,27 @@ export default function Sidebar(props) {
   const [renameSessionVal, setRenameSessionVal] = useState('')  // 重命名会话输入值
   const [sftpExpanded, setSftpExpanded] = useState(true)  // SFTP 是否展开
   const [sessionSearchQuery, setSessionSearchQuery] = useState('')  // 会话搜索查询(按会话名、主机或串口路径搜索已保存会话)
+  const [keyboardFocusId, setKeyboardFocusId] = useState(null)  // 搜索框聚焦时方向键选中的树节点 id
   const [dragOver, setDragOver] = useState(null)  // 被拖拽对象所在实时位置，包含id和zone，也就是拖拽分组/会话时经过的分组路径或会话id和 zone（group/session/drop(表示被拖拽对象在根分组上方)）
-  const dragRef = useRef(null)  // 被拖拽分组/会话的分组路径或者会话id和type（group/session）
-  const renameGroupInputRef = useRef(null)  // 重命名分组输入引用
-  const renameGroupAlertingRef = useRef(false)  // 重命名分组警告引用
-  const ignoreRenameGroupBlurRef = useRef(false)  // 重命名分组忽略 blur 引用（blur 事件也就是失去焦点事件）
-  const renameSessionInputRef = useRef(null)  // 重命名会话输入引用
-  const renameSessionAlertingRef = useRef(false)  // 重命名会话警告引用
-  const ignoreRenameSessionBlurRef = useRef(false)  // 重命名会话忽略 blur 引用
+  /** 被拖拽分组/会话的分组路径或者会话id和type（group/session） */
+  const dragRef = useRef(null)  
+  /** 重命名分组输入引用 */
+  const renameGroupInputRef = useRef(null)  
+  /** 重命名分组警告引用 */
+  const renameGroupAlertingRef = useRef(false)  
+  /** 重命名分组忽略 blur 引用（blur 事件也就是失去焦点事件） */
+  const ignoreRenameGroupBlurRef = useRef(false)
+  /** 重命名会话输入引用 */
+  const renameSessionInputRef = useRef(null)  
+  /** 重命名会话警告引用 */
+  const renameSessionAlertingRef = useRef(false)  
+  /** 重命名会话忽略 blur 引用（blur 事件也就是失去焦点事件） */
+  const ignoreRenameSessionBlurRef = useRef(false)  
+  /** 开始搜索前各分组的展开/收起快照，清空搜索后恢复 */
+  const expandedBeforeSearchRef = useRef(null)
+  /** 当前分组展开状态快照，用于搜索框方向键选中树项时滚动到该树项所在位置 */
+  const expandedRef = useRef(expanded)
+  expandedRef.current = expanded
 
   /**
    * 是否展开
@@ -148,6 +179,26 @@ export default function Sidebar(props) {
    * @param {string} path 分组路径
    */
   const togExp = (path) => setExpanded(p => ({ ...p, [path]: !isExp(path) }))
+  /** 清除搜索框方向键对分组/会话的高亮选中 */
+  const clearKeyboardFocus = useCallback(() => setKeyboardFocusId(null), [])
+
+  /**
+   * 更新会话搜索词；进入搜索时快照分组展开状态，结束搜索时恢复
+   * @param {string} next 新的搜索框内容
+   */
+  const updateSessionSearchQuery = useCallback((next) => {
+    const nextTrim = String(next).trim()
+    const prevTrim = sessionSearchQuery.trim()
+    if (!prevTrim && nextTrim) {
+      expandedBeforeSearchRef.current = { ...expandedRef.current }
+    }
+    if (prevTrim && !nextTrim && expandedBeforeSearchRef.current) {
+      setExpanded(expandedBeforeSearchRef.current)
+      expandedBeforeSearchRef.current = null
+    }
+    setSessionSearchQuery(next)
+    setKeyboardFocusId(null)
+  }, [sessionSearchQuery])
   /**
    * 打开上下文菜单
    * @param {Event} e 事件
@@ -557,6 +608,49 @@ export default function Sidebar(props) {
     [filteredSavedSessions, treePlaceholders],
   )
 
+  /** 搜索框方向键可遍历的可见树项（随展开/筛选变化） */
+  const visibleTreeItems = useMemo(() => flattenVisibleTree(tree, isExp), [tree, expanded])
+
+  useEffect(() => {  // 搜索框方向键选中树项时，如果该树项不在可见范围内，则清除高亮选中
+    if (keyboardFocusId && !visibleTreeItems.some((i) => i.id === keyboardFocusId)) {
+      setKeyboardFocusId(null)
+    }
+  }, [visibleTreeItems, keyboardFocusId])
+
+  useEffect(() => {  // 搜索框方向键选中树项时，滚动到该树项所在位置
+    if (!keyboardFocusId || sessionsCollapsed) return
+    const el = document.querySelector(`.sb-tree [data-tree-id="${CSS.escape(keyboardFocusId)}"]`)
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [keyboardFocusId, sessionsCollapsed, visibleTreeItems])
+
+  /** 搜索框键盘：方向键选中树项，回车连接/展开；无选中且搜索非空时回车新建连接 */
+  const handleSessionSearchKeyDown = useCallback((e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (visibleTreeItems.length === 0) return
+      e.preventDefault()
+      const len = visibleTreeItems.length
+      const curIdx = keyboardFocusId == null
+        ? -1
+        : visibleTreeItems.findIndex((i) => i.id === keyboardFocusId)
+      const nextIdx = e.key === 'ArrowDown'
+        ? (curIdx < 0 ? 0 : (curIdx + 1) % len)
+        : (curIdx < 0 ? len - 1 : (curIdx - 1 + len) % len)
+      setKeyboardFocusId(visibleTreeItems[nextIdx].id)
+      return
+    }
+    if (e.key !== 'Enter') return
+    const focused = visibleTreeItems.find((i) => i.id === keyboardFocusId)
+    if (focused) {
+      e.preventDefault()
+      if (focused.type === 'group') togExp(focused.node.path)
+      else onConnectSaved(focused.node.session)
+      return
+    }
+    if (!searchTrim) return
+    e.preventDefault()
+    onNewSession('ssh', { host: searchTrim })
+  }, [visibleTreeItems, keyboardFocusId, searchTrim, togExp, onConnectSaved, onNewSession])
+
   useEffect(() => {  // 有筛选关键词时自动展开匹配会话所在分组
     if (!searchTrim) return
     const paths = new Set()
@@ -597,6 +691,7 @@ export default function Sidebar(props) {
           )}
           <div className="sb-sessions-scroll">
             <div className={`sb-section-row sessions-header${isDO('__sessions_header__', 'drop') ? ' drop-target' : ''}`}
+              onMouseEnter={clearKeyboardFocus}
               onClick={() => setSessionsCollapsed(v => !v)}
               onContextMenu={e => openCtx(e, 'sessions-header', null)}
               onDragOver={e => dOver(e, '__sessions_header__', 'drop')}
@@ -614,12 +709,15 @@ export default function Sidebar(props) {
                     className="sb-session-search"
                     placeholder={t('sidebar.searchPh')}
                     value={sessionSearchQuery}
-                    onChange={(e) => setSessionSearchQuery(e.target.value)}
+                    onChange={(e) => updateSessionSearchQuery(e.target.value)}
+                    onKeyDown={handleSessionSearchKeyDown}
+                    onBlur={clearKeyboardFocus}
                     aria-label={t('sidebar.searchAria')}
                   />
                 </div>
                 <div
                   className={`sb-tree${isDO('__root__', 'drop') ? ' drop-target' : ''}`}
+                  onMouseEnter={clearKeyboardFocus}
                   onDragOver={e => dOver(e, '__root__', 'drop')}
                   onDragLeave={dLeave}
                   onDrop={dropUngroup}>
@@ -634,7 +732,8 @@ export default function Sidebar(props) {
                     ) : searchTrim ? (
                       <>
                         <span>{t('sidebar.noMatch')}</span>
-                        <button type="button" className="sb-link" onClick={() => setSessionSearchQuery('')}>{t('sidebar.clearSearch')}</button>
+                        <button type="button" className="sb-link" onClick={() => onNewSession('ssh', { host: searchTrim })}>{t('sidebar.newConnection')}</button>
+                        <button type="button" className="sb-link" onClick={() => updateSessionSearchQuery('')}>{t('sidebar.clearSearch')}</button>
                       </>
                     ) : (
                       <span>{t('sidebar.nothingToShow')}</span>
@@ -643,6 +742,7 @@ export default function Sidebar(props) {
                 )}
                 {tree.map(node => (
                   <TreeNode key={node.id} node={node} depth={0}
+                    keyboardFocusId={keyboardFocusId}
                     isExp={isExp} togExp={togExp} openCtx={openCtx} onConnectSaved={onConnectSaved}
                     renaming={renaming} renameVal={renameVal} setRenameVal={setRenameVal}
                     setRenaming={setRenaming} renameGroup={renameGroup}
@@ -708,22 +808,25 @@ export default function Sidebar(props) {
  * @param {function} props.dropOnGroup 拖拽到分组的回调函数：点击拖拽时调用，参数是事件和路径
  * @param {function} props.dropOnSession 拖拽到会话的回调函数：点击拖拽时调用，参数是事件和路径
  * @param {function} props.isDO 是否是拖拽目标的回调函数：点击拖拽时调用，参数是路径和类型
+ * @param {string|null} props.keyboardFocusId 搜索框键盘导航当前高亮的节点 id
  * @returns {JSX.Element} 树节点组件
  */
-function TreeNode({ node, depth, isExp, togExp, openCtx, onConnectSaved,
+function TreeNode({ node, depth, keyboardFocusId, isExp, togExp, openCtx, onConnectSaved,
   renaming, renameVal, setRenameVal, setRenaming, renameGroup,
   renameGroupInputRef, ignoreRenameGroupBlurRef,
   renamingSession, renameSessionVal, setRenamingSession, setRenameSessionVal, renameSession, renameSessionInputRef,
   ignoreRenameSessionBlurRef,
   dStart, dEnd, dOver, dLeave, dropOnGroup, dropOnSession, isDO }) {
   const indent = depth * 14 + 14
+  const isKbFocused = keyboardFocusId === node.id
   if (node.type === 'group') {
     const open = isExp(node.path)  // 是否展开
     const isDropTarget = isDO(node.id, 'group')  // 是否是拖拽目标
     return (
       <div className="sb-node-group">
         <div
-          className={`sb-row sb-folder-row${isDropTarget ? ' drop-target' : ''}`}
+          className={`sb-row sb-folder-row${isDropTarget ? ' drop-target' : ''}${isKbFocused ? ' sb-keyboard-focus' : ''}`}
+          data-tree-id={node.id}
           style={{ paddingLeft: indent }}
           onClick={() => togExp(node.path)}
           onContextMenu={e => openCtx(e, 'group', node.path)}
@@ -751,6 +854,7 @@ function TreeNode({ node, depth, isExp, togExp, openCtx, onConnectSaved,
         </div>
         {open && node.children.map(child => (
           <TreeNode key={child.id} node={child} depth={depth + 1}
+            keyboardFocusId={keyboardFocusId}
             isExp={isExp} togExp={togExp} openCtx={openCtx} onConnectSaved={onConnectSaved}
             renaming={renaming} renameVal={renameVal} setRenameVal={setRenameVal}
             setRenaming={setRenaming} renameGroup={renameGroup}
@@ -770,7 +874,8 @@ function TreeNode({ node, depth, isExp, togExp, openCtx, onConnectSaved,
   const isRenamingThis = renamingSession === s.savedId
   return (
     <div
-      className={`sb-row sb-session-row${isDropTarget ? ' drop-target' : ''}`}
+      className={`sb-row sb-session-row${isDropTarget ? ' drop-target' : ''}${isKbFocused ? ' sb-keyboard-focus' : ''}`}
+      data-tree-id={node.id}
       style={{ paddingLeft: indent + 18 }}
       draggable={!isRenamingThis}
       onDragStart={e => dStart(e, node.id, 'session')}

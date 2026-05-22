@@ -202,6 +202,12 @@
 .sb-row:hover { background: var(--bg-hover); }
 .sb-row:hover .sb-count { opacity: 1; }
 
+.sb-row.sb-keyboard-focus {
+  background: var(--bg-hover);
+  outline-offset: -1px;
+}
+.sb-row.sb-keyboard-focus .sb-count { opacity: 1; }
+
 /* drop 高亮 */
 .sb-row.drop-target {
   background: var(--accent-dim);

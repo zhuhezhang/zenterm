@@ -70,7 +70,7 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 - **SSH host key verification** (known-hosts style, `userData/zterm-known-hosts.json`); prompts on first connect and fingerprint change
 - **Weak SSH algorithms** flagged in settings; modern defaults exclude legacy CBC / SHA-1 / `ssh-rsa` where possible
 - Optional **encrypted vault** for passwords and keys (`safeStorage` when available)
-- **Local path policy** for logs and SFTP: only under home, Documents, Downloads, Desktop, userData, etc.
+- **Local path policy** for logs and SFTP: home, Documents, Downloads, Desktop, Music/Pictures/Videos, userData; on Windows, non-system drive roots (e.g. `D:\`) are also allowed
 
 ---
 
@@ -103,7 +103,7 @@ ZTerm connection
 ```
 zterm/
 ├── electron/                            # Main process (Node.js + Electron APIs)
-│   ├── main.js                          # App entry: frameless window, IPC routing, session log I/O
+│   ├── main.js                          # App entry: frameless window, IPC routing, session log I/O, UI language sync
 │   ├── preload.cjs                      # contextBridge → window.zterm (SSH/SFTP/Telnet/Serial/credentials/window/log)
 │   ├── handlers/                        # IPC handlers registered from main.js
 │   │   ├── ssh.js                       # SSH connect/disconnect, PTY I/O, resize; delegates to worker
@@ -113,12 +113,15 @@ zterm/
 │   │   └── credentials.js               # safeStorage vault: get/sync/remove/duplicate/clearAll
 │   ├── workers/                         # Worker threads (isolate blocking ssh2 I/O from main loop)
 │   │   ├── sshSessionWorker.js          # Per-session SSH shell in a worker
-│   │   └── sftpSessionWorker.js         # Per-session SFTP client in a worker
+│   │   └── sftpSessionWorker.js         # Per-session SFTP client in a worker (local path checks via shared roots)
+│   ├── i18n/
+│   │   └── knownHosts.js                # Bilingual strings for SSH host-key confirmation dialogs (main process)
 │   └── lib/                             # Shared main-process utilities
 │       ├── trustedSender.js             # Allow IPC only from the registered main BrowserWindow
-│       ├── localPathPolicy.js           # Validate log/SFTP local paths against allowed roots
-│       ├── sftpLocalPathRoots.js        # Resolve OS user folders (home, Downloads, Documents, …)
+│       ├── localPathPolicy.js           # Resolve allowed roots; validate logs/SFTP paths; structured SFTP errors
+│       ├── sftpLocalPathRoots.js        # Pure path containment checks (re-exported; used by main + workers)
 │       ├── sshKnownHosts.js             # Persist and verify SSH host keys (zterm-known-hosts.json)
+│       ├── uiLanguageState.js           # Cache settings.uiLanguage for main-process dialogs (known hosts, …)
 │       └── encodeTerminalWrite.js       # Encode outgoing terminal keystrokes (iconv-lite)
 │
 ├── src/                                 # Renderer (React 18 + Vite)
@@ -126,10 +129,10 @@ zterm/
 │   ├── App.jsx                          # Shell layout: title bar, sidebar, tabs, terminal, dialogs
 │   ├── components/
 │   │   ├── TitleBar.jsx                 # Custom window controls (min/max/close)
-│   │   ├── Sidebar.jsx                  # Saved sessions tree, groups, SFTP host, import sessions
+│   │   ├── Sidebar.jsx                  # Saved sessions tree, groups, search, import; hosts SftpPanel
 │   │   ├── TabBar.jsx                   # Session tabs, reorder, context menu actions
 │   │   ├── TerminalPanel.jsx            # xterm.js instance, encoding, logging, highlights, backspace
-│   │   ├── SftpPanel.jsx                # Remote file tree and transfer UI
+│   │   ├── SftpPanel.jsx                # Remote file tree, upload/download, drag-and-drop, transfer progress
 │   │   ├── ConnectDialog.jsx            # SSH / Telnet / Serial form, credentials sub-dialog
 │   │   ├── SettingsDialog.jsx           # Tabbed settings, algorithms, import/export, theme preview
 │   │   └── common.jsx                   # Shared UI bits (e.g. connection type icons)
@@ -154,17 +157,18 @@ zterm/
 │   │   │   ├── utils.js                 # Label/group/port/backspace helpers, pick storage fields
 │   │   │   ├── normalizeSession.js      # Normalize a single imported session object
 │   │   │   └── importWarnings.js        # Format session import warnings for display
-│   │   └── settings/                    # Settings domain
-│   │       ├── defaults.js              # DEFAULT_SETTINGS, scrollback bounds, default highlight rules
-│   │       ├── normalize.js             # Clamp scrollback, sidebar width, logging mode migration
-│   │       ├── highlightRules.js        # Highlight rule IDs and save-time normalization
-│   │       ├── sanitizeImport.js        # Strip unknown keys; merge imported settings safely
-│   │       └── importWarnings.js        # Format settings import warnings for display
+│   │   ├── settings/                    # Settings domain
+│   │   │   ├── defaults.js              # DEFAULT_SETTINGS, scrollback bounds, default highlight rules
+│   │   │   ├── normalize.js             # Clamp scrollback, sidebar width, logging mode migration
+│   │   │   ├── highlightRules.js        # Highlight rule IDs and save-time normalization
+│   │   │   ├── sanitizeImport.js        # Strip unknown keys; merge imported settings safely
+│   │   │   └── importWarnings.js        # Format settings import warnings for display
+│   │   └── sftp/                        # SFTP UI helpers (renderer only)
+│   │       └── formatSftpPathError.js   # Map shared SFTP path error codes → i18n user messages
 │   ├── context/
-│   │   └── I18nContext.jsx              # React context + useI18n() for UI strings
+│   │   └── I18nContext.jsx              # React context + useI18n(); uses shared resolveUiLanguage
 │   ├── i18n/
-│   │   ├── translations.js              # zh / en string tables
-│   │   └── resolveUiLanguage.js         # Resolve auto → effective language
+│   │   └── translations.js              # zh / en string tables (incl. SFTP path error messages)
 │   ├── theme/
 │   │   └── appTheme.js                  # Resolve dark / light / auto effective theme
 │   └── styles/                          # CSS split by surface
@@ -178,9 +182,11 @@ zterm/
 │       ├── dialog.css
 │       └── settings.css
 │
-├── shared/                              # Imported by both main and renderer (no Electron in module graph)
+├── shared/                              # Imported by main, workers, and renderer (no Electron in module graph)
 │   ├── terminalEncodings.js             # Encoding list, decode helpers for xterm binary strings
-│   └── sshAlgorithmDefaults.js          # Default KEX/cipher/MAC pools and weak-algorithm flags
+│   ├── sshAlgorithmDefaults.js          # Default KEX/cipher/MAC pools and weak-algorithm flags
+│   ├── resolveUiLanguage.js             # detectLangFromLocaleTags, resolve auto → zh / en
+│   └── sftpErrorCodes.js                # SFTP/log path error codes, SFTP_PATH_KIND, IPC error payloads
 │
 ├── docs/
 │   └── images/                          # README screenshots (main, settings, connection)
@@ -188,7 +194,7 @@ zterm/
 ├── build/                               # App icons for electron-builder
 │
 ├── index.html                           # Vite HTML entry (CSP injected by vite plugin)
-├── vite.config.js                       # React (oxc) plugin, dev server, Electron CSP plugin
+├── vite.config.js                       # React (oxc) plugin, dev server, inline Electron CSP plugin
 ├── jsconfig.json                        # Path aliases / JS tooling hints
 ├── package.json                         # Scripts, dependencies, electron-builder config
 ├── package-lock.json
@@ -200,13 +206,15 @@ zterm/
 **Runtime data flow (simplified):**
 
 ```
-Renderer (React/xterm)
+Renderer (React / xterm)
     │  window.zterm.*  (preload.cjs)
     ▼
 Main process (main.js + handlers)
-    │  worker threads (SSH/SFTP)
+    │  worker threads (SSH / SFTP)
     ▼
 Remote host / local serial port / OS keychain (safeStorage)
+
+shared/*  ── imported by main, workers, and renderer (encodings, algorithms, UI language, SFTP errors)
 ```
 
 ---
@@ -277,7 +285,7 @@ Exported **sessions** and **settings** use a versioned JSON envelope (max file s
 2. **Trusted IPC**: Window control, logging, and credential APIs reject senders that are not the registered main window.
 3. **SSH MITM mitigation**: Host keys are recorded; unknown or changed fingerprints require user confirmation in a native dialog.
 4. **Algorithm hygiene**: Defaults prefer modern AEAD ciphers and EtM MACs; legacy options remain selectable for old equipment but are marked weak in the UI.
-5. **Path sandboxing**: Session logs and SFTP local read/write paths must resolve under standard user folders or app `userData`.
+5. **Path sandboxing**: Session logs and SFTP local paths must resolve under allowed user folders, app `userData`, or (Windows) non-system drive roots; denials return structured `SFTP_ERROR` codes mapped to i18n in the renderer.
 6. **Serial safety**: Connect only accepts paths returned by `listPorts` (refreshed list), reducing arbitrary device open attempts.
 
 This app is a convenience tool, not a full security audit. Review your threat model before storing production keys in the vault.
