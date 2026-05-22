@@ -1,5 +1,5 @@
-/** SSH 已知主机公钥确认对话框文案（主进程 dialog 使用）*/
-export const KNOWN_HOSTS_MESSAGES = {
+/** SSH 已知主机公钥确认对话框文案（主进程 dialog 使用）../lib/sshKnownHosts.js */
+export const SSH_KNOWN_HOSTS = {
   zh: {
     changed: {
       title: 'SSH 主机密钥已变更',
@@ -32,22 +32,4 @@ export const KNOWN_HOSTS_MESSAGES = {
       trustSave: 'Trust and save',
     },
   },
-}
-
-/**
- * 翻译 SSH 已知主机公钥确认对话框文案
- * @param {'zh'|'en'} lang 语言
- * @param {string} path 点路径，如 changed.title
- * @param {Record<string, string|number>} [params] 参数
- * @returns {string} 翻译后的文案
- */
-export function translateKnownHosts(lang, path, params = {}) {
-  const L = lang === 'en' ? 'en' : 'zh'
-  const parts = path.split('.')
-  let cur = KNOWN_HOSTS_MESSAGES[L]
-  for (const p of parts) {
-    cur = cur?.[p]
-  }
-  if (typeof cur !== 'string') return path
-  return cur.replace(/\{(\w+)\}/g, (_, k) => (params[k] != null ? String(params[k]) : `{${k}}`))
 }

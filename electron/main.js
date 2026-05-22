@@ -66,13 +66,13 @@ function createWindow() {
   setupLogHandlers(ipcMain)
 }
 
-app.whenReady().then(async () => {
-  if (isDev && process.platform === 'darwin') {
+app.whenReady().then(async () => {  // 当应用准备好时，执行以下操作
+  if (isDev && process.platform === 'darwin') {  // macOS 平台，设置 Dock 图标
     const icon = resolveAppIcon()
     if (icon) app.dock?.setIcon(icon)
   }
   createWindow()
-  setupSSHHandlers(ipcMain, mainWindow)
+  setupSSHHandlers(ipcMain, mainWindow) // 设置 SSH 相关的 IPC 处理函数
   setupSFTPHandlers(ipcMain, mainWindow)
   setupTelnetHandlers(ipcMain, mainWindow)
   setupSerialHandlers(ipcMain, mainWindow)

@@ -1,4 +1,4 @@
-import { translate } from '../../i18n/translations.js'
+import { translateRender } from '../../i18n/translateRender.js'
 import { resolveEffectiveUiLanguage } from '../../../shared/resolveUiLanguage.js'
 
 /** 与设置界面「新增规则」一致的唯一 id */
@@ -29,7 +29,7 @@ export function resolveHighlightRuleId(rawId, usedIds) {
  * @returns {string} 规则名称
  */
 export function unnamedHighlightRuleLabel(lang, n) {
-  return translate((lang === 'en' ? 'en' : 'zh'), 'settings.unnamedRule', { n })
+  return translateRender((lang === 'en' ? 'en' : 'zh'), 'settings.unnamedRule', { n })
 }
 
 /**
@@ -46,10 +46,10 @@ export function resolveHighlightRuleName(rawName, usedNames, lang, startN = 1) {
 
   const locale = (lang === 'en' ? 'en' : 'zh')
   for (let n = startN; n < 10000; n++) {
-    const candidate = translate(locale, 'settings.unnamedRule', { n })
+    const candidate = translateRender(locale, 'settings.unnamedRule', { n })
     if (!usedNames.has(candidate)) return candidate
   }
-  return `${translate(locale, 'settings.unnamedRule', { n: startN })}-${Date.now()}`
+  return `${translateRender(locale, 'settings.unnamedRule', { n: startN })}-${Date.now()}`
 }
 
 /**

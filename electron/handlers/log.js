@@ -5,10 +5,11 @@ import { assertLogWriteDirectoryAllowed } from '../lib/localPathPolicy.js'
 import { sanitizeLogFileStem } from '../../shared/safeFileName.js'
 
 /**
- * @param {Electron.IpcMain} ipcMain
+ * 日志写入处理程序
+ * @param {Electron.IpcMain} ipcMain ipcMain 实例
  */
 export function setupLogHandlers(ipcMain) {
-  ipcMain.on('log:write', (e, logDir, logFileName, data) => {
+  ipcMain.on('log:write', (e, logDir, logFileName, data) => {  // 写入日志
     try {
       if (!isTrustedIpcSender(e.sender)) return
       if (!logDir) return
@@ -22,7 +23,7 @@ export function setupLogHandlers(ipcMain) {
     }
   })
 
-  ipcMain.on('log:append', (e, logDir, logFileName, data) => {
+  ipcMain.on('log:append', (e, logDir, logFileName, data) => {  // 追加日志
     try {
       if (!isTrustedIpcSender(e.sender)) return
       if (!logDir || data == null || data === '') return

@@ -99,26 +99,26 @@ function hostVerifier(key, callback) {
 }
 
 parentPort.on('message', (msg) => {  // 监听主线程发送的消息
-  if (msg.type === 'HOST_VERIFY_RESULT') {
+  if (msg.type === 'HOST_VERIFY_RESULT') {  // 处理主机公钥校验结果
     const cb = verifyCallbacks.get(msg.reqId)
     verifyCallbacks.delete(msg.reqId)
     if (typeof cb === 'function') cb(!!msg.ok)
     return
   }
-  if (msg.type === 'WRITE') {
+  if (msg.type === 'WRITE') {  // 处理写入数据
     if (state.stream && !state.stream.destroyed) {
       const buf = Buffer.isBuffer(msg.data) ? msg.data : Buffer.from(msg.data)
       state.stream.write(buf)
     }
     return
   }
-  if (msg.type === 'RESIZE') {
+  if (msg.type === 'RESIZE') {  // 处理调整大小
     if (state.stream && !state.stream.destroyed) {
       state.stream.setWindow(msg.rows, msg.cols)
     }
     return
   }
-  if (msg.type === 'DISCONNECT') {
+  if (msg.type === 'DISCONNECT') {  // 处理断开连接
     try {
       if (state.stream && typeof state.stream.close === 'function') {
         state.stream.close()

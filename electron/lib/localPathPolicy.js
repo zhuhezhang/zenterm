@@ -5,7 +5,7 @@
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
-import { createSftpPathError, SFTP_ERROR, SFTP_PATH_KIND, sftpErrorToIpcPayload, } from '../../shared/sftpErrorCodes.js'
+import { translateMain } from '../i18n/translateMain.js'
 import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, isPathWithinResolvedRoots,
   safeJoinLocalDownloadPathForRoots,
@@ -32,7 +32,7 @@ const PATH_NAMES = [
 
 /**
  * 获取 Windows 系统盘根路径（如 C:\），用于排除整盘放行
- * @returns {string}
+ * @returns {string} 系统盘根路径
  */
 function getWindowsSystemDriveRoot() {
   const fromEnv = process.env.SystemDrive || process.env.systemdrive
@@ -47,7 +47,7 @@ function getWindowsSystemDriveRoot() {
 
 /**
  * Windows：枚举已挂载且非系统盘的盘符根（如 D:\、E:\）
- * @returns {string[]}
+ * @returns {string[]} 已挂载且非系统盘的盘符根列表
  */
 function collectWindowsNonSystemDriveRoots() {
   if (process.platform !== 'win32') return []
@@ -110,25 +110,23 @@ export function isPathWithinAllowedUserRoots(resolvedPath) {
 export function assertLogWriteDirectoryAllowed(logDir) {
   const resolved = path.resolve(String(logDir))
   if (!isPathWithinAllowedUserRoots(resolved)) {
-    throw createSftpPathError(SFTP_ERROR.LOG_DIR_DENIED)
+    const hint = translateMain('sftp.pathErrors.allowedRootsHint')
+    throw new Error(translateMain('sftp.pathErrors.logDirDenied', { hint }))
   }
 }
 
 /**
  * 校验日志目录是否允许写入（供设置界面等展示提示，不抛错）
  * @param {string} logDir 日志目录（来自设置）
- * @returns {{ ok: true } | { ok: false, errorCode: string, errorParams?: Record<string, string> }} 如果日志目录允许写入则返回 { ok: true }，否则返回错误码供前端 i18n
+ * @returns {{ ok: true } | { ok: false, message: string }} 失败时 message 为已翻译文案
  */
 export function validateLogWriteDirectory(logDir) {
   try {
     assertLogWriteDirectoryAllowed(logDir)
     return { ok: true }
   } catch (e) {
-    const payload = sftpErrorToIpcPayload(e)
-    if ('errorCode' in payload) {
-      return { ok: false, errorCode: payload.errorCode, errorParams: payload.errorParams }
-    }
-    return { ok: false, errorCode: SFTP_ERROR.LOG_DIR_DENIED }
+    const message = e instanceof Error ? e.message : String(e)
+    return { ok: false, message }
   }
 }
 
@@ -137,7 +135,7 @@ export function validateLogWriteDirectory(logDir) {
  * @param {string} localPath 本地路径
  * @param {string} kind 错误前缀，如「下载」「上传」
  */
-export function assertSftpLocalFilePathAllowed(localPath, kind = SFTP_PATH_KIND.SFTP) {
+export function assertSftpLocalFilePathAllowed(localPath, kind = 'sftp') {
   assertSftpLocalFilePathAllowedForRoots(localPath, collectResolvedRoots(), kind)
 }
 
@@ -146,7 +144,7 @@ export function assertSftpLocalFilePathAllowed(localPath, kind = SFTP_PATH_KIND.
  * @param {string} localDir 本地目录
  * @param {string} kind 错误前缀，如「下载」「上传」
  */
-export function assertSftpLocalDirAllowed(localDir, kind = SFTP_PATH_KIND.SFTP) {
+export function assertSftpLocalDirAllowed(localDir, kind = 'sftp') {
   assertSftpLocalDirAllowedForRoots(localDir, collectResolvedRoots(), kind)
 }
 
@@ -157,6 +155,6 @@ export function assertSftpLocalDirAllowed(localDir, kind = SFTP_PATH_KIND.SFTP) 
  * @param {string} kind 错误前缀，如「下载」「上传」
  * @returns {string} 解析后的本地路径
  */
-export function safeJoinLocalDownloadPath(parentDir, remoteEntryName, kind = SFTP_PATH_KIND.DOWNLOAD) {
+export function safeJoinLocalDownloadPath(parentDir, remoteEntryName, kind = 'download') {
   return safeJoinLocalDownloadPathForRoots(parentDir, remoteEntryName, collectResolvedRoots(), kind)
 }

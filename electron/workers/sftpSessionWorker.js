@@ -5,12 +5,14 @@ import fs from 'fs'
 import { parentPort, workerData } from 'worker_threads'
 import { Client } from 'ssh2'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
-import { SFTP_PATH_KIND, sftpErrorToIpcPayload } from '../../shared/sftpErrorCodes.js'
+import { setStoredUiLanguage } from '../i18n/translateMain.js'
 import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, safeJoinLocalDownloadPathForRoots,
 } from '../lib/sftpLocalPathRoots.js'
 
-const { config, allowedRoots } = workerData
+const { config, allowedRoots, uiLanguage } = workerData
+// Worker 子线程对齐主进程界面语言，供路径校验 throw 时使用 translateMain
+setStoredUiLanguage(uiLanguage === 'en' ? 'en' : 'zh')
 
 /** 
  * 发送消息到主线程
@@ -175,13 +177,13 @@ async function deleteRecursive(remotePath) {
  * @returns {Promise<void>}
  */
 async function downloadDirRecursive(remoteDir, localDir) {
-  assertSftpLocalDirAllowedForRoots(localDir, allowedRoots, SFTP_PATH_KIND.DOWNLOAD)
+  assertSftpLocalDirAllowedForRoots(localDir, allowedRoots, 'download')
   fs.mkdirSync(localDir, { recursive: true })
   const list = await sftpReaddir(remoteDir)
   for (const item of list) {
     const name = remoteEntryName(item.filename)
     const remotePath = remoteDir === '/' ? `/${name}` : `${remoteDir}/${name}`
-    const localPath = safeJoinLocalDownloadPathForRoots(localDir, name, allowedRoots, SFTP_PATH_KIND.DOWNLOAD)
+    const localPath = safeJoinLocalDownloadPathForRoots(localDir, name, allowedRoots, 'download')
     if (item.attrs.isDirectory()) {
       await downloadDirRecursive(remotePath, localPath)
     } else {
@@ -240,7 +242,7 @@ async function handleCmd(msg) {
   }
   try {
     switch (cmd) {
-      case 'LIST': {
+      case 'LIST': {  // 列出远程目录
         const list = await sftpReaddir(msg.remotePath)
         const items = list
           .map((item) => {
@@ -263,8 +265,8 @@ async function handleCmd(msg) {
         postCmdResult(reqId, true, { items })
         break
       }
-      case 'DOWNLOAD': {
-        assertSftpLocalFilePathAllowedForRoots(msg.localPath, allowedRoots, SFTP_PATH_KIND.DOWNLOAD)
+      case 'DOWNLOAD': {  // 下载文件
+        assertSftpLocalFilePathAllowedForRoots(msg.localPath, allowedRoots, 'download')
         await new Promise((resolve, reject) => {
           state.sftp.fastGet(msg.remotePath, msg.localPath, {
             step: (transferred, _chunk, total_size) => {
@@ -281,13 +283,13 @@ async function handleCmd(msg) {
         postCmdResult(reqId, true)
         break
       }
-      case 'DOWNLOAD_DIR': {
+      case 'DOWNLOAD_DIR': {  // 下载目录
         await downloadDirRecursive(msg.remoteDir, msg.localDir)
         postCmdResult(reqId, true)
         break
       }
-      case 'UPLOAD': {
-        assertSftpLocalFilePathAllowedForRoots(msg.localPath, allowedRoots, SFTP_PATH_KIND.UPLOAD)
+      case 'UPLOAD': {  // 上传文件
+        assertSftpLocalFilePathAllowedForRoots(msg.localPath, allowedRoots, 'upload')
         await new Promise((resolve, reject) => {
           state.sftp.fastPut(msg.localPath, msg.remotePath, {
             step: (transferred, _chunk, total_size) => {
@@ -304,19 +306,19 @@ async function handleCmd(msg) {
         postCmdResult(reqId, true)
         break
       }
-      case 'MKDIR': {
+      case 'MKDIR': {  // 创建目录
         await new Promise((resolve, reject) => {
           state.sftp.mkdir(msg.remotePath, (err) => (err ? reject(err) : resolve()))
         })
         postCmdResult(reqId, true)
         break
       }
-      case 'DELETE': {
+      case 'DELETE': {  // 删除文件或目录
         await deleteRecursive(msg.remotePath)
         postCmdResult(reqId, true)
         break
       }
-      case 'RENAME': {
+      case 'RENAME': {  // 重命名文件或目录
         await new Promise((resolve, reject) => {
           state.sftp.rename(msg.oldPath, msg.newPath, (err) => (err ? reject(err) : resolve()))
         })
@@ -327,24 +329,24 @@ async function handleCmd(msg) {
         postCmdResult(reqId, false, { error: `Unknown cmd: ${cmd}` })
     }
   } catch (e) {
-    postCmdResult(reqId, false, sftpErrorToIpcPayload(e))
+    postCmdResult(reqId, false, { error: e instanceof Error ? e.message : String(e) })
   }
 }
 
 parentPort.on('message', (msg) => {  // 监听主线程发送的消息
-  if (msg.type === 'HOST_VERIFY_RESULT') {
+  if (msg.type === 'HOST_VERIFY_RESULT') {  // 处理主机公钥校验结果
     const cb = verifyCallbacks.get(msg.reqId)
     verifyCallbacks.delete(msg.reqId)
     if (typeof cb === 'function') cb(!!msg.ok)
     return
   }
-  if (msg.type === 'DISCONNECT') {
+  if (msg.type === 'DISCONNECT') {  // 处理断开连接
     try {
       state.conn?.end()
     } catch (_) {}
     return
   }
-  if (msg.type === 'CMD') {
+  if (msg.type === 'CMD') {  // 处理命令
     void enqueueOp(() => handleCmd(msg))
   }
 })

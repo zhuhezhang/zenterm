@@ -1,4 +1,4 @@
-import { translate } from '@/i18n/translations.js'
+import { translateRender } from '@/i18n/translateRender.js'
 
 /**
  * 映射 SSH 连接错误
@@ -10,12 +10,12 @@ export function mapSshError(err, lang) {
   const raw = String(err?.message || err?.error || err || '').trim()  // 原始错误文本
   const lower = raw.toLowerCase()
   const w = (key) => {
-    const friendly = translate(lang, key)  // 友好提示
+    const friendly = translateRender(lang, key)  // 友好提示
     if (!raw) return friendly
-    return translate(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
+    return translateRender(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
   }
 
-  if (!raw) return translate(lang, 'errors.ssh.unknown')
+  if (!raw) return translateRender(lang, 'errors.ssh.unknown')
   if (lower.includes('all configured authentication methods failed') || lower.includes('permission denied')) {
     return w('errors.ssh.auth')
   }
@@ -44,12 +44,12 @@ export function mapSftpError(err, lang) {
   const raw = String(err?.message || err?.error || err || '').trim()  // 原始错误文本
   const lower = raw.toLowerCase()
   const w = (key) => {
-    const friendly = translate(lang, key)  // 友好提示
+    const friendly = translateRender(lang, key)  // 友好提示
     if (!raw) return friendly
-    return translate(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
+    return translateRender(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
   }
 
-  if (!raw) return translate(lang, 'errors.sftp.unknown')
+  if (!raw) return translateRender(lang, 'errors.sftp.unknown')
   if (lower.includes('no matching key exchange algorithm')) {
     return w('errors.sftp.kex')
   }
@@ -69,12 +69,12 @@ export function mapTelnetError(err, lang) {
   const raw = String(err?.message || err?.error || err || '').trim()  // 原始错误文本
   const lower = raw.toLowerCase()
   const w = (key) => {
-    const friendly = translate(lang, key)  // 友好提示
+    const friendly = translateRender(lang, key)  // 友好提示
     if (!raw) return friendly
-    return translate(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
+    return translateRender(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
   }
 
-  if (!raw) return translate(lang, 'errors.telnet.unknown')
+  if (!raw) return translateRender(lang, 'errors.telnet.unknown')
   if (lower.includes('connection timeout') || lower.includes('etimedout')) {
     return w('errors.telnet.timeout')
   }
@@ -100,12 +100,12 @@ export function mapSerialError(err, lang) {
   const raw = String(err?.message || err?.error || err || '').trim()  // 原始错误文本
   const lower = raw.toLowerCase()
   const w = (key) => {
-    const friendly = translate(lang, key)  // 友好提示
+    const friendly = translateRender(lang, key)  // 友好提示
     if (!raw) return friendly
-    return translate(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
+    return translateRender(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
   }
 
-  if (!raw) return translate(lang, 'errors.serial.unknown')
+  if (!raw) return translateRender(lang, 'errors.serial.unknown')
   if (lower.includes('cannot open') || lower.includes('access denied') || lower.includes('eperm') || lower.includes('eacces')) {
     return w('errors.serial.access')
   }

@@ -3,8 +3,8 @@ export const INVALID_LABEL_CHARS = /[\/\\:*?"\u003c\u003e|\x00]/
 
 /**
  * 是否包含非法标签字符
- * @param {string} value
- * @returns {boolean}
+ * @param {string} value 标签/分组名
+ * @returns {boolean} 是否包含非法标签字符
  */
 export function hasInvalidLabelChars(value) {
   return INVALID_LABEL_CHARS.test(String(value ?? ''))
@@ -25,8 +25,8 @@ export function safeFileToken(raw) {
 
 /**
  * 日志文件主名：非法字符替换为下划线（主进程 log:write / log:append）
- * @param {string} raw
- * @returns {string}
+ * @param {string} raw 原始文件名
+ * @returns {string} 安全文件名
  */
 export function sanitizeLogFileStem(raw) {
   return String(raw ?? '').replace(INVALID_LABEL_CHARS, '_').trim() || 'session'

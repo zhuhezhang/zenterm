@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
-import { translate } from '../i18n/translations.js'
+import { translateRender } from '../i18n/translateRender.js'
 import { resolveEffectiveUiLanguage } from '../../shared/resolveUiLanguage.js'
 import { exportSessions, saveSessions } from '../store/sessionStore.js'
 import { IMPORT_JSON_ACCEPT } from '../lib/import/constants.js'
@@ -19,7 +19,6 @@ import {
 import {
   applySessionsImport, reportSessionsImportResult, reportSessionsImportError, resetImportFileInput,
 } from '../lib/import/applySessionsImport.js'
-import { formatSftpPathError } from '../lib/sftp/formatSftpPathError.js'
 import { HighlightRegexIcon, HighlightCaseIcon } from './settings/HighlightRuleIcons.jsx'
 import '../styles/dialog.css'
 import '../styles/settings.css'
@@ -43,7 +42,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     algorithmPreferences: settings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
   })
   const msgLang = resolveEffectiveUiLanguage(form.uiLanguage ?? settings.uiLanguage ?? 'auto')
-  const t = (path, params) => translate(msgLang, path, params)
+  const t = (path, params) => translateRender(msgLang, path, params)
 
   /** 导入设置的文件输入引用。 useRef和useState类似，但它返回一个可变的ref对象，其.current属性被初始化为传入的参数（initialValue）。返回的ref对象在组件的整个生命周期内保持不变，因此它不会触发重新渲染*/
   const importRef = useRef(null)
@@ -351,7 +350,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
       if (window.zterm?.validateLogDirectory && likelyAbsolute) {
         const vr = await window.zterm.validateLogDirectory(p)
         if (!vr?.ok) {
-          alert(formatSftpPathError(t, vr) || t('settings.logPathRejected'))
+          alert(vr?.message || t('settings.logPathRejected'))
           return
         }
       }
@@ -677,7 +676,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
       <div className="settings-items">
         {renderSectionHeader(sectionDef.header)}
         {(form.highlightRules || []).map((rule, idx) => {
-          const unnamed = translate(msgLang, 'settings.unnamedRule', { n: idx + 1 })
+          const unnamed = translateRender(msgLang, 'settings.unnamedRule', { n: idx + 1 })
           return (
             <div key={rule.id} className="settings-rule-item">
               <div className="settings-rule-top">

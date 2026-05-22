@@ -7,13 +7,13 @@
  * useI18n = 下层谁从柜子里拿什么(使用者组件)
  */
 import { createContext, useContext, useMemo } from 'react'
-import { translate } from '../i18n/translations.js'
+import { translateRender } from '../i18n/translateRender.js'
 import { resolveEffectiveUiLanguage } from '../../shared/resolveUiLanguage.js'
 
 /** I18n 上下文 */
 const I18nContext = createContext({
   lang: 'zh',
-  t: (path, params) => translate('zh', path, params),
+  t: (path, params) => translateRender('zh', path, params),
 })
 
 /**
@@ -28,7 +28,7 @@ export function I18nProvider({ language, children }) {
   const value = useMemo(  // useMemo 在这里只有当语言 lang 变化时才会重新计算 value 的值，否则直接返回缓存的 value。避免不必要的重新计算和渲染
     () => ({
       lang,
-      t: (path, params) => translate(lang, path, params),
+      t: (path, params) => translateRender(lang, path, params),
     }),
     [lang],
   )

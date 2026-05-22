@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
-import { formatSftpOperationError } from '../lib/sftp/formatSftpPathError.js'
 import '../styles/sftp.css'
 
 /** 非法文件名字符正则表达式 */
@@ -105,7 +104,7 @@ export default function SftpPanel({ session }) {
     setSelected(null)
     try {
       const res = await window.zterm.sftp.list(sftpSessionId, dirPath)
-      if (!res.success) throw new Error(formatSftpOperationError(t, res, res.error))
+      if (!res.success) throw new Error(res.error || 'Unknown error')
       setItems(res.items)
       setPath(dirPath)
     } catch (e) {
@@ -204,7 +203,7 @@ export default function SftpPanel({ session }) {
     if (!confirm(t('sftp.confirmDelete', { name: item.name }))) return
     const res = await window.zterm.sftp.delete(sftpSessionId, item.path)
     if (res.success) loadDir(path)
-    else alert(formatSftpOperationError(t, res, res.error))
+    else alert(res.error || 'Unknown error')
   }
 
   /** 开始创建文件夹 */
@@ -228,7 +227,7 @@ export default function SftpPanel({ session }) {
       setCreateDirName('')
       loadDir(path)
     }
-    else alert(formatSftpOperationError(t, res, res.error))
+    else alert(res.error || 'Unknown error')
   }
 
   /** 
@@ -257,7 +256,7 @@ export default function SftpPanel({ session }) {
     setRenaming(null)
     const res = await window.zterm.sftp.rename(sftpSessionId, oldPath, newPath)
     if (res.success) loadDir(path)
-    else alert(formatSftpOperationError(t, res, res.error))
+    else alert(res.error || 'Unknown error')
   }
 
   /** 
@@ -273,7 +272,7 @@ export default function SftpPanel({ session }) {
     const res = item.isDir
       ? await window.zterm.sftp.downloadDir(sftpSessionId, item.path, localPath)
       : await window.zterm.sftp.download(sftpSessionId, item.path, localPath)
-    if (!res?.success) alert(formatSftpOperationError(t, res, t('sftp.downloadFail')))
+    if (!res?.success) alert(res.error || t('sftp.downloadFail'))
   }
 
   /** 
@@ -336,7 +335,7 @@ export default function SftpPanel({ session }) {
         const remotePath = (path === '/' ? '' : path) + '/' + f.name
         const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
         if (!res?.success) {
-          throw new Error(formatSftpOperationError(t, res, t('sftp.uploadFail', { name: f.name })))
+          throw new Error(res.error || t('sftp.uploadFail', { name: f.name }))
         }
       }
       loadDir(path)
@@ -372,7 +371,7 @@ export default function SftpPanel({ session }) {
         await ensureRemoteDir(remoteDir, cache)
         const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
         if (!res?.success) {
-          throw new Error(formatSftpOperationError(t, res, t('sftp.uploadFail', { name: f.webkitRelativePath })))
+          throw new Error(res.error || t('sftp.uploadFail', { name: f.webkitRelativePath }))
         }
       }
       loadDir(path)
@@ -416,7 +415,7 @@ export default function SftpPanel({ session }) {
           await ensureRemoteDir(remoteDir, cache) // 确保远程目录存在
           const res = await window.zterm.sftp.upload(sftpSessionId, localPath, remotePath) // 上传文件
           if (!res?.success) {
-            throw new Error(formatSftpOperationError(t, res, t('sftp.uploadFail', { name: relPath })))
+            throw new Error(res.error || t('sftp.uploadFail', { name: relPath }))
           }
         }
         loadDir(path)
@@ -429,7 +428,7 @@ export default function SftpPanel({ session }) {
         const remotePath = (path === '/' ? '' : path) + '/' + f.name // 获取远程路径
         const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath) // 上传文件
         if (!res?.success) {
-          throw new Error(formatSftpOperationError(t, res, t('sftp.uploadFail', { name: f.name })))
+          throw new Error(res.error || t('sftp.uploadFail', { name: f.name }))
         }
       }
       loadDir(path) // 刷新目录

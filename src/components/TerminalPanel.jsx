@@ -5,7 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
 import { resolveLoggingDirectory } from '../store/settingsStore.js'
 import { clampTerminalScrollback, normalizeLoggingMode } from '../lib/settings/normalize.js'
-import { translate } from '../i18n/translations.js'
+import { translateRender } from '../i18n/translateRender.js'
 import { resolveEffectiveUiLanguage } from '../../shared/resolveUiLanguage.js'
 import { safeFileToken } from '../../shared/safeFileName.js'
 import { mapSshError, mapSftpError, mapTelnetError, mapSerialError } from '@/lib/terminal/errorMappers.js'
@@ -150,7 +150,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
         cleanupRef.current.push(() => ro.disconnect())
         setupLogging(session, settingsRef.current, logFileRef, logFileStemStateRef, settingsRef)  // 重连：复用本标签页首次连接时的日志文件
         logFileRef.current?.setTerminal?.(term)
-        writelnWithLog(term, logFileRef, `\r\x1b[33m${translate(resolveEffectiveUiLanguage(settings?.uiLanguage), 'terminal.reconnecting')}\x1b[0m`)
+        writelnWithLog(term, logFileRef, `\r\x1b[33m${translateRender(resolveEffectiveUiLanguage(settings?.uiLanguage), 'terminal.reconnecting')}\x1b[0m`)
         connectSession(term, fitAddonRef.current, session, onUpdate, cleanupRef, disconnectedRef, null, logFileRef, settingsRef)
       }
     })
@@ -533,8 +533,8 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
    * @param {string} msgKey terminal.* 文案键
    */
   const onDisconnect = (msgKey) => {
-    writeInfo(`\r\n${translate(L(), msgKey)}`)
-    writeInfo(`\x1b[2m${translate(L(), 'terminal.pressR')}\x1b[0m`)
+    writeInfo(`\r\n${translateRender(L(), msgKey)}`)
+    writeInfo(`\x1b[2m${translateRender(L(), 'terminal.pressR')}\x1b[0m`)
     disconnectedRef.current = true
     onUpdate({ status: 'disconnected', sftpReady: false })
   }
@@ -601,7 +601,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
   }
 
   if (type === 'ssh') {
-    writeInfo(translate(L(), 'terminal.sshConnecting', { host: session.host, port: session.port || 22 }))
+    writeInfo(translateRender(L(), 'terminal.sshConnecting', { host: session.host, port: session.port || 22 }))
     try {
       const connectPayload = {
         ...session,
@@ -610,7 +610,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const res = await window.zterm.ssh.connect(id, connectPayload)
       if (isCancelled?.()) return   // 组件已卸载，放弃后续注册
       if (!res.success) throw new Error(res.error)  // 连接失败，抛出错误
-      writeSuccess(translate(L(), 'terminal.connected'))
+      writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
       const dim = fitAddon.proposeDimensions() || { cols: 80, rows: 24 }  // 获取终端建议尺寸（列和行），默认80x24
       window.zterm.ssh.resize(id, dim.cols, dim.rows)
@@ -650,12 +650,12 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
     }
 
   } else if (type === 'telnet') {
-    writeInfo(translate(L(), 'terminal.telnetConnecting', { host: session.host, port: session.port || 23 }))
+    writeInfo(translateRender(L(), 'terminal.telnetConnecting', { host: session.host, port: session.port || 23 }))
     try {
       const res = await window.zterm.telnet.connect(id, session)
       if (isCancelled?.()) return
       if (!res.success) throw new Error(res.error)
-      writeSuccess(translate(L(), 'terminal.connected'))
+      writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
       const r1 = window.zterm.telnet.onData(id, recv)
       const r2 = window.zterm.telnet.onClose(id, () => onDisconnect('terminal.closed'))
@@ -670,12 +670,12 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
     }
 
   } else if (type === 'serial') {
-    writeInfo(translate(L(), 'terminal.serialOpening', { path: session.path, baud: session.baudRate || 9600 }))
+    writeInfo(translateRender(L(), 'terminal.serialOpening', { path: session.path, baud: session.baudRate || 9600 }))
     try {
       const res = await window.zterm.serial.connect(id, session)
       if (isCancelled?.()) return
       if (!res.success) throw new Error(res.error)
-      writeSuccess(translate(L(), 'terminal.serialOpened'))
+      writeSuccess(translateRender(L(), 'terminal.serialOpened'))
       onUpdate({ status: 'connected' })
       const r1 = window.zterm.serial.onData(id, recv)
       const r2 = window.zterm.serial.onClose(id, () => onDisconnect('terminal.portClosed'))

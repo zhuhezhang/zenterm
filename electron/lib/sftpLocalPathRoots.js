@@ -2,13 +2,13 @@
  * SFTP 本地路径校验（仅 path，无 Electron）。供 Worker 与主进程共用。
  */
 import path from 'path'
-import { createSftpPathError, SFTP_ERROR, SFTP_PATH_KIND, } from '../../shared/sftpErrorCodes.js'
+import { translateMain } from '../i18n/translateMain.js'
 
 /**
  * 检查给定路径是否位于允许的用户根目录范围内
  * @param {string} resolvedPath 已 path.resolve 的路径
  * @param {string[]} roots 绝对根路径列表
- * @returns {boolean}
+ * @returns {boolean} 是否位于允许的用户根目录范围内
  */
 export function isPathWithinResolvedRoots(resolvedPath, roots) {
   const target = path.resolve(resolvedPath)
@@ -23,13 +23,15 @@ export function isPathWithinResolvedRoots(resolvedPath, roots) {
  * 检查给定上传/下载的文件路径是否位于允许的用户根目录范围内
  * @param {string} localPath 本地路径
  * @param {string[]} roots 允许的用户根目录列表
- * @param {string} [kind] SFTP_PATH_KIND 中的值
+ * @param {'download'|'upload'|'sftp'} [kind] 操作类型，用于错误文案前缀
  * @throws {Error} 如果路径不在允许的用户根目录范围内
  */
-export function assertSftpLocalFilePathAllowedForRoots(localPath, roots, kind = SFTP_PATH_KIND.SFTP) {
+export function assertSftpLocalFilePathAllowedForRoots(localPath, roots, kind = 'sftp') {
   const resolved = path.resolve(String(localPath))
   if (!isPathWithinResolvedRoots(resolved, roots)) {
-    throw createSftpPathError(SFTP_ERROR.LOCAL_FILE_PATH_DENIED, { kind })
+    const hint = translateMain('sftp.pathErrors.allowedRootsHint')
+    const kindLabel = translateMain(`sftp.pathKind.${kind}`)
+    throw new Error(translateMain('sftp.pathErrors.localFileDenied', { hint, kindLabel }))
   }
 }
 
@@ -37,13 +39,15 @@ export function assertSftpLocalFilePathAllowedForRoots(localPath, roots, kind = 
  * 检查给定上传/下载文件夹的路径是否位于允许的用户根目录范围内
  * @param {string} localDir 本地目录
  * @param {string[]} roots 允许的用户根目录列表
- * @param {string} [kind] SFTP_PATH_KIND 中的值
+ * @param {'download'|'upload'|'sftp'} [kind] 操作类型
  * @throws {Error} 如果路径不在允许的用户根目录范围内
  */
-export function assertSftpLocalDirAllowedForRoots(localDir, roots, kind = SFTP_PATH_KIND.SFTP) {
+export function assertSftpLocalDirAllowedForRoots(localDir, roots, kind = 'sftp') {
   const resolved = path.resolve(String(localDir))
   if (!isPathWithinResolvedRoots(resolved, roots)) {
-    throw createSftpPathError(SFTP_ERROR.LOCAL_DIR_PATH_DENIED, { kind })
+    const hint = translateMain('sftp.pathErrors.allowedRootsHint')
+    const kindLabel = translateMain(`sftp.pathKind.${kind}`)
+    throw new Error(translateMain('sftp.pathErrors.localDirDenied', { hint, kindLabel }))
   }
 }
 
@@ -52,21 +56,23 @@ export function assertSftpLocalDirAllowedForRoots(localDir, roots, kind = SFTP_P
  * @param {string} parentDir 父目录
  * @param {string} remoteEntryName 远程文件名
  * @param {string[]} roots 允许的用户根目录列表
- * @param {string} [kind] SFTP_PATH_KIND 中的值
+ * @param {'download'|'upload'|'sftp'} [kind] 操作类型
  * @returns {string} 拼接后的本地路径
  */
-export function safeJoinLocalDownloadPathForRoots(parentDir, remoteEntryName, roots, kind = SFTP_PATH_KIND.DOWNLOAD) {
+export function safeJoinLocalDownloadPathForRoots(parentDir, remoteEntryName, roots, kind = 'download') {
   const base = path.resolve(String(parentDir))
   assertSftpLocalDirAllowedForRoots(base, roots, kind)
   const segment = path.basename(String(remoteEntryName))
   if (!segment || segment === '.' || segment === '..') {
-    throw createSftpPathError(SFTP_ERROR.INVALID_FILENAME, { kind })
+    const kindLabel = translateMain(`sftp.pathKind.${kind}`)
+    throw new Error(translateMain('sftp.pathErrors.invalidFilename', { kindLabel }))
   }
   const out = path.resolve(base, segment)
   assertSftpLocalFilePathAllowedForRoots(out, roots, kind)
   const rel = path.relative(base, out)
   if (rel.startsWith('..') || path.isAbsolute(rel)) {
-    throw createSftpPathError(SFTP_ERROR.PATH_ESCAPE_TARGET, { kind })
+    const kindLabel = translateMain(`sftp.pathKind.${kind}`)
+    throw new Error(translateMain('sftp.pathErrors.pathEscapeTarget', { kindLabel }))
   }
   return out
 }

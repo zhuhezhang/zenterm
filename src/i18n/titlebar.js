@@ -1,0 +1,15 @@
+/** TitleBar.jsx */
+export const TITLEBAR = {
+  zh: {
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "restore": "还原",
+    "close": "关闭"
+  },
+  en: {
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore": "Restore",
+    "close": "Close"
+  },
+}

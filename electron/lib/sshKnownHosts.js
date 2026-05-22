@@ -7,8 +7,7 @@ import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
 import ssh2 from 'ssh2'
-import { translateKnownHosts } from '../i18n/knownHosts.js'
-import { getEffectiveUiLanguage } from './uiLanguageState.js'
+import { translateMain } from '../i18n/translateMain.js'
 
 /** ssh2 的 utils 模块，用于解析 SSH 主机公钥 */
 const ssh2utils = ssh2.utils
@@ -110,21 +109,20 @@ export async function verifySshHostKeyTrust(mainWindow, host, port, rawKey) {
   }
 
   try {
-    const lang = getEffectiveUiLanguage()
     if (existing && existing.sha256 !== fp) {
       const { response } = await dialog.showMessageBox(parent, {
         type: 'error',
-        title: translateKnownHosts(lang, 'changed.title'),
-        message: translateKnownHosts(lang, 'changed.message'),
-        detail: translateKnownHosts(lang, 'changed.detail', {
+        title: translateMain('sshKnownHosts.changed.title'),
+        message: translateMain('sshKnownHosts.changed.message'),
+        detail: translateMain('sshKnownHosts.changed.detail', {
           host: hp,
           keyType,
           savedSha256: existing.sha256,
           currentSha256: fp,
         }),
         buttons: [
-          translateKnownHosts(lang, 'changed.disconnect'),
-          translateKnownHosts(lang, 'changed.trustNew'),
+          translateMain('sshKnownHosts.changed.disconnect'),
+          translateMain('sshKnownHosts.changed.trustNew'),
         ],
         defaultId: 0,
         cancelId: 0,
@@ -140,16 +138,16 @@ export async function verifySshHostKeyTrust(mainWindow, host, port, rawKey) {
 
     const { response } = await dialog.showMessageBox(parent, {
       type: 'question',
-      title: translateKnownHosts(lang, 'unknown.title'),
-      message: translateKnownHosts(lang, 'unknown.message'),
-      detail: translateKnownHosts(lang, 'unknown.detail', {
+      title: translateMain('sshKnownHosts.unknown.title'),
+      message: translateMain('sshKnownHosts.unknown.message'),
+      detail: translateMain('sshKnownHosts.unknown.detail', {
         host: hp,
         keyType,
         sha256: fp,
       }),
       buttons: [
-        translateKnownHosts(lang, 'unknown.cancel'),
-        translateKnownHosts(lang, 'unknown.trustSave'),
+        translateMain('sshKnownHosts.unknown.cancel'),
+        translateMain('sshKnownHosts.unknown.trustSave'),
       ],
       defaultId: 0,
       cancelId: 0,

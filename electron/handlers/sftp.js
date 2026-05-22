@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url'
 import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
 import { assertSftpLocalDirAllowed, assertSftpLocalFilePathAllowed, getAllowedUserRootPaths, } from '../lib/localPathPolicy.js'
 import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
-import { SFTP_PATH_KIND, sftpErrorToIpcPayload } from '../../shared/sftpErrorCodes.js'
+import { getEffectiveUiLanguage } from '../i18n/translateMain.js'
 
 /** 存储每个 SFTP 会话对应的 Worker 与会话状态 */
 const sftpSessions = new Map()
@@ -14,14 +14,9 @@ const sftpSessions = new Map()
 /**
  * 处理命令失败
  * @param {object} msg Worker CMD_RESULT 消息体
- * @returns {{ success: false, errorCode?: string, errorParams?: Record<string, string>, error?: string }} IPC 载荷
+ * @returns {{ success: false, error: string }} IPC 载荷
  */
 function sftpCmdFailure(msg) {
-  if (msg.errorCode) {
-    const out = { success: false, errorCode: msg.errorCode }
-    if (msg.errorParams) out.errorParams = msg.errorParams
-    return out
-  }
   return { success: false, error: msg.error || 'Unknown error' }
 }
 
@@ -61,8 +56,8 @@ function rejectAllPending(session, error) {
 
 /**
  * 设置 SFTP 相关的 IPC 处理函数
- * @param {Electron.IpcMain} ipcMain
- * @param {Electron.BrowserWindow} mainWindow
+ * @param {Electron.IpcMain} ipcMain ipcMain 实例
+ * @param {Electron.BrowserWindow} mainWindow 主窗口实例
  */
 function setupSFTPHandlers(ipcMain, mainWindow) {
   ipcMain.handle('sftp:connect', async (event, id, config) => {  // 连接 SFTP，参数为会话ID、配置对象，返回连接结果
@@ -155,6 +150,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
           workerData: {
             config,
             allowedRoots: getAllowedUserRootPaths(),
+            uiLanguage: getEffectiveUiLanguage(),
           },
         })
         session.worker = worker
@@ -206,9 +202,9 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     try {
-      assertSftpLocalFilePathAllowed(localPath, SFTP_PATH_KIND.DOWNLOAD)
+      assertSftpLocalFilePathAllowed(localPath, 'download')
     } catch (e) {
-      return { success: false, ...sftpErrorToIpcPayload(e) }
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
     const msg = await workerCommand(session, { cmd: 'DOWNLOAD', remotePath, localPath })
     if (!msg.success) return sftpCmdFailure(msg)
@@ -220,9 +216,9 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     try {
-      assertSftpLocalDirAllowed(localDir, SFTP_PATH_KIND.DOWNLOAD)
+      assertSftpLocalDirAllowed(localDir, 'download')
     } catch (e) {
-      return { success: false, ...sftpErrorToIpcPayload(e) }
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
     const msg = await workerCommand(session, { cmd: 'DOWNLOAD_DIR', remoteDir, localDir })
     if (!msg.success) return sftpCmdFailure(msg)
@@ -234,9 +230,9 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return { success: false, error: 'No SFTP session' }
     try {
-      assertSftpLocalFilePathAllowed(localPath, SFTP_PATH_KIND.UPLOAD)
+      assertSftpLocalFilePathAllowed(localPath, 'upload')
     } catch (e) {
-      return { success: false, ...sftpErrorToIpcPayload(e) }
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
     const msg = await workerCommand(session, { cmd: 'UPLOAD', localPath, remotePath })
     if (!msg.success) return sftpCmdFailure(msg)
