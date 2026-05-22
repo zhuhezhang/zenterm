@@ -594,7 +594,7 @@ export default function Sidebar(props) {
               {sftpExpanded && <SftpPanel session={activeSession} />}
             </div>
           )}
-          <div className="sb-sessions-scroll">
+          <div className={`sb-sessions-scroll${keyboardFocusId ? ' sb-keyboard-nav' : ''}`}>
             <div className={`sb-section-row sessions-header${isDO('__sessions_header__', 'drop') ? ' drop-target' : ''}`}
               onMouseEnter={clearKeyboardFocus}
               onClick={() => setSessionsCollapsed(v => !v)}

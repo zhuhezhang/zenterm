@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
 import { formatSftpOperationError } from '../lib/sftp/formatSftpPathError.js'
 import '../styles/sftp.css'
-import '../styles/dialog.css'
 
 /** 非法文件名字符正则表达式 */
 const INVALID_NAME_CHARS = /[\/\\:*?"\u003c\u003e|\x00]/
@@ -82,7 +81,6 @@ export default function SftpPanel({ session }) {
   const [path, setPath] = useState('/')  // 当前路径
   const [items, setItems] = useState([])  // 文件列表
   const [loading, setLoading] = useState(false)  // 是否正在加载
-  const [error, setError] = useState('')  // 错误信息
   const [selected, setSelected] = useState(null)  // 选中的文件
   const [renaming, setRenaming] = useState(null)  // 正在重命名的文件
   const [renameValue, setRenameValue] = useState('')  // 重命名输入值
@@ -104,7 +102,6 @@ export default function SftpPanel({ session }) {
     if (!sftpSessionId) return
     setFileCtx(null)
     setLoading(true)
-    setError('')
     setSelected(null)
     try {
       const res = await window.zterm.sftp.list(sftpSessionId, dirPath)
@@ -112,7 +109,7 @@ export default function SftpPanel({ session }) {
       setItems(res.items)
       setPath(dirPath)
     } catch (e) {
-      setError(e?.message || String(e))
+      alert(e?.message || String(e))
     } finally {
       setLoading(false)
     }
@@ -179,15 +176,6 @@ export default function SftpPanel({ session }) {
     }
   }, [])
 
-  useEffect(() => {  // 监听错误信息变化，按下 Escape 键关闭错误提示
-    if (!error) return
-    const onKey = (e) => {
-      if (e.key === 'Escape') setError('')
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [error])
-
   /** 上移到父目录 */
   const goUp = () => {
     if (path === '/') return
@@ -216,7 +204,7 @@ export default function SftpPanel({ session }) {
     if (!confirm(t('sftp.confirmDelete', { name: item.name }))) return
     const res = await window.zterm.sftp.delete(sftpSessionId, item.path)
     if (res.success) loadDir(path)
-    else setError(formatSftpOperationError(t, res, res.error))
+    else alert(formatSftpOperationError(t, res, res.error))
   }
 
   /** 开始创建文件夹 */
@@ -230,7 +218,7 @@ export default function SftpPanel({ session }) {
     const name = createDirName.trim()
     if (!name) { setCreatingDir(false); return }
     if (INVALID_NAME_CHARS.test(name)) {
-      setError(t('sftp.nameInvalid'))
+      alert(t('sftp.nameInvalid'))
       return
     }
     const newPath = path === '/' ? '/' + name : path + '/' + name
@@ -240,7 +228,7 @@ export default function SftpPanel({ session }) {
       setCreateDirName('')
       loadDir(path)
     }
-    else setError(formatSftpOperationError(t, res, res.error))
+    else alert(formatSftpOperationError(t, res, res.error))
   }
 
   /** 
@@ -260,7 +248,7 @@ export default function SftpPanel({ session }) {
     if (!nextName) { setRenaming(null); return }
     if (nextName === prevName) { setRenaming(null); return }
     if (INVALID_NAME_CHARS.test(nextName)) {
-      setError(t('sftp.nameInvalid'))
+      alert(t('sftp.nameInvalid'))
       return
     }
     const dir = path === '/' ? '' : path
@@ -269,7 +257,7 @@ export default function SftpPanel({ session }) {
     setRenaming(null)
     const res = await window.zterm.sftp.rename(sftpSessionId, oldPath, newPath)
     if (res.success) loadDir(path)
-    else setError(formatSftpOperationError(t, res, res.error))
+    else alert(formatSftpOperationError(t, res, res.error))
   }
 
   /** 
@@ -285,7 +273,7 @@ export default function SftpPanel({ session }) {
     const res = item.isDir
       ? await window.zterm.sftp.downloadDir(sftpSessionId, item.path, localPath)
       : await window.zterm.sftp.download(sftpSessionId, item.path, localPath)
-    if (!res?.success) setError(formatSftpOperationError(t, res, t('sftp.downloadFail')))
+    if (!res?.success) alert(formatSftpOperationError(t, res, t('sftp.downloadFail')))
   }
 
   /** 
@@ -341,7 +329,6 @@ export default function SftpPanel({ session }) {
    * @returns {Promise<void>} 是否成功
    */
   const handlePickFilesUpload = async (fileList) => {
-    setError('')
     try {
       const files = Array.from(fileList || []).filter((f) => getLocalFilePath(f))
       if (!files.length) return
@@ -354,7 +341,7 @@ export default function SftpPanel({ session }) {
       }
       loadDir(path)
     } catch (err) {
-      setError(err?.message || String(err))
+      alert(err?.message || String(err))
     }
   }
 
@@ -364,7 +351,6 @@ export default function SftpPanel({ session }) {
    * @returns {Promise<void>} 是否成功
    */
   const handlePickFolderUpload = async (fileList) => {
-    setError('')
     try {
       const files = Array.from(fileList || []).filter((f) => getLocalFilePath(f) && f.webkitRelativePath)
       if (!files.length) return
@@ -391,7 +377,7 @@ export default function SftpPanel({ session }) {
       }
       loadDir(path)
     } catch (err) {
-      setError(err?.message || String(err))
+      alert(err?.message || String(err))
     }
   }
 
@@ -402,7 +388,6 @@ export default function SftpPanel({ session }) {
    */
   const handleDropUpload = async (e) => {
     e.preventDefault()
-    setError('')
     try {
       const cache = new Set()  // 缓存集合：存储已创建的远程目录
       const items = Array.from(e.dataTransfer?.items || [])  // 获取拖拽的文件列表
@@ -449,7 +434,7 @@ export default function SftpPanel({ session }) {
       }
       loadDir(path) // 刷新目录
     } catch (err) {
-      setError(err?.message || String(err))
+      alert(err?.message || String(err))
     }
   }
 
@@ -598,7 +583,7 @@ export default function SftpPanel({ session }) {
             <span className="sftp-item-date">{formatDate(item.mtime)}</span>
           </div>
         ))}
-        {!loading && items.length === 0 && !error && (
+        {!loading && items.length === 0 && (
           <div className="sftp-empty">{t('sftp.empty')}</div>
         )}
       </div>
@@ -640,28 +625,6 @@ export default function SftpPanel({ session }) {
           >
             {t('sftp.delete')}
           </button>
-        </div>,
-        document.body
-      )}
-      {error && document.body && createPortal(
-        <div
-          className="dialog-overlay"
-          onClick={e => e.target === e.currentTarget && setError('')}
-        >
-          <div className="dialog">
-            <div className="dialog-header">
-              <div className="dialog-tabs">{t('sftp.errorTitle')}</div>
-              <button type="button" className="dialog-close" onClick={() => setError('')}>×</button>
-            </div>
-            <div className="dialog-body">
-              <div className="dialog-error">{error}</div>
-            </div>
-            <div className="dialog-footer">
-              <button type="button" className="btn-cancel" onClick={() => setError('')}>
-                {t('sidebar.confirm')}
-              </button>
-            </div>
-          </div>
         </div>,
         document.body
       )}

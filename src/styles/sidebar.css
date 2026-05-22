@@ -202,6 +202,17 @@
 .sb-row:hover { background: var(--bg-hover); }
 .sb-row:hover .sb-count { opacity: 1; }
 
+/* 搜索框方向键导航时仅保留键盘高亮，抑制「保存的会话」标题与树行的 :hover */
+.sb-sessions-scroll.sb-keyboard-nav .sb-section-row.sessions-header:hover {
+  background: transparent;
+}
+.sb-sessions-scroll.sb-keyboard-nav .sb-row:hover:not(.sb-keyboard-focus) {
+  background: transparent;
+}
+.sb-sessions-scroll.sb-keyboard-nav .sb-row:hover:not(.sb-keyboard-focus) .sb-count {
+  opacity: 0;
+}
+
 .sb-row.sb-keyboard-focus {
   background: var(--bg-hover);
   outline-offset: -1px;
