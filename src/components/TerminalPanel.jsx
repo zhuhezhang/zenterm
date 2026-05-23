@@ -8,6 +8,7 @@ import { clampTerminalScrollback, normalizeLoggingMode } from '../lib/settings/n
 import { translateRender } from '../i18n/translateRender.js'
 import { resolveEffectiveUiLanguage } from '../../shared/resolveUiLanguage.js'
 import { safeFileToken } from '../../shared/safeFileName.js'
+import { ipcErrorFromResponse } from '../../shared/ipcError.js'
 import { mapSshError, mapSftpError, mapTelnetError, mapSerialError } from '@/lib/terminal/errorMappers.js'
 import { getXtermTheme } from '../theme/appTheme.js'
 import '@xterm/xterm/css/xterm.css'
@@ -609,7 +610,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       }
       const res = await window.zterm.ssh.connect(id, connectPayload)
       if (isCancelled?.()) return   // 组件已卸载，放弃后续注册
-      if (!res.success) throw new Error(res.error)  // 连接失败，抛出错误
+      if (!res.success) throw ipcErrorFromResponse(res)
       writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
       const dim = fitAddon.proposeDimensions() || { cols: 80, rows: 24 }  // 获取终端建议尺寸（列和行），默认80x24
@@ -635,7 +636,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
             onUpdate({ status: 'connected', sftpReady: true })
             cleanupRef.current.push(() => window.zterm.sftp.disconnect(id + '-sftp'))
           } else {
-            throw new Error(sr.error)
+            throw ipcErrorFromResponse(sr)
           }
         } catch (e) { 
           writeError(mapSftpError(e, L()))
@@ -654,7 +655,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
     try {
       const res = await window.zterm.telnet.connect(id, session)
       if (isCancelled?.()) return
-      if (!res.success) throw new Error(res.error)
+      if (!res.success) throw ipcErrorFromResponse(res)
       writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
       const r1 = window.zterm.telnet.onData(id, recv)
@@ -674,7 +675,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
     try {
       const res = await window.zterm.serial.connect(id, session)
       if (isCancelled?.()) return
-      if (!res.success) throw new Error(res.error)
+      if (!res.success) throw ipcErrorFromResponse(res)
       writeSuccess(translateRender(L(), 'terminal.serialOpened'))
       onUpdate({ status: 'connected' })
       const r1 = window.zterm.serial.onData(id, recv)

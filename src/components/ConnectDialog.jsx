@@ -264,7 +264,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
       <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && setCredDialog(null)}>
         <div className="dialog">
           <div className="dialog-header">
-            <div className="dialog-tabs">{t('connect.credTitle')}</div>
+            <div className="dialog-tabs">{t('credential.title')}</div>
             <button className="dialog-close" onClick={() => setCredDialog(null)}>×</button>
           </div>
           <div className="dialog-body">
@@ -281,7 +281,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
                 <FormRow label={t('connect.privateKey')}>
                   <input
                     ref={credPkeyInputRef}
-                    placeholder="/path/to/id_rsa"
+                    placeholder={t('connect.privateKeyPath')}
                     value={privateKey}
                     onChange={e => setCredDialog(prev => ({ ...prev, privateKey: e.target.value }))}
                     onKeyDown={e => e.key === 'Enter' && applyCred()}
@@ -310,8 +310,8 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
             )}
           </div>
           <div className="dialog-footer">
-            <button className="btn-cancel" onClick={() => setCredDialog(null)}>{t('connect.cancel')}</button>
-            <button className="btn-connect" onClick={applyCred}>{t('connect.connect')}</button>
+            <button className="btn-cancel" onClick={() => setCredDialog(null)}>{t('credential.cancel')}</button>
+            <button className="btn-connect" onClick={applyCred}>{t('credential.connect')}</button>
           </div>
         </div>
       </div>

@@ -1,6 +1,5 @@
 import { createImportError } from './handleImportErrors.js'
-import { EXPORT_ENVELOPE_VERSION, IMPORT_MAX_BYTES, IMPORT_WRONG_FILE_KIND_LABEL,
-} from './constants.js'
+import { EXPORT_ENVELOPE_VERSION, IMPORT_MAX_BYTES } from './constants.js'
 
 /**
  * 读取并解析导入用 JSON 文件
@@ -42,7 +41,7 @@ export function unwrapExportPayload(parsed, expectedKind) {
   }
   const envelope = /** @type {Record<string, unknown>} */ (parsed)  // 将解析后的 JSON 对象转换为对象
   if (envelope.ztermExport !== expectedKind) {
-    throw createImportError('wrongFileType', { kind: IMPORT_WRONG_FILE_KIND_LABEL[expectedKind] })
+    throw createImportError('wrongFileType', { kindKey: expectedKind })
   }
   if (envelope.version !== EXPORT_ENVELOPE_VERSION) {
     throw createImportError('unsupportedVersion', { version: EXPORT_ENVELOPE_VERSION })

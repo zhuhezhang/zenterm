@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import { translateRender } from '../i18n/translateRender.js'
+import { formatIpcResponseError } from '@/lib/ipc/formatIpcError.js'
 import { resolveEffectiveUiLanguage } from '../../shared/resolveUiLanguage.js'
 import { exportSessions, saveSessions } from '../store/sessionStore.js'
 import { IMPORT_JSON_ACCEPT } from '../lib/import/constants.js'
@@ -350,7 +351,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
       if (window.zterm?.validateLogDirectory && likelyAbsolute) {
         const vr = await window.zterm.validateLogDirectory(p)
         if (!vr?.ok) {
-          alert(vr?.message || t('settings.logPathRejected'))
+          alert(formatIpcResponseError(t, vr) || t('settings.logPathRejected'))
           return
         }
       }

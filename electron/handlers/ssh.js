@@ -16,8 +16,10 @@
  */
 import { Worker } from 'worker_threads'
 import { fileURLToPath } from 'url'
-import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
+import { isTrustedIpcSender } from '../lib/trustedSender.js'
+import { ipcUnauthorized } from '../lib/ipcReply.js'
 import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
+import { ipcFailFromThrown } from '../../shared/ipcError.js'
 import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
 
 /** 存储每个 SSH 会话对应的 Worker 桥接状态（键id → 值{ worker: Worker, isClosed: boolean }） */
@@ -33,7 +35,7 @@ const workerEntry = fileURLToPath(new URL('../workers/sshSessionWorker.js', impo
  */
 function setupSSHHandlers(ipcMain, mainWindow) {
   ipcMain.handle('ssh:connect', async (event, id, config) => {  // 连接 SSH，参数为会话ID、配置对象，返回连接结果
-    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
+    if (!isTrustedIpcSender(event.sender)) return ipcUnauthorized()
 
     return new Promise((resolve) => {
       let settled = false
@@ -42,14 +44,16 @@ function setupSSHHandlers(ipcMain, mainWindow) {
        * 处理 SSH 连接失败
        * @param {string} error 错误消息
        */
-      const finishFail = (error) => {
+      const finishFail = (error, errorParams, errorKnown = true) => {
         if (settled) return
         settled = true
         sshSessions.delete(id)
         try {
           worker?.terminate()
         } catch (_) {}
-        resolve({ success: false, error: String(error || 'SSH connection failed') })
+        const out = { success: false, error: String(error || 'ssh.connectionFailed'), errorKnown }
+        if (errorParams && Object.keys(errorParams).length) out.errorParams = errorParams
+        resolve(out)
       }
 
       /** 处理 SSH 连接成功 */
@@ -65,7 +69,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
           workerData: { config },
         })  // 起一个子进程 Worker 跑 ssh2，Worker 启动后立即执行（文件名末尾有 .js 会被视为 Worker 入口）
       } catch (e) {
-        return resolve({ success: false, error: e.message })
+        return resolve(ipcFailFromThrown(e))
       }
 
       const session = { worker, isClosed: false }
@@ -111,10 +115,10 @@ function setupSSHHandlers(ipcMain, mainWindow) {
           closeSessionOnce()
         }
       })
-      worker.on('error', (err) => finishFail(err.message))  // 监听来自子进程 Worker 的错误事件，参数为错误对象
+      worker.on('error', (err) => finishFail(err.message, undefined, false))  // 监听来自子进程 Worker 的错误事件，参数为错误对象
       worker.on('exit', (code) => {  // 监听来自子进程 Worker 的退出事件，参数为退出码
         if (!settled) {
-          finishFail(`SSH worker exited unexpectedly (${code})`)
+          finishFail('ssh.workerExitUnexpected', { code })
         } else if (sshSessions.has(id) && !session.isClosed) {
           closeSessionOnce()
         }
@@ -149,7 +153,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
   })
 
   ipcMain.handle('ssh:disconnect', async (event, id) => {  // 断开 SSH 连接，参数为会话ID，返回断开结果
-    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
+    if (!isTrustedIpcSender(event.sender)) return ipcUnauthorized()
     const session = sshSessions.get(id)
     if (session?.worker) {
       try {

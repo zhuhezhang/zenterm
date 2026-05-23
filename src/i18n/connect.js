@@ -1,9 +1,7 @@
 /** ConnectDialog.jsx */
 export const CONNECT = {
   zh: {
-    "credTitle": "输入凭证",
     "cancel": "取消",
-    "connect": "连接",
     "label": "标签",
     "labelPh": "可选，自定义名称",
     "group": "分组",
@@ -46,9 +44,7 @@ export const CONNECT = {
     "errLabelChars": "标签名不允许包含以下字符：/ \\ : * ? \" < > |"
   },
   en: {
-    "credTitle": "Enter credentials",
     "cancel": "Cancel",
-    "connect": "Connect",
     "label": "Label",
     "labelPh": "Optional, custom name",
     "group": "Group",

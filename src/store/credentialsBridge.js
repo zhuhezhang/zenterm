@@ -28,7 +28,7 @@ export async function syncSessionSecretsToVault(savedId, config, settings) {
   if (!savedId || typeof savedId !== 'string') return { ok: true, skipped: true }
   if (!api?.sync) return { ok: true, skipped: true }
   const avail = await api.isAvailable?.()
-  if (avail === false) return { ok: false, error: '凭据加密不可用' }
+  if (avail === false) return { ok: false, error: 'credentials.encryptionUnavailable' }
   const partial = buildSecretsSyncPayload(config, settings)
   return api.sync(savedId, partial)
 }

@@ -1,5 +1,6 @@
 import net from 'net'
-import { isTrustedIpcSender, IPC_UNAUTHORIZED } from '../lib/trustedSender.js'
+import { isTrustedIpcSender } from '../lib/trustedSender.js'
+import { ipcUnauthorized } from '../lib/ipcReply.js'
 import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
 
 /** 存储所有 Telnet 会话信息的 Map，键为会话 ID，值为 net.Socket 实例 */
@@ -104,7 +105,7 @@ function clearTelnetParserState(socket) {
  */
 function setupTelnetHandlers(ipcMain, mainWindow) {
   ipcMain.handle('telnet:connect', async (event, id, config) => {  // 连接 Telnet，参数为会话ID、配置对象，返回连接结果
-    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
+    if (!isTrustedIpcSender(event.sender)) return ipcUnauthorized()
     return new Promise((resolve, _reject) => {
       const socket = new net.Socket()
       let connected = false
@@ -116,7 +117,7 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
       }
       const timeout = setTimeout(() => {  // 连接超时（10s）处理，销毁 socket 并返回错误信息
         socket.destroy()
-        resolveOnce({ success: false, error: 'Connection timeout' })
+        resolveOnce({ success: false, error: 'telnet.connectionTimeout' })
       }, 10000)
 
       socket.connect(config.port || 23, config.host, () => {  // 连接到主机和端口（默认 23），成功后存储会话并解析 Promise
@@ -160,7 +161,7 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
   })
 
   ipcMain.handle('telnet:disconnect', async (event, id) => {  // 断开 Telnet 连接，参数为会话ID，返回断开结果
-    if (!isTrustedIpcSender(event.sender)) return IPC_UNAUTHORIZED
+    if (!isTrustedIpcSender(event.sender)) return ipcUnauthorized()
     const socket = telnetSessions.get(id)
     if (socket) {
       try {

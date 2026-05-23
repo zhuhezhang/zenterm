@@ -1,7 +1,12 @@
+import { translate } from '../../shared/translate.js'
 import { APP } from './app.js'
 import { CONNECT } from './connect.js'
 import { CREDENTIAL } from './credential.js'
+import { CREDENTIALS } from './credentials.js'
 import { ERRORS } from './errors.js'
+import { SERIAL } from './serial.js'
+import { SSH } from './ssh.js'
+import { TELNET } from './telnet.js'
 import { SETTINGS } from './settings.js'
 import { SFTP } from './sftp.js'
 import { SIDEBAR } from './sidebar.js'
@@ -16,7 +21,11 @@ const RENDER_MESSAGES = {
     app: APP.zh,
     connect: CONNECT.zh,
     credential: CREDENTIAL.zh,
+    credentials: CREDENTIALS.zh,
     errors: ERRORS.zh,
+    serial: SERIAL.zh,
+    ssh: SSH.zh,
+    telnet: TELNET.zh,
     settings: SETTINGS.zh,
     sftp: SFTP.zh,
     sidebar: SIDEBAR.zh,
@@ -29,7 +38,11 @@ const RENDER_MESSAGES = {
     app: APP.en,
     connect: CONNECT.en,
     credential: CREDENTIAL.en,
+    credentials: CREDENTIALS.en,
     errors: ERRORS.en,
+    serial: SERIAL.en,
+    ssh: SSH.en,
+    telnet: TELNET.en,
     settings: SETTINGS.en,
     sftp: SFTP.en,
     sidebar: SIDEBAR.en,
@@ -49,14 +62,5 @@ const RENDER_MESSAGES = {
  */
 export function translateRender(lang, path, params = {}) {
   const L = lang === 'en' ? 'en' : 'zh'
-  const parts = path.split('.')
-  let cur = RENDER_MESSAGES[L]
-  for (const p of parts) {
-    cur = cur?.[p]
-  }
-  if (typeof cur !== 'string') return path
-  // 替换占位符，例如 cur 为 importSessionsOk: '已导入 {n} 个新会话'
-  // 那么当传入 params 为 {n: 1} 时，k=n，返回 "已导入 1 个新会话"
-  // 若传入 params 为 {m: 1} 时，k=m，返回 "已导入 {m} 个新会话"
-  return cur.replace(/\{(\w+)\}/g, (_, k) => (params[k] != null ? String(params[k]) : `{${k}}`))
+  return translate(L, RENDER_MESSAGES, path, params)
 }

@@ -1,119 +1,107 @@
+import { isIpcErrorCode } from '../../../shared/ipcError.js'
+import { formatIpcError } from '@/lib/ipc/formatIpcError.js'
 import { translateRender } from '@/i18n/translateRender.js'
 
 /**
- * 映射 SSH 连接错误
- * @param {unknown} err 错误对象
+ * 终端连接错误映射: IPC 错误码由 formatIpcError 翻译; 库/协议英文走 errors.* 模式.
+ */
+
+/**
+ * 包装库/协议英文原始错误
  * @param {string} lang 语言
- * @returns {string} 映射后的错误提示
+ * @param {string} key errors.* 键路径
+ * @param {string} raw 原始错误文本
+ */
+function wrapLibraryError(lang, key, raw) {
+  const t = (path, params) => translateRender(lang, path, params)
+  const friendly = t(key)
+  if (!raw) return friendly
+  return t('errors.withRaw', { friendly, raw })
+}
+
+function extractRaw(err) {
+  return String(err?.message || err?.error || err || '').trim()
+}
+
+function mapWithIpcOrLibrary(lang, raw, err, unknownKey, libraryMap) {
+  if (isIpcErrorCode(raw)) {
+    const t = (path, params) => translateRender(lang, path, params)
+    return formatIpcError(t, raw, err?.errorParams) || translateRender(lang, unknownKey)
+  }
+  if (err?.errorKnown === false) return raw || translateRender(lang, unknownKey)
+  if (!raw) return translateRender(lang, unknownKey)
+  return libraryMap(raw)
+}
+
+/**
+ * 映射 SSH 连接错误
+ * @param {unknown} err 原始错误
+ * @param {string} lang 语言
  */
 export function mapSshError(err, lang) {
-  const raw = String(err?.message || err?.error || err || '').trim()  // 原始错误文本
-  const lower = raw.toLowerCase()
-  const w = (key) => {
-    const friendly = translateRender(lang, key)  // 友好提示
-    if (!raw) return friendly
-    return translateRender(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
-  }
-
-  if (!raw) return translateRender(lang, 'errors.ssh.unknown')
-  if (lower.includes('all configured authentication methods failed') || lower.includes('permission denied')) {
-    return w('errors.ssh.auth')
-  }
-  if (lower.includes('timed out while waiting for handshake') || lower.includes('etimedout')) {
-    return w('errors.ssh.timeout')
-  }
-  if (lower.includes('econnrefused')) {
-    return w('errors.ssh.refused')
-  }
-  if (lower.includes('enotfound') || lower.includes('getaddrinfo')) {
-    return w('errors.ssh.dns')
-  }
-  if (lower.includes('ehostunreach') || lower.includes('enetunreach')) {
-    return w('errors.ssh.net')
-  }
-  return w('errors.ssh.generic')
+  const raw = extractRaw(err)
+  return mapWithIpcOrLibrary(lang, raw, err, 'errors.ssh.unknown', (r) => {
+    const lower = r.toLowerCase()
+    if (lower.includes('all configured authentication methods failed') || lower.includes('permission denied')) {
+      return wrapLibraryError(lang, 'errors.ssh.auth', r)
+    }
+    if (lower.includes('timed out while waiting for handshake') || lower.includes('etimedout')) {
+      return wrapLibraryError(lang, 'errors.ssh.timeout', r)
+    }
+    if (lower.includes('econnrefused')) return wrapLibraryError(lang, 'errors.ssh.refused', r)
+    if (lower.includes('enotfound') || lower.includes('getaddrinfo')) {
+      return wrapLibraryError(lang, 'errors.ssh.dns', r)
+    }
+    if (lower.includes('ehostunreach') || lower.includes('enetunreach')) {
+      return wrapLibraryError(lang, 'errors.ssh.net', r)
+    }
+    return wrapLibraryError(lang, 'errors.ssh.generic', r)
+  })
 }
 
-/**
- * 映射 SFTP 连接错误
- * @param {unknown} err 错误对象
- * @param {string} lang 语言
- * @returns {string} 映射后的错误提示
- */
 export function mapSftpError(err, lang) {
-  const raw = String(err?.message || err?.error || err || '').trim()  // 原始错误文本
-  const lower = raw.toLowerCase()
-  const w = (key) => {
-    const friendly = translateRender(lang, key)  // 友好提示
-    if (!raw) return friendly
-    return translateRender(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
-  }
-
-  if (!raw) return translateRender(lang, 'errors.sftp.unknown')
-  if (lower.includes('no matching key exchange algorithm')) {
-    return w('errors.sftp.kex')
-  }
-  if (lower.includes('start subsystem') || lower.includes('sftp')) {
-    return w('errors.sftp.subsystem')
-  }
-  return w('errors.sftp.generic')
+  const raw = extractRaw(err)
+  return mapWithIpcOrLibrary(lang, raw, err, 'errors.sftp.unknown', (r) => {
+    const lower = r.toLowerCase()
+    if (lower.includes('no matching key exchange algorithm')) {
+      return wrapLibraryError(lang, 'errors.sftp.kex', r)
+    }
+    if (lower.includes('subsystem')) {
+      return wrapLibraryError(lang, 'errors.sftp.subsystem', r)
+    }
+    return wrapLibraryError(lang, 'errors.sftp.generic', r)
+  })
 }
 
-/**
- * 映射 Telnet 连接错误
- * @param {unknown} err 错误对象
- * @param {string} lang 语言
- * @returns {string} 映射后的错误提示
- */
 export function mapTelnetError(err, lang) {
-  const raw = String(err?.message || err?.error || err || '').trim()  // 原始错误文本
-  const lower = raw.toLowerCase()
-  const w = (key) => {
-    const friendly = translateRender(lang, key)  // 友好提示
-    if (!raw) return friendly
-    return translateRender(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
-  }
-
-  if (!raw) return translateRender(lang, 'errors.telnet.unknown')
-  if (lower.includes('connection timeout') || lower.includes('etimedout')) {
-    return w('errors.telnet.timeout')
-  }
-  if (lower.includes('econnrefused')) {
-    return w('errors.telnet.refused')
-  }
-  if (lower.includes('enotfound') || lower.includes('getaddrinfo')) {
-    return w('errors.telnet.dns')
-  }
-  if (lower.includes('ehostunreach') || lower.includes('enetunreach')) {
-    return w('errors.telnet.net')
-  }
-  return w('errors.telnet.generic')
+  const raw = extractRaw(err)
+  return mapWithIpcOrLibrary(lang, raw, err, 'errors.telnet.unknown', (r) => {
+    const lower = r.toLowerCase()
+    if (lower.includes('connection timeout') || lower.includes('etimedout')) {
+      return wrapLibraryError(lang, 'errors.telnet.timeout', r)
+    }
+    if (lower.includes('econnrefused')) return wrapLibraryError(lang, 'errors.telnet.refused', r)
+    if (lower.includes('enotfound') || lower.includes('getaddrinfo')) {
+      return wrapLibraryError(lang, 'errors.telnet.dns', r)
+    }
+    if (lower.includes('ehostunreach') || lower.includes('enetunreach')) {
+      return wrapLibraryError(lang, 'errors.telnet.net', r)
+    }
+    return wrapLibraryError(lang, 'errors.telnet.generic', r)
+  })
 }
 
-/**
- * 映射串口连接错误
- * @param {unknown} err 错误对象
- * @param {string} lang 语言
- * @returns {string} 映射后的错误提示
- */
 export function mapSerialError(err, lang) {
-  const raw = String(err?.message || err?.error || err || '').trim()  // 原始错误文本
-  const lower = raw.toLowerCase()
-  const w = (key) => {
-    const friendly = translateRender(lang, key)  // 友好提示
-    if (!raw) return friendly
-    return translateRender(lang, 'errors.withRaw', { friendly, raw })  // 拼接错误提示
-  }
-
-  if (!raw) return translateRender(lang, 'errors.serial.unknown')
-  if (lower.includes('cannot open') || lower.includes('access denied') || lower.includes('eperm') || lower.includes('eacces')) {
-    return w('errors.serial.access')
-  }
-  if (lower.includes('no such file') || lower.includes('enoent')) {
-    return w('errors.serial.missing')
-  }
-  if (lower.includes('baud')) {
-    return w('errors.serial.baud')
-  }
-  return w('errors.serial.generic')
+  const raw = extractRaw(err)
+  return mapWithIpcOrLibrary(lang, raw, err, 'errors.serial.unknown', (r) => {
+    const lower = r.toLowerCase()
+    if (lower.includes('cannot open') || lower.includes('access denied') || lower.includes('eperm') || lower.includes('eacces')) {
+      return wrapLibraryError(lang, 'errors.serial.access', r)
+    }
+    if (lower.includes('no such file') || lower.includes('enoent')) {
+      return wrapLibraryError(lang, 'errors.serial.missing', r)
+    }
+    if (lower.includes('baud')) return wrapLibraryError(lang, 'errors.serial.baud', r)
+    return wrapLibraryError(lang, 'errors.serial.generic', r)
+  })
 }

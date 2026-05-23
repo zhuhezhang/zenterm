@@ -2,7 +2,7 @@
  * SFTP 本地路径校验（仅 path，无 Electron）。供 Worker 与主进程共用。
  */
 import path from 'path'
-import { translateMain } from '../i18n/translateMain.js'
+import { createIpcError } from '../../shared/ipcError.js'
 
 /**
  * 检查给定路径是否位于允许的用户根目录范围内
@@ -24,14 +24,12 @@ export function isPathWithinResolvedRoots(resolvedPath, roots) {
  * @param {string} localPath 本地路径
  * @param {string[]} roots 允许的用户根目录列表
  * @param {'download'|'upload'|'sftp'} [kind] 操作类型，用于错误文案前缀
- * @throws {Error} 如果路径不在允许的用户根目录范围内
+ * @throws {Error} 路径不在允许范围时 error.message 为 IPC 错误码
  */
 export function assertSftpLocalFilePathAllowedForRoots(localPath, roots, kind = 'sftp') {
   const resolved = path.resolve(String(localPath))
   if (!isPathWithinResolvedRoots(resolved, roots)) {
-    const hint = translateMain('sftp.pathErrors.allowedRootsHint')
-    const kindLabel = translateMain(`sftp.pathKind.${kind}`)
-    throw new Error(translateMain('sftp.pathErrors.localFileDenied', { hint, kindLabel }))
+    throw createIpcError('sftp.pathErrors.localFileDenied', { kind })
   }
 }
 
@@ -40,14 +38,12 @@ export function assertSftpLocalFilePathAllowedForRoots(localPath, roots, kind = 
  * @param {string} localDir 本地目录
  * @param {string[]} roots 允许的用户根目录列表
  * @param {'download'|'upload'|'sftp'} [kind] 操作类型
- * @throws {Error} 如果路径不在允许的用户根目录范围内
+ * @throws {Error}
  */
 export function assertSftpLocalDirAllowedForRoots(localDir, roots, kind = 'sftp') {
   const resolved = path.resolve(String(localDir))
   if (!isPathWithinResolvedRoots(resolved, roots)) {
-    const hint = translateMain('sftp.pathErrors.allowedRootsHint')
-    const kindLabel = translateMain(`sftp.pathKind.${kind}`)
-    throw new Error(translateMain('sftp.pathErrors.localDirDenied', { hint, kindLabel }))
+    throw createIpcError('sftp.pathErrors.localDirDenied', { kind })
   }
 }
 
@@ -64,15 +60,13 @@ export function safeJoinLocalDownloadPathForRoots(parentDir, remoteEntryName, ro
   assertSftpLocalDirAllowedForRoots(base, roots, kind)
   const segment = path.basename(String(remoteEntryName))
   if (!segment || segment === '.' || segment === '..') {
-    const kindLabel = translateMain(`sftp.pathKind.${kind}`)
-    throw new Error(translateMain('sftp.pathErrors.invalidFilename', { kindLabel }))
+    throw createIpcError('sftp.pathErrors.invalidFilename', { kind })
   }
   const out = path.resolve(base, segment)
   assertSftpLocalFilePathAllowedForRoots(out, roots, kind)
   const rel = path.relative(base, out)
   if (rel.startsWith('..') || path.isAbsolute(rel)) {
-    const kindLabel = translateMain(`sftp.pathKind.${kind}`)
-    throw new Error(translateMain('sftp.pathErrors.pathEscapeTarget', { kindLabel }))
+    throw createIpcError('sftp.pathErrors.pathEscapeTarget', { kind })
   }
   return out
 }

@@ -150,6 +150,10 @@ export const SETTINGS = {
       }
     },
     "importFail": "导入失败：{msg}",
+    "importFileKind": {
+      "sessions": "会话",
+      "settings": "设置"
+    },
     "importErrors": {
       "invalidJson": "不是有效的 JSON 文件",
       "fileTooLarge": "文件过大（上限 {max} MB）",
@@ -356,6 +360,10 @@ export const SETTINGS = {
       }
     },
     "importFail": "Import failed: {msg}",
+    "importFileKind": {
+      "sessions": "sessions",
+      "settings": "settings"
+    },
     "importErrors": {
       "invalidJson": "Not a valid JSON file",
       "fileTooLarge": "File is too large (max {max} MB)",

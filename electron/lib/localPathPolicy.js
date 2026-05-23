@@ -5,7 +5,7 @@
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
-import { translateMain } from '../i18n/translateMain.js'
+import { createIpcError } from '../../shared/ipcError.js'
 import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, isPathWithinResolvedRoots,
   safeJoinLocalDownloadPathForRoots,
@@ -110,23 +110,26 @@ export function isPathWithinAllowedUserRoots(resolvedPath) {
 export function assertLogWriteDirectoryAllowed(logDir) {
   const resolved = path.resolve(String(logDir))
   if (!isPathWithinAllowedUserRoots(resolved)) {
-    const hint = translateMain('sftp.pathErrors.allowedRootsHint')
-    throw new Error(translateMain('sftp.pathErrors.logDirDenied', { hint }))
+    throw createIpcError('sftp.pathErrors.logDirDenied', {})
   }
 }
 
 /**
  * 校验日志目录是否允许写入（供设置界面等展示提示，不抛错）
  * @param {string} logDir 日志目录（来自设置）
- * @returns {{ ok: true } | { ok: false, message: string }} 失败时 message 为已翻译文案
+ * @returns {{ ok: true } | { ok: false, error: string, errorParams?: object }} 失败时返回 IPC 错误码
  */
 export function validateLogWriteDirectory(logDir) {
   try {
     assertLogWriteDirectoryAllowed(logDir)
     return { ok: true }
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e)
-    return { ok: false, message }
+    if (e && typeof e === 'object' && e.ipcCode) {
+      const out = { ok: false, error: e.ipcCode }
+      if (e.ipcParams && Object.keys(e.ipcParams).length) out.errorParams = e.ipcParams
+      return out
+    }
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
 }
 

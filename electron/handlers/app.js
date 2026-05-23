@@ -34,7 +34,7 @@ export function setupAppHandlers(ipcMain, getMainWindow) {
 
   ipcMain.handle('app:validateLogDirectory', (event, dir) => {  // 验证日志目录是否在允许范围内
     if (!isTrustedIpcSender(event.sender)) {
-      return { ok: false, message: translateMain('app.invalidRequest') }
+      return { ok: false, error: 'app.invalidRequest' }
     }
     const s = dir == null ? '' : String(dir).trim()
     if (!s) return { ok: true }

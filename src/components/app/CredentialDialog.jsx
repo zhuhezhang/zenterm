@@ -58,7 +58,7 @@ export default function CredentialDialog({
                 <label className="form-label">{t('credential.privateKeyPath')}</label>
                 <div className="form-control">
                   <input
-                    placeholder="/path/to/id_rsa"
+                    placeholder={t('connect.privateKeyPath')}
                     value={pkey}
                     autoFocus={hasUser && !hasPkey}
                     onChange={e => setPkey(e.target.value)}

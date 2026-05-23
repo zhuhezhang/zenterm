@@ -24,6 +24,7 @@ import { loadSettings, saveSettings } from './store/settingsStore.js'
 import { DEFAULT_SIDEBAR_WIDTH } from './lib/settings/defaults.js'
 import { clampSidebarWidthPx } from './lib/settings/normalize.js'
 import { resolveEffectiveUiLanguage } from '../shared/resolveUiLanguage.js'
+import { formatIpcResponseError } from '@/lib/ipc/formatIpcError.js'
 import './styles/app.css'
 
 /**
@@ -52,6 +53,13 @@ function vacatedGroupPathIfEmpty(beforeSession, newConfig, nextSessions) {
  */
 function AppMain({ settings, setSettings }) {
   const { t } = useI18n()
+
+  /** 凭据同步失败提示（后端已 i18n 的文案直接显示） */
+  const alertVaultSyncError = (r) => {
+    if (!r?.ok && r?.error) {
+      alert(formatIpcResponseError(t, r) || t('credentials.encryptionUnavailable'))
+    }
+  }
   const [appThemePreview, setAppThemePreview] = useState(null)  // 设置弹窗内预览主题（未保存不写 localStorage）；关闭取消时清空
   const appThemeEffective = useSyncedAppTheme(appThemePreview ?? settings.appTheme)  // ??表示如果 appThemePreview 为 null，则使用 settings.appTheme
   useEffect(() => {
@@ -246,9 +254,9 @@ function AppMain({ settings, setSettings }) {
     updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
     const sid = resolveAffectedSavedId(savedSessions, next, config)
     const r = await syncSessionSecretsToVault(sid, config, settings)
-    if (!r.ok && r.error) alert(r.error)
+    alertVaultSyncError(r)
     setShowDialog(false)
-  }, [savedSessions, updateSaved, dialogInitial, settings])
+  }, [savedSessions, updateSaved, dialogInitial, settings, t])
 
   /**
    * 保存并连接：先保存会话配置（编辑/新建），然后启动会话。同时检查是否需要添加占位分组
@@ -264,10 +272,10 @@ function AppMain({ settings, setSettings }) {
     updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
     const sid = resolveAffectedSavedId(savedSessions, next, config)
     const r = await syncSessionSecretsToVault(sid, config, settings)
-    if (!r.ok && r.error) alert(r.error)
+    alertVaultSyncError(r)
     launchSession(c)
     setShowDialog(false)
-  }, [savedSessions, updateSaved, launchSession, dialogInitial, settings])
+  }, [savedSessions, updateSaved, launchSession, dialogInitial, settings, t])
 
   /**
    * 直接连接：不保存会话配置，直接启动会话
@@ -291,9 +299,9 @@ function AppMain({ settings, setSettings }) {
     updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
     // 与「保存会话」一致：始终按当前设置同步 vault；仅 saveSecretsToVault 为 true 时才会把本次敏感字段写入加密库，否则写入 null 并清除该会话在库中的旧凭据
     const r = await syncSessionSecretsToVault(config.savedId, config, settings)
-    if (!r.ok && r.error) alert(r.error)
+    alertVaultSyncError(r)
     launchSession(config)
-  }, [savedSessions, updateSaved, settings, launchSession])
+  }, [savedSessions, updateSaved, settings, launchSession, t])
 
   /**
    * 连接已保存会话：SSH 缺凭据时弹出凭证对话框；Telnet/Serial 直接启动

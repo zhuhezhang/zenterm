@@ -34,11 +34,11 @@ export function isTrustedIpcSender(sender) {
  */
 export const IPC_UNAUTHORIZED = Object.freeze({
   success: false,
-  error: 'Unauthorized IPC sender',
+  error: 'app.unauthorized',
 })
 
 /** 凭据 IPC 拒绝返回值 */
 export const CRED_UNAUTHORIZED = Object.freeze({
   ok: false,
-  error: 'Unauthorized IPC sender',
+  error: 'app.unauthorized',
 })

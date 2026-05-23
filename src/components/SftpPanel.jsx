@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
+import { formatIpcError } from '@/lib/ipc/formatIpcError.js'
+import { ipcErrorFromResponse } from '../../shared/ipcError.js'
 import '../styles/sftp.css'
 
 /** 非法文件名字符正则表达式 */
@@ -76,6 +78,10 @@ function formatDate(ms) {
  */
 export default function SftpPanel({ session }) {
   const { t } = useI18n()
+  /** IPC 错误码 -> 界面文案 */
+  const ipcErr = (res, fallbackKey) =>
+    formatIpcError(t, res?.error, res?.errorParams) || (fallbackKey ? t(fallbackKey) : '')
+  const showErr = (e) => alert(formatIpcError(t, e?.message, e?.errorParams) || String(e))
   const sftpSessionId = session?.id ? `${session.id}-sftp` : null  // 会话 ID
   const [path, setPath] = useState('/')  // 当前路径
   const [items, setItems] = useState([])  // 文件列表
@@ -104,15 +110,15 @@ export default function SftpPanel({ session }) {
     setSelected(null)
     try {
       const res = await window.zterm.sftp.list(sftpSessionId, dirPath)
-      if (!res.success) throw new Error(res.error || 'Unknown error')
+      if (!res.success) throw ipcErrorFromResponse(res)
       setItems(res.items)
       setPath(dirPath)
     } catch (e) {
-      alert(e?.message || String(e))
+      showErr(e)
     } finally {
       setLoading(false)
     }
-  }, [sftpSessionId])
+  }, [sftpSessionId, t])
 
   useEffect(() => {  // 监听进度变化，每次会话 ID 变化时重新加载目录
     if (!sftpSessionId) return
@@ -203,7 +209,7 @@ export default function SftpPanel({ session }) {
     if (!confirm(t('sftp.confirmDelete', { name: item.name }))) return
     const res = await window.zterm.sftp.delete(sftpSessionId, item.path)
     if (res.success) loadDir(path)
-    else alert(res.error || 'Unknown error')
+    else alert(ipcErr(res, 'sftp.unknownError'))
   }
 
   /** 开始创建文件夹 */
@@ -227,7 +233,7 @@ export default function SftpPanel({ session }) {
       setCreateDirName('')
       loadDir(path)
     }
-    else alert(res.error || 'Unknown error')
+    else alert(ipcErr(res, 'sftp.unknownError'))
   }
 
   /** 
@@ -256,7 +262,7 @@ export default function SftpPanel({ session }) {
     setRenaming(null)
     const res = await window.zterm.sftp.rename(sftpSessionId, oldPath, newPath)
     if (res.success) loadDir(path)
-    else alert(res.error || 'Unknown error')
+    else alert(ipcErr(res, 'sftp.unknownError'))
   }
 
   /** 
@@ -272,7 +278,7 @@ export default function SftpPanel({ session }) {
     const res = item.isDir
       ? await window.zterm.sftp.downloadDir(sftpSessionId, item.path, localPath)
       : await window.zterm.sftp.download(sftpSessionId, item.path, localPath)
-    if (!res?.success) alert(res.error || t('sftp.downloadFail'))
+    if (!res?.success) alert(ipcErr(res, 'sftp.downloadFail'))
   }
 
   /** 
@@ -288,9 +294,9 @@ export default function SftpPanel({ session }) {
     await ensureRemoteDir(parent, cache) // 递归确保父目录存在
     const res = await window.zterm.sftp.mkdir(sftpSessionId, remoteDir)
     if (res?.success) { cache.add(remoteDir); return true } // 如果创建成功，将目录添加到缓存集合中，并返回 true
-    const msg = String(res?.error || '')
-    if (/exist|exists|failure/i.test(msg)) { cache.add(remoteDir); return true } // 如果创建失败，且错误信息中包含 exist、exists 或 failure，将目录添加到缓存集合中，并返回 true
-    throw new Error(res?.error || t('sftp.mkdirFail', { path: remoteDir })) // 如果创建失败，且错误信息中不包含 exist、exists 或 failure，抛出错误
+    const msg = ipcErr(res, '')
+    if (/exist|exists|failure/i.test(msg)) { cache.add(remoteDir); return true }
+    throw ipcErrorFromResponse(res)
   }
 
   /** 
@@ -334,13 +340,11 @@ export default function SftpPanel({ session }) {
       for (const f of files) {
         const remotePath = (path === '/' ? '' : path) + '/' + f.name
         const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
-        if (!res?.success) {
-          throw new Error(res.error || t('sftp.uploadFail', { name: f.name }))
-        }
+        if (!res?.success) throw ipcErrorFromResponse(res)
       }
       loadDir(path)
     } catch (err) {
-      alert(err?.message || String(err))
+      showErr(err)
     }
   }
 
@@ -370,13 +374,11 @@ export default function SftpPanel({ session }) {
         const remoteDir = remotePath.split('/').slice(0, -1).join('/') || '/'
         await ensureRemoteDir(remoteDir, cache)
         const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
-        if (!res?.success) {
-          throw new Error(res.error || t('sftp.uploadFail', { name: f.webkitRelativePath }))
-        }
+        if (!res?.success) throw ipcErrorFromResponse(res)
       }
       loadDir(path)
     } catch (err) {
-      alert(err?.message || String(err))
+      showErr(err)
     }
   }
 
@@ -414,9 +416,7 @@ export default function SftpPanel({ session }) {
           const remoteDir = remotePath.split('/').slice(0, -1).join('/') || '/' // 获取远程目录
           await ensureRemoteDir(remoteDir, cache) // 确保远程目录存在
           const res = await window.zterm.sftp.upload(sftpSessionId, localPath, remotePath) // 上传文件
-          if (!res?.success) {
-            throw new Error(res.error || t('sftp.uploadFail', { name: relPath }))
-          }
+          if (!res?.success) throw ipcErrorFromResponse(res)
         }
         loadDir(path)
         return
@@ -427,13 +427,11 @@ export default function SftpPanel({ session }) {
       for (const f of files) {  // 遍历要上传的文件列表
         const remotePath = (path === '/' ? '' : path) + '/' + f.name // 获取远程路径
         const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath) // 上传文件
-        if (!res?.success) {
-          throw new Error(res.error || t('sftp.uploadFail', { name: f.name }))
-        }
+        if (!res?.success) throw ipcErrorFromResponse(res)
       }
       loadDir(path) // 刷新目录
     } catch (err) {
-      alert(err?.message || String(err))
+      showErr(err)
     }
   }
 

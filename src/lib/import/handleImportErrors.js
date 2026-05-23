@@ -21,7 +21,12 @@ export function formatImportError(t, err) {
   const code = err && typeof err === 'object' && 'code' in err ? err.code : null
   if (typeof code === 'string') {
     const key = `settings.importErrors.${code}`
-    const msg = t(key, err.params || {})
+    const params = { ...(err.params || {}) }
+    if (code === 'wrongFileType' && params.kindKey) {
+      params.kind = t(`settings.importFileKind.${params.kindKey}`)
+      delete params.kindKey
+    }
+    const msg = t(key, params)
     if (msg !== key) return msg
   }
   if (err instanceof Error && err.message) return err.message

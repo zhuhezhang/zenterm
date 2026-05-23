@@ -5,14 +5,12 @@ import fs from 'fs'
 import { parentPort, workerData } from 'worker_threads'
 import { Client } from 'ssh2'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
-import { setStoredUiLanguage } from '../i18n/translateMain.js'
+import { ipcFailFromThrown } from '../../shared/ipcError.js'
 import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, safeJoinLocalDownloadPathForRoots,
 } from '../lib/sftpLocalPathRoots.js'
 
-const { config, allowedRoots, uiLanguage } = workerData
-// Worker 子线程对齐主进程界面语言，供路径校验 throw 时使用 translateMain
-setStoredUiLanguage(uiLanguage === 'en' ? 'en' : 'zh')
+const { config, allowedRoots } = workerData
 
 /** 
  * 发送消息到主线程
@@ -237,7 +235,7 @@ function postCmdResult(reqId, success, extra = {}) {
 async function handleCmd(msg) {
   const { reqId, cmd } = msg
   if (!state.sftp) {
-    postCmdResult(reqId, false, { error: 'No SFTP session' })
+    postCmdResult(reqId, false, { error: 'sftp.noSession' })
     return
   }
   try {
@@ -326,10 +324,11 @@ async function handleCmd(msg) {
         break
       }
       default:
-        postCmdResult(reqId, false, { error: `Unknown cmd: ${cmd}` })
+        postCmdResult(reqId, false, { error: 'sftp.unknownCmd', errorParams: { cmd } })
     }
   } catch (e) {
-    postCmdResult(reqId, false, { error: e instanceof Error ? e.message : String(e) })
+    const fail = ipcFailFromThrown(e)
+    postCmdResult(reqId, false, { error: fail.error, errorParams: fail.errorParams })
   }
 }
 

@@ -1,7 +1,9 @@
 import { app, safeStorage } from 'electron'
 import fs from 'fs'
 import path from 'path'
-import { isTrustedIpcSender, CRED_UNAUTHORIZED } from '../lib/trustedSender.js'
+import { isTrustedIpcSender } from '../lib/trustedSender.js'
+import { credUnauthorized } from '../lib/ipcReply.js'
+import { credFail } from '../../shared/ipcError.js'
 
 /**
  * 获取凭据存储文件路径
@@ -89,10 +91,10 @@ function setupCredentialHandlers(ipcMain) {
   })
 
   ipcMain.handle('credentials:sync', async (event, savedId, partial) => {  // 同步会话凭据到加密存储，参数为会话ID、同步凭据对象（每个值为 string 写入；null/undefined/'' 表示删除该键，返回同步结果）
-    if (!isTrustedIpcSender(event.sender)) return CRED_UNAUTHORIZED
-    if (!savedId || typeof savedId !== 'string') return { ok: false, error: 'invalid savedId' }
+    if (!isTrustedIpcSender(event.sender)) return credUnauthorized()
+    if (!savedId || typeof savedId !== 'string') return credFail('credentials.invalidSavedId')
     if (!safeStorage.isEncryptionAvailable()) {
-      return { ok: false, error: '系统安全存储不可用（例如 Linux 未配置密钥环）。无法加密保存凭据。' }
+      return credFail('credentials.encryptionUnavailable')
     }
     const vault = readVault()
     const cur = { ...(vault.entries[savedId] || {}) }
@@ -113,7 +115,7 @@ function setupCredentialHandlers(ipcMain) {
   })
 
   ipcMain.handle('credentials:remove', async (event, savedId) => {  // 删除会话凭据，参数为会话ID，返回删除结果
-    if (!isTrustedIpcSender(event.sender)) return CRED_UNAUTHORIZED
+    if (!isTrustedIpcSender(event.sender)) return credUnauthorized()
     if (!savedId || typeof savedId !== 'string') return { ok: true }
     const vault = readVault()
     if (vault.entries[savedId]) {
@@ -124,7 +126,7 @@ function setupCredentialHandlers(ipcMain) {
   })
 
   ipcMain.handle('credentials:duplicate', async (event, fromId, toId) => {  // 复制会话凭据，参数为源会话ID、目标会话ID，返回复制结果
-    if (!isTrustedIpcSender(event.sender)) return CRED_UNAUTHORIZED
+    if (!isTrustedIpcSender(event.sender)) return credUnauthorized()
     if (!fromId || !toId || typeof fromId !== 'string' || typeof toId !== 'string') return { ok: false }
     const vault = readVault()
     if (vault.entries[fromId]) {
@@ -135,7 +137,7 @@ function setupCredentialHandlers(ipcMain) {
   })
 
   ipcMain.handle('credentials:clearAll', async (event) => {  // 清除所有会话凭据，返回清除结果
-    if (!isTrustedIpcSender(event.sender)) return CRED_UNAUTHORIZED
+    if (!isTrustedIpcSender(event.sender)) return credUnauthorized()
     try {
       if (fs.existsSync(vaultPath())) fs.unlinkSync(vaultPath())
     } catch (e) {
