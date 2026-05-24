@@ -71,7 +71,7 @@ export async function normalizeImportedLogPath(raw, fallback = '') {
   try {
     if (typeof window !== 'undefined' && window.zterm?.validateLogDirectory && isLikelyAbsoluteLogPath(p)) {
       const vr = await window.zterm.validateLogDirectory(p)
-      if (!vr?.ok) return fb
+      if (vr?.success === false) return fb
     }
     return p
   } catch {

@@ -2,7 +2,7 @@ import { useState, useRef, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/context/I18nContext.jsx'
 import { addGroupPlaceholder, exportSessions } from '@/store/sessionStore.js'
-import { hasInvalidLabelChars } from '../../../shared/safeFileName.js'
+import { hasInvalidLabelChars } from '../../lib/safeFileName.js'
 
 /**
  * 上下文菜单组件：显示会话、分组、子分组、新分组等操作的上下文菜单

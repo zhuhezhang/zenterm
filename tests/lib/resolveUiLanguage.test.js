@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   detectLangFromLocaleTags,
   resolveEffectiveUiLanguage,
-} from '../../shared/resolveUiLanguage.js'
+} from '../../src/lib/resolveUiLanguage.js'
 
 describe('detectLangFromLocaleTags', () => {
   it('detects zh variants', () => {

@@ -1,4 +1,5 @@
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
+import { syncUiLanguageToMain } from '../lib/resolveUiLanguage.js'
 import { downloadJsonExport } from '../lib/import/downloadJsonExport.js'
 import { validateAndParseSettingsImport } from '../lib/import/parseSettingsImport.js'
 import {
@@ -82,7 +83,7 @@ export function loadSettings() {
  */
 export function saveSettings(settings) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)) } catch (e) {}
-  try { window.zterm?.setUiLanguage?.(settings?.uiLanguage) } catch (_) {}
+  syncUiLanguageToMain(settings?.uiLanguage)
 }
 
 /**

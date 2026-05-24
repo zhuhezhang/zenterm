@@ -1,6 +1,7 @@
 import { app, dialog } from 'electron'
 import { translateMain, setStoredUiLanguage } from '../i18n/translateMain.js'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
+import { ipcFail } from '../../shared/ipcError.js'
 import { validateLogWriteDirectory } from '../lib/localPathPolicy.js'
 
 /**
@@ -9,9 +10,9 @@ import { validateLogWriteDirectory } from '../lib/localPathPolicy.js'
  * @param {() => import('electron').BrowserWindow | undefined} getMainWindow 获取主窗口的函数
  */
 export function setupAppHandlers(ipcMain, getMainWindow) {
-  ipcMain.on('app:setUiLanguage', (e, uiLanguage) => {  // 设置界面语言
+  ipcMain.on('app:setUiLanguage', (e, uiLanguage) => {  // 渲染进程传入 zh | en
     if (!isTrustedIpcSender(e.sender)) return
-    setStoredUiLanguage(uiLanguage)
+    setStoredUiLanguage(uiLanguage === 'zh' ? 'zh' : 'en')
   })
 
   ipcMain.on('app:getDownloadsPath', (e) => {  // 获取下载目录路径
@@ -34,10 +35,10 @@ export function setupAppHandlers(ipcMain, getMainWindow) {
 
   ipcMain.handle('app:validateLogDirectory', (event, dir) => {  // 验证日志目录是否在允许范围内
     if (!isTrustedIpcSender(event.sender)) {
-      return { ok: false, error: 'app.invalidRequest' }
+      return ipcFail('app.invalidRequest')
     }
     const s = dir == null ? '' : String(dir).trim()
-    if (!s) return { ok: true }
+    if (!s) return { success: true }
     return validateLogWriteDirectory(s)
   })
 }

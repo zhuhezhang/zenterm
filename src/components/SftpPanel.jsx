@@ -3,10 +3,8 @@ import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
 import { formatIpcError } from '@/lib/ipc/formatIpcError.js'
 import { ipcErrorFromResponse } from '../../shared/ipcError.js'
+import { INVALID_LABEL_CHARS } from '../../shared/safeFileName.js'
 import '../styles/sftp.css'
-
-/** 非法文件名字符正则表达式 */
-const INVALID_NAME_CHARS = /[\/\\:*?"\u003c\u003e|\x00]/
 
 /**
  * 沙盒渲染进程不提供 File.path，须通过 preload 的 webUtils.getPathForFile。
@@ -222,7 +220,7 @@ export default function SftpPanel({ session }) {
   const commitCreateDir = async () => {
     const name = createDirName.trim()
     if (!name) { setCreatingDir(false); return }
-    if (INVALID_NAME_CHARS.test(name)) {
+    if (INVALID_LABEL_CHARS.test(name)) {
       alert(t('sftp.nameInvalid'))
       return
     }
@@ -252,7 +250,7 @@ export default function SftpPanel({ session }) {
     const prevName = (renaming?.name ?? '').trim()
     if (!nextName) { setRenaming(null); return }
     if (nextName === prevName) { setRenaming(null); return }
-    if (INVALID_NAME_CHARS.test(nextName)) {
+    if (INVALID_LABEL_CHARS.test(nextName)) {
       alert(t('sftp.nameInvalid'))
       return
     }

@@ -1,11 +1,6 @@
-import { credFail, ipcFail } from '../../shared/ipcError.js'
+import { ipcFail } from '../../shared/ipcError.js'
 
-/** IPC 鉴权失败（success: false） */
+/** IPC 鉴权失败 */
 export function ipcUnauthorized() {
   return ipcFail('app.unauthorized')
-}
-
-/** 凭据 IPC 鉴权失败（ok: false） */
-export function credUnauthorized() {
-  return credFail('app.unauthorized')
 }

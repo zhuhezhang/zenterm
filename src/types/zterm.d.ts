@@ -75,9 +75,14 @@ export interface ZTermLogApi {
 
 export interface ZTermApi {
   getDownloadsPath: () => string
-  setUiLanguage: (uiLanguage: string) => void
+  setUiLanguage: (uiLanguage: 'zh' | 'en') => void
   chooseDirectory: () => Promise<string | null>
-  validateLogDirectory: (dir: string) => Promise<{ ok: boolean; message?: string }>
+  validateLogDirectory: (dir: string) => Promise<{
+    success: boolean
+    error?: string
+    errorParams?: Record<string, string | number>
+    errorKnown?: boolean
+  }>
   getPathForFile: (file: File) => string
   window: ZTermWindowApi
   credentials: ZTermCredentialsApi

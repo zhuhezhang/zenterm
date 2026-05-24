@@ -1,16 +1,15 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import { translateRender } from '../i18n/translateRender.js'
 import { formatIpcResponseError } from '@/lib/ipc/formatIpcError.js'
-import { resolveEffectiveUiLanguage } from '../../shared/resolveUiLanguage.js'
+import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage.js'
 import { exportSessions, saveSessions } from '../store/sessionStore.js'
 import { IMPORT_JSON_ACCEPT } from '../lib/import/constants.js'
 import { reportSettingsImportResult, reportSettingsImportError } from '../lib/import/reportSettingsImport.js'
 import { createHighlightRuleId, normalizeHighlightRulesForSave } from '../lib/settings/highlightRules.js'
 import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge.js'
 import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS } from '../lib/settings/defaults.js'
-import {
-  DEFAULT_ALGORITHM_PREFERENCES, SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm,
-} from '../../shared/sshAlgorithmDefaults.js'
+import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
+import { SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm } from '../lib/settings/sshAlgorithmOptions.js'
 import {
   clampTerminalScrollback, normalizeLoggingMode, applyLegacyLoggingMigration,
 } from '../lib/settings/normalize.js'
@@ -350,7 +349,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     try {
       if (window.zterm?.validateLogDirectory && likelyAbsolute) {
         const vr = await window.zterm.validateLogDirectory(p)
-        if (!vr?.ok) {
+        if (vr?.success === false) {
           alert(formatIpcResponseError(t, vr) || t('settings.logPathRejected'))
           return
         }

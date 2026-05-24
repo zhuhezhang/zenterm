@@ -2,14 +2,14 @@ import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncodings.js'
+import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../lib/terminalEncodings.js'
 import { resolveLoggingDirectory } from '../store/settingsStore.js'
 import { clampTerminalScrollback, normalizeLoggingMode } from '../lib/settings/normalize.js'
 import { translateRender } from '../i18n/translateRender.js'
-import { resolveEffectiveUiLanguage } from '../../shared/resolveUiLanguage.js'
-import { safeFileToken } from '../../shared/safeFileName.js'
+import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage.js'
+import { safeFileToken } from '../lib/safeFileName.js'
 import { ipcErrorFromResponse } from '../../shared/ipcError.js'
-import { mapSshError, mapSftpError, mapTelnetError, mapSerialError } from '@/lib/terminal/errorMappers.js'
+import { formatThrownIpcError } from '@/lib/ipc/formatIpcError.js'
 import { getXtermTheme } from '../theme/appTheme.js'
 import '@xterm/xterm/css/xterm.css'
 import '../styles/terminal.css'
@@ -528,6 +528,8 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
   const writeInfo    = (m) => writelnWithLog(term, logFileRef, `\r\x1b[33m${m}\x1b[0m`)
   const writeError   = (m) => writelnWithLog(term, logFileRef, `\r\x1b[31m${m}\x1b[0m`)
   const writeSuccess = (m) => writelnWithLog(term, logFileRef, `\r\x1b[32m${m}\x1b[0m`)
+  // errorKnown:false 直出原文; true 则按 error 路径走 i18n
+  const terminalErr = (e) => formatThrownIpcError((p, params) => translateRender(L(), p, params), e)
 
   /**
    * 连接断开处理函数：在终端显示断开消息，提示用户按 R 重连，更新会话状态为断开，并设置断连标记
@@ -639,14 +641,14 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
             throw ipcErrorFromResponse(sr)
           }
         } catch (e) { 
-          writeError(mapSftpError(e, L()))
+          writeError(terminalErr(e))
           window.zterm.ssh.sendData(id, '\n', terminalEncoding)
           onUpdate({ sftpReady: false })
         }
       }
     } catch (e) {
       if (isCancelled?.()) return
-      writeError(mapSshError(e, L()))
+      writeError(terminalErr(e))
       onUpdate({ status: 'error' })
     }
 
@@ -666,7 +668,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.telnet.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
-      writeError(mapTelnetError(e, L()))
+      writeError(terminalErr(e))
       onUpdate({ status: 'error' })
     }
 
@@ -698,7 +700,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       }, r1, r2, () => d1.dispose(), () => window.zterm.serial.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
-      writeError(mapSerialError(e, L()))
+      writeError(terminalErr(e))
       onUpdate({ status: 'error' })
     }
   }

@@ -3,7 +3,8 @@
  * - 主进程 IPC: error 为错误码 (如 sftp.noSession), 可选 errorParams; 由渲染端 formatIpcError 翻译
  * - 主进程 translateMain: 仅系统对话框、串口终端直写等主进程本地 UI
  * - 渲染进程 (translateRender / useI18n): 界面文案与导入校验等
- * - 终端 errorMappers: IPC 错误码走 formatIpcError; 库原始英文走 pattern 映射
+ * - 终端连接错误: formatThrownIpcError (errorKnown:false 原文, true 则按 error 路径 i18n)
+ * - uiLanguage 的 auto 解析在 src/lib/resolveUiLanguage.js, 主进程仅收 zh/en
  */
 
 /**

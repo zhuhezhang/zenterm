@@ -1,10 +1,8 @@
-/**
- * 界面语言解析（渲染进程与主进程共用）
- */
+// 界面语言解析 (渲染进程: 设置里可存 auto, 对外与主进程同步时解析为 zh/en)
 
-/**
+/** 
  * 从语言标签列表解析 zh / en
- * @param {string[]} tags 语言标签列表，如 navigator.languages 或 [app.getLocale()]
+ * @param {string[]} tags 语言标签列表
  * @returns {'zh'|'en'} 解析后的语言
  */
 export function detectLangFromLocaleTags(tags) {
@@ -17,9 +15,8 @@ export function detectLangFromLocaleTags(tags) {
 }
 
 /**
- * 从 Chromium / Electron 渲染进程的 navigator 解析界面语言（zh / en）
- * 主进程无 navigator 时返回 en
- * @returns {'zh'|'en'} 解析后的语言
+ * 检测系统语言，优先使用 navigator.languages，然后使用 navigator.language
+ * @returns {'zh'|'en'} 检测到的语言
  */
 function detectSystemUiLang() {
   const candidates = []
@@ -37,13 +34,22 @@ function detectSystemUiLang() {
 
 /**
  * 将设置中的 uiLanguage 解析为实际用于文案的 zh / en
- * @param {string|undefined} stored `auto` | `zh` | `en` 设置中的语言
- * @param {'zh'|'en'} [systemLang] `auto` 时使用的系统语言；省略时使用 detectSystemUiLang() 解析系统语言
- * @returns {'zh'|'en'} 实际用于文案的语言
+ * @param {string|undefined} stored `auto` | `zh` | `en`
+ * @param {'zh'|'en'} [systemLang] `auto` 时使用的系统语言
  */
 export function resolveEffectiveUiLanguage(stored, systemLang) {
   if (stored === 'en') return 'en'
   if (stored === 'zh') return 'zh'
-  const sys = systemLang ?? detectSystemUiLang()  // ??表示如果 systemLang 为 undefined，则使用 detectSystemUiLang() 解析系统语言（渲染进程用 navigator，主进程应显式传入 app.getLocale() 解析结果）
+  const sys = systemLang ?? detectSystemUiLang()
   return sys === 'zh' ? 'zh' : 'en'
+}
+
+/** 
+ * 同步界面语言至主进程 (仅传 zh/en, 不传 auto) 
+ * @param {string|undefined} stored `auto` | `zh` | `en`
+ */
+export function syncUiLanguageToMain(stored) {
+  try {
+    window.zterm?.setUiLanguage?.(resolveEffectiveUiLanguage(stored))
+  } catch (_) {}
 }

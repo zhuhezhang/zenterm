@@ -11,9 +11,6 @@ import { setupWindowHandlers, attachWindowMaximizeEvents } from './handlers/wind
 import { setupAppHandlers } from './handlers/app.js'
 import { setupLogHandlers } from './handlers/log.js'
 import { setTrustedRendererWebContents, clearTrustedRendererWebContents, } from './lib/trustedSender.js'
-import { detectLangFromLocaleTags } from '../shared/resolveUiLanguage.js'
-import { setMainSystemUiLang } from './i18n/translateMain.js'
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url))  // 当前文件的目录路径
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged  // 兼容开发环境和生产环境的判断(通过环境变量和是否打包判读)
 // const isDev = false  // 强制生产环境用于测试
@@ -69,7 +66,6 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {  // 当应用准备好时，执行以下操作
-  setMainSystemUiLang(detectLangFromLocaleTags([app.getLocale()]))
   if (isDev && process.platform === 'darwin') {  // macOS 平台，设置 Dock 图标
     const icon = resolveAppIcon()
     if (icon) app.dock?.setIcon(icon)

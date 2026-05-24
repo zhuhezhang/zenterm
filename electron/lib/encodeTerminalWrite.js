@@ -1,5 +1,5 @@
 import iconv from 'iconv-lite'
-import { normalizeTerminalEncoding } from '../../shared/terminalEncodings.js'
+import { DEFAULT_TERMINAL_ENCODING, normalizeTerminalEncoding } from '../../shared/terminalEncodings.js'
 
 /**
  * 将用户输入的 Unicode 字符串编码为发往远端终端的字节
@@ -9,7 +9,7 @@ import { normalizeTerminalEncoding } from '../../shared/terminalEncodings.js'
  */
 export function stringToTerminalBytes(str, encoding) {
   const enc = normalizeTerminalEncoding(encoding)
-  if (enc === 'utf-8') return Buffer.from(str, 'utf8')
+  if (enc === DEFAULT_TERMINAL_ENCODING) return Buffer.from(str, 'utf8')
   try {
     if (iconv.encodingExists(enc)) return iconv.encode(str, enc)
   } catch {

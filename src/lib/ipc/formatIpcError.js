@@ -32,3 +32,13 @@ export function formatIpcResponseError(t, res) {
   if (res.errorKnown === false) return String(code ?? '')
   return formatIpcError(t, code, params)
 }
+
+/** 终端: ipcErrorFromResponse 抛出的 Error -> 展示文案 */
+export function formatThrownIpcError(t, err) {
+  if (!err) return ''
+  return formatIpcResponseError(t, {
+    error: err.message ?? err.error,
+    errorParams: err.errorParams,
+    errorKnown: err.errorKnown,
+  })
+}

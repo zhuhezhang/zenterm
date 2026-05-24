@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import {
-  hasInvalidLabelChars,
-  safeFileToken,
-  sanitizeLogFileStem,
-} from '../../shared/safeFileName.js'
+import { INVALID_LABEL_CHARS } from '../../shared/safeFileName.js'
+import { hasInvalidLabelChars, safeFileToken } from '../../src/lib/safeFileName.js'
+import { sanitizeLogFileStem } from '../../electron/lib/safeFileName.js'
 
-describe('safeFileName', () => {
+describe('INVALID_LABEL_CHARS', () => {
+  it('is shared between renderer and main', () => {
+    expect(INVALID_LABEL_CHARS.test('a/b')).toBe(true)
+  })
+})
+
+describe('safeFileName (renderer)', () => {
   it('detects invalid label chars', () => {
     expect(hasInvalidLabelChars('a/b')).toBe(true)
     expect(hasInvalidLabelChars('hello')).toBe(false)
@@ -15,7 +19,9 @@ describe('safeFileName', () => {
     expect(safeFileToken('my host')).toBe('my_host')
     expect(safeFileToken('bad/name')).toBe('badname')
   })
+})
 
+describe('safeFileName (main)', () => {
   it('sanitizeLogFileStem replaces invalid with underscore', () => {
     expect(sanitizeLogFileStem('bad/name')).toBe('bad_name')
     expect(sanitizeLogFileStem('')).toBe('session')

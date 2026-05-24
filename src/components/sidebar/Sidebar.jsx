@@ -7,7 +7,7 @@ import {
 import { IMPORT_JSON_ACCEPT } from '@/lib/import/constants.js'
 import { absorbPlaintextSecretsFromImportedSessions } from '@/store/credentialsBridge.js'
 import { buildTree, flattenVisibleTree, NO_GROUP_PLACEHOLDERS } from '@/lib/session/tree.js'
-import { hasInvalidLabelChars } from '../../../shared/safeFileName.js'
+import { hasInvalidLabelChars } from '../../lib/safeFileName.js'
 import SftpPanel from '../SftpPanel.jsx'
 import { Chevron, FolderIcon } from './icons.jsx'
 import SidebarTop from './SidebarTop.jsx'

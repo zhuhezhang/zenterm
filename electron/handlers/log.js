@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { assertLogWriteDirectoryAllowed } from '../lib/localPathPolicy.js'
-import { sanitizeLogFileStem } from '../../shared/safeFileName.js'
+import { sanitizeLogFileStem } from '../lib/safeFileName.js'
 
 /**
  * 日志写入处理程序

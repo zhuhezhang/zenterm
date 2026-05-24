@@ -8,7 +8,7 @@
  */
 import { createContext, useContext, useMemo } from 'react'
 import { translateRender } from '../i18n/translateRender.js'
-import { resolveEffectiveUiLanguage } from '../../shared/resolveUiLanguage.js'
+import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage.js'
 
 /** I18n 上下文 */
 const I18nContext = createContext({

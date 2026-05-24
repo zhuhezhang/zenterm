@@ -1,4 +1,4 @@
-import { DEFAULT_TERMINAL_ENCODING } from '../../../shared/terminalEncodings.js'
+import { DEFAULT_TERMINAL_ENCODING } from '../terminalEncodings.js'
 
 /** 端口最小值 */
 export const PORT_MIN = 0

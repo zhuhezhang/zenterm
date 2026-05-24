@@ -11,7 +11,12 @@ import CredentialDialog from '@/components/app/CredentialDialog.jsx'
 import { useSyncedAppTheme } from '@/hooks/useSyncedAppTheme.js'
 import { useSidebarResize } from '@/hooks/useSidebarResize.js'
 import { fileTimestamp } from '@/lib/util/fileTimestamp.js'
-import { safeFileToken } from '../shared/safeFileName.js'
+import { safeFileToken } from './lib/safeFileName.js'
+import { loadSettings } from './store/settingsStore.js'
+import { DEFAULT_SIDEBAR_WIDTH } from './lib/settings/defaults.js'
+import { clampSidebarWidthPx } from './lib/settings/normalize.js'
+import { resolveEffectiveUiLanguage, syncUiLanguageToMain } from './lib/resolveUiLanguage.js'
+import { formatIpcResponseError } from '@/lib/ipc/formatIpcError.js'
 import {
   loadSavedSessions, addSavedSession, removeSavedSession, duplicateSavedSession, saveSessions, getGroups,
   loadGroupPlaceholders, saveGroupPlaceholders, addGroupPlaceholder, prunePlaceholdersForOccupiedGroups
@@ -20,11 +25,6 @@ import {
   syncSessionSecretsToVault, resolveAffectedSavedId, mergeSessionWithVaultSecrets,
   removeVaultEntry, duplicateVaultEntry, reapplyVaultPoliciesForAllSessions,
 } from './store/credentialsBridge.js'
-import { loadSettings, saveSettings } from './store/settingsStore.js'
-import { DEFAULT_SIDEBAR_WIDTH } from './lib/settings/defaults.js'
-import { clampSidebarWidthPx } from './lib/settings/normalize.js'
-import { resolveEffectiveUiLanguage } from '../shared/resolveUiLanguage.js'
-import { formatIpcResponseError } from '@/lib/ipc/formatIpcError.js'
 import './styles/app.css'
 
 /**
@@ -56,7 +56,7 @@ function AppMain({ settings, setSettings }) {
 
   /** 凭据同步失败提示（后端已 i18n 的文案直接显示） */
   const alertVaultSyncError = (r) => {
-    if (!r?.ok && r?.error) {
+    if (r?.success === false && r?.error) {
       alert(formatIpcResponseError(t, r) || t('credentials.encryptionUnavailable'))
     }
   }
@@ -65,7 +65,7 @@ function AppMain({ settings, setSettings }) {
   useEffect(() => {
     const eff = resolveEffectiveUiLanguage(settings.uiLanguage)
     document.documentElement.lang = eff === 'en' ? 'en' : 'zh-CN'
-    window.zterm?.setUiLanguage?.(settings.uiLanguage)
+    syncUiLanguageToMain(settings.uiLanguage)
   }, [settings.uiLanguage])
 
   // 局部变量无法在多次渲染中持久保存、更改局部变量不会触发渲染，因此使用 useState 来管理组件状态，
@@ -522,7 +522,7 @@ function AppMain({ settings, setSettings }) {
 export default function App() {
   const [settings, setSettings] = useState(() => {
     const s = loadSettings()
-    try { window.zterm?.setUiLanguage?.(s.uiLanguage) } catch (_) {}
+    syncUiLanguageToMain(s.uiLanguage)  // 同步界面语言至主进程
     return s
   })
   return (
@@ -531,4 +531,3 @@ export default function App() {
     </I18nProvider>
   )
 }
-

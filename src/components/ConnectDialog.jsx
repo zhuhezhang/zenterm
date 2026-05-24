@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { useI18n } from '../context/I18nContext.jsx'
 import { fetchSessionSecrets } from '../store/credentialsBridge.js'
-import { TERMINAL_ENCODING_OPTIONS } from '../../shared/terminalEncodings.js'
+import { DEFAULT_TERMINAL_ENCODING, TERMINAL_ENCODING_OPTIONS } from '../lib/terminalEncodings.js'
 import {
   PORT_MIN, PORT_MAX, BAUD_RATES, PARITIES, SESSION_GROUP_LABEL_ERROR_KEYS,
   SSH_SESSION_DEFAULT, TELNET_SESSION_DEFAULT, SERIAL_SESSION_DEFAULT,

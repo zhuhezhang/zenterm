@@ -25,10 +25,12 @@ export function buildSecretsSyncPayload(config, settings) {
  */
 export async function syncSessionSecretsToVault(savedId, config, settings) {
   const api = window.zterm?.credentials
-  if (!savedId || typeof savedId !== 'string') return { ok: true, skipped: true }
-  if (!api?.sync) return { ok: true, skipped: true }
+  if (!savedId || typeof savedId !== 'string') return { success: true, skipped: true }
+  if (!api?.sync) return { success: true, skipped: true }
   const avail = await api.isAvailable?.()
-  if (avail === false) return { ok: false, error: 'credentials.encryptionUnavailable' }
+  if (avail === false) {
+    return { success: false, error: 'credentials.encryptionUnavailable', errorKnown: true }
+  }
   const partial = buildSecretsSyncPayload(config, settings)
   return api.sync(savedId, partial)
 }

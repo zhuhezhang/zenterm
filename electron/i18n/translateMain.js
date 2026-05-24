@@ -1,4 +1,3 @@
-import { resolveEffectiveUiLanguage } from '../../shared/resolveUiLanguage.js'
 import { translate } from '../../shared/translate.js'
 import { APP } from './app.js'
 import { SERIAL } from './serial.js'
@@ -18,30 +17,24 @@ const MAIN_MESSAGES = {
   },
 }
 
+/** 渲染进程经 IPC 同步的语言 (仅 zh/en); 同步前默认 en) */
+let storedUiLanguage = 'en'
+
 /**
- * 存放由渲染进程传过来的语言参数
- * @type {'auto'|'zh'|'en'}
+ * 设置渲染进程经 IPC 同步的语言 (仅 zh/en); 同步前默认 en)
+ * @param {'zh'|'en'} value `zh` | `en`
  */
-let storedUiLanguage = 'auto'
-
-/** 主进程系统语言（app.whenReady 时由 main.js 写入） */
-let mainSystemLang = 'en'
-
 export function setStoredUiLanguage(value) {
-  const v = String(value ?? 'auto')
-  storedUiLanguage = (v === 'zh' || v === 'en' || v === 'auto') ? v : 'auto'
+  storedUiLanguage = value === 'zh' ? 'zh' : 'en'
 }
 
-export function getStoredUiLanguage() {
-  return storedUiLanguage
-}
-
-export function setMainSystemUiLang(lang) {
-  mainSystemLang = lang === 'zh' ? 'zh' : 'en'
-}
-
-/** 主进程本地 UI（系统对话框等）；IPC 错误码由渲染进程翻译 */
+/**
+ * 翻译主进程文案
+ * @param {string} path 路径(如"zh.titlebar.close")
+ * @param {Record<string, string|number>} [params] 参数（如{name: '张三'}）
+ * @returns {string} 翻译后的文案
+ */
 export function translateMain(path, params = {}) {
-  const L = resolveEffectiveUiLanguage(storedUiLanguage, mainSystemLang) === 'en' ? 'en' : 'zh'
+  const L = storedUiLanguage === 'en' ? 'en' : 'zh'
   return translate(L, MAIN_MESSAGES, path, params)
 }

@@ -3,7 +3,6 @@ import { APP } from './app.js'
 import { CONNECT } from './connect.js'
 import { CREDENTIAL } from './credential.js'
 import { CREDENTIALS } from './credentials.js'
-import { ERRORS } from './errors.js'
 import { SERIAL } from './serial.js'
 import { SSH } from './ssh.js'
 import { TELNET } from './telnet.js'
@@ -22,7 +21,6 @@ const RENDER_MESSAGES = {
     connect: CONNECT.zh,
     credential: CREDENTIAL.zh,
     credentials: CREDENTIALS.zh,
-    errors: ERRORS.zh,
     serial: SERIAL.zh,
     ssh: SSH.zh,
     telnet: TELNET.zh,
@@ -39,7 +37,6 @@ const RENDER_MESSAGES = {
     connect: CONNECT.en,
     credential: CREDENTIAL.en,
     credentials: CREDENTIALS.en,
-    errors: ERRORS.en,
     serial: SERIAL.en,
     ssh: SSH.en,
     telnet: TELNET.en,

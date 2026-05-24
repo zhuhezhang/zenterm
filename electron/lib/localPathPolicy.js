@@ -5,7 +5,7 @@
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
-import { createIpcError } from '../../shared/ipcError.js'
+import { createIpcError, ipcFail } from '../../shared/ipcError.js'
 import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, isPathWithinResolvedRoots,
   safeJoinLocalDownloadPathForRoots,
@@ -117,19 +117,18 @@ export function assertLogWriteDirectoryAllowed(logDir) {
 /**
  * 校验日志目录是否允许写入（供设置界面等展示提示，不抛错）
  * @param {string} logDir 日志目录（来自设置）
- * @returns {{ ok: true } | { ok: false, error: string, errorParams?: object }} 失败时返回 IPC 错误码
+ * @returns {{ success: true } | { success: false, error: string, errorKnown?: boolean, errorParams?: object }}
  */
 export function validateLogWriteDirectory(logDir) {
   try {
     assertLogWriteDirectoryAllowed(logDir)
-    return { ok: true }
+    return { success: true }
   } catch (e) {
     if (e && typeof e === 'object' && e.ipcCode) {
-      const out = { ok: false, error: e.ipcCode }
-      if (e.ipcParams && Object.keys(e.ipcParams).length) out.errorParams = e.ipcParams
-      return out
+      return ipcFail(e.ipcCode, e.ipcParams)
     }
-    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    const msg = e instanceof Error ? e.message : String(e)
+    return { success: false, error: msg, errorKnown: false }
   }
 }
 
