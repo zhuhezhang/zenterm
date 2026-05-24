@@ -6,17 +6,7 @@ import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
 import { createIpcError, ipcFail } from '../../shared/ipcError.js'
-import {
-  assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, isPathWithinResolvedRoots,
-  safeJoinLocalDownloadPathForRoots,
-} from './sftpLocalPathRoots.js'
-
-export {
-  assertSftpLocalDirAllowedForRoots,
-  assertSftpLocalFilePathAllowedForRoots,
-  isPathWithinResolvedRoots,
-  safeJoinLocalDownloadPathForRoots,
-} from './sftpLocalPathRoots.js'
+import { isPathWithinResolvedRoots } from './sftpLocalPathRoots.js'
 
 /** 允许的用户目录列表，重复项会被去重 */
 const PATH_NAMES = [
@@ -70,7 +60,7 @@ function collectWindowsNonSystemDriveRoots() {
  * 收集所有已解析的允许根目录
  * @returns {string[]} 已解析的允许根目录列表，绝对路径且不含重复项
  */
-function collectResolvedRoots() {
+export function collectResolvedRoots() {
   const set = new Set()
   for (const name of PATH_NAMES) {
     try {
@@ -87,29 +77,12 @@ function collectResolvedRoots() {
 }
 
 /**
- * 供主进程在启动 Worker 时注入：当前用户允许作为 SFTP 本地读写的绝对根路径快照。
- * @returns {string[]} 已解析的允许根目录列表，绝对路径且不含重复项
- */
-export function getAllowedUserRootPaths() {
-  return collectResolvedRoots()
-}
-
-/**
- * 检查给定路径是否位于允许的用户根目录范围内
- * @param {string} resolvedPath 已 path.resolve 的路径
- * @returns {boolean}
- */
-export function isPathWithinAllowedUserRoots(resolvedPath) {
-  return isPathWithinResolvedRoots(resolvedPath, collectResolvedRoots())
-}
-
-/**
  * 校验日志写入目录是否合法，必须位于允许的用户根目录范围内
  * @param {string} logDir 日志根目录（来自设置）
  */
 export function assertLogWriteDirectoryAllowed(logDir) {
   const resolved = path.resolve(String(logDir))
-  if (!isPathWithinAllowedUserRoots(resolved)) {
+  if (!isPathWithinResolvedRoots(resolved, collectResolvedRoots())) {
     throw createIpcError('sftp.pathErrors.logDirDenied', {})
   }
 }
@@ -130,33 +103,4 @@ export function validateLogWriteDirectory(logDir) {
     const msg = e instanceof Error ? e.message : String(e)
     return { success: false, error: msg, errorKnown: false }
   }
-}
-
-/**
- * SFTP 上传/下载涉及的本地文件路径（源文件或目标文件）
- * @param {string} localPath 本地路径
- * @param {string} kind 错误前缀，如「下载」「上传」
- */
-export function assertSftpLocalFilePathAllowed(localPath, kind = 'sftp') {
-  assertSftpLocalFilePathAllowedForRoots(localPath, collectResolvedRoots(), kind)
-}
-
-/**
- * SFTP 下载目录等本地目录
- * @param {string} localDir 本地目录
- * @param {string} kind 错误前缀，如「下载」「上传」
- */
-export function assertSftpLocalDirAllowed(localDir, kind = 'sftp') {
-  assertSftpLocalDirAllowedForRoots(localDir, collectResolvedRoots(), kind)
-}
-
-/**
- * 在已校验的父目录下拼接远程条目名，防止 `../` 跳出；并对结果再次做根校验。
- * @param {string} parentDir 已解析的本地父目录
- * @param {string} remoteEntryName 远程文件名（可能含路径分隔符）
- * @param {string} kind 错误前缀，如「下载」「上传」
- * @returns {string} 解析后的本地路径
- */
-export function safeJoinLocalDownloadPath(parentDir, remoteEntryName, kind = 'download') {
-  return safeJoinLocalDownloadPathForRoots(parentDir, remoteEntryName, collectResolvedRoots(), kind)
 }

@@ -6,7 +6,8 @@ import { fileURLToPath } from 'url'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { ipcUnauthorized } from '../lib/ipcReply.js'
 import { ipcFail, ipcFailFromThrown } from '../../shared/ipcError.js'
-import { assertSftpLocalDirAllowed, assertSftpLocalFilePathAllowed, getAllowedUserRootPaths, } from '../lib/localPathPolicy.js'
+import { collectResolvedRoots } from '../lib/localPathPolicy.js'
+import { assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots } from '../lib/sftpLocalPathRoots.js'
 import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
 
 /** 存储每个 SFTP 会话对应的 Worker 与会话状态 */
@@ -158,7 +159,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
           type: 'module',
           workerData: {
             config,
-            allowedRoots: getAllowedUserRootPaths(),
+            allowedRoots: collectResolvedRoots(),
           },
         })
         session.worker = worker
@@ -210,7 +211,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession')
     try {
-      assertSftpLocalFilePathAllowed(localPath, 'download')
+      assertSftpLocalFilePathAllowedForRoots(localPath, collectResolvedRoots(), 'download')
     } catch (e) {
       return ipcFailFromThrown(e)
     }
@@ -224,7 +225,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession')
     try {
-      assertSftpLocalDirAllowed(localDir, 'download')
+      assertSftpLocalDirAllowedForRoots(localDir, collectResolvedRoots(), 'download')
     } catch (e) {
       return ipcFailFromThrown(e)
     }
@@ -238,7 +239,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession')
     try {
-      assertSftpLocalFilePathAllowed(localPath, 'upload')
+      assertSftpLocalFilePathAllowedForRoots(localPath, collectResolvedRoots(), 'upload')
     } catch (e) {
       return ipcFailFromThrown(e)
     }
