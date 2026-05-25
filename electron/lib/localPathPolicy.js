@@ -6,7 +6,7 @@ import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
 import { createIpcError, ipcFail } from '../../shared/ipcError.js'
-import { isPathWithinResolvedRoots } from './sftpLocalPathRoots.js'
+import { isPathWithinResolvedRoots } from '../../shared/localPathRoots.js'
 
 /** 允许的用户目录列表，重复项会被去重 */
 const PATH_NAMES = [
@@ -95,6 +95,36 @@ export function assertLogWriteDirectoryAllowed(logDir) {
 export function validateLogWriteDirectory(logDir) {
   try {
     assertLogWriteDirectoryAllowed(logDir)
+    return { success: true }
+  } catch (e) {
+    if (e && typeof e === 'object' && e.ipcCode) {
+      return ipcFail(e.ipcCode, e.ipcParams)
+    }
+    const msg = e instanceof Error ? e.message : String(e)
+    return { success: false, error: msg, errorKnown: false }
+  }
+}
+
+/**
+ * 校验本地文件路径是否位于允许根目录内（导入 JSON、保存终端输出等）
+ * @param {string} filePath 本地文件绝对路径
+ * @param {string} kind IPC 错误 kind 参数（import / saveOutput 等）
+ */
+export function assertLocalFilePathAllowed(filePath, kind = 'read') {
+  const resolved = path.resolve(String(filePath))
+  if (!isPathWithinResolvedRoots(resolved, collectResolvedRoots())) {
+    throw createIpcError('sftp.pathErrors.localFileDenied', { kind })
+  }
+}
+
+/**
+ * 校验本地文件路径（供渲染进程 IPC 调用，不抛错）
+ * @param {string} filePath 本地文件路径
+ * @param {string} [kind] 操作类型
+ */
+export function validateLocalFilePath(filePath, kind = 'read') {
+  try {
+    assertLocalFilePathAllowed(filePath, kind)
     return { success: true }
   } catch (e) {
     if (e && typeof e === 'object' && e.ipcCode) {

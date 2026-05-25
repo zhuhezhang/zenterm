@@ -1,6 +1,7 @@
 import { createImportError } from './handleImportErrors.js'
 import { readImportJson, unwrapExportPayload } from './parseImportFile.js'
 import { sanitizeImportedSettings } from '../settings/sanitizeImport.js'
+import { assertImportFilePathAllowed } from './validateImportFilePath.js'
 
 /**
  * 判断是否为纯对象
@@ -18,6 +19,7 @@ function isPlainObject(raw) {
  * @returns {Promise<{ settings: Record<string, unknown>, warnings: import('../settings/importWarnings.js').SettingsImportWarning[] }>}
  */
 export async function validateAndParseSettingsImport(file, currentSettings) {
+  await assertImportFilePathAllowed(file)
   const parsed = await readImportJson(file)
   const data = unwrapExportPayload(parsed, 'settings')
   if (!isPlainObject(data)) {

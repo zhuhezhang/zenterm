@@ -179,7 +179,7 @@ function AppMain({ settings, setSettings }) {
    * 保存某个标签页的终端输出到文本文件
    * @param {string} sessionId 会话 ID
    */
-  const handleSaveTabOutput = useCallback((sessionId) => {
+  const handleSaveTabOutput = useCallback(async (sessionId) => {
     const getter = terminalExportersRef.current[sessionId]
     if (!getter) {
       alert(t('app.saveOutputNotReady'))
@@ -193,13 +193,15 @@ function AppMain({ settings, setSettings }) {
     const s = sessions.find(v => v.id === sessionId)
     const label = s?.label || `${s?.type?.toUpperCase?.() || 'SESSION'}_${s?.host || s?.path || s?.id || sessionId}`
     const filename = `${fileTimestamp()}_${safeFileToken(label)}.txt`
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(url)
+    try {
+      const res = await window.zterm.saveTerminalOutput(filename, text)
+      if (res?.canceled) return
+      if (res?.success === false) {
+        alert(formatIpcResponseError(t, res) || t('app.saveOutputFail', { msg: res?.error ?? '' }))
+      }
+    } catch (err) {
+      alert(t('app.saveOutputFail', { msg: err?.message ?? String(err) }))
+    }
   }, [sessions, t])
 
   /**

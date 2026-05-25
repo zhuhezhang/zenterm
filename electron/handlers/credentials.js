@@ -2,7 +2,6 @@ import { app, safeStorage } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
-import { ipcUnauthorized } from '../lib/ipcReply.js'
 import { ipcFail } from '../../shared/ipcError.js'
 
 /**
@@ -91,7 +90,7 @@ function setupCredentialHandlers(ipcMain) {
   })
 
   ipcMain.handle('credentials:sync', async (event, savedId, partial) => {  // 同步会话凭据到加密存储，参数为会话ID、同步凭据对象（每个值为 string 写入；null/undefined/'' 表示删除该键，返回同步结果）
-    if (!isTrustedIpcSender(event.sender)) return ipcUnauthorized()
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
     if (!savedId || typeof savedId !== 'string') return ipcFail('credentials.invalidSavedId')
     if (!safeStorage.isEncryptionAvailable()) {
       return ipcFail('credentials.encryptionUnavailable')
@@ -115,7 +114,7 @@ function setupCredentialHandlers(ipcMain) {
   })
 
   ipcMain.handle('credentials:remove', async (event, savedId) => {  // 删除会话凭据，参数为会话ID，返回删除结果
-    if (!isTrustedIpcSender(event.sender)) return ipcUnauthorized()
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
     if (!savedId || typeof savedId !== 'string') return { success: true }
     const vault = readVault()
     if (vault.entries[savedId]) {
@@ -126,7 +125,7 @@ function setupCredentialHandlers(ipcMain) {
   })
 
   ipcMain.handle('credentials:duplicate', async (event, fromId, toId) => {  // 复制会话凭据，参数为源会话ID、目标会话ID，返回复制结果
-    if (!isTrustedIpcSender(event.sender)) return ipcUnauthorized()
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
     if (!fromId || !toId || typeof fromId !== 'string' || typeof toId !== 'string') {
       return ipcFail('credentials.invalidSavedId')
     }
@@ -139,7 +138,7 @@ function setupCredentialHandlers(ipcMain) {
   })
 
   ipcMain.handle('credentials:clearAll', async (event) => {  // 清除所有会话凭据，返回清除结果
-    if (!isTrustedIpcSender(event.sender)) return ipcUnauthorized()
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
     try {
       if (fs.existsSync(vaultPath())) fs.unlinkSync(vaultPath())
     } catch (e) {

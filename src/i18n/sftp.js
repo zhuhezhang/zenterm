@@ -35,6 +35,9 @@ export const SFTP = {
       download: '下载',
       upload: '上传',
       sftp: 'SFTP',
+      import: '导入',
+      export: '导出',
+      saveOutput: '保存终端输出',
     },
     pathErrors: {
       allowedRootsHint:
@@ -81,6 +84,9 @@ export const SFTP = {
       download: 'Download',
       upload: 'Upload',
       sftp: 'SFTP',
+      import: 'Import',
+      export: 'Export',
+      saveOutput: 'Save terminal output',
     },
     pathErrors: {
       allowedRootsHint:

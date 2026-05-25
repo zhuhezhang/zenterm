@@ -1,8 +1,34 @@
 import { app, dialog } from 'electron'
+import fs from 'fs'
+import path from 'path'
 import { translateMain, setStoredUiLanguage } from '../i18n/translateMain.js'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
-import { ipcFail } from '../../shared/ipcError.js'
-import { validateLogWriteDirectory } from '../lib/localPathPolicy.js'
+import { ipcFail, ipcFailFromThrown } from '../../shared/ipcError.js'
+import { validateLogWriteDirectory, validateLocalFilePath, assertLocalFilePathAllowed } from '../lib/localPathPolicy.js'
+
+/**
+ * 弹出另存为对话框并写入文件（受 localPathPolicy 约束）
+ * @param {import('electron').BrowserWindow | undefined} mainWindow
+ * @param {{ title: string, defaultName: string, filters: { name: string, extensions: string[] }[], content: string, kind: string }} opts
+ */
+async function saveFileWithPolicyDialog(mainWindow, { title, defaultName, filters, content, kind }) {
+  const safeName = path.basename(String(defaultName ?? '')) || 'file.txt'
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title,
+    defaultPath: path.join(app.getPath('downloads'), safeName),
+    filters,
+  })
+  if (result.canceled || !result.filePath) {
+    return { success: true, canceled: true }
+  }
+  try {
+    assertLocalFilePathAllowed(result.filePath, kind)
+    fs.writeFileSync(result.filePath, String(content ?? ''), 'utf8')
+    return { success: true }
+  } catch (e) {
+    return ipcFailFromThrown(e)
+  }
+}
 
 /**
  * 设置应用程序处理程序
@@ -40,5 +66,40 @@ export function setupAppHandlers(ipcMain, getMainWindow) {
     const s = dir == null ? '' : String(dir).trim()
     if (!s) return { success: true }
     return validateLogWriteDirectory(s)
+  })
+
+  ipcMain.handle('app:validateLocalFilePath', (event, filePath, kind) => {
+    if (!isTrustedIpcSender(event.sender)) {
+      return ipcFail('app.invalidRequest')
+    }
+    const s = filePath == null ? '' : String(filePath).trim()
+    if (!s) return ipcFail('app.invalidRequest')
+    return validateLocalFilePath(s, kind || 'read')
+  })
+
+  ipcMain.handle('app:saveTerminalOutput', async (event, defaultName, text) => {
+    if (!isTrustedIpcSender(event.sender)) {
+      return ipcFail('app.unauthorized')
+    }
+    return saveFileWithPolicyDialog(getMainWindow(), {
+      title: translateMain('app.saveTerminalOutputTitle'),
+      defaultName: defaultName ?? 'terminal-output.txt',
+      filters: [{ name: 'Text', extensions: ['txt'] }],
+      content: text,
+      kind: 'saveOutput',
+    })
+  })
+
+  ipcMain.handle('app:saveJsonExport', async (event, defaultName, jsonText) => {
+    if (!isTrustedIpcSender(event.sender)) {
+      return ipcFail('app.unauthorized')
+    }
+    return saveFileWithPolicyDialog(getMainWindow(), {
+      title: translateMain('app.saveJsonExportTitle'),
+      defaultName: defaultName ?? 'export.json',
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+      content: jsonText,
+      kind: 'export',
+    })
   })
 }

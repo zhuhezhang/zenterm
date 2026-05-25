@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatIpcError, formatThrownIpcError } from '../../src/lib/ipc/formatIpcError.js'
+import { formatIpcError, formatIpcResponseError, formatThrownIpcError } from '../../src/lib/ipc/formatIpcError.js'
 import { ipcErrorFromResponse } from '../../shared/ipcError.js'
 import { translateRender } from '../../src/i18n/translateRender.js'
 
@@ -15,9 +15,19 @@ describe('formatIpcError', () => {
     expect(msg).toContain('下载')
     expect(msg).toContain('路径须位于')
   })
+})
 
-  it('returns raw library message as-is', () => {
-    expect(formatIpcError(t, 'connect ECONNREFUSED')).toBe('connect ECONNREFUSED')
+describe('formatIpcResponseError', () => {
+  const t = (path, params) => translateRender('zh', path, params)
+
+  it('translates when errorKnown is true', () => {
+    expect(formatIpcResponseError(t, { error: 'sftp.noSession', errorKnown: true }))
+      .toBe('没有活动的 SFTP 会话')
+  })
+
+  it('returns raw when errorKnown is false', () => {
+    expect(formatIpcResponseError(t, { error: 'connect ECONNREFUSED', errorKnown: false }))
+      .toBe('connect ECONNREFUSED')
   })
 })
 

@@ -17,9 +17,7 @@
 import { Worker } from 'worker_threads'
 import { fileURLToPath } from 'url'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
-import { ipcUnauthorized } from '../lib/ipcReply.js'
-import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
-import { ipcFailFromThrown } from '../../shared/ipcError.js'
+import { ipcFailFromThrown, ipcFail } from '../../shared/ipcError.js'
 import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
 
 /** 存储每个 SSH 会话对应的 Worker 桥接状态（键id → 值{ worker: Worker, isClosed: boolean }） */
@@ -35,7 +33,7 @@ const workerEntry = fileURLToPath(new URL('../workers/sshSessionWorker.js', impo
  */
 function setupSSHHandlers(ipcMain, mainWindow) {
   ipcMain.handle('ssh:connect', async (event, id, config) => {  // 连接 SSH，参数为会话ID、配置对象，返回连接结果
-    if (!isTrustedIpcSender(event.sender)) return ipcUnauthorized()
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
 
     return new Promise((resolve) => {
       let settled = false
@@ -153,7 +151,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
   })
 
   ipcMain.handle('ssh:disconnect', async (event, id) => {  // 断开 SSH 连接，参数为会话ID，返回断开结果
-    if (!isTrustedIpcSender(event.sender)) return ipcUnauthorized()
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
     const session = sshSessions.get(id)
     if (session?.worker) {
       try {

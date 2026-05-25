@@ -5,6 +5,9 @@ contextBridge.exposeInMainWorld('zterm', {  // 在渲染进程中通过window.zt
   setUiLanguage: (uiLanguage) => ipcRenderer.send('app:setUiLanguage', uiLanguage),  // zh | en (渲染端已解析 auto)
   chooseDirectory: () => ipcRenderer.invoke('app:chooseDirectory'),  // 弹出目录选择框，返回选中的目录路径（异步）
   validateLogDirectory: (dir) => ipcRenderer.invoke('app:validateLogDirectory', dir),  // 校验日志目录是否在允许范围内，与主进程 log:write 路径策略一致
+  validateLocalFilePath: (filePath, kind) => ipcRenderer.invoke('app:validateLocalFilePath', filePath, kind),
+  saveTerminalOutput: (defaultName, text) => ipcRenderer.invoke('app:saveTerminalOutput', defaultName, text),
+  saveJsonExport: (defaultName, jsonText) => ipcRenderer.invoke('app:saveJsonExport', defaultName, jsonText),
   getPathForFile: (file) => {  // 沙盒渲染进程无 File.path，上传/拖拽需用此取磁盘绝对路径
     if (!file || typeof file !== 'object') return ''
     try {

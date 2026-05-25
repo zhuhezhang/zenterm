@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
-import { formatIpcError } from '@/lib/ipc/formatIpcError.js'
+import { formatIpcResponseError, formatThrownIpcError } from '@/lib/ipc/formatIpcError.js'
 import { ipcErrorFromResponse } from '../../shared/ipcError.js'
 import { INVALID_LABEL_CHARS } from '../../shared/safeFileName.js'
 import '../styles/sftp.css'
@@ -78,8 +78,8 @@ export default function SftpPanel({ session }) {
   const { t } = useI18n()
   /** IPC 错误码 -> 界面文案 */
   const ipcErr = (res, fallbackKey) =>
-    formatIpcError(t, res?.error, res?.errorParams) || (fallbackKey ? t(fallbackKey) : '')
-  const showErr = (e) => alert(formatIpcError(t, e?.message, e?.errorParams) || String(e))
+    formatIpcResponseError(t, res) || (fallbackKey ? t(fallbackKey) : '')
+  const showErr = (e) => alert(formatThrownIpcError(t, e) || String(e))
   const sftpSessionId = session?.id ? `${session.id}-sftp` : null  // 会话 ID
   const [path, setPath] = useState('/')  // 当前路径
   const [items, setItems] = useState([])  // 文件列表

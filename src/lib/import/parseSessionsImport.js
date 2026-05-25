@@ -1,4 +1,5 @@
 import { createImportError } from './handleImportErrors.js'
+import { assertImportFilePathAllowed } from './validateImportFilePath.js'
 import { readImportJson, unwrapExportPayload } from './parseImportFile.js'
 import { normalizeImportedSession } from '../session/normalizeSession.js'
 import { IMPORT_MAX_SESSION_COUNT } from './constants.js'
@@ -9,6 +10,7 @@ import { IMPORT_MAX_SESSION_COUNT } from './constants.js'
  * @returns {Promise<{ sessions: Record<string, unknown>[], stats: { total: number, accepted: number, skipped: number }, warnings: import('../session/importWarnings.js').SessionImportWarning[] }>} 解析后的会话列表、统计信息和导入警告列表
  */
 export async function validateAndParseSessionsImport(file) {
+  await assertImportFilePathAllowed(file)
   const parsed = await readImportJson(file)
   const rows = unwrapExportPayload(parsed, 'sessions')
   if (rows.length > IMPORT_MAX_SESSION_COUNT) {

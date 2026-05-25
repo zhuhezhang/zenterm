@@ -1,23 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import {
-  isIpcErrorCode,
   createIpcError,
   ipcFail,
   ipcErrorFromResponse,
   ipcFailFromThrown,
 } from '../../shared/ipcError.js'
-
-describe('isIpcErrorCode', () => {
-  it('accepts app/sftp style codes', () => {
-    expect(isIpcErrorCode('sftp.noSession')).toBe(true)
-    expect(isIpcErrorCode('credentials.encryptionUnavailable')).toBe(true)
-  })
-
-  it('rejects library raw messages', () => {
-    expect(isIpcErrorCode('connect ECONNREFUSED 127.0.0.1:22')).toBe(false)
-    expect(isIpcErrorCode('SFTP 连接失败')).toBe(false)
-  })
-})
 
 describe('ipcFailFromThrown', () => {
   it('preserves ipcCode and params', () => {
@@ -25,14 +12,16 @@ describe('ipcFailFromThrown', () => {
     expect(ipcFailFromThrown(e)).toEqual({
       success: false,
       error: 'sftp.pathErrors.localFileDenied',
+      errorKnown: true,
       errorParams: { kind: 'upload' },
     })
   })
 
-  it('passes through raw message', () => {
+  it('passes through raw message with errorKnown false', () => {
     expect(ipcFailFromThrown(new Error('ECONNREFUSED'))).toEqual({
       success: false,
       error: 'ECONNREFUSED',
+      errorKnown: false,
     })
   })
 })

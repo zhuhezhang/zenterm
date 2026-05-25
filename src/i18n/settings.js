@@ -150,6 +150,8 @@ export const SETTINGS = {
       }
     },
     "importFail": "导入失败：{msg}",
+    "importPathDenied": "所选文件路径不在允许范围内",
+    "exportFail": "导出失败：{msg}",
     "importFileKind": {
       "sessions": "会话",
       "settings": "设置"
@@ -360,6 +362,8 @@ export const SETTINGS = {
       }
     },
     "importFail": "Import failed: {msg}",
+    "importPathDenied": "The selected file path is not allowed",
+    "exportFail": "Export failed: {msg}",
     "importFileKind": {
       "sessions": "sessions",
       "settings": "settings"

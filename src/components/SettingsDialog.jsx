@@ -269,7 +269,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   }
 
   /** 处理导出会话的操作，将当前的 savedSessions 导出为 JSON 文件 */
-  const handleExport = () => exportSessions(savedSessions)
+  const handleExport = () => { void exportSessions(savedSessions, t) }
 
   /** 处理导入会话的操作，触发文件选择对话框，选择 JSON 文件后将其内容导入并与现有会话合并，最后更新会话列表 */
   const handleImport = async (e) => {
@@ -301,7 +301,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   }
 
   /** 处理导出设置的操作，将当前设置导出为 JSON 文件 */
-  const handleExportSettings = () => exportSettings(form)
+  const handleExportSettings = () => { void exportSettings(form, t) }
 
   /** 处理导入设置的操作，从 JSON 文件导入设置并更新表单 */
   const handleImportSettings = async (e) => {

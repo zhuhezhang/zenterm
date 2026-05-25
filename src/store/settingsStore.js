@@ -90,8 +90,8 @@ export function saveSettings(settings) {
  * 导设置项为 JSON 文件，文件名包含当前日期
  * @param {Object} settings 要导出的设置对象
  */
-export function exportSettings(settings) {
-  downloadJsonExport('settings', settings)
+export async function exportSettings(settings, t) {
+  await downloadJsonExport('settings', settings, t)
 }
 
 /**

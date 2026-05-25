@@ -1,3 +1,5 @@
+import { formatIpcResponseError } from '../ipc/formatIpcError.js'
+
 /**
  * 创建导入错误，用于在导入过程中抛出错误
  * @param {string} code 错误码
@@ -19,6 +21,9 @@ export function createImportError(code, params) {
  */
 export function formatImportError(t, err) {
   const code = err && typeof err === 'object' && 'code' in err ? err.code : null
+  if (code === 'pathDenied' && err && typeof err === 'object' && 'ipc' in err) {
+    return formatIpcResponseError(t, err.ipc) || t('settings.importPathDenied')
+  }
   if (typeof code === 'string') {
     const key = `settings.importErrors.${code}`
     const params = { ...(err.params || {}) }

@@ -149,8 +149,8 @@ export function reorderSessions(sessions, fromId, toId, targetGroup) {
  * 导出会话列表为 JSON 文件，文件名包含当前日期
  * @param {Array} sessions 要导出的会话列表
  */
-export function exportSessions(sessions) {
-  downloadJsonExport('sessions', sessions)
+export async function exportSessions(sessions, t) {
+  await downloadJsonExport('sessions', sessions, t)
 }
 
 /** 占位分组（没有会话的分组）的本地存储键名 */

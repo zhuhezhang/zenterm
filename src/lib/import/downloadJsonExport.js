@@ -1,5 +1,6 @@
 import { buildExportEnvelope } from './parseImportFile.js'
 import { EXPORT_FILENAME_PREFIX } from './constants.js'
+import { formatIpcResponseError } from '../ipc/formatIpcError.js'
 
 /**
  * 生成带时间戳的导出文件名
@@ -16,17 +17,22 @@ export function buildExportFilename(kind) {
 }
 
 /**
- * 将 envelope 数据触发为浏览器 JSON 下载
+ * 将会话/设置 envelope 通过主进程另存为导出（受 localPathPolicy 限制）
  * @param {keyof typeof EXPORT_FILENAME_PREFIX} kind 导出类型（设置/会话）
- * @param {unknown} data 导出数据（设置/会话）
+ * @param {unknown} data 导出数据
+ * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数（用于错误 alert）
  */
-export function downloadJsonExport(kind, data) {
+export async function downloadJsonExport(kind, data, t) {
   const payload = buildExportEnvelope(kind, data)
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = buildExportFilename(kind)
-  a.click()
-  URL.revokeObjectURL(url)
+  const jsonText = JSON.stringify(payload, null, 2)
+  const filename = buildExportFilename(kind)
+  try {
+    const res = await window.zterm.saveJsonExport(filename, jsonText)
+    if (res?.canceled) return
+    if (res?.success === false) {
+      alert(formatIpcResponseError(t, res) || t('settings.exportFail', { msg: res?.error ?? '' }))
+    }
+  } catch (err) {
+    alert(t('settings.exportFail', { msg: err?.message ?? String(err) }))
+  }
 }

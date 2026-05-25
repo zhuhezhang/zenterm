@@ -126,7 +126,7 @@ export default function SidebarContextMenu({
         <button type="button" onClick={() => { expandAll(); closeCtx() }}>{t('sidebar.expandAll')}</button>
         <button type="button" onClick={() => { collapseAll(); closeCtx() }}>{t('sidebar.collapseAll')}</button>
         <div className="context-menu-divider" />
-        <button type="button" onClick={() => { exportSessions(savedSessions); closeCtx() }}>{t('settings.exportSessions')}</button>
+        <button type="button" onClick={() => { void exportSessions(savedSessions, t); closeCtx() }}>{t('settings.exportSessions')}</button>
         <button type="button" onClick={() => {
           closeCtx()
           queueMicrotask(() => importSessionsFileRef.current?.click())

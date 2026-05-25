@@ -83,6 +83,26 @@ export interface ZTermApi {
     errorParams?: Record<string, string | number>
     errorKnown?: boolean
   }>
+  validateLocalFilePath: (filePath: string, kind?: string) => Promise<{
+    success: boolean
+    error?: string
+    errorParams?: Record<string, string | number>
+    errorKnown?: boolean
+  }>
+  saveTerminalOutput: (defaultName: string, text: string) => Promise<{
+    success: boolean
+    canceled?: boolean
+    error?: string
+    errorParams?: Record<string, string | number>
+    errorKnown?: boolean
+  }>
+  saveJsonExport: (defaultName: string, jsonText: string) => Promise<{
+    success: boolean
+    canceled?: boolean
+    error?: string
+    errorParams?: Record<string, string | number>
+    errorKnown?: boolean
+  }>
   getPathForFile: (file: File) => string
   window: ZTermWindowApi
   credentials: ZTermCredentialsApi
