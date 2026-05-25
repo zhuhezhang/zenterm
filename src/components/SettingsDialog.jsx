@@ -365,7 +365,9 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     try {
       if (window.zterm?.chooseDirectory) {
         const picked = await window.zterm.chooseDirectory()
-        if (picked) await applyChosenLogPath(picked)
+        if (picked?.success && !picked?.content?.canceled && picked?.content?.path) {
+          await applyChosenLogPath(picked.content.path)
+        }
       } else if (window.showDirectoryPicker) {
         const dir = await window.showDirectoryPicker()
         await applyChosenLogPath(dir.name)

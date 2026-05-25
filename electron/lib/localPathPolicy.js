@@ -5,8 +5,8 @@
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
-import { createIpcError, ipcFail } from '../../shared/ipcError.js'
-import { isPathWithinResolvedRoots } from '../../shared/localPathRoots.js'
+import { createIpcError, ipcFail, ipcFailRaw, ipcOk } from '../../shared/ipcResponse.js'
+import { isPathWithinResolvedRoots } from './localPathRoots.js'
 
 /** 允许的用户目录列表，重复项会被去重 */
 const PATH_NAMES = [
@@ -90,18 +90,18 @@ export function assertLogWriteDirectoryAllowed(logDir) {
 /**
  * 校验日志目录是否允许写入（供设置界面等展示提示，不抛错）
  * @param {string} logDir 日志目录（来自设置）
- * @returns {{ success: true } | { success: false, error: string, errorKnown?: boolean, errorParams?: object }}
+ * @returns {import('../../shared/ipcResponse.js').IpcOk | import('../../shared/ipcResponse.js').IpcFail}
  */
 export function validateLogWriteDirectory(logDir) {
   try {
     assertLogWriteDirectoryAllowed(logDir)
-    return { success: true }
+    return ipcOk()
   } catch (e) {
     if (e && typeof e === 'object' && e.ipcCode) {
       return ipcFail(e.ipcCode, e.ipcParams)
     }
     const msg = e instanceof Error ? e.message : String(e)
-    return { success: false, error: msg, errorKnown: false }
+    return ipcFailRaw(msg)
   }
 }
 
@@ -125,12 +125,12 @@ export function assertLocalFilePathAllowed(filePath, kind = 'read') {
 export function validateLocalFilePath(filePath, kind = 'read') {
   try {
     assertLocalFilePathAllowed(filePath, kind)
-    return { success: true }
+    return ipcOk()
   } catch (e) {
     if (e && typeof e === 'object' && e.ipcCode) {
       return ipcFail(e.ipcCode, e.ipcParams)
     }
     const msg = e instanceof Error ? e.message : String(e)
-    return { success: false, error: msg, errorKnown: false }
+    return ipcFailRaw(msg)
   }
 }

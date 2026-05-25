@@ -1,3 +1,5 @@
+import { ipcFail, ipcOk } from '../lib/ipc/ipcResponse.js'
+
 /**
  * 构建凭据同步载荷：根据会话配置和设置决定哪些凭据需要同步到加密存储
  * @param {object} config 完整会话配置（含明文敏感字段）
@@ -6,14 +8,14 @@
  */
 export function buildSecretsSyncPayload(config, settings) {
   const keys = { password: null, privateKey: null, passphrase: null }
-  const persist = !!settings.saveSecretsToVault  // 是否持久化到加密存储(!!表示强制转换为布尔值)
+  const persist = !!settings.saveSecretsToVault
   if (config.type === 'ssh') {
     keys.password = persist && config.password ? config.password : null
     keys.privateKey = persist && config.privateKey ? config.privateKey : null
     keys.passphrase = persist && config.passphrase ? config.passphrase : null
     return keys
   }
-  return keys // telnet / serial 等：不写入凭据；若误传 savedId 仅清空无关字段
+  return keys
 }
 
 /**
@@ -21,15 +23,15 @@ export function buildSecretsSyncPayload(config, settings) {
  * @param {string} savedId 会话 ID
  * @param {object} config 完整会话配置（含明文敏感字段）
  * @param {object} settings 当前应用设置
- * @returns {Promise<object>} 同步结果
+ * @returns {Promise<import('../../shared/ipcResponse.js').IpcOk | import('../../shared/ipcResponse.js').IpcFail>}
  */
 export async function syncSessionSecretsToVault(savedId, config, settings) {
   const api = window.zterm?.credentials
-  if (!savedId || typeof savedId !== 'string') return { success: true, skipped: true }
-  if (!api?.sync) return { success: true, skipped: true }
-  const avail = await api.isAvailable?.()
-  if (avail === false) {
-    return { success: false, error: 'credentials.encryptionUnavailable', errorKnown: true }
+  if (!savedId || typeof savedId !== 'string') return ipcOk({ skipped: true })
+  if (!api?.sync) return ipcOk({ skipped: true })
+  const availRes = await api.isAvailable?.()
+  if (!availRes?.success || availRes.content?.available === false) {
+    return ipcFail('credentials.encryptionUnavailable')
   }
   const partial = buildSecretsSyncPayload(config, settings)
   return api.sync(savedId, partial)
@@ -38,13 +40,15 @@ export async function syncSessionSecretsToVault(savedId, config, settings) {
 /**
  * 从加密存储获取会话凭据
  * @param {string} savedId 会话 ID
- * @returns {Promise<object>} 会话凭据
+ * @returns {Promise<object>} 会话凭据（password / privateKey / passphrase）
  */
 export async function fetchSessionSecrets(savedId) {
   const api = window.zterm?.credentials
   if (!savedId || !api?.get) return {}
   try {
-    return (await api.get(savedId)) || {}
+    const res = await api.get(savedId)
+    if (!res?.success) return {}
+    return res.content ?? {}
   } catch {
     return {}
   }
@@ -96,8 +100,8 @@ export async function clearAllVaultEntries() {
 export async function reapplyVaultPoliciesForAllSessions(savedSessions, settings) {
   const api = window.zterm?.credentials
   if (!api?.get || !api?.sync) return
-  const avail = await api.isAvailable?.()
-  if (avail === false) return
+  const availRes = await api.isAvailable?.()
+  if (!availRes?.success || availRes.content?.available === false) return
   for (const s of savedSessions) {
     if (!s.savedId || s.type !== 'ssh') continue
     const sec = await fetchSessionSecrets(s.savedId)
@@ -128,12 +132,13 @@ export function resolveAffectedSavedId(prevSessions, nextSessions, config) {
 export async function absorbPlaintextSecretsFromImportedSessions(sessions) {
   if (!Array.isArray(sessions)) return sessions
   const api = window.zterm?.credentials
-  const avail = api?.isAvailable ? await api.isAvailable() : false
+  const availRes = api?.isAvailable ? await api.isAvailable() : null
+  const avail = availRes?.success && availRes.content?.available === true
   const out = []
   for (const s of sessions) {
     const copy = { ...s }
     if (avail && api?.sync && s.savedId) {
-      if (s.type === 'ssh') {  // 如果是 SSH 会话，则设置凭据
+      if (s.type === 'ssh') {
         const partial = {}
         if (typeof s.password === 'string' && s.password) partial.password = s.password
         if (typeof s.privateKey === 'string' && s.privateKey) partial.privateKey = s.privateKey

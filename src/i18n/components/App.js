@@ -1,4 +1,4 @@
-/** App.jsx / 主进程 IPC */
+/** App.jsx */
 export const APP = {
   zh: {
     saveOutputNotReady: '当前标签页尚未准备好终端输出',
@@ -13,5 +13,19 @@ export const APP = {
     saveOutputFail: 'Failed to save terminal output: {msg}',
     invalidRequest: 'Invalid request',
     unauthorized: 'Unauthorized IPC request',
+  },
+}
+
+/** App.jsx — 凭据 IPC (credentialsBridge / handlers/credentials.js) */
+export const CREDENTIALS = {
+  zh: {
+    invalidSavedId: '无效的 savedId',
+    encryptionUnavailable:
+      '系统安全存储不可用（例如 Linux 未配置密钥环）。无法加密保存凭据。',
+  },
+  en: {
+    invalidSavedId: 'Invalid savedId',
+    encryptionUnavailable:
+      'Secure storage is unavailable (e.g. no keyring on Linux). Cannot save encrypted credentials.',
   },
 }

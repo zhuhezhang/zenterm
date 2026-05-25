@@ -7,14 +7,6 @@ import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults
 
 const { config } = workerData
 
-/** 
- * 发送消息到主线程，用于处理 SSH 连接事件
- * @param {object} m 消息
- */
-function post(m) {
-  parentPort.postMessage(m)
-}
-
 /**
  * 构建连接配置，用于 SSH 连接
  * @param {object} cfg 配置
@@ -89,7 +81,7 @@ function hostVerifier(key, callback) {
   const raw = Buffer.isBuffer(key) ? key : Buffer.from(key)
   const reqId = ++verifySeq
   verifyCallbacks.set(reqId, callback)
-  post({
+  parentPort.postMessage({  // 发送消息到主线程
     type: 'HOST_VERIFY',
     reqId,
     host: config.host,
@@ -143,14 +135,14 @@ let failSent = false
 function postFail(message) {
   if (failSent) return
   failSent = true
-  post({ type: 'CONNECT_FAILED', error: message })
+  parentPort.postMessage({ type: 'CONNECT_FAILED', error: message })
 }
 
 /** 发送关闭消息 */
 function postClosed() {
   if (state.closedPosted) return
   state.closedPosted = true
-  post({ type: 'CLOSED' })
+  parentPort.postMessage({ type: 'CLOSED' })
 }
 
 state.conn = new Client()
@@ -165,14 +157,14 @@ state.conn.on('ready', () => {  // 监听 SSH 连接就绪事件
     }
     state.stream = stream
     stream.on('data', (data) => {  // 监听 SSH 流数据事件，参数为数据
-      post({ type: 'OUTPUT', data: data.toString('binary') })
+      parentPort.postMessage({ type: 'OUTPUT', data: data.toString('binary') })
     })
     stream.stderr.on('data', (data) => {  // 监听 SSH 流错误数据事件，参数为数据
-      post({ type: 'OUTPUT', data: data.toString('binary') })
+      parentPort.postMessage({ type: 'OUTPUT', data: data.toString('binary') })
     })
     stream.on('close', postClosed)  // 监听 SSH 流关闭事件，发送关闭消息
     state.conn.on('close', postClosed)  // 监听 SSH 连接关闭事件，发送关闭消息
-    post({ type: 'READY' })
+    parentPort.postMessage({ type: 'READY' })
   })
 })
 state.conn.on('error', (err) => {  // 监听 SSH 连接错误事件，参数为错误对象

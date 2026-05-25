@@ -1,7 +1,7 @@
 import path from 'path'
-import { createIpcError } from '../../shared/ipcError.js'
+import { createIpcError } from './ipcError.js'
 import { INVALID_LABEL_CHARS } from '../../shared/safeFileName.js'
-import { isPathWithinResolvedRoots } from '../../shared/localPathRoots.js'
+import { isPathWithinResolvedRoots } from './localPathRoots.js'
 
 /**
  * 校验 SFTP 本地文件路径是否在允许根目录内

@@ -5,20 +5,12 @@ import fs from 'fs'
 import { parentPort, workerData } from 'worker_threads'
 import { Client } from 'ssh2'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
-import { ipcFailFromThrown } from '../../shared/ipcError.js'
+import { ipcFailFromThrown } from '../lib/ipcError.js'
 import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, safeJoinLocalDownloadPathForRoots,
 } from '../lib/sftpLocalPathRoots.js'
 
 const { config, allowedRoots } = workerData
-
-/** 
- * 发送消息到主线程
- * @param {object} m 消息
- */
-function post(m) {
-  parentPort.postMessage(m)
-}
 
 /**
  * 构建连接配置
@@ -81,30 +73,13 @@ function hostVerifier(key, callback) {
   const raw = Buffer.isBuffer(key) ? key : Buffer.from(key)
   const reqId = ++verifySeq
   verifyCallbacks.set(reqId, callback)
-  post({
+  parentPort.postMessage({  // 发送消息到主线程
     type: 'HOST_VERIFY',
     reqId,
     host: config.host,
     port: config.port || 22,
     keyBase64: raw.toString('base64'),
   })
-}
-
-/**
- * 发送进度消息
- * @param {object} payload 进度消息
- */
-function sendProgress(payload) {
-  post({ type: 'PROGRESS', progress: payload })
-}
-
-/**
- * 远程文件名
- * @param {string} name 文件名
- * @returns {string} 远程文件名
- */
-function remoteEntryName(name) {
-  return Buffer.isBuffer(name) ? name.toString('utf8') : String(name)
 }
 
 /**
@@ -160,7 +135,7 @@ async function deleteRecursive(remotePath) {
     return
   }
   for (const item of list) {
-    const name = remoteEntryName(item.filename)
+    const name = Buffer.isBuffer(item.filename) ? item.filename.toString('utf8') : String(item.filename)
     const child = remotePath === '/' ? `/${name}` : `${remotePath}/${name}`
     if (item.attrs.isDirectory()) await deleteRecursive(child)
     else await sftpUnlink(child)
@@ -179,7 +154,7 @@ async function downloadDirRecursive(remoteDir, localDir) {
   fs.mkdirSync(localDir, { recursive: true })
   const list = await sftpReaddir(remoteDir)
   for (const item of list) {
-    const name = remoteEntryName(item.filename)
+    const name = Buffer.isBuffer(item.filename) ? item.filename.toString('utf8') : String(item.filename)
     const remotePath = remoteDir === '/' ? `/${name}` : `${remoteDir}/${name}`
     const localPath = safeJoinLocalDownloadPathForRoots(localDir, name, allowedRoots, 'download')
     if (item.attrs.isDirectory()) {
@@ -188,12 +163,15 @@ async function downloadDirRecursive(remoteDir, localDir) {
       await new Promise((resolve, reject) => {
         state.sftp.fastGet(remotePath, localPath, {
           step: (transferred, _chunk, total_size) => {
-            sendProgress({
-              type: 'download',
-              file: remotePath,
-              transferred,
-              total: total_size,
-              percent: total_size ? Math.round((transferred / total_size) * 100) : 0,
+            parentPort.postMessage({  // 发送进度消息到主线程
+              type: 'PROGRESS',
+              progress: {
+                type: 'download',
+                file: remotePath,
+                transferred,
+                total: total_size,
+                percent: total_size ? Math.round((transferred / total_size) * 100) : 0,
+              },
             })
           },
         }, (err) => (err ? reject(err) : resolve()))
@@ -224,7 +202,7 @@ function enqueueOp(fn) {
  * @param {object} extra 额外信息
  */
 function postCmdResult(reqId, success, extra = {}) {
-  post({ type: 'CMD_RESULT', reqId, success, ...extra })
+  parentPort.postMessage({ type: 'CMD_RESULT', reqId, success, ...extra })
 }
 
 /**
@@ -244,7 +222,7 @@ async function handleCmd(msg) {
         const list = await sftpReaddir(msg.remotePath)
         const items = list
           .map((item) => {
-            const name = remoteEntryName(item.filename)
+            const name = Buffer.isBuffer(item.filename) ? item.filename.toString('utf8') : String(item.filename)
             const base = msg.remotePath
             const fullPath = base === '/' ? `/${name}` : `${base}/${name}`
             return {
@@ -268,12 +246,15 @@ async function handleCmd(msg) {
         await new Promise((resolve, reject) => {
           state.sftp.fastGet(msg.remotePath, msg.localPath, {
             step: (transferred, _chunk, total_size) => {
-              sendProgress({
-                type: 'download',
-                file: msg.remotePath,
-                transferred,
-                total: total_size,
-                percent: total_size ? Math.round((transferred / total_size) * 100) : 0,
+              parentPort.postMessage({
+                type: 'PROGRESS',
+                progress: {
+                  type: 'download',
+                  file: msg.remotePath,
+                  transferred,
+                  total: total_size,
+                  percent: total_size ? Math.round((transferred / total_size) * 100) : 0,
+                },
               })
             },
           }, (err) => (err ? reject(err) : resolve()))
@@ -291,12 +272,15 @@ async function handleCmd(msg) {
         await new Promise((resolve, reject) => {
           state.sftp.fastPut(msg.localPath, msg.remotePath, {
             step: (transferred, _chunk, total_size) => {
-              sendProgress({
-                type: 'upload',
-                file: msg.localPath,
-                transferred,
-                total: total_size,
-                percent: total_size ? Math.round((transferred / total_size) * 100) : 0,
+              parentPort.postMessage({
+                type: 'PROGRESS',
+                progress: {
+                  type: 'upload',
+                  file: msg.localPath,
+                  transferred,
+                  total: total_size,
+                  percent: total_size ? Math.round((transferred / total_size) * 100) : 0,
+                },
               })
             },
           }, (err) => (err ? reject(err) : resolve()))
@@ -328,7 +312,10 @@ async function handleCmd(msg) {
     }
   } catch (e) {
     const fail = ipcFailFromThrown(e)
-    postCmdResult(reqId, false, { error: fail.error, errorParams: fail.errorParams })
+    postCmdResult(reqId, false, {
+      error: fail.content.error,
+      errorParams: fail.content.errorParams,
+    })
   }
 }
 
@@ -359,14 +346,14 @@ let failSent = false
 function postFail(message) {
   if (failSent) return
   failSent = true
-  post({ type: 'CONNECT_FAILED', error: message })
+  parentPort.postMessage({ type: 'CONNECT_FAILED', error: message })
 }
 
 /** 发送关闭消息 */
 function postClosed() {
   if (state.closedPosted) return
   state.closedPosted = true
-  post({ type: 'CLOSED' })
+  parentPort.postMessage({ type: 'CLOSED' })
 }
 
 state.conn = new Client()
@@ -381,7 +368,7 @@ state.conn.on('ready', () => {  // 监听 SSH 连接就绪事件
     }
     state.sftp = sftp
     state.conn.on('close', postClosed)
-    post({ type: 'READY' })
+    parentPort.postMessage({ type: 'READY' })
   })
 })
 

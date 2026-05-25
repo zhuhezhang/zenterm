@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react
 import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext.jsx'
 import { formatIpcResponseError, formatThrownIpcError } from '@/lib/ipc/formatIpcError.js'
-import { ipcErrorFromResponse } from '../../shared/ipcError.js'
+import { ipcErrorFromResponse } from '../lib/ipc/ipcError.js'
 import { INVALID_LABEL_CHARS } from '../../shared/safeFileName.js'
 import '../styles/sftp.css'
 
@@ -109,7 +109,7 @@ export default function SftpPanel({ session }) {
     try {
       const res = await window.zterm.sftp.list(sftpSessionId, dirPath)
       if (!res.success) throw ipcErrorFromResponse(res)
-      setItems(res.items)
+      setItems(res.content?.items ?? [])
       setPath(dirPath)
     } catch (e) {
       showErr(e)
@@ -269,8 +269,9 @@ export default function SftpPanel({ session }) {
    * @param {Event} e 事件对象
    */
   const handleDownload = async (item) => {
-    const dir = await window.zterm?.chooseDirectory?.()
-    if (!dir) return
+    const pick = await window.zterm?.chooseDirectory?.()
+    const dir = pick?.content?.path
+    if (!pick?.success || pick?.content?.canceled || !dir) return
     const localBase = dir.endsWith('/') ? dir.slice(0, -1) : dir
     const localPath = `${localBase}/${item.name}`
     const res = item.isDir

@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron')
 
 contextBridge.exposeInMainWorld('zterm', {  // 在渲染进程中通过window.zterm访问暴露的API
-  getDownloadsPath: () => ipcRenderer.sendSync('app:getDownloadsPath'),  // 同步调用主进程获取下载目录路径
+  getDownloadsPath: () => ipcRenderer.invoke('app:getDownloadsPath'),
   setUiLanguage: (uiLanguage) => ipcRenderer.send('app:setUiLanguage', uiLanguage),  // zh | en (渲染端已解析 auto)
   chooseDirectory: () => ipcRenderer.invoke('app:chooseDirectory'),  // 弹出目录选择框，返回选中的目录路径（异步）
   validateLogDirectory: (dir) => ipcRenderer.invoke('app:validateLogDirectory', dir),  // 校验日志目录是否在允许范围内，与主进程 log:write 路径策略一致

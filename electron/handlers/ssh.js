@@ -9,7 +9,7 @@
      |                      | verifySshHostKeyTrust()  |
      |                      |------ VERIFY_RESULT ----->|
      |                      |<-------- READY ----------| shell 就绪
-     |<--- {success:true}---| sshSessions.set(id)      |
+     |<--- ipcOk() ---------| sshSessions.set(id)      |
      | onData / onResize    |                          |
      | sendData ----------->| WRITE ------------------->| stream
      |<----- ssh:output ----|<-------- OUTPUT ----------|
@@ -17,7 +17,8 @@
 import { Worker } from 'worker_threads'
 import { fileURLToPath } from 'url'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
-import { ipcFailFromThrown, ipcFail } from '../../shared/ipcError.js'
+import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
+import { ipcFailFromThrown, ipcFail, ipcOk } from '../../shared/ipcResponse.js'
 import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
 
 /** 存储每个 SSH 会话对应的 Worker 桥接状态（键id → 值{ worker: Worker, isClosed: boolean }） */
@@ -49,16 +50,16 @@ function setupSSHHandlers(ipcMain, mainWindow) {
         try {
           worker?.terminate()
         } catch (_) {}
-        const out = { success: false, error: String(error || 'ssh.connectionFailed'), errorKnown }
-        if (errorParams && Object.keys(errorParams).length) out.errorParams = errorParams
-        resolve(out)
+        resolve(
+          ipcFail(String(error || 'ssh.connectionFailed'), errorParams, {}, { errorKnown }),
+        )
       }
 
       /** 处理 SSH 连接成功 */
       const finishOk = () => {
         if (settled) return
         settled = true
-        resolve({ success: true })
+        resolve(ipcOk())
       }
 
       try {
@@ -163,7 +164,7 @@ function setupSSHHandlers(ipcMain, mainWindow) {
         } catch (_) {}
       }, 120)
     }
-    return { success: true }
+    return ipcOk()
   })
 }
 

@@ -1,6 +1,6 @@
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
-import { ipcFail } from '../../shared/ipcError.js'
+import { ipcFail, ipcFailRaw, ipcOk } from '../../shared/ipcResponse.js'
 import { translateMain } from '../i18n/translateMain.js'
 
 let SerialPort
@@ -37,13 +37,13 @@ function isSerialPathInEnumeratedList(requestedPath, ports) {
  */
 function setupSerialHandlers(ipcMain, mainWindow) {
   ipcMain.handle('serial:listPorts', async (event) => {  // 获取可用串口列表
-    if (!isTrustedIpcSender(event.sender)) return { ...ipcFail('app.unauthorized'), ports: [] }
-    if (!SerialPort) return { ...ipcFail('serial.moduleUnavailable'), ports: [] }
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', undefined, { ports: [] })
+    if (!SerialPort) return ipcFail('serial.moduleUnavailable', undefined, { ports: [] })
     try {
       const ports = await SerialPort.list()
-      return { success: true, ports }
+      return ipcOk({ ports })
     } catch (e) {
-      return { success: false, error: e.message, errorKnown: false, ports: [] }
+      return ipcFailRaw(e.message, { ports: [] })
     }
   })
 
@@ -73,11 +73,11 @@ function setupSerialHandlers(ipcMain, mainWindow) {
           autoOpen: false,  // 不自动打开，手动调用 port.open() 来打开连接，以便在打开时处理错误
         })
       } catch (e) {
-        return resolve({ success: false, error: e.message, errorKnown: false })
+        return resolve(ipcFailRaw(e.message))
       }
 
       port.open((err) => {  // 打开串口连接，回调接收错误信息 err
-        if (err) return resolve({ success: false, error: err.message, errorKnown: false })
+        if (err) return resolve(ipcFailRaw(err.message))
 
         serialSessions.set(id, port)
 
@@ -98,7 +98,7 @@ function setupSerialHandlers(ipcMain, mainWindow) {
           )
         })
 
-        resolve({ success: true })
+        resolve(ipcOk())
       })
     })
   })
@@ -121,7 +121,7 @@ function setupSerialHandlers(ipcMain, mainWindow) {
       } catch (e) {}
       serialSessions.delete(id)
     }
-    return { success: true }
+    return ipcOk()
   })
 }
 

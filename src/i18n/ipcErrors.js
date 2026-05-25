@@ -1,4 +1,24 @@
-/** 串口 IPC (handlers/serial.js) */
+/** IPC 错误码 — formatIpcError / TerminalPanel / ConnectDialog 等 */
+export const SSH = {
+  zh: {
+    connectionFailed: 'SSH 连接失败',
+    workerExitUnexpected: 'SSH 工作线程意外退出 ({code})',
+  },
+  en: {
+    connectionFailed: 'SSH connection failed',
+    workerExitUnexpected: 'SSH worker exited unexpectedly ({code})',
+  },
+}
+
+export const TELNET = {
+  zh: {
+    connectionTimeout: 'Telnet 连接超时',
+  },
+  en: {
+    connectionTimeout: 'Telnet connection timed out',
+  },
+}
+
 export const SERIAL = {
   zh: {
     moduleUnavailable: 'serialport 模块不可用',

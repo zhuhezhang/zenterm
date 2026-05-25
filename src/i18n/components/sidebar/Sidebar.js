@@ -1,4 +1,4 @@
-/** Sidebar.jsx, SidebarContextMenu.jsx */
+/** Sidebar.jsx, SidebarTop.jsx, SidebarContextMenu.jsx */
 export const SIDEBAR = {
   zh: {
     "remoteFiles": "远程文件",

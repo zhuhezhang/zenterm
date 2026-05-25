@@ -8,7 +8,7 @@ import { clampTerminalScrollback, normalizeLoggingMode } from '../lib/settings/n
 import { translateRender } from '../i18n/translateRender.js'
 import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage.js'
 import { safeFileToken } from '../lib/safeFileName.js'
-import { ipcErrorFromResponse } from '../../shared/ipcError.js'
+import { ipcErrorFromResponse } from '../lib/ipc/ipcError.js'
 import { formatThrownIpcError } from '@/lib/ipc/formatIpcError.js'
 import { getXtermTheme } from '../theme/appTheme.js'
 import '@xterm/xterm/css/xterm.css'

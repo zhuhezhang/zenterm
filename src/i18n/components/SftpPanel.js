@@ -1,4 +1,4 @@
-/** SftpPanel + SFTP IPC */
+/** SftpPanel.jsx + SFTP IPC */
 export const SFTP = {
   zh: {
     pickFiles: '选择文件…',

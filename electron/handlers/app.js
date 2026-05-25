@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { translateMain, setStoredUiLanguage } from '../i18n/translateMain.js'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
-import { ipcFail, ipcFailFromThrown } from '../../shared/ipcError.js'
+import { ipcFail, ipcFailFromThrown, ipcOk } from '../../shared/ipcResponse.js'
 import { validateLogWriteDirectory, validateLocalFilePath, assertLocalFilePathAllowed } from '../lib/localPathPolicy.js'
 
 /**
@@ -19,12 +19,12 @@ async function saveFileWithPolicyDialog(mainWindow, { title, defaultName, filter
     filters,
   })
   if (result.canceled || !result.filePath) {
-    return { success: true, canceled: true }
+    return ipcOk({ canceled: true })
   }
   try {
     assertLocalFilePathAllowed(result.filePath, kind)
     fs.writeFileSync(result.filePath, String(content ?? ''), 'utf8')
-    return { success: true }
+    return ipcOk()
   } catch (e) {
     return ipcFailFromThrown(e)
   }
@@ -41,22 +41,20 @@ export function setupAppHandlers(ipcMain, getMainWindow) {
     setStoredUiLanguage(uiLanguage === 'zh' ? 'zh' : 'en')
   })
 
-  ipcMain.on('app:getDownloadsPath', (e) => {  // 获取下载目录路径
-    if (!isTrustedIpcSender(e.sender)) {
-      e.returnValue = ''
-      return
-    }
-    e.returnValue = app.getPath('downloads')
+  ipcMain.handle('app:getDownloadsPath', (event) => {
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
+    return ipcOk({ path: app.getPath('downloads') })
   })
 
   ipcMain.handle('app:chooseDirectory', async (event) => {  // 选择目录
-    if (!isTrustedIpcSender(event.sender)) return null
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
     const mainWindow = getMainWindow()
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory', 'createDirectory'],
       title: translateMain('app.chooseLogDirectoryTitle'),
     })
-    return result.canceled ? null : result.filePaths[0]
+    if (result.canceled || !result.filePaths?.[0]) return ipcOk({ canceled: true })
+    return ipcOk({ path: result.filePaths[0] })
   })
 
   ipcMain.handle('app:validateLogDirectory', (event, dir) => {  // 验证日志目录是否在允许范围内
@@ -64,7 +62,7 @@ export function setupAppHandlers(ipcMain, getMainWindow) {
       return ipcFail('app.invalidRequest')
     }
     const s = dir == null ? '' : String(dir).trim()
-    if (!s) return { success: true }
+    if (!s) return ipcOk()
     return validateLogWriteDirectory(s)
   })
 

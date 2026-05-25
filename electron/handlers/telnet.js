@@ -1,6 +1,6 @@
 import net from 'net'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
-import { ipcFail } from '../../shared/ipcError.js'
+import { ipcFail, ipcFailRaw, ipcOk } from '../../shared/ipcResponse.js'
 import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
 
 /** 存储所有 Telnet 会话信息的 Map，键为会话 ID，值为 net.Socket 实例 */
@@ -124,7 +124,7 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
         clearTimeout(timeout)  // 连接成功，清除超时定时器
         connected = true
         telnetSessions.set(id, socket)
-        resolveOnce({ success: true })
+        resolveOnce(ipcOk())
       })
 
       socket.on('data', (data) => {  // 监听接收数据，去掉 Telnet 命令，保留终端数据，并发送到渲染进程
@@ -145,7 +145,7 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
         clearTelnetParserState(socket)
         telnetSessions.delete(id)
         if (!connected) {
-          resolveOnce({ success: false, error: err.message, errorKnown: false })
+          resolveOnce(ipcFailRaw(err.message))
         }
       })
     })
@@ -170,7 +170,7 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
       } catch (e) {}
       telnetSessions.delete(id)
     }
-    return { success: true }
+    return ipcOk()
   })
 }
 

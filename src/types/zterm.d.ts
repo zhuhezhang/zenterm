@@ -1,5 +1,24 @@
 /** Preload 暴露的 window.zterm API（与 electron/preload.cjs 对齐） */
 
+export interface IpcContent {
+  [key: string]: unknown
+  error?: string
+  errorParams?: Record<string, string | number>
+}
+
+export interface IpcOk<T extends IpcContent = IpcContent> {
+  success: true
+  content: T
+}
+
+export interface IpcFail<T extends IpcContent = IpcContent> {
+  success: false
+  errorKnown: boolean
+  content: T & { error: string }
+}
+
+export type IpcResult<T extends IpcContent = IpcContent> = IpcOk<T> | IpcFail<T>
+
 export interface ZTermProgress {
   type?: string
   transferred?: number
@@ -12,26 +31,21 @@ export interface ZTermWindowApi {
   close: () => void
   setBackgroundColor: (hex: string) => void
   onMaximized: (cb: (v: boolean) => void) => void
-  isMaximized: () => Promise<boolean>
+  isMaximized: () => Promise<IpcResult<{ maximized: boolean }>>
 }
 
 export interface ZTermCredentialsApi {
-  isAvailable: () => Promise<boolean>
-  get: (savedId: string) => Promise<Record<string, unknown>>
-  sync: (savedId: string, partial: Record<string, unknown>) => Promise<unknown>
-  remove: (savedId: string) => Promise<unknown>
-  duplicate: (fromId: string, toId: string) => Promise<unknown>
-  clearAll: () => Promise<unknown>
-}
-
-export interface ZTermConnectResult {
-  success: boolean
-  error?: string
+  isAvailable: () => Promise<IpcResult<{ available: boolean }>>
+  get: (savedId: string) => Promise<IpcResult<Record<string, unknown>>>
+  sync: (savedId: string, partial: Record<string, unknown>) => Promise<IpcResult>
+  remove: (savedId: string) => Promise<IpcResult>
+  duplicate: (fromId: string, toId: string) => Promise<IpcResult>
+  clearAll: () => Promise<IpcResult>
 }
 
 export interface ZTermSshApi {
-  connect: (id: string, config: Record<string, unknown>) => Promise<ZTermConnectResult>
-  disconnect: (id: string) => Promise<unknown>
+  connect: (id: string, config: Record<string, unknown>) => Promise<IpcResult>
+  disconnect: (id: string) => Promise<IpcResult>
   sendData: (id: string, data: string, encoding?: string) => void
   resize: (id: string, cols: number, rows: number) => void
   onData: (id: string, cb: (data: string) => void) => () => void
@@ -39,30 +53,30 @@ export interface ZTermSshApi {
 }
 
 export interface ZTermSftpApi {
-  connect: (id: string, config: Record<string, unknown>) => Promise<ZTermConnectResult>
-  disconnect: (id: string) => Promise<unknown>
-  list: (id: string, remotePath: string) => Promise<unknown>
-  download: (id: string, remotePath: string, localPath: string) => Promise<unknown>
-  downloadDir: (id: string, remoteDir: string, localDir: string) => Promise<unknown>
-  upload: (id: string, localPath: string, remotePath: string) => Promise<unknown>
-  mkdir: (id: string, remotePath: string) => Promise<unknown>
-  delete: (id: string, remotePath: string) => Promise<unknown>
-  rename: (id: string, oldPath: string, newPath: string) => Promise<unknown>
+  connect: (id: string, config: Record<string, unknown>) => Promise<IpcResult>
+  disconnect: (id: string) => Promise<IpcResult>
+  list: (id: string, remotePath: string) => Promise<IpcResult<{ items: unknown[] }>>
+  download: (id: string, remotePath: string, localPath: string) => Promise<IpcResult>
+  downloadDir: (id: string, remoteDir: string, localDir: string) => Promise<IpcResult>
+  upload: (id: string, localPath: string, remotePath: string) => Promise<IpcResult>
+  mkdir: (id: string, remotePath: string) => Promise<IpcResult>
+  delete: (id: string, remotePath: string) => Promise<IpcResult>
+  rename: (id: string, oldPath: string, newPath: string) => Promise<IpcResult>
   onProgress: (id: string, cb: (progress: ZTermProgress) => void) => () => void
 }
 
 export interface ZTermTelnetApi {
-  connect: (id: string, config: Record<string, unknown>) => Promise<ZTermConnectResult>
-  disconnect: (id: string) => Promise<unknown>
+  connect: (id: string, config: Record<string, unknown>) => Promise<IpcResult>
+  disconnect: (id: string) => Promise<IpcResult>
   sendData: (id: string, data: string, encoding?: string) => void
   onData: (id: string, cb: (data: string) => void) => () => void
   onClose: (id: string, cb: () => void) => () => void
 }
 
 export interface ZTermSerialApi {
-  listPorts: () => Promise<unknown>
-  connect: (id: string, config: Record<string, unknown>) => Promise<ZTermConnectResult>
-  disconnect: (id: string) => Promise<unknown>
+  listPorts: () => Promise<IpcResult<{ ports: unknown[] }>>
+  connect: (id: string, config: Record<string, unknown>) => Promise<IpcResult>
+  disconnect: (id: string) => Promise<IpcResult>
   sendData: (id: string, data: string, encoding?: string) => void
   onData: (id: string, cb: (data: string) => void) => () => void
   onClose: (id: string, cb: () => void) => () => void
@@ -74,35 +88,13 @@ export interface ZTermLogApi {
 }
 
 export interface ZTermApi {
-  getDownloadsPath: () => string
+  getDownloadsPath: () => Promise<IpcResult<{ path: string }>>
   setUiLanguage: (uiLanguage: 'zh' | 'en') => void
-  chooseDirectory: () => Promise<string | null>
-  validateLogDirectory: (dir: string) => Promise<{
-    success: boolean
-    error?: string
-    errorParams?: Record<string, string | number>
-    errorKnown?: boolean
-  }>
-  validateLocalFilePath: (filePath: string, kind?: string) => Promise<{
-    success: boolean
-    error?: string
-    errorParams?: Record<string, string | number>
-    errorKnown?: boolean
-  }>
-  saveTerminalOutput: (defaultName: string, text: string) => Promise<{
-    success: boolean
-    canceled?: boolean
-    error?: string
-    errorParams?: Record<string, string | number>
-    errorKnown?: boolean
-  }>
-  saveJsonExport: (defaultName: string, jsonText: string) => Promise<{
-    success: boolean
-    canceled?: boolean
-    error?: string
-    errorParams?: Record<string, string | number>
-    errorKnown?: boolean
-  }>
+  chooseDirectory: () => Promise<IpcResult<{ path?: string; canceled?: boolean }>>
+  validateLogDirectory: (dir: string) => Promise<IpcResult>
+  validateLocalFilePath: (filePath: string, kind?: string) => Promise<IpcResult>
+  saveTerminalOutput: (defaultName: string, text: string) => Promise<IpcResult<{ canceled?: boolean }>>
+  saveJsonExport: (defaultName: string, jsonText: string) => Promise<IpcResult<{ canceled?: boolean }>>
   getPathForFile: (file: File) => string
   window: ZTermWindowApi
   credentials: ZTermCredentialsApi

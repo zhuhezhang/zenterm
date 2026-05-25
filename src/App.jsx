@@ -12,7 +12,7 @@ import { useSyncedAppTheme } from '@/hooks/useSyncedAppTheme.js'
 import { useSidebarResize } from '@/hooks/useSidebarResize.js'
 import { fileTimestamp } from '@/lib/util/fileTimestamp.js'
 import { safeFileToken } from './lib/safeFileName.js'
-import { loadSettings } from './store/settingsStore.js'
+import { loadSettings, refreshDownloadsPathCache, getDefaultLogPath } from './store/settingsStore.js'
 import { DEFAULT_SIDEBAR_WIDTH } from './lib/settings/defaults.js'
 import { clampSidebarWidthPx } from './lib/settings/normalize.js'
 import { resolveEffectiveUiLanguage, syncUiLanguageToMain } from './lib/resolveUiLanguage.js'
@@ -56,7 +56,7 @@ function AppMain({ settings, setSettings }) {
 
   /** 凭据同步失败提示（后端已 i18n 的文案直接显示） */
   const alertVaultSyncError = (r) => {
-    if (r?.success === false && r?.error) {
+    if (r?.success === false) {
       alert(formatIpcResponseError(t, r) || t('credentials.encryptionUnavailable'))
     }
   }
@@ -195,9 +195,9 @@ function AppMain({ settings, setSettings }) {
     const filename = `${fileTimestamp()}_${safeFileToken(label)}.txt`
     try {
       const res = await window.zterm.saveTerminalOutput(filename, text)
-      if (res?.canceled) return
+      if (res?.content?.canceled) return
       if (res?.success === false) {
-        alert(formatIpcResponseError(t, res) || t('app.saveOutputFail', { msg: res?.error ?? '' }))
+        alert(formatIpcResponseError(t, res) || t('app.saveOutputFail', { msg: res?.content?.error ?? '' }))
       }
     } catch (err) {
       alert(t('app.saveOutputFail', { msg: err?.message ?? String(err) }))
@@ -527,6 +527,19 @@ export default function App() {
     syncUiLanguageToMain(s.uiLanguage)  // 同步界面语言至主进程
     return s
   })
+
+  useEffect(() => {
+    void refreshDownloadsPathCache().then(() => {
+      const def = getDefaultLogPath()
+      if (!def) return
+      setSettings((s) => {
+        const cur = s?.logPath != null ? String(s.logPath).trim() : ''
+        if (cur) return s
+        return { ...s, logPath: def }
+      })
+    })
+  }, [])
+
   return (
     <I18nProvider language={settings.uiLanguage}>
       <AppMain settings={settings} setSettings={setSettings} />

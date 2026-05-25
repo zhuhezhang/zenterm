@@ -8,26 +8,53 @@ import {
 import {
   clampSidebarWidthPx, clampTerminalScrollback, applyLegacyLoggingMigration,
 } from '../lib/settings/normalize.js'
+import { ipcPathFromResponse } from '../lib/ipc/ipcResponse.js'
 
 /** 本地存储设置的键名 */
 const SETTINGS_KEY = 'zterm_settings'
 /** 默认放在系统下载目录下的日志子文件夹名 */
 export const LOG_PATH_SUBFOLDER = 'zterm-session-log'
 
+/** 由 app:getDownloadsPath invoke 填充的系统下载目录缓存 */
+let cachedDownloadsPath = ''
+
 /**
- * 默认日志目录：系统下载目录下的 zterm-session-log（主进程会 mkdir 递归创建）
+ * 拉取并缓存系统下载目录（app:getDownloadsPath）
+ * @returns {Promise<string>}
+ */
+export async function refreshDownloadsPathCache() {
+  try {
+    const res = await window?.zterm?.getDownloadsPath?.()
+    cachedDownloadsPath = ipcPathFromResponse(res)
+  } catch {
+    cachedDownloadsPath = ''
+  }
+  return cachedDownloadsPath
+}
+
+/** @returns {string} 已缓存的系统下载目录 */
+export function getDownloadsPathCached() {
+  return cachedDownloadsPath
+}
+
+/**
+ * 将下载根目录拼成默认日志子目录路径
+ * @param {string} base 系统下载目录
+ * @returns {string}
+ */
+function buildDefaultLogPathFromBase(base) {
+  if (!base || typeof base !== 'string') return ''
+  const trimmed = base.replace(/[/\\]+$/, '')
+  const sep = trimmed.includes('\\') ? '\\' : '/'
+  return `${trimmed}${sep}${LOG_PATH_SUBFOLDER}`
+}
+
+/**
+ * 默认日志目录：系统下载目录下的 zterm-session-log（需先 refreshDownloadsPathCache）
  * @returns {string} 默认日志目录
  */
 export function getDefaultLogPath() {
-  try {
-    const base = window?.zterm?.getDownloadsPath?.()
-    if (!base || typeof base !== 'string') return ''
-    const trimmed = base.replace(/[/\\]+$/, '')
-    const sep = trimmed.includes('\\') ? '\\' : '/'
-    return `${trimmed}${sep}${LOG_PATH_SUBFOLDER}`
-  } catch {
-    return ''
-  }
+  return buildDefaultLogPathFromBase(cachedDownloadsPath)
 }
 
 /**
@@ -39,7 +66,7 @@ export function resolveLoggingDirectory(settings) {
   try {
     const custom = settings?.logPath != null ? String(settings.logPath).trim() : ''
     if (custom) return custom
-    return getDefaultLogPath() || window?.zterm?.getDownloadsPath?.() || ''
+    return getDefaultLogPath() || cachedDownloadsPath || ''
   } catch {
     return ''
   }
@@ -67,7 +94,10 @@ export function loadSettings() {
     let merged = { ...DEFAULT_SETTINGS, ...saved }
     merged.terminalScrollback = clampTerminalScrollback(merged.terminalScrollback)
     merged = applyLegacyLoggingMigration(merged)
-    if (!('logPath' in saved)) merged.logPath = getDefaultLogPath()
+    if (!('logPath' in saved)) {
+      const def = getDefaultLogPath()
+      if (def) merged.logPath = def
+    }
     if (!['auto', 'en', 'zh'].includes(merged.uiLanguage)) merged.uiLanguage = 'auto'
     if (!['dark', 'light', 'auto'].includes(merged.appTheme)) merged.appTheme = 'auto'
     merged.sidebarWidth = clampSidebarWidthPx(merged.sidebarWidth, typeof window !== 'undefined' ? window.innerWidth : 1200)
