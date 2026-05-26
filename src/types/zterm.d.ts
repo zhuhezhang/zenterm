@@ -87,15 +87,27 @@ export interface ZTermLogApi {
   append: (logDir: string, sessionId: string, data: string) => void
 }
 
-export interface ZTermApi {
+export interface ZTermPathsApi {
   getDownloadsPath: () => Promise<IpcResult<{ path: string }>>
-  setUiLanguage: (uiLanguage: 'zh' | 'en') => void
   chooseDirectory: () => Promise<IpcResult<{ path?: string; canceled?: boolean }>>
   validateLogDirectory: (dir: string) => Promise<IpcResult>
   validateLocalFilePath: (filePath: string, kind?: string) => Promise<IpcResult>
-  saveTerminalOutput: (defaultName: string, text: string) => Promise<IpcResult<{ canceled?: boolean }>>
-  saveJsonExport: (defaultName: string, jsonText: string) => Promise<IpcResult<{ canceled?: boolean }>>
   getPathForFile: (file: File) => string
+}
+
+export interface ZTermSaveApi {
+  terminalOutput: (defaultName: string, text: string) => Promise<IpcResult<{ canceled?: boolean }>>
+  jsonExport: (defaultName: string, jsonText: string) => Promise<IpcResult<{ canceled?: boolean }>>
+}
+
+export interface ZTermOthersApi {
+  setUiLanguage: (uiLanguage: 'zh' | 'en') => void
+}
+
+export interface ZTermApi {
+  paths: ZTermPathsApi
+  save: ZTermSaveApi
+  others: ZTermOthersApi
   window: ZTermWindowApi
   credentials: ZTermCredentialsApi
   log: ZTermLogApi

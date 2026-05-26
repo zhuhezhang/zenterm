@@ -50,6 +50,6 @@ export function resolveEffectiveUiLanguage(stored, systemLang) {
  */
 export function syncUiLanguageToMain(stored) {
   try {
-    window.zterm?.setUiLanguage?.(resolveEffectiveUiLanguage(stored))
+    window.zterm?.others?.setUiLanguage?.(resolveEffectiveUiLanguage(stored))
   } catch (_) {}
 }

@@ -24,7 +24,7 @@ let cachedDownloadsPath = ''
  */
 export async function refreshDownloadsPathCache() {
   try {
-    const res = await window?.zterm?.getDownloadsPath?.()
+    const res = await window?.zterm?.paths?.getDownloadsPath?.()
     cachedDownloadsPath = ipcPathFromResponse(res)
   } catch {
     cachedDownloadsPath = ''

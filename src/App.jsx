@@ -194,7 +194,7 @@ function AppMain({ settings, setSettings }) {
     const label = s?.label || `${s?.type?.toUpperCase?.() || 'SESSION'}_${s?.host || s?.path || s?.id || sessionId}`
     const filename = `${fileTimestamp()}_${safeFileToken(label)}.txt`
     try {
-      const res = await window.zterm.saveTerminalOutput(filename, text)
+      const res = await window.zterm.save.terminalOutput(filename, text)
       if (res?.content?.canceled) return
       if (res?.success === false) {
         alert(formatIpcResponseError(t, res) || t('app.saveOutputFail', { msg: res?.content?.error ?? '' }))

@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { translateMain, setStoredUiLanguage } from '../i18n/translateMain.js'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
-import { ipcFail, ipcFailFromThrown, ipcOk } from '../../shared/ipcResponse.js'
+import { ipcFail, ipcFailFromThrown, ipcOk } from '../lib/ipcResponse.js'
 import { validateLogWriteDirectory, validateLocalFilePath, assertLocalFilePathAllowed } from '../lib/localPathPolicy.js'
 
 /**
@@ -42,12 +42,12 @@ export function setupAppHandlers(ipcMain, getMainWindow) {
   })
 
   ipcMain.handle('app:getDownloadsPath', (event) => {
-    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     return ipcOk({ path: app.getPath('downloads') })
   })
 
   ipcMain.handle('app:chooseDirectory', async (event) => {  // 选择目录
-    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     const mainWindow = getMainWindow()
     const result = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory', 'createDirectory'],
@@ -59,7 +59,7 @@ export function setupAppHandlers(ipcMain, getMainWindow) {
 
   ipcMain.handle('app:validateLogDirectory', (event, dir) => {  // 验证日志目录是否在允许范围内
     if (!isTrustedIpcSender(event.sender)) {
-      return ipcFail('app.invalidRequest')
+      return ipcFail('app.invalidRequest', true)
     }
     const s = dir == null ? '' : String(dir).trim()
     if (!s) return ipcOk()
@@ -68,16 +68,16 @@ export function setupAppHandlers(ipcMain, getMainWindow) {
 
   ipcMain.handle('app:validateLocalFilePath', (event, filePath, kind) => {
     if (!isTrustedIpcSender(event.sender)) {
-      return ipcFail('app.invalidRequest')
+      return ipcFail('app.invalidRequest', true)
     }
     const s = filePath == null ? '' : String(filePath).trim()
-    if (!s) return ipcFail('app.invalidRequest')
+    if (!s) return ipcFail('app.invalidRequest', true)
     return validateLocalFilePath(s, kind || 'read')
   })
 
   ipcMain.handle('app:saveTerminalOutput', async (event, defaultName, text) => {
     if (!isTrustedIpcSender(event.sender)) {
-      return ipcFail('app.unauthorized')
+      return ipcFail('app.unauthorized', true)
     }
     return saveFileWithPolicyDialog(getMainWindow(), {
       title: translateMain('app.saveTerminalOutputTitle'),
@@ -90,7 +90,7 @@ export function setupAppHandlers(ipcMain, getMainWindow) {
 
   ipcMain.handle('app:saveJsonExport', async (event, defaultName, jsonText) => {
     if (!isTrustedIpcSender(event.sender)) {
-      return ipcFail('app.unauthorized')
+      return ipcFail('app.unauthorized', true)
     }
     return saveFileWithPolicyDialog(getMainWindow(), {
       title: translateMain('app.saveJsonExportTitle'),

@@ -69,8 +69,8 @@ export async function normalizeImportedLogPath(raw, fallback = '') {
   const p = raw.trim()
   if (!p) return ''
   try {
-    if (typeof window !== 'undefined' && window.zterm?.validateLogDirectory && isLikelyAbsoluteLogPath(p)) {
-      const vr = await window.zterm.validateLogDirectory(p)
+    if (typeof window !== 'undefined' && window.zterm?.paths?.validateLogDirectory && isLikelyAbsoluteLogPath(p)) {
+      const vr = await window.zterm.paths.validateLogDirectory(p)
       if (vr?.success === false) return fb
     }
     return p

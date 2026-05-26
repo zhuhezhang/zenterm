@@ -1,7 +1,7 @@
 /**
  * 记录当前主窗口 webContents.id，仅允许该渲染进程调用高危 IPC（防多窗口 / 嵌套 webview 误用）
  */
-import { ipcFail } from '../../shared/ipcResponse.js'
+import { ipcFail } from './ipcResponse.js'
 
 /** 当前主窗口 webContents.id */
 let trustedWebContentsId = null
@@ -30,4 +30,4 @@ export function isTrustedIpcSender(sender) {
 }
 
 /** 协议类 IPC 拒绝返回值 */
-export const IPC_UNAUTHORIZED = Object.freeze(ipcFail('app.unauthorized'))
+export const IPC_UNAUTHORIZED = Object.freeze(ipcFail('app.unauthorized', true))

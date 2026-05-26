@@ -13,7 +13,7 @@ import '../styles/sftp.css'
  */
 function getLocalFilePath(file) {
   if (!file) return ''
-  const bridge = window.zterm?.getPathForFile
+  const bridge = window.zterm?.paths?.getPathForFile
   if (typeof bridge === 'function') {
     try {
       const p = bridge(file)
@@ -269,7 +269,7 @@ export default function SftpPanel({ session }) {
    * @param {Event} e 事件对象
    */
   const handleDownload = async (item) => {
-    const pick = await window.zterm?.chooseDirectory?.()
+    const pick = await window.zterm?.paths?.chooseDirectory?.()
     const dir = pick?.content?.path
     if (!pick?.success || pick?.content?.canceled || !dir) return
     const localBase = dir.endsWith('/') ? dir.slice(0, -1) : dir

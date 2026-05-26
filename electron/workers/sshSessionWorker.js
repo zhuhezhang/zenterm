@@ -19,10 +19,6 @@ const { config } = workerData
  * @param {string} cfg.algorithms.cipher 加密算法
  * @param {string} cfg.algorithms.hmac 消息认证码算法
  * @param {string} cfg.algorithms.compress 压缩算法
- * @param {string} cfg.algorithms.serverHostKey 服务器主机密钥算法
- * @param {string} cfg.algorithms.cipher 加密算法
- * @param {string} cfg.algorithms.hmac 消息认证码算法
- * @param {string} cfg.algorithms.compress 压缩算法
  * @param {function} hostVerifier 主机公钥校验器
  * @returns {object} 连接配置
  */
@@ -90,7 +86,7 @@ function hostVerifier(key, callback) {
   })  // ssh2 的 hostVerifier 在 Worker 里，但 弹框必须在主进程（要 dialog 和 BrowserWindow），所以发消息到主线程
 }
 
-parentPort.on('message', (msg) => {  // 监听主线程发送的消息
+parentPort.on('message', (msg) => {  // 注册监听来自主线程发送的消息
   if (msg.type === 'HOST_VERIFY_RESULT') {  // 处理主机公钥校验结果
     const cb = verifyCallbacks.get(msg.reqId)
     verifyCallbacks.delete(msg.reqId)
@@ -146,7 +142,7 @@ function postClosed() {
 }
 
 state.conn = new Client()
-state.conn.on('ready', () => {  // 监听 SSH 连接就绪事件
+state.conn.on('ready', () => {  // 注册监听 SSH 连接就绪事件
   state.conn.shell({ term: 'xterm-256color' }, (err, stream) => {
     if (err) {
       try {
@@ -156,23 +152,37 @@ state.conn.on('ready', () => {  // 监听 SSH 连接就绪事件
       return
     }
     state.stream = stream
-    stream.on('data', (data) => {  // 监听 SSH 流数据事件，参数为数据
+    stream.on('data', (data) => {  // 注册监听SSH服务端发送的SSH 流数据事件，参数为数据
       parentPort.postMessage({ type: 'OUTPUT', data: data.toString('binary') })
     })
-    stream.stderr.on('data', (data) => {  // 监听 SSH 流错误数据事件，参数为数据
+    stream.stderr.on('data', (data) => {  // 注册监听SSH服务端发送的SSH 流错误数据事件，参数为数据
       parentPort.postMessage({ type: 'OUTPUT', data: data.toString('binary') })
     })
-    stream.on('close', postClosed)  // 监听 SSH 流关闭事件，发送关闭消息
-    state.conn.on('close', postClosed)  // 监听 SSH 连接关闭事件，发送关闭消息
+    stream.on('close', postClosed)  // 注册监听SSH服务端发送的SSH 流关闭事件，发送关闭消息
+    state.conn.on('close', postClosed)  // 注册监听SSH服务端发送的SSH 连接关闭事件，发送关闭消息
     parentPort.postMessage({ type: 'READY' })
   })
 })
-state.conn.on('error', (err) => {  // 监听 SSH 连接错误事件，参数为错误对象
+state.conn.on('error', (err) => {  // 注册监听 SSH 连接错误事件，参数为错误对象
   postFail(err.message)
 })
 
+/*
+ * SSH 连接具体顺序：
+ * 1. connect() 进行中 — 若需校验主机密钥，ssh2 调 hostVerifier → Worker postMessage({ type: 'HOST_VERIFY' }) → 主进程弹框/查 known_hosts → worker.postMessage({ type: 'HOST_VERIFY_RESULT' }) → Worker 里 parentPort.on('message') 执行 callback(ok)，握手继续。
+ * 2. conn 触发 'ready'（L149）→ 调 conn.shell(...)。
+ * 3. shell 回调（L150）
+ *  失败 → postFail → 主进程 CONNECT_FAILED
+ *  成功 → 保存 state.stream，绑 data / stderr / close，再 postMessage({ type: 'READY' })（L167）
+ * 4. 主进程收到 READY（L106–108）→ sshSessions.set(id, session) → finishOk() → 渲染进程拿到 ipcOk()。
+ * 
+ * 之后：
+ *  终端输出：stream 'data' → OUTPUT → 主进程 ssh:output
+ *  用户输入：主进程 ssh:data → WRITE → stream.write
+ *  断开：DISCONNECT / 连接关闭 → CLOSED 等 
+*/
 try {
   state.conn.connect(buildConnectConfig(config, hostVerifier))  // 连接 SSH 服务器，参数为连接配置、主机公钥校验器
 } catch (e) {
-  postFail(e.message)  // 发送失败消息
+  postFail(e.message)  // 发送失败消息（连接失败）
 }

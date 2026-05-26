@@ -1,5 +1,5 @@
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
-import { ipcFail, ipcOk } from '../../shared/ipcResponse.js'
+import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
 
 /**
  * 窗口处理程序
@@ -23,8 +23,8 @@ export function setupWindowHandlers(ipcMain, getMainWindow) {
     getMainWindow()?.close()
   })
   ipcMain.handle('window:isMaximized', (e) => {  // 检查窗口是否最大化
-    if (!isTrustedIpcSender(e.sender)) return ipcFail('app.unauthorized')
-    return ipcOk({ maximized: getMainWindow()?.isMaximized() ?? false })
+    if (!isTrustedIpcSender(e.sender)) return ipcFail('app.unauthorized', true)
+    return ipcOk({ maximized: getMainWindow()?.isMaximized() ?? false })  // ?.(可选链运算符)表示如果左边不存在则返回undefined；??(空值合并运算符)表示如果当左边的表达式为 null 或者 undefined 时，它会返回右边的表达式的值，否则返回左边的表达式的值
   })
   ipcMain.on('window:setBackgroundColor', (e, hex) => {  // 设置窗口背景颜色
     if (!isTrustedIpcSender(e.sender)) return

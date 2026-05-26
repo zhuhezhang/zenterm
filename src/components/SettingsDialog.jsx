@@ -347,8 +347,8 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
       p.startsWith('\\') ||
       /^[a-zA-Z]:[\\/]/.test(p)
     try {
-      if (window.zterm?.validateLogDirectory && likelyAbsolute) {
-        const vr = await window.zterm.validateLogDirectory(p)
+      if (window.zterm?.paths?.validateLogDirectory && likelyAbsolute) {
+        const vr = await window.zterm.paths.validateLogDirectory(p)
         if (vr?.success === false) {
           alert(formatIpcResponseError(t, vr) || t('settings.logPathRejected'))
           return
@@ -363,8 +363,8 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   /** 处理选择日志路径的操作，兼容使用不同的 API 弹出目录选择对话框，选择后更新日志路径设置 */
   const handleChooseLogPath = async () => {
     try {
-      if (window.zterm?.chooseDirectory) {
-        const picked = await window.zterm.chooseDirectory()
+      if (window.zterm?.paths?.chooseDirectory) {
+        const picked = await window.zterm.paths.chooseDirectory()
         if (picked?.success && !picked?.content?.canceled && picked?.content?.path) {
           await applyChosenLogPath(picked.content.path)
         }
@@ -379,8 +379,8 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
           const f = el.files?.[0]
           if (!f) return
           const diskPath =
-            typeof window.zterm?.getPathForFile === 'function'
-              ? window.zterm.getPathForFile(f)
+            typeof window.zterm?.paths?.getPathForFile === 'function'
+              ? window.zterm.paths.getPathForFile(f)
               : (typeof f.path === 'string' ? f.path : '')
           if (!diskPath) return
           const dirPath = diskPath.replace(/[/\\][^/\\]*$/, '')

@@ -2,7 +2,7 @@ import { app, safeStorage } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
-import { ipcFail, ipcOk } from '../../shared/ipcResponse.js'
+import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
 
 /**
  * 获取凭据存储文件路径
@@ -67,12 +67,12 @@ function decryptField(b64) {
  */
 function setupCredentialHandlers(ipcMain) {
   ipcMain.handle('credentials:isAvailable', (event) => {  // 检查系统是否支持加密存储
-    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     return ipcOk({ available: safeStorage.isEncryptionAvailable() })
   })
 
   ipcMain.handle('credentials:get', async (event, savedId) => {  // 根据会话 ID 获取指定会话的凭据
-    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (!savedId || typeof savedId !== 'string') return ipcOk()
     if (!safeStorage.isEncryptionAvailable()) return ipcOk()
     const vault = readVault()
@@ -90,10 +90,10 @@ function setupCredentialHandlers(ipcMain) {
   })
 
   ipcMain.handle('credentials:sync', async (event, savedId, partial) => {  // 同步会话凭据到加密存储，参数为会话ID、同步凭据对象（每个值为 string 写入；null/undefined/'' 表示删除该键，返回同步结果）
-    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
-    if (!savedId || typeof savedId !== 'string') return ipcFail('credentials.invalidSavedId')
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
+    if (!savedId || typeof savedId !== 'string') return ipcFail('credentials.invalidSavedId', true)
     if (!safeStorage.isEncryptionAvailable()) {
-      return ipcFail('credentials.encryptionUnavailable')
+      return ipcFail('credentials.encryptionUnavailable', true)
     }
     const vault = readVault()
     const cur = { ...(vault.entries[savedId] || {}) }
@@ -114,7 +114,7 @@ function setupCredentialHandlers(ipcMain) {
   })
 
   ipcMain.handle('credentials:remove', async (event, savedId) => {  // 删除会话凭据，参数为会话ID，返回删除结果
-    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (!savedId || typeof savedId !== 'string') return ipcOk()
     const vault = readVault()
     if (vault.entries[savedId]) {
@@ -125,9 +125,9 @@ function setupCredentialHandlers(ipcMain) {
   })
 
   ipcMain.handle('credentials:duplicate', async (event, fromId, toId) => {  // 复制会话凭据，参数为源会话ID、目标会话ID，返回复制结果
-    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (!fromId || !toId || typeof fromId !== 'string' || typeof toId !== 'string') {
-      return ipcFail('credentials.invalidSavedId')
+      return ipcFail('credentials.invalidSavedId', true)
     }
     const vault = readVault()
     if (vault.entries[fromId]) {
@@ -138,7 +138,7 @@ function setupCredentialHandlers(ipcMain) {
   })
 
   ipcMain.handle('credentials:clearAll', async (event) => {  // 清除所有会话凭据，返回清除结果
-    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     try {
       if (fs.existsSync(vaultPath())) fs.unlinkSync(vaultPath())
     } catch (e) {

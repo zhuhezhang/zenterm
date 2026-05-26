@@ -8,11 +8,11 @@ export async function assertImportFilePathAllowed(file) {
   if (!file) {
     throw createImportError('readFailed')
   }
-  const filePath = window.zterm?.getPathForFile?.(file) ?? ''
+  const filePath = window.zterm?.paths?.getPathForFile?.(file) ?? ''
   if (!filePath) {
     throw createImportError('readFailed')
   }
-  const vr = await window.zterm.validateLocalFilePath(filePath, 'import')
+  const vr = await window.zterm.paths.validateLocalFilePath(filePath, 'import')
   if (vr?.success === false) {
     const err = createImportError('pathDenied')
     err.ipc = vr

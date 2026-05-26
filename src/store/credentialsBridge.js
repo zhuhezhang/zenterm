@@ -1,5 +1,3 @@
-import { ipcFail, ipcOk } from '../lib/ipc/ipcResponse.js'
-
 /**
  * 构建凭据同步载荷：根据会话配置和设置决定哪些凭据需要同步到加密存储
  * @param {object} config 完整会话配置（含明文敏感字段）
@@ -23,16 +21,12 @@ export function buildSecretsSyncPayload(config, settings) {
  * @param {string} savedId 会话 ID
  * @param {object} config 完整会话配置（含明文敏感字段）
  * @param {object} settings 当前应用设置
- * @returns {Promise<import('../../shared/ipcResponse.js').IpcOk | import('../../shared/ipcResponse.js').IpcFail>}
+ * @returns {Promise<import('../types/zterm.d.ts').IpcResult | null>} 后端 IPC 响应；跳过同步时返回 null
  */
 export async function syncSessionSecretsToVault(savedId, config, settings) {
   const api = window.zterm?.credentials
-  if (!savedId || typeof savedId !== 'string') return ipcOk({ skipped: true })
-  if (!api?.sync) return ipcOk({ skipped: true })
-  const availRes = await api.isAvailable?.()
-  if (!availRes?.success || availRes.content?.available === false) {
-    return ipcFail('credentials.encryptionUnavailable')
-  }
+  if (!savedId || typeof savedId !== 'string') return null
+  if (!api?.sync) return null
   const partial = buildSecretsSyncPayload(config, settings)
   return api.sync(savedId, partial)
 }

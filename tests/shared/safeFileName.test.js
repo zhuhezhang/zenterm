@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { INVALID_LABEL_CHARS } from '../../shared/safeFileName.js'
 import { hasInvalidLabelChars, safeFileToken } from '../../src/lib/safeFileName.js'
-import { sanitizeLogFileStem } from '../../electron/lib/safeFileName.js'
+import { sanitizeLogFileStem } from '../../electron/handlers/log.js'
 
 describe('INVALID_LABEL_CHARS', () => {
   it('is shared between renderer and main', () => {

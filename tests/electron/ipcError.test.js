@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createIpcError, ipcFail, ipcFailFromThrown, ipcOk } from '../../shared/ipcResponse.js'
+import { createIpcError, ipcFail, ipcFailFromThrown, ipcOk } from '../../electron/lib/ipcResponse.js'
 
 describe('ipcOk', () => {
   it('wraps payload in content', () => {
@@ -35,7 +35,7 @@ describe('ipcFailFromThrown', () => {
 
 describe('ipcFail', () => {
   it('adds errorKnown and errorParams in content when present', () => {
-    expect(ipcFail('ssh.workerExitUnexpected', { code: 1 })).toEqual({
+    expect(ipcFail('ssh.workerExitUnexpected', true, { code: 1 })).toEqual({
       success: false,
       errorKnown: true,
       content: {
@@ -46,10 +46,18 @@ describe('ipcFail', () => {
   })
 
   it('merges contentExtra', () => {
-    expect(ipcFail('app.unauthorized', undefined, { ports: [] })).toEqual({
+    expect(ipcFail('app.unauthorized', true, undefined, { ports: [] })).toEqual({
       success: false,
       errorKnown: true,
       content: { error: 'app.unauthorized', ports: [] },
+    })
+  })
+
+  it('returns raw message with errorKnown false', () => {
+    expect(ipcFail('ECONNREFUSED', false, undefined, { ports: [] })).toEqual({
+      success: false,
+      errorKnown: false,
+      content: { error: 'ECONNREFUSED', ports: [] },
     })
   })
 })

@@ -27,7 +27,7 @@ export async function downloadJsonExport(kind, data, t) {
   const jsonText = JSON.stringify(payload, null, 2)
   const filename = buildExportFilename(kind)
   try {
-    const res = await window.zterm.saveJsonExport(filename, jsonText)
+    const res = await window.zterm.save.jsonExport(filename, jsonText)
     if (res?.content?.canceled) return
     if (res?.success === false) {
       alert(formatIpcResponseError(t, res) || t('settings.exportFail', { msg: res?.content?.error ?? '' }))

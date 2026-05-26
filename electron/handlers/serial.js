@@ -1,6 +1,6 @@
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
-import { ipcFail, ipcFailRaw, ipcOk } from '../../shared/ipcResponse.js'
+import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import { translateMain } from '../i18n/translateMain.js'
 
 let SerialPort
@@ -37,28 +37,28 @@ function isSerialPathInEnumeratedList(requestedPath, ports) {
  */
 function setupSerialHandlers(ipcMain, mainWindow) {
   ipcMain.handle('serial:listPorts', async (event) => {  // 获取可用串口列表
-    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', undefined, { ports: [] })
-    if (!SerialPort) return ipcFail('serial.moduleUnavailable', undefined, { ports: [] })
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true, undefined, { ports: [] })
+    if (!SerialPort) return ipcFail('serial.moduleUnavailable', true, undefined, { ports: [] })
     try {
       const ports = await SerialPort.list()
       return ipcOk({ ports })
     } catch (e) {
-      return ipcFailRaw(e.message, { ports: [] })
+      return ipcFail(e.message, false, undefined, { ports: [] })
     }
   })
 
   ipcMain.handle('serial:connect', async (event, id, config) => {  // 连接串口，参数为会话ID、配置对象，返回连接结果
-    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
-    if (!SerialPort) return ipcFail('serial.moduleUnavailable')
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
+    if (!SerialPort) return ipcFail('serial.moduleUnavailable', true)
 
     let enumerated
     try {
       enumerated = await SerialPort.list()
     } catch (e) {
-      return ipcFail('serial.enumerateFailed')
+      return ipcFail('serial.enumerateFailed', true)
     }
     if (!isSerialPathInEnumeratedList(config?.path, enumerated)) {
-      return ipcFail('serial.pathNotInList')
+      return ipcFail('serial.pathNotInList', true)
     }
 
     return new Promise((resolve, _reject) => {
@@ -73,11 +73,11 @@ function setupSerialHandlers(ipcMain, mainWindow) {
           autoOpen: false,  // 不自动打开，手动调用 port.open() 来打开连接，以便在打开时处理错误
         })
       } catch (e) {
-        return resolve(ipcFailRaw(e.message))
+        return resolve(ipcFail(e.message, false))
       }
 
       port.open((err) => {  // 打开串口连接，回调接收错误信息 err
-        if (err) return resolve(ipcFailRaw(err.message))
+        if (err) return resolve(ipcFail(err.message, false))
 
         serialSessions.set(id, port)
 
@@ -113,7 +113,7 @@ function setupSerialHandlers(ipcMain, mainWindow) {
   })
 
   ipcMain.handle('serial:disconnect', async (event, id) => {  // 断开串口连接，参数为会话ID，返回断开结果
-    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized')
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     const port = serialSessions.get(id)
     if (port) {
       try {
