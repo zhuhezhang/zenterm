@@ -1,6 +1,17 @@
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
 
+/** 
+ * 缩放 webContents
+ * @param {import('electron').WebContents} wc webContents 实例
+ * @param {'in' | 'out'} zoomDirection 缩放方向（in：放大，out：缩小）
+ */
+function stepWebContentsZoom(wc, zoomDirection) {
+  const level = wc.getZoomLevel()
+  if (zoomDirection === 'in') wc.setZoomLevel(level + 1)
+  else if (zoomDirection === 'out') wc.setZoomLevel(level - 1)
+}
+
 /**
  * 窗口处理程序
  * @param {Electron.IpcMain} ipcMain ipcMain 实例
@@ -34,6 +45,12 @@ export function setupWindowHandlers(ipcMain, getMainWindow) {
       mainWindow.setBackgroundColor(hex)
     } catch (_) {}
   })
+  ipcMain.on('window:zoomWheelStep', (e, deltaY) => {  // macOS：Cmd+滚轮缩放（渲染进程 wheel 事件）
+    if (!isTrustedIpcSender(e.sender) || process.platform !== 'darwin') return
+    const mainWindow = getMainWindow()
+    if (!mainWindow || typeof deltaY !== 'number' || !Number.isFinite(deltaY) || deltaY === 0) return
+    stepWebContentsZoom(mainWindow.webContents, deltaY < 0 ? 'in' : 'out')
+  })
 }
 
 /**
@@ -46,14 +63,13 @@ export function attachWindowMaximizeEvents(mainWindow) {
 }
 
 /**
- * Ctrl+滚轮缩放（Windows/Linux）；与 Ctrl+/-/0 共用 webContents zoom level
+ * 滚轮缩放；与 Ctrl/Cmd+/-/0 共用 webContents zoom level。
+ * Windows/Linux：Ctrl+滚轮由 Chromium 触发 zoom-changed；macOS：Cmd+滚轮由渲染进程 wheel + IPC 触发。
  * @param {import('electron').BrowserWindow} mainWindow 主窗口实例
  */
 export function attachZoomWheelHandler(mainWindow) {
-  mainWindow.webContents.on('zoom-changed', (_event, zoomDirection) => {
-    const wc = mainWindow.webContents
-    const level = wc.getZoomLevel()
-    if (zoomDirection === 'in') wc.setZoomLevel(level + 1)
-    else if (zoomDirection === 'out') wc.setZoomLevel(level - 1)
+  const wc = mainWindow.webContents
+  wc.on('zoom-changed', (_event, zoomDirection) => {
+    stepWebContentsZoom(wc, zoomDirection)
   })
 }

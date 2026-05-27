@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('zterm', {  // 在渲染进程中通过window.zt
     // 用户回调：传入的 cb 函数被执行，接收 v（true/false）
     onMaximized: (cb) => ipcRenderer.on('window:maximized', (_, v) => cb(v)),
     isMaximized: () => ipcRenderer.invoke('window:isMaximized'),  // 异步检查窗口是否最大化（invoke是由渲染进程发送消息到主进程，并等待主进程返回结果）
+    zoomWheelStep: (deltaY) => ipcRenderer.send('window:zoomWheelStep', deltaY),  // macOS Cmd+滚轮单步缩放（deltaY 为 WheelEvent.deltaY）
   },
 
   ssh: {  // SSH 连接 API

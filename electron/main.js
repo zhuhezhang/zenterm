@@ -67,7 +67,7 @@ function createWindow() {
   const getMainWindow = () => mainWindow
   setupWindowHandlers(ipcMain, getMainWindow)  // 设置窗口处理程序
   attachWindowMaximizeEvents(mainWindow)  // 监听窗口最大化事件
-  attachZoomWheelHandler(mainWindow)  // Ctrl+滚轮缩放（与 Ctrl+/- 同一套 zoom level）
+  attachZoomWheelHandler(mainWindow)  // 滚轮缩放：Win/Linux Ctrl+滚轮，macOS Cmd+滚轮（与 Ctrl/Cmd+/- 同一套 zoom level）
   setupAppHandlers(ipcMain, getMainWindow)  // 设置应用程序处理程序
   setupLogHandlers(ipcMain)  // 设置日志处理程序
 }

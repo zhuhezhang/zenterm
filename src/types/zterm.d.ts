@@ -32,6 +32,8 @@ export interface ZTermWindowApi {
   setBackgroundColor: (hex: string) => void
   onMaximized: (cb: (v: boolean) => void) => void
   isMaximized: () => Promise<IpcResult<{ maximized: boolean }>>
+  /** macOS：Cmd+滚轮单步缩放 */
+  zoomWheelStep: (deltaY: number) => void
 }
 
 export type VaultGetReason =
