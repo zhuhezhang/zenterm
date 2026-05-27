@@ -1,6 +1,6 @@
 import { buildExportEnvelope } from './parseImportFile.js'
 import { EXPORT_FILENAME_PREFIX } from './constants.js'
-import { formatIpcResponseError } from '../ipc/formatIpcError.js'
+import { alertIpcFailure } from '../ipc/formatIpcError.js'
 
 /**
  * 生成带时间戳的导出文件名
@@ -29,9 +29,7 @@ export async function downloadJsonExport(kind, data, t) {
   try {
     const res = await window.zterm.save.jsonExport(filename, jsonText)
     if (res?.content?.canceled) return
-    if (res?.success === false) {
-      alert(formatIpcResponseError(t, res) || t('settings.exportFail', { msg: res?.content?.error ?? '' }))
-    }
+    alertIpcFailure(t, res, 'settings.exportFail')
   } catch (err) {
     alert(t('settings.exportFail', { msg: err?.message ?? String(err) }))
   }

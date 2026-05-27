@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
 import { useI18n } from '../context/I18nContext.jsx'
+import { ipcPortsFromResponse } from '@/lib/ipc/ipcResponse.js'
 import { fetchSessionSecrets } from '../store/credentialsBridge.js'
-import { DEFAULT_TERMINAL_ENCODING, TERMINAL_ENCODING_OPTIONS } from '../lib/terminalEncodings.js'
+import { DEFAULT_TERMINAL_ENCODING, TERMINAL_ENCODING_OPTIONS } from '../lib/terminalEncodingService.js'
 import {
   PORT_MIN, PORT_MAX, BAUD_RATES, PARITIES, SESSION_GROUP_LABEL_ERROR_KEYS,
   SSH_SESSION_DEFAULT, TELNET_SESSION_DEFAULT, SERIAL_SESSION_DEFAULT,
@@ -40,12 +41,11 @@ function isSerialPathInEnumeratedList(requestedPath, ports) {
  * @param {Function} props.onSaveAndConnect 保存并连接的回调函数，参数为配置对象
  * @param {Function} props.onSaveOnly 仅保存的回调函数，参数为配置对象
  * @param {Function} props.onClose 关闭对话框的回调函数
- * @param {string} [props.appBackspaceFallback] 旧版全局「退格键模式」，新建时作默认值（已迁移到按会话配置）
  */
-export default function ConnectDialog({ type, initialData, savedGroups, appBackspaceFallback, onConnect, onSaveAndConnect, onSaveOnly, onClose }) {
+export default function ConnectDialog({ type, initialData, savedGroups, onConnect, onSaveAndConnect, onSaveOnly, onClose }) {
   const { t } = useI18n()  // 国际化翻译函数
   const [tab, setTab] = useState(type || 'ssh')  // 当前协议类型
-  const [form, setForm] = useState(() => mergeSessionFormDefaults(type || 'ssh', initialData, appBackspaceFallback))  // 表单数据
+  const [form, setForm] = useState(() => mergeSessionFormDefaults(type || 'ssh', initialData))  // 表单数据
   const [ports, setPorts] = useState([])  // 串口列表
   const [error, setError] = useState('')  // 错误信息
   const [credDialog, setCredDialog] = useState(null)  // { username, password, privateKey, passphrase, callback } 或 null，表示是否显示凭证输入对话框以及初始值和连接回调函数
@@ -62,7 +62,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
   const portByTabRef = useRef(null)
   if (!portByTabRef.current) {
     const initialTab = type || 'ssh'
-    const initialForm = mergeSessionFormDefaults(initialTab, initialData, appBackspaceFallback)
+    const initialForm = mergeSessionFormDefaults(initialTab, initialData)
     const toRefPort = (tab, raw) => {
       const fallback = tab === 'ssh' ? SSH_SESSION_DEFAULT.port : TELNET_SESSION_DEFAULT.port
       const s = String(raw ?? '').trim()
@@ -91,7 +91,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
         const s = String(prev.port ?? '').trim()
         portByTabRef.current.telnet = s === '' ? String(TELNET_SESSION_DEFAULT.port) : clampPortFieldString(s) || String(TELNET_SESSION_DEFAULT.port)
       }
-      const merged = mergeSessionFormDefaults(next, prev, appBackspaceFallback)
+      const merged = mergeSessionFormDefaults(next, prev)
       if (next === 'ssh' || next === 'telnet') {
         const p = next === 'ssh' ? portByTabRef.current.ssh : portByTabRef.current.telnet
         return { ...merged, port: p }
@@ -105,8 +105,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
   /** 刷新串口列表，用于串口连接时选择串口设备 */
   const refreshSerialPorts = useCallback(() => {  // useCallback: 记忆化回调函数，避免重复创建回调函数，提高性能。当依赖项变化时，回调函数会被重新创建并记忆化
     window.zterm?.serial.listPorts().then((res) => {
-      if (res?.success) setPorts(res.content?.ports ?? [])
-      else setPorts(res?.content?.ports ?? [])
+      setPorts(ipcPortsFromResponse(res))
     })
   }, [])
 
@@ -123,7 +122,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
       const t = initialData.type || type || 'ssh'
       const sec = t === 'telnet' ? {} : await fetchSessionSecrets(sid)
       if (cancelled) return
-      const merged = { ...mergeSessionFormDefaults(t, initialData, appBackspaceFallback), ...sec }
+      const merged = { ...mergeSessionFormDefaults(t, initialData), ...sec }
       if (t === 'ssh' || t === 'telnet') {
         const s = String(merged.port ?? '').trim()
         const fallback = t === 'ssh' ? SSH_SESSION_DEFAULT.port : TELNET_SESSION_DEFAULT.port
@@ -133,7 +132,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, appBacks
       setForm(merged)
     })()
     return () => { cancelled = true }
-  }, [initialData?.savedId, initialData?.type, type, appBackspaceFallback])
+  }, [initialData?.savedId, initialData?.type, type])
 
   /** 
    * 更新表单数据的通用函数。接收一个键和值，使用 setForm 更新对应的表单字段，同时保留其他字段不变

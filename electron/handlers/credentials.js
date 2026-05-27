@@ -73,18 +73,25 @@ function setupCredentialHandlers(ipcMain) {
 
   ipcMain.handle('credentials:get', async (event, savedId) => {  // 根据会话 ID 获取指定会话的凭据
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (!savedId || typeof savedId !== 'string') return ipcOk()
-    if (!safeStorage.isEncryptionAvailable()) return ipcOk()
+    if (!savedId || typeof savedId !== 'string') {
+      return ipcOk({ found: false, reason: 'invalidSavedId' })
+    }
+    if (!safeStorage.isEncryptionAvailable()) {
+      return ipcOk({ found: false, reason: 'encryptionUnavailable' })
+    }
     const vault = readVault()
     const enc = vault.entries[savedId]
-    if (!enc || typeof enc !== 'object') return ipcOk()
-    const secrets = {}
+    if (!enc || typeof enc !== 'object') {
+      return ipcOk({ found: false, reason: 'notInVault' })
+    }
+    const secrets = { found: true }
     try {
       if (enc.password) secrets.password = decryptField(enc.password)
       if (enc.privateKey) secrets.privateKey = decryptField(enc.privateKey)
       if (enc.passphrase) secrets.passphrase = decryptField(enc.passphrase)
     } catch (e) {
       console.error('credentials:get decrypt error', e)
+      return ipcOk({ found: false, reason: 'decryptFailed' })
     }
     return ipcOk(secrets)
   })

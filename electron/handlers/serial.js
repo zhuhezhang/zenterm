@@ -1,5 +1,5 @@
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
-import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
+import { bufferToBinaryWire, encodeOutgoingTerminalData } from '../lib/terminalEncodingService.js'
 import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import { translateMain } from '../i18n/translateMain.js'
 
@@ -82,7 +82,7 @@ function setupSerialHandlers(ipcMain, mainWindow) {
         serialSessions.set(id, port)
 
         port.on('data', (data) => {  // 监听接收串口输出信息，并发送到渲染进程
-          mainWindow.webContents.send('serial:output', id, data.toString('binary'))
+          mainWindow.webContents.send('serial:output', id, bufferToBinaryWire(data))
         })
 
         port.on('close', () => {  // 监听端口关闭，清理会话并通知渲染进程
@@ -103,12 +103,11 @@ function setupSerialHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('serial:data', (event, id, data, encoding) => {  // 发送串口数据，参数为会话ID、数据、编码，返回发送结果
+  ipcMain.on('serial:data', (event, id, data, encoding) => {  // 监听来自渲染进程发送的串口数据，参数为会话ID、数据、编码，返回发送结果
     if (!isTrustedIpcSender(event.sender)) return
     const port = serialSessions.get(id)
     if (port && port.isOpen) {
-      const buf = typeof data === 'string' ? stringToTerminalBytes(data, encoding) : data
-      port.write(buf)
+      port.write(encodeOutgoingTerminalData(data, encoding))
     }
   })
 

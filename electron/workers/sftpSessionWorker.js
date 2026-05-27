@@ -5,7 +5,11 @@ import fs from 'fs'
 import { parentPort, workerData } from 'worker_threads'
 import { Client } from 'ssh2'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
-import { ipcFailFromThrown } from '../lib/ipcError.js'
+import {
+  postWorkerCmdFail,
+  postWorkerCmdFailFromThrown,
+  postWorkerCmdOk,
+} from '../lib/workerCmdResult.js'
 import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, safeJoinLocalDownloadPathForRoots,
 } from '../lib/sftpLocalPathRoots.js'
@@ -196,16 +200,6 @@ function enqueueOp(fn) {
 }
 
 /**
- * 发送命令结果
- * @param {number} reqId 请求 ID
- * @param {boolean} success 是否成功
- * @param {object} extra 额外信息
- */
-function postCmdResult(reqId, success, extra = {}) {
-  parentPort.postMessage({ type: 'CMD_RESULT', reqId, success, ...extra })
-}
-
-/**
  * 处理命令
  * @param {object} msg 命令消息
  * @returns {Promise<void>}
@@ -213,7 +207,7 @@ function postCmdResult(reqId, success, extra = {}) {
 async function handleCmd(msg) {
   const { reqId, cmd } = msg
   if (!state.sftp) {
-    postCmdResult(reqId, false, { error: 'sftp.noSession' })
+    postWorkerCmdFail(parentPort, reqId, 'sftp.noSession')
     return
   }
   try {
@@ -238,7 +232,7 @@ async function handleCmd(msg) {
             if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
             return a.name.localeCompare(b.name)
           })
-        postCmdResult(reqId, true, { items })
+        postWorkerCmdOk(parentPort, reqId, { items })
         break
       }
       case 'DOWNLOAD': {  // 下载文件
@@ -259,12 +253,12 @@ async function handleCmd(msg) {
             },
           }, (err) => (err ? reject(err) : resolve()))
         })
-        postCmdResult(reqId, true)
+        postWorkerCmdOk(parentPort, reqId)
         break
       }
       case 'DOWNLOAD_DIR': {  // 下载目录
         await downloadDirRecursive(msg.remoteDir, msg.localDir)
-        postCmdResult(reqId, true)
+        postWorkerCmdOk(parentPort, reqId)
         break
       }
       case 'UPLOAD': {  // 上传文件
@@ -285,37 +279,33 @@ async function handleCmd(msg) {
             },
           }, (err) => (err ? reject(err) : resolve()))
         })
-        postCmdResult(reqId, true)
+        postWorkerCmdOk(parentPort, reqId)
         break
       }
       case 'MKDIR': {  // 创建目录
         await new Promise((resolve, reject) => {
           state.sftp.mkdir(msg.remotePath, (err) => (err ? reject(err) : resolve()))
         })
-        postCmdResult(reqId, true)
+        postWorkerCmdOk(parentPort, reqId)
         break
       }
       case 'DELETE': {  // 删除文件或目录
         await deleteRecursive(msg.remotePath)
-        postCmdResult(reqId, true)
+        postWorkerCmdOk(parentPort, reqId)
         break
       }
       case 'RENAME': {  // 重命名文件或目录
         await new Promise((resolve, reject) => {
           state.sftp.rename(msg.oldPath, msg.newPath, (err) => (err ? reject(err) : resolve()))
         })
-        postCmdResult(reqId, true)
+        postWorkerCmdOk(parentPort, reqId)
         break
       }
       default:
-        postCmdResult(reqId, false, { error: 'sftp.unknownCmd', errorParams: { cmd } })
+        postWorkerCmdFail(parentPort, reqId, 'sftp.unknownCmd', true, { cmd })
     }
   } catch (e) {
-    const fail = ipcFailFromThrown(e)
-    postCmdResult(reqId, false, {
-      error: fail.content.error,
-      errorParams: fail.content.errorParams,
-    })
+    postWorkerCmdFailFromThrown(parentPort, reqId, e)
   }
 }
 

@@ -1,4 +1,4 @@
-import { ipcErrorFields } from './ipcResponse.js'
+import { ipcErrorFields, isIpcFailure } from './ipcResponse.js'
 
 /**
  * 将 IPC 错误码译为界面文案（仅 errorKnown 为 true 时调用）
@@ -25,8 +25,21 @@ export function formatIpcError(t, code, params) {
  * @param {{ success?: boolean, errorKnown?: boolean, content?: Record<string, unknown> }} res 错误响应对象
  * @returns {string} 展示文案
  */
+/**
+ * 失败则 alert 并返回 true；成功或未失败返回 false
+ * @param {(path: string, params?: Record<string, string|number>) => string} t
+ * @param {{ success?: boolean, errorKnown?: boolean, content?: Record<string, unknown> } | null | undefined} res
+ * @param {string} [fallbackKey] i18n 键
+ * @returns {boolean} 是否已 alert
+ */
+export function alertIpcFailure(t, res, fallbackKey) {
+  if (!isIpcFailure(res)) return false
+  alert(formatIpcResponseError(t, res) || (fallbackKey ? t(fallbackKey) : ''))
+  return true
+}
+
 export function formatIpcResponseError(t, res) {
-  if (!res || res.success !== false) return ''
+  if (!isIpcFailure(res)) return ''
   const { error, errorParams, errorKnown } = ipcErrorFields(res)
   if (errorKnown === false) return String(error ?? '')
   return formatIpcError(t, error, errorParams)

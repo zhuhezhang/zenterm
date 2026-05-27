@@ -34,9 +34,19 @@ export interface ZTermWindowApi {
   isMaximized: () => Promise<IpcResult<{ maximized: boolean }>>
 }
 
+export type VaultGetReason =
+  | 'invalidSavedId'
+  | 'encryptionUnavailable'
+  | 'notInVault'
+  | 'decryptFailed'
+
+export type VaultGetContent =
+  | { found: false; reason: VaultGetReason }
+  | { found: true; password?: string; privateKey?: string; passphrase?: string }
+
 export interface ZTermCredentialsApi {
   isAvailable: () => Promise<IpcResult<{ available: boolean }>>
-  get: (savedId: string) => Promise<IpcResult<Record<string, unknown>>>
+  get: (savedId: string) => Promise<IpcResult<VaultGetContent>>
   sync: (savedId: string, partial: Record<string, unknown>) => Promise<IpcResult>
   remove: (savedId: string) => Promise<IpcResult>
   duplicate: (fromId: string, toId: string) => Promise<IpcResult>

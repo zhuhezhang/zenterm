@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect, Fragment } from 'react'
 import { translateRender } from '../i18n/translateRender.js'
-import { formatIpcResponseError } from '@/lib/ipc/formatIpcError.js'
+import { alertIpcFailure } from '@/lib/ipc/formatIpcError.js'
+import { isIpcSuccess } from '@/lib/ipc/ipcResponse.js'
 import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage.js'
 import { exportSessions, saveSessions } from '../store/sessionStore.js'
 import { IMPORT_JSON_ACCEPT } from '../lib/import/constants.js'
@@ -11,7 +12,7 @@ import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS } from '../lib/settings/de
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
 import { SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm } from '../lib/settings/sshAlgorithmOptions.js'
 import {
-  clampTerminalScrollback, normalizeLoggingMode, applyLegacyLoggingMigration,
+  clampTerminalScrollback, normalizeLoggingMode,
 } from '../lib/settings/normalize.js'
 import {
   SETTINGS_SCHEMA, SETTINGS_TABS, SETTINGS_TAB_SECTION_IDS, saveSettings, exportSettings, importSettings, getDefaultLogPath,
@@ -51,6 +52,8 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
   /** 设置标签页列表 */
   const tabs = SETTINGS_TABS.map((tab) => ({ key: tab.key, label: t(tab.labelKey) }))
   const [activeTab, setActiveTab] = useState('general')  // 当前选中的标签页
+  /** null=检测中；true/false=系统 safeStorage 是否可用于凭据加密 */
+  const [vaultEncryptionAvailable, setVaultEncryptionAvailable] = useState(null)
   const [settingsHoverTip, setSettingsHoverTip] = useState(null)  // 设置弹窗内浮动说明（原生 title 在 Electron 内不可靠，用 fixed 层统一展示）
   /** 设置悬停提示定时器引用 */
   const settingsHoverTipTimerRef = useRef(null)
@@ -82,6 +85,25 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
       setSettingsHoverTip({ text, x, y })
     }, 1000)
   }
+
+  useEffect(() => {  // 检查系统是否支持加密存储
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await window.zterm?.credentials?.isAvailable?.()
+        if (cancelled) return
+        setVaultEncryptionAvailable(isIpcSuccess(res) && res.content?.available === true)
+      } catch {
+        if (!cancelled) setVaultEncryptionAvailable(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {  // 如果系统不支持加密存储，则禁用保存凭据到加密存储选项
+    if (vaultEncryptionAvailable !== false) return
+    setForm((prev) => (prev.saveSecretsToVault ? { ...prev, saveSecretsToVault: false } : prev))
+  }, [vaultEncryptionAvailable])
 
   useEffect(() => {  // 任意按下或点击（含键盘触发的主按钮）时关闭已显示或待显示的说明
     document.addEventListener('pointerdown', hideSettingsHoverTip, true)
@@ -243,12 +265,12 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 处理保存设置的操作，将当前表单数据保存到设置中，并调用 onSave 回调函数传递新的设置对象 */
   const handleSave = () => {
-    const next = applyLegacyLoggingMigration({
+    const next = {
       ...form,
       highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang),
       terminalScrollback: clampTerminalScrollback(form.terminalScrollback),
       loggingMode: normalizeLoggingMode(form.loggingMode),
-    })
+    }
     setForm(next)
     saveSettings(next)
     onSave(next)
@@ -256,12 +278,12 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
 
   /** 保存设置后关闭对话框 */
   const handleSaveAndClose = () => {
-    const next = applyLegacyLoggingMigration({
+    const next = {
       ...form,
       highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang),
       terminalScrollback: clampTerminalScrollback(form.terminalScrollback),
       loggingMode: normalizeLoggingMode(form.loggingMode),
-    })
+    }
     setForm(next)
     saveSettings(next)
     onSave(next)
@@ -349,10 +371,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     try {
       if (window.zterm?.paths?.validateLogDirectory && likelyAbsolute) {
         const vr = await window.zterm.paths.validateLogDirectory(p)
-        if (vr?.success === false) {
-          alert(formatIpcResponseError(t, vr) || t('settings.logPathRejected'))
-          return
-        }
+        if (alertIpcFailure(t, vr, 'settings.logPathRejected')) return
       }
       set('logPath', p)
     } catch (err) {
@@ -365,7 +384,7 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     try {
       if (window.zterm?.paths?.chooseDirectory) {
         const picked = await window.zterm.paths.chooseDirectory()
-        if (picked?.success && !picked?.content?.canceled && picked?.content?.path) {
+        if (isIpcSuccess(picked) && !picked?.content?.canceled && picked?.content?.path) {
           await applyChosenLogPath(picked.content.path)
         }
       } else if (window.showDirectoryPicker) {
@@ -440,18 +459,30 @@ export default function SettingsDialog({ settings, savedSessions, onUpdateSessio
     const logResetTip = t('settings.logResetDefault', { path: getDefaultLogPath() || t('settings.logDefaultDir') })
     /** 日志路径是否禁用，如 true、false等 */
     const logPathDisabled = item.key === 'logPath' && normalizeLoggingMode(form.loggingMode) === 'none'
+    const vaultSaveDisabled =
+      item.key === 'saveSecretsToVault' && vaultEncryptionAvailable === false
 
     return (
-      <div key={itemKey} className="settings-item">
+      <div key={itemKey} className={`settings-item${vaultSaveDisabled ? ' is-vault-unavailable' : ''}`}>
         <div className="settings-item-info">
           <span className="settings-item-label">{label}</span>
           {desc ? <span className="settings-item-desc">{desc}</span> : null}
+          {vaultSaveDisabled ? (
+            <span className="settings-item-hint-warn" role="status">
+              {t('settings.vaultEncryptionUnavailableTip')}
+            </span>
+          ) : null}
         </div>
         {item.type === 'boolean' && (
           <button
             type="button"
             className={`settings-toggle ${form[item.key] ? 'on' : 'off'}`}
-            onClick={() => set(item.key, !form[item.key])}
+            disabled={vaultSaveDisabled}
+            aria-disabled={vaultSaveDisabled}
+            onClick={() => {
+              if (vaultSaveDisabled) return
+              set(item.key, !form[item.key])
+            }}
           >
             <span className="settings-toggle-knob" />
           </button>

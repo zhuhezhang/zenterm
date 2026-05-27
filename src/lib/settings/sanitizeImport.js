@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS, TERMINAL_SCROLLBACK_MIN, 
 import { resolveHighlightRuleId, resolveHighlightRuleName } from './highlightRules.js'
 import { pushSettingsImportWarning } from './importWarnings.js'
 import {
-  applyLegacyLoggingMigration, clampSidebarWidthPx, clampTerminalScrollback, normalizeImportedLogPath,
+  clampSidebarWidthPx, clampTerminalScrollback, normalizeImportedLogPath, normalizeLoggingMode,
 } from './normalize.js'
 
 /**
@@ -348,11 +348,7 @@ export async function sanitizeImportedSettings(raw, currentSettings) {
     }
   }
 
-  if ('enableLogging' in raw) {
-    out = applyLegacyLoggingMigration({ ...out, enableLogging: raw.enableLogging })
-  } else {
-    out = applyLegacyLoggingMigration(out)
-  }
+  out.loggingMode = normalizeLoggingMode(out.loggingMode)
 
   return { settings: out, warnings }
 }

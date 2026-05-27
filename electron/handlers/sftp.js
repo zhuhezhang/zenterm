@@ -5,21 +5,13 @@ import { Worker } from 'worker_threads'
 import { fileURLToPath } from 'url'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { ipcFail, ipcFailFromThrown, ipcOk } from '../lib/ipcResponse.js'
+import { ipcFromWorkerCmdResult } from '../lib/workerCmdResult.js'
 import { collectResolvedRoots } from '../lib/localPathPolicy.js'
 import { assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots } from '../lib/sftpLocalPathRoots.js'
 import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
 
 /** 存储每个 SFTP 会话对应的 Worker 与会话状态 */
 const sftpSessions = new Map()
-
-/**
- * 处理命令失败
- * @param {object} msg Worker CMD_RESULT 消息体
- */
-function sftpCmdFailure(msg) {
-  const code = msg.error || 'sftp.unknownError'
-  return ipcFail(code, true, msg.errorParams)
-}
 
 /** Worker 入口文件 */
 const workerEntry = fileURLToPath(new URL('../workers/sftpSessionWorker.js', import.meta.url))
@@ -196,8 +188,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
     const msg = await workerCommand(session, { cmd: 'LIST', remotePath })
-    if (!msg.success) return sftpCmdFailure(msg)
-    return ipcOk({ items: msg.items })
+    return ipcFromWorkerCmdResult(msg)
   })
 
   ipcMain.handle('sftp:download', async (event, id, remotePath, localPath) => {  // 下载文件，参数为会话ID、远程路径、本地路径，返回下载结果
@@ -210,8 +201,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
       return ipcFailFromThrown(e)
     }
     const msg = await workerCommand(session, { cmd: 'DOWNLOAD', remotePath, localPath })
-    if (!msg.success) return sftpCmdFailure(msg)
-    return ipcOk()
+    return ipcFromWorkerCmdResult(msg)
   })
 
   ipcMain.handle('sftp:downloadDir', async (event, id, remoteDir, localDir) => {  // 下载目录，参数为会话ID、远程目录、本地目录，返回下载结果
@@ -224,8 +214,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
       return ipcFailFromThrown(e)
     }
     const msg = await workerCommand(session, { cmd: 'DOWNLOAD_DIR', remoteDir, localDir })
-    if (!msg.success) return sftpCmdFailure(msg)
-    return ipcOk()
+    return ipcFromWorkerCmdResult(msg)
   })
 
   ipcMain.handle('sftp:upload', async (event, id, localPath, remotePath) => {  // 上传文件，参数为会话ID、本地路径、远程路径，返回上传结果
@@ -238,8 +227,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
       return ipcFailFromThrown(e)
     }
     const msg = await workerCommand(session, { cmd: 'UPLOAD', localPath, remotePath })
-    if (!msg.success) return sftpCmdFailure(msg)
-    return ipcOk()
+    return ipcFromWorkerCmdResult(msg)
   })
 
   ipcMain.handle('sftp:mkdir', async (event, id, remotePath) => {  // 创建目录，参数为会话ID、远程路径，返回创建结果
@@ -247,8 +235,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
     const msg = await workerCommand(session, { cmd: 'MKDIR', remotePath })
-    if (!msg.success) return sftpCmdFailure(msg)
-    return ipcOk()
+    return ipcFromWorkerCmdResult(msg)
   })
 
   ipcMain.handle('sftp:delete', async (event, id, remotePath) => {  // 删除文件，参数为会话ID、远程路径，返回删除结果
@@ -256,8 +243,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
     const msg = await workerCommand(session, { cmd: 'DELETE', remotePath })
-    if (!msg.success) return sftpCmdFailure(msg)
-    return ipcOk()
+    return ipcFromWorkerCmdResult(msg)
   })
 
   ipcMain.handle('sftp:rename', async (event, id, oldPath, newPath) => {  // 重命名文件，参数为会话ID、旧路径、新路径，返回重命名结果
@@ -265,8 +251,7 @@ function setupSFTPHandlers(ipcMain, mainWindow) {
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
     const msg = await workerCommand(session, { cmd: 'RENAME', oldPath, newPath })
-    if (!msg.success) return sftpCmdFailure(msg)
-    return ipcOk()
+    return ipcFromWorkerCmdResult(msg)
   })
 }
 

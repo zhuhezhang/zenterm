@@ -16,7 +16,7 @@ import { loadSettings, refreshDownloadsPathCache, getDefaultLogPath } from './st
 import { DEFAULT_SIDEBAR_WIDTH } from './lib/settings/defaults.js'
 import { clampSidebarWidthPx } from './lib/settings/normalize.js'
 import { resolveEffectiveUiLanguage, syncUiLanguageToMain } from './lib/resolveUiLanguage.js'
-import { formatIpcResponseError } from '@/lib/ipc/formatIpcError.js'
+import { alertIpcFailure } from '@/lib/ipc/formatIpcError.js'
 import {
   loadSavedSessions, addSavedSession, removeSavedSession, duplicateSavedSession, saveSessions, getGroups,
   loadGroupPlaceholders, saveGroupPlaceholders, addGroupPlaceholder, prunePlaceholdersForOccupiedGroups
@@ -56,9 +56,7 @@ function AppMain({ settings, setSettings }) {
 
   /** 凭据同步失败提示（后端已 i18n 的文案直接显示） */
   const alertVaultSyncError = (r) => {
-    if (r?.success === false) {
-      alert(formatIpcResponseError(t, r) || t('credentials.encryptionUnavailable'))
-    }
+    alertIpcFailure(t, r, 'credentials.encryptionUnavailable')
   }
   const [appThemePreview, setAppThemePreview] = useState(null)  // 设置弹窗内预览主题（未保存不写 localStorage）；关闭取消时清空
   const appThemeEffective = useSyncedAppTheme(appThemePreview ?? settings.appTheme)  // ??表示如果 appThemePreview 为 null，则使用 settings.appTheme
@@ -196,9 +194,8 @@ function AppMain({ settings, setSettings }) {
     try {
       const res = await window.zterm.save.terminalOutput(filename, text)
       if (res?.content?.canceled) return
-      if (res?.success === false) {
-        alert(formatIpcResponseError(t, res) || t('app.saveOutputFail', { msg: res?.content?.error ?? '' }))
-      }
+      if (alertIpcFailure(t, res, 'app.saveOutputFail')) return
+      alert(t('app.saveOutputOk'))
     } catch (err) {
       alert(t('app.saveOutputFail', { msg: err?.message ?? String(err) }))
     }
@@ -458,7 +455,6 @@ function AppMain({ settings, setSettings }) {
           type={dialogType}
           initialData={dialogInitial}
           savedGroups={savedGroups}
-          appBackspaceFallback={settings.backspaceMode}
           onConnect={handleConnect}
           onSaveAndConnect={handleSaveAndConn}
           onSaveOnly={handleSaveOnly}

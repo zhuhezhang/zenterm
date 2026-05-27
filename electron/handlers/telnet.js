@@ -1,7 +1,7 @@
 import net from 'net'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
-import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
+import { bufferToBinaryWire, encodeOutgoingTerminalData } from '../lib/terminalEncodingService.js'
 
 /** 存储所有 Telnet 会话信息的 Map，键为会话 ID，值为 net.Socket 实例 */
 const telnetSessions = new Map()
@@ -130,7 +130,7 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
       socket.on('data', (data) => {  // 监听接收数据，去掉 Telnet 命令，保留终端数据，并发送到渲染进程
         const processed = stripTelnetStream(socket, data)
         if (processed.length > 0) {
-          mainWindow.webContents.send('telnet:output', id, processed.toString('binary'))
+          mainWindow.webContents.send('telnet:output', id, bufferToBinaryWire(processed))
         }
       })
 
@@ -151,12 +151,11 @@ function setupTelnetHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('telnet:data', (event, id, data, encoding) => {  // 发送 Telnet 数据，参数为会话ID、数据、编码，返回发送结果
+  ipcMain.on('telnet:data', (event, id, data, encoding) => {  // 监听来自渲染进程发送的 Telnet 数据，参数为会话ID、数据、编码，返回发送结果
     if (!isTrustedIpcSender(event.sender)) return
     const socket = telnetSessions.get(id)
     if (socket) {
-      const buf = typeof data === 'string' ? stringToTerminalBytes(data, encoding) : data
-      socket.write(buf)
+      socket.write(encodeOutgoingTerminalData(data, encoding))
     }
   })
 

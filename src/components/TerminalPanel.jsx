@@ -2,13 +2,16 @@ import { useEffect, useRef } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import { decodeTerminalBinaryString, DEFAULT_TERMINAL_ENCODING } from '../lib/terminalEncodings.js'
+import {
+  decodeIncomingTerminalWire,
+  sessionTerminalEncoding,
+} from '../lib/terminalEncodingService.js'
 import { resolveLoggingDirectory } from '../store/settingsStore.js'
 import { clampTerminalScrollback, normalizeLoggingMode } from '../lib/settings/normalize.js'
 import { translateRender } from '../i18n/translateRender.js'
 import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage.js'
 import { safeFileToken } from '../lib/safeFileName.js'
-import { ipcErrorFromResponse } from '../lib/ipc/ipcError.js'
+import { assertIpcSuccess } from '../lib/ipc/ipcError.js'
 import { formatThrownIpcError } from '@/lib/ipc/formatIpcError.js'
 import { getXtermTheme } from '../theme/appTheme.js'
 import '@xterm/xterm/css/xterm.css'
@@ -201,11 +204,10 @@ function writelnWithLog(term, logRef, lineForWriteln) {
  * @param {'ssh'|'telnet'|'serial'} type 会话类型
  * @param {string} data xterm 原始输入数据
  * @param {Object|null|undefined} session 当前会话（含 per-session backspaceMode）
- * @param {{ current?: { backspaceMode?: string } } | null} settingsRef 全局设置（兼容旧版存于设置中的退格模式）
  * @returns {string} 规范化后的数据
  */
-function normalizeInputData(type, data, session, settingsRef) {
-  const mode = String(session?.backspaceMode || settingsRef?.current?.backspaceMode || 'auto').toLowerCase()
+function normalizeInputData(type, data, session) {
+  const mode = String(session?.backspaceMode || 'auto').toLowerCase()
   if (mode === 'del') return data.replace(/\x08/g, '\x7f')
   if (mode === 'bs') return data.replace(/\x7f/g, '\x08')
   // Auto：SSH 默认保留 DEL；Telnet/Serial 默认转为 BS，兼容更多设备
@@ -523,7 +525,7 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
  */
 async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, isCancelled, logFileRef, settingsRef) {
   const { id, type } = session  // 从会话对象中提取会话 ID 和类型（SSH/Telnet/Serial）
-  const terminalEncoding = session.encoding || DEFAULT_TERMINAL_ENCODING
+  const terminalEncoding = sessionTerminalEncoding(session)
   const L = () => resolveEffectiveUiLanguage(settingsRef.current?.uiLanguage)
   const writeInfo    = (m) => writelnWithLog(term, logFileRef, `\r\x1b[33m${m}\x1b[0m`)
   const writeError   = (m) => writelnWithLog(term, logFileRef, `\r\x1b[31m${m}\x1b[0m`)
@@ -567,7 +569,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
    * @param {string} data 接收到的二进制数据字符串
    */
   const recv = (data) => {
-    const decoded = decodeTerminalBinaryString(data, terminalEncoding)
+    const decoded = decodeIncomingTerminalWire(data, terminalEncoding)
     if (type !== 'serial') { // 非串口：直接应用高亮规则
       const highlighted = applyHighlightRules(decoded, settingsRef.current)
       term.write(highlighted)
@@ -612,7 +614,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       }
       const res = await window.zterm.ssh.connect(id, connectPayload)
       if (isCancelled?.()) return   // 组件已卸载，放弃后续注册
-      if (!res.success) throw ipcErrorFromResponse(res)
+      assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
       const dim = fitAddon.proposeDimensions() || { cols: 80, rows: 24 }  // 获取终端建议尺寸（列和行），默认80x24
@@ -621,7 +623,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
       const r1 = window.zterm.ssh.onData(id, recv)  // 注册 SSH 数据接收事件监听器，使用 recv 函数处理数据
       const r2 = window.zterm.ssh.onClose(id, () => onDisconnect('terminal.closed'))  // 注册 SSH 关闭事件监听器，调用 onDisconnect 处理断开
       const d1 = term.onData((data) => {  // 注册终端数据事件监听器，用户输入时发送到 SSH（回显由对端数据经 recv 记入日志，避免与本地按键重复）
-        window.zterm.ssh.sendData(id, normalizeInputData(type, data, session, settingsRef), terminalEncoding)
+        window.zterm.ssh.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
       })
       const d2 = term.onResize(({ cols, rows }) => window.zterm.ssh.resize(id, cols, rows))  // 注册终端尺寸变化事件监听器，调整 SSH 连接尺寸
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => d2.dispose(), () => window.zterm.ssh.disconnect(id))  // 将所有清理函数添加到 cleanupRef 列表，包括移除监听器和断开连接
@@ -638,7 +640,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
             onUpdate({ status: 'connected', sftpReady: true })
             cleanupRef.current.push(() => window.zterm.sftp.disconnect(id + '-sftp'))
           } else {
-            throw ipcErrorFromResponse(sr)
+            assertIpcSuccess(sr)
           }
         } catch (e) { 
           writeError(terminalErr(e))
@@ -657,13 +659,13 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
     try {
       const res = await window.zterm.telnet.connect(id, session)
       if (isCancelled?.()) return
-      if (!res.success) throw ipcErrorFromResponse(res)
+      assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
       const r1 = window.zterm.telnet.onData(id, recv)
       const r2 = window.zterm.telnet.onClose(id, () => onDisconnect('terminal.closed'))
       const d1 = term.onData((data) => {
-        window.zterm.telnet.sendData(id, normalizeInputData(type, data, session, settingsRef), terminalEncoding)
+        window.zterm.telnet.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
       })
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.telnet.disconnect(id))
     } catch (e) {
@@ -677,13 +679,13 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
     try {
       const res = await window.zterm.serial.connect(id, session)
       if (isCancelled?.()) return
-      if (!res.success) throw ipcErrorFromResponse(res)
+      assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.serialOpened'))
       onUpdate({ status: 'connected' })
       const r1 = window.zterm.serial.onData(id, recv)
       const r2 = window.zterm.serial.onClose(id, () => onDisconnect('terminal.portClosed'))
       const d1 = term.onData((data) => {
-        window.zterm.serial.sendData(id, normalizeInputData(type, data, session, settingsRef), terminalEncoding)
+        window.zterm.serial.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
       })
       cleanupRef.current.push(() => { // 清理：清除定时器，退出前刷出串口尾块（与 recv 一致记入日志）
         if (serialHighlightIdleTimer != null) {

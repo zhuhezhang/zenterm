@@ -4,6 +4,7 @@
 import { parentPort, workerData } from 'worker_threads'
 import { Client } from 'ssh2'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
+import { bufferToBinaryWire } from '../lib/terminalEncodingService.js'
 
 const { config } = workerData
 
@@ -153,10 +154,10 @@ state.conn.on('ready', () => {  // 注册监听 SSH 连接就绪事件
     }
     state.stream = stream
     stream.on('data', (data) => {  // 注册监听SSH服务端发送的SSH 流数据事件，参数为数据
-      parentPort.postMessage({ type: 'OUTPUT', data: data.toString('binary') })
+      parentPort.postMessage({ type: 'OUTPUT', data: bufferToBinaryWire(data) })
     })
     stream.stderr.on('data', (data) => {  // 注册监听SSH服务端发送的SSH 流错误数据事件，参数为数据
-      parentPort.postMessage({ type: 'OUTPUT', data: data.toString('binary') })
+      parentPort.postMessage({ type: 'OUTPUT', data: bufferToBinaryWire(data) })
     })
     stream.on('close', postClosed)  // 注册监听SSH服务端发送的SSH 流关闭事件，发送关闭消息
     state.conn.on('close', postClosed)  // 注册监听SSH服务端发送的SSH 连接关闭事件，发送关闭消息

@@ -447,6 +447,18 @@
   line-height: 1.4;
 }
 
+.settings-item-hint-warn {
+  font-size: 11px;
+  color: var(--yellow, #d29922);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.settings-item.is-vault-unavailable .settings-toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* 开关按钮 */
 .settings-toggle {
   position: relative;

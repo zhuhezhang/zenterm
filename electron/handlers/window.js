@@ -44,3 +44,16 @@ export function attachWindowMaximizeEvents(mainWindow) {
   mainWindow.on('maximize', () => mainWindow.webContents.send('window:maximized', true))  // 窗口最大化
   mainWindow.on('unmaximize', () => mainWindow.webContents.send('window:maximized', false))  // 窗口取消最大化
 }
+
+/**
+ * Ctrl+滚轮缩放（Windows/Linux）；与 Ctrl+/-/0 共用 webContents zoom level
+ * @param {import('electron').BrowserWindow} mainWindow 主窗口实例
+ */
+export function attachZoomWheelHandler(mainWindow) {
+  mainWindow.webContents.on('zoom-changed', (_event, zoomDirection) => {
+    const wc = mainWindow.webContents
+    const level = wc.getZoomLevel()
+    if (zoomDirection === 'in') wc.setZoomLevel(level + 1)
+    else if (zoomDirection === 'out') wc.setZoomLevel(level - 1)
+  })
+}

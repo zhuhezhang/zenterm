@@ -1,11 +1,16 @@
+/**
+ * 渲染进程终端编码服务：IPC binary 线 → xterm Unicode；UI 编码选项。
+ * 解码仅用 TextDecoder；编码写入远端由主进程 terminalEncodingService 负责。
+ */
 import {
   DEFAULT_TERMINAL_ENCODING,
   normalizeTerminalEncoding,
-} from '../../shared/terminalEncodings.js'
+  uint8ArrayFromBinaryWire,
+} from '../../shared/terminalEncoding.js'
 
 export { DEFAULT_TERMINAL_ENCODING, normalizeTerminalEncoding }
 
-/** 编码列表，用于连接界面选择编码 */
+/** 连接对话框编码下拉 */
 export const TERMINAL_ENCODING_OPTIONS = [
   { value: DEFAULT_TERMINAL_ENCODING, label: 'UTF-8' },
   { value: 'gbk', label: 'GBK / CP936（简体中文）' },
@@ -19,9 +24,8 @@ export const TERMINAL_ENCODING_OPTIONS = [
 const decoderCache = new Map()
 
 /**
- * 获取 TextDecoder（带缓存）；无效编码时退回 UTF-8
- * @param {string} encoding 编码
- * @returns {TextDecoder} TextDecoder 实例
+ * @param {string} encoding
+ * @returns {TextDecoder}
  */
 function getTextDecoder(encoding) {
   const key = normalizeTerminalEncoding(encoding)
@@ -37,18 +41,26 @@ function getTextDecoder(encoding) {
 }
 
 /**
- * 主进程经 `binary` 字符串传来的字节流 → Unicode 字符串（供 xterm 显示）
- * @param {string} binary 每字节一码元的 Latin-1 风格字符串
- * @param {string} [encoding] 编码
- * @returns {string} 解码后的字符串
+ * 主进程经 binary 线传来的字节流 → Unicode（供 xterm.write）
+ * @param {string} binary
+ * @param {string} [encoding]
+ * @returns {string}
  */
-export function decodeTerminalBinaryString(binary, encoding) {
+export function decodeIncomingTerminalWire(binary, encoding) {
   if (binary == null || binary === '') return ''
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i) & 0xff
+  const bytes = uint8ArrayFromBinaryWire(binary)
   try {
     return getTextDecoder(encoding).decode(bytes)
   } catch {
     return new TextDecoder(DEFAULT_TERMINAL_ENCODING, { fatal: false }).decode(bytes)
   }
+}
+
+/**
+ * 会话对象上的 encoding 字段 → 规范名
+ * @param {{ encoding?: string } | null | undefined} session
+ * @returns {string}
+ */
+export function sessionTerminalEncoding(session) {
+  return normalizeTerminalEncoding(session?.encoding)
 }

@@ -6,7 +6,7 @@ import {
  DEFAULT_SETTINGS, TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX,
 } from '../lib/settings/defaults.js'
 import {
-  clampSidebarWidthPx, clampTerminalScrollback, applyLegacyLoggingMigration,
+  clampSidebarWidthPx, clampTerminalScrollback, normalizeLoggingMode,
 } from '../lib/settings/normalize.js'
 import { ipcPathFromResponse } from '../lib/ipc/ipcResponse.js'
 
@@ -80,11 +80,6 @@ export function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY)
     const saved = raw ? JSON.parse(raw) : {}
-    if ('copyOnSelect' in saved || 'rightClickPaste' in saved) {
-      saved.terminalInteract = !!(saved.copyOnSelect ?? saved.rightClickPaste ?? true)
-      delete saved.copyOnSelect
-      delete saved.rightClickPaste
-    }
     if (saved.algorithmPreferences && typeof saved.algorithmPreferences === 'object') {
       saved.algorithmPreferences = {
         ...DEFAULT_ALGORITHM_PREFERENCES,
@@ -93,7 +88,7 @@ export function loadSettings() {
     }
     let merged = { ...DEFAULT_SETTINGS, ...saved }
     merged.terminalScrollback = clampTerminalScrollback(merged.terminalScrollback)
-    merged = applyLegacyLoggingMigration(merged)
+    merged.loggingMode = normalizeLoggingMode(merged.loggingMode)
     if (!('logPath' in saved)) {
       const def = getDefaultLogPath()
       if (def) merged.logPath = def

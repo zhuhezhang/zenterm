@@ -1,3 +1,4 @@
+import { isIpcFailure } from '../ipc/ipcResponse.js'
 import {
   DEFAULT_SIDEBAR_WIDTH, TERMINAL_SCROLLBACK_DEFAULT, TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX,
 } from './defaults.js'
@@ -71,32 +72,10 @@ export async function normalizeImportedLogPath(raw, fallback = '') {
   try {
     if (typeof window !== 'undefined' && window.zterm?.paths?.validateLogDirectory && isLikelyAbsoluteLogPath(p)) {
       const vr = await window.zterm.paths.validateLogDirectory(p)
-      if (vr?.success === false) return fb
+      if (isIpcFailure(vr)) return fb
     }
     return p
   } catch {
     return fb
   }
-}
-
-/**
- * 将旧版 enableLogging 并入 loggingMode（删除 enableLogging），并规范 loggingMode
- * @param {Record<string, unknown>} settings 旧版设置对象
- * @returns {Record<string, unknown>} 规范后的设置对象
- */
-export function applyLegacyLoggingMigration(settings) {
-  if (!settings || typeof settings !== 'object') return settings ?? {}
-  const out = { ...settings }
-  if ('enableLogging' in out) {
-    if (out.enableLogging === true) {
-      let mode = normalizeLoggingMode(out.loggingMode)
-      if (mode === 'none') mode = 'buffer'
-      out.loggingMode = mode
-    } else {
-      out.loggingMode = 'none'
-    }
-    delete out.enableLogging
-  }
-  out.loggingMode = normalizeLoggingMode(out.loggingMode)
-  return out
 }

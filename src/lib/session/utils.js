@@ -91,15 +91,12 @@ export function validateSessionGroupLabel(group, label) {
  * 合并表单默认值和初始值
  * @param {string} tab 会话类型
  * @param {Object} [initial] 初始表单数据
- * @param {string} [globalBackspace] 全局退格模式
  * @returns {Record<string, unknown>} 合并后的表单数据
  */
-export function mergeSessionFormDefaults(tab, initial, globalBackspace) {
+export function mergeSessionFormDefaults(tab, initial) {
   const base = getSessionFormDefaults(tab)
   const merged = initial ? { ...base, ...initial } : { ...base }
-  merged.backspaceMode = normalizeBackspaceMode(merged.backspaceMode)
-    ?? normalizeBackspaceMode(globalBackspace)
-    ?? 'auto'
+  merged.backspaceMode = normalizeBackspaceMode(merged.backspaceMode) ?? 'auto'
   return merged
 }
 

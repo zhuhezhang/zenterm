@@ -1,5 +1,5 @@
 import path from 'path'
-import { createIpcError } from './ipcError.js'
+import { createIpcError } from './ipcResponse.js'
 import { INVALID_LABEL_CHARS } from '../../shared/safeFileName.js'
 import { isPathWithinResolvedRoots } from './localPathRoots.js'
 

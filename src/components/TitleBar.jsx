@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useI18n } from '../context/I18nContext.jsx'
+import { isIpcSuccess } from '@/lib/ipc/ipcResponse.js'
 import '../styles/titlebar.css'
 
 const IS_MAC = navigator.userAgent.includes('Mac OS X') &&
@@ -20,7 +21,7 @@ export default function TitleBar() {
   useEffect(() => {
     window.zterm?.window.onMaximized((v) => setMaximized(v))  // 订阅 Electron 窗口最大化/还原事件。当窗口状态改变时，回调会把最新状态写入 maximized
     window.zterm?.window.isMaximized().then((res) => {
-      if (res?.success) setMaximized(!!res.content?.maximized)
+      if (isIpcSuccess(res)) setMaximized(!!res.content?.maximized)
     })
   }, [])
 

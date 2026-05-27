@@ -1,3 +1,5 @@
+import { vaultSecretsFromGetResponse } from '../lib/ipc/ipcResponse.js'
+
 /**
  * 构建凭据同步载荷：根据会话配置和设置决定哪些凭据需要同步到加密存储
  * @param {object} config 完整会话配置（含明文敏感字段）
@@ -41,8 +43,7 @@ export async function fetchSessionSecrets(savedId) {
   if (!savedId || !api?.get) return {}
   try {
     const res = await api.get(savedId)
-    if (!res?.success) return {}
-    return res.content ?? {}
+    return vaultSecretsFromGetResponse(res)
   } catch {
     return {}
   }

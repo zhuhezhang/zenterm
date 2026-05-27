@@ -7,7 +7,7 @@ import { setupSFTPHandlers } from './handlers/sftp.js'
 import { setupTelnetHandlers } from './handlers/telnet.js'
 import { setupSerialHandlers } from './handlers/serial.js'
 import { setupCredentialHandlers } from './handlers/credentials.js'
-import { setupWindowHandlers, attachWindowMaximizeEvents } from './handlers/window.js'
+import { setupWindowHandlers, attachWindowMaximizeEvents, attachZoomWheelHandler } from './handlers/window.js'
 import { setupAppHandlers } from './handlers/app.js'
 import { setupLogHandlers } from './handlers/log.js'
 import { setTrustedRendererWebContents, clearTrustedRendererWebContents, } from './lib/trustedSender.js'
@@ -67,6 +67,7 @@ function createWindow() {
   const getMainWindow = () => mainWindow
   setupWindowHandlers(ipcMain, getMainWindow)  // 设置窗口处理程序
   attachWindowMaximizeEvents(mainWindow)  // 监听窗口最大化事件
+  attachZoomWheelHandler(mainWindow)  // Ctrl+滚轮缩放（与 Ctrl+/- 同一套 zoom level）
   setupAppHandlers(ipcMain, getMainWindow)  // 设置应用程序处理程序
   setupLogHandlers(ipcMain)  // 设置日志处理程序
 }

@@ -1,3 +1,4 @@
+import { isIpcFailure } from '../ipc/ipcResponse.js'
 import { createImportError } from './handleImportErrors.js'
 
 /**
@@ -13,7 +14,7 @@ export async function assertImportFilePathAllowed(file) {
     throw createImportError('readFailed')
   }
   const vr = await window.zterm.paths.validateLocalFilePath(filePath, 'import')
-  if (vr?.success === false) {
+  if (isIpcFailure(vr)) {
     const err = createImportError('pathDenied')
     err.ipc = vr
     throw err

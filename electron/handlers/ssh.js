@@ -19,7 +19,7 @@ import { fileURLToPath } from 'url'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
 import { ipcFailFromThrown, ipcFail, ipcOk } from '../lib/ipcResponse.js'
-import { stringToTerminalBytes } from '../lib/encodeTerminalWrite.js'
+import { bufferToBinaryWire, encodeOutgoingTerminalData } from '../lib/terminalEncodingService.js'
 
 /** 存储每个 SSH 会话对应的 Worker 桥接状态（键id → 值{ worker: Worker, isClosed: boolean }） */
 const sshSessions = new Map()
@@ -127,18 +127,15 @@ function setupSSHHandlers(ipcMain, mainWindow) {
     })
   })
 
-  ipcMain.on('ssh:data', (event, id, data, encoding) => {  // 注册处理 SSH 数据事件，参数为会话ID、数据、编码，返回发送结果
+  ipcMain.on('ssh:data', (event, id, data, encoding) => {  // 监听来自渲染进程发送的 SSH 数据，参数为会话ID、数据、编码，返回发送结果
     if (!isTrustedIpcSender(event.sender)) return
     const session = sshSessions.get(id)
     if (session?.worker) {
       try {
-        const buf =
-          typeof data === 'string'
-            ? stringToTerminalBytes(data, encoding)
-            : Buffer.isBuffer(data)
-              ? data
-              : Buffer.from(data)
-        session.worker.postMessage({ type: 'WRITE', data: buf })
+        session.worker.postMessage({
+          type: 'WRITE',
+          data: encodeOutgoingTerminalData(data, encoding),
+        })
       } catch (_) {}
     }
   })
