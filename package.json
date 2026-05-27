@@ -18,6 +18,7 @@
     "build:mac": "vite build && electron-builder --mac",
     "build:mac:arm64": "vite build && electron-builder --mac --arm64",
     "build:mac:universal": "vite build && electron-builder --mac --universal",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src electron shared tests",
@@ -34,6 +35,10 @@
     "ssh2": "^1.15.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react-oxc": "^0.4.3",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-web-links": "^0.11.0",
@@ -43,15 +48,15 @@
     "electron": "^42.0.1",
     "electron-builder": "^26.8.1",
     "electron-devtools-installer": "^4.0.0",
+    "eslint": "^9.28.0",
+    "globals": "^16.2.0",
     "nodemon": "^3.1.14",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "typescript": "^6.0.3",
     "vite": "^8.0.11",
     "vitest": "^3.2.4",
-    "wait-on": "^7.2.0",
-    "eslint": "^9.28.0",
-    "@eslint/js": "^9.28.0",
-    "globals": "^16.2.0"
+    "wait-on": "^7.2.0"
   },
   "build": {
     "appId": "com.zterm.app",
@@ -69,7 +74,11 @@
     ],
     "win": {
       "icon": "build/icon.ico",
-      "target": [ "nsis", "portable", "zip" ]
+      "target": [
+        "nsis",
+        "portable",
+        "zip"
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -79,17 +88,33 @@
     },
     "linux": {
       "icon": "build/icon.png",
-      "target": [ "AppImage", "deb", "tar.gz" ],
+      "target": [
+        "AppImage",
+        "deb",
+        "tar.gz"
+      ],
       "category": "Utility"
     },
     "mac": {
       "icon": "build/icon.icns",
-      "target": [ "dmg", "zip" ]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     },
     "dmg": {
       "contents": [
-        { "x": 130, "y": 220, "type": "file" },
-        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+        {
+          "x": 130,
+          "y": 220,
+          "type": "file"
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     }
   },

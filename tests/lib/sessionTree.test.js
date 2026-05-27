@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildTree, flattenVisibleTree } from '../../src/lib/session/tree.js'
+import { buildTree, flattenVisibleTree } from '../../src/lib/session/tree.ts'
 
 describe('session tree', () => {
   it('buildTree groups sessions and sorts', () => {

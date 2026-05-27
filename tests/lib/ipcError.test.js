@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { assertIpcSuccess, ipcErrorFromResponse } from '../../src/lib/ipc/ipcError.js'
-import { ipcPathFromResponse, ipcPortsFromResponse, vaultSecretsFromGetResponse } from '../../src/lib/ipc/ipcResponse.js'
+import { assertIpcSuccess, ipcErrorFromResponse } from '../../src/lib/ipc/ipcError.ts'
+import { ipcPathFromResponse, ipcPortsFromResponse, vaultSecretsFromGetResponse } from '../../src/lib/ipc/ipcResponse.ts'
 
 describe('ipcPathFromResponse', () => {
   it('reads path from content on success', () => {

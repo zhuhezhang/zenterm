@@ -5,7 +5,7 @@ import {
   uint8ArrayFromBinaryWire,
 } from '../../shared/terminalEncoding.js'
 import { encodeUnicodeToTerminalBytes } from '../../electron/lib/terminalEncodingService.js'
-import { decodeIncomingTerminalWire } from '../../src/lib/terminalEncodingService.js'
+import { decodeIncomingTerminalWire } from '../../src/lib/terminalEncodingService.ts'
 
 describe('normalizeTerminalEncoding', () => {
   it('aliases utf8 and gb2312', () => {

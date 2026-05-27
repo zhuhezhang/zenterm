@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { formatIpcError, formatIpcResponseError, formatThrownIpcError } from '../../src/lib/ipc/formatIpcError.js'
-import { ipcErrorFromResponse } from '../../src/lib/ipc/ipcError.js'
-import { translateRender } from '../../src/i18n/translateRender.js'
+import { formatIpcError, formatIpcResponseError, formatThrownIpcError } from '../../src/lib/ipc/formatIpcError.ts'
+import { ipcErrorFromResponse } from '../../src/lib/ipc/ipcError.ts'
+import { translateRender } from '../../src/i18n/translateRender.ts'
 
 describe('formatIpcError', () => {
   const t = (path, params) => translateRender('zh', path, params)

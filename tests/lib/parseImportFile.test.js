@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   unwrapExportPayload,
   buildExportEnvelope,
-} from '../../src/lib/import/parseImportFile.js'
-import { EXPORT_ENVELOPE_VERSION } from '../../src/lib/import/constants.js'
+} from '../../src/lib/import/parseImportFile.ts'
+import { EXPORT_ENVELOPE_VERSION } from '../../src/lib/import/constants.ts'
 
 describe('parseImportFile envelope', () => {
   it('buildExportEnvelope wraps data', () => {
