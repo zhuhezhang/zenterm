@@ -1,7 +1,8 @@
+import type { AlgorithmCategory } from '../../types/algorithm'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../../shared/sshAlgorithmDefaults'
 
 /** 可与老旧 SSH 服务端兼容的遗留算法（选项池 = 默认 + 遗留；弱算法判定亦来源于此） */
-const LEGACY_ALGORITHMS_BY_CATEGORY = {
+const LEGACY_ALGORITHMS_BY_CATEGORY: Record<AlgorithmCategory, string[]> = {
   kex: [
     'diffie-hellman-group1-sha1',
     'diffie-hellman-group14-sha1',
@@ -30,19 +31,19 @@ const LEGACY_ALGORITHMS_BY_CATEGORY = {
 }
 
 /** 设置页可选算法全集：在默认套件之后追加遗留算法 */
-export const SSH_ALGORITHM_OPTION_POOL = Object.fromEntries(
-  Object.keys(DEFAULT_ALGORITHM_PREFERENCES).map((key) => [
+export const SSH_ALGORITHM_OPTION_POOL: Record<AlgorithmCategory, string[]> = Object.fromEntries(
+  (Object.keys(DEFAULT_ALGORITHM_PREFERENCES) as AlgorithmCategory[]).map((key) => [
     key,
     [...DEFAULT_ALGORITHM_PREFERENCES[key], ...(LEGACY_ALGORITHMS_BY_CATEGORY[key] || [])],
   ]),
-)
+) as Record<AlgorithmCategory, string[]>
 
 /**
  * 是否属于遗留/较弱算法（用于设置 UI 提示）
  * @param {string} category kex | serverHostKey | cipher | hmac | compress
  * @param {string} name 算法名
  */
-export function isWeakSshAlgorithm(category, name) {
+export function isWeakSshAlgorithm(category: AlgorithmCategory, name: string) {
   const arr = LEGACY_ALGORITHMS_BY_CATEGORY[category]
   return Array.isArray(arr) && arr.includes(name)
 }

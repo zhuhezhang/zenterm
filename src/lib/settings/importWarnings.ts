@@ -1,3 +1,5 @@
+import type { TranslateFn } from '../../types/i18n'
+import type { SettingsImportWarning } from '../../types/import'
 import { pushImportWarning } from '../import/pushImportWarning'
 
 /**
@@ -20,7 +22,7 @@ export function pushSettingsImportWarning(
  * @param {string} fieldKey 字段键
  * @returns {string} 字段标签
  */
-function resolveFieldLabel(t, fieldKey) {
+function resolveFieldLabel(t: TranslateFn, fieldKey: string): string {
   const labelKey = `settings.fields.${fieldKey}.label`
   const label = t(labelKey)
   return label !== labelKey ? label : fieldKey
@@ -32,7 +34,7 @@ function resolveFieldLabel(t, fieldKey) {
  * @param {string} sectionKey 算法段键
  * @returns {string} 算法段标签
  */
-function resolveAlgoSectionLabel(t, sectionKey) {
+function resolveAlgoSectionLabel(t: TranslateFn, sectionKey: string): string {
   const labelKey = `settings.algo.${sectionKey}`
   const label = t(labelKey)
   return label !== labelKey ? label : sectionKey
@@ -45,7 +47,11 @@ function resolveAlgoSectionLabel(t, sectionKey) {
  * @param {Record<string, string|number>} [params] 原因参数
  * @returns {string} 格式化后的原因
  */
-function formatHighlightRuleReason(t, reason, params) {
+function formatHighlightRuleReason(
+  t: TranslateFn,
+  reason: string,
+  params?: Record<string, string>,
+): string {
   const key = `settings.importWarnings.highlightRuleReason.${reason}`
   const msg = t(key, params || {})
   return msg !== key ? msg : reason
@@ -57,10 +63,7 @@ function formatHighlightRuleReason(t, reason, params) {
  * @param {SettingsImportWarning} warning 导入警告
  * @returns {string} 格式化后的导入警告
  */
-export function formatSettingsImportWarning(
-  t: (key: string, params?: Record<string, string | number>) => string,
-  warning: { code: string; params?: Record<string, unknown> },
-) {
+export function formatSettingsImportWarning(t: TranslateFn, warning: SettingsImportWarning): string {
   const params: Record<string, unknown> = { ...(warning.params || {}) }
   if (typeof params.field === 'string') {
     params.fieldLabel = resolveFieldLabel(t, params.field)
@@ -85,7 +88,10 @@ export function formatSettingsImportWarning(
  * @param {SettingsImportWarning[]} warnings 导入警告列表
  * @returns {string} 格式化后的导入警告列表
  */
-export function formatSettingsImportWarnings(t, warnings) {
+export function formatSettingsImportWarnings(
+  t: TranslateFn,
+  warnings: SettingsImportWarning[],
+): string {
   if (!warnings?.length) return ''
   return warnings.map((w) => formatSettingsImportWarning(t, w)).join('\n')
 }

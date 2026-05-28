@@ -1,10 +1,14 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react'
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext'
 import { alertIpcFailure, formatIpcResponseError, formatThrownIpcError } from '@/lib/ipc/formatIpcError'
 import { assertIpcSuccess, unwrapIpcOk } from '../lib/ipc/ipcError'
 import { isIpcSuccess } from '@/lib/ipc/ipcResponse'
 import { INVALID_LABEL_CHARS } from '../../shared/safeFileName'
+import { getZterm } from '@/lib/ipc/getZterm'
+import type { SftpPanelProps, SftpRemoteItem } from '@/types/components'
+import type { SftpFileContextMenu } from '@/types/sftp'
+import type { IpcResult, ZTermProgress } from '@/types/zterm'
 import '../styles/sftp.css'
 
 /**
@@ -12,7 +16,7 @@ import '../styles/sftp.css'
  * @param {File} file 文件对象
  * @returns {string} 文件路径
  */
-function getLocalFilePath(file) {
+function getLocalFilePath(file: File): string {
   if (!file) return ''
   const bridge = window.zterm?.paths?.getPathForFile
   if (typeof bridge === 'function') {
@@ -52,7 +56,7 @@ function readAllDirEntries(reader: FileSystemDirectoryReader): Promise<FileSyste
  * @param {number} bytes 文件大小
  * @returns {string} 格式化后的文件大小
  */
-function formatSize(bytes) {
+function formatSize(bytes: number | null | undefined): string {
   if (bytes == null) return '-'
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
@@ -65,7 +69,7 @@ function formatSize(bytes) {
  * @param {number} ms 日期时间戳
  * @returns {string} 格式化后的日期
  */
-function formatDate(ms) {
+function formatDate(ms: number | null | undefined): string {
   if (!ms) return '-'
   return new Date(ms).toLocaleString()
 }
@@ -75,42 +79,41 @@ function formatDate(ms) {
  * @param {Object} session 会话对象
  * @returns {JSX.Element} SFTP 面板组件
  */
-export default function SftpPanel({ session }) {
+export default function SftpPanel({ session }: SftpPanelProps) {
   const { t } = useI18n()
-  /** IPC 错误码 -> 界面文案 */
-  const ipcErr = (res, fallbackKey) =>
+  const ipcErr = (res: IpcResult | null | undefined, fallbackKey?: string) =>
     formatIpcResponseError(t, res) || (fallbackKey ? t(fallbackKey) : '')
-  const showErr = (e) => alert(formatThrownIpcError(t, e) || String(e))
-  const sftpSessionId = session?.id ? `${session.id}-sftp` : null  // 会话 ID
-  const [path, setPath] = useState('/')  // 当前路径
-  const [items, setItems] = useState([])  // 文件列表
-  const [loading, setLoading] = useState(false)  // 是否正在加载
-  const [selected, setSelected] = useState(null)  // 选中的文件
-  const [renaming, setRenaming] = useState(null)  // 正在重命名的文件
-  const [renameValue, setRenameValue] = useState('')  // 重命名输入值
-  const [creatingDir, setCreatingDir] = useState(false)  // 是否正在创建文件夹
-  const [createDirName, setCreateDirName] = useState('')  // 创建文件夹输入值
-  const [progress, setProgress] = useState(null)  // 进度信息
-  const fileUploadInputRef = useRef(null) // 文件上传输入框引用
-  const folderUploadInputRef = useRef(null) // 文件夹上传输入框引用
-  const uploadDetailsRef = useRef(null) // 上传详情引用
-  const [fileCtx, setFileCtx] = useState(null) // 文件行右键菜单 { x, y, item }
+  const showErr = (e: unknown) => alert(formatThrownIpcError(t, e) || String(e))
+  const sftpSessionId = session?.id ? `${session.id}-sftp` : null
+  const [path, setPath] = useState('/')
+  const [items, setItems] = useState<SftpRemoteItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [selected, setSelected] = useState<SftpRemoteItem | null>(null)
+  const [renaming, setRenaming] = useState<SftpRemoteItem | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [creatingDir, setCreatingDir] = useState(false)
+  const [createDirName, setCreateDirName] = useState('')
+  const [progress, setProgress] = useState<ZTermProgress | null>(null)
+  const fileUploadInputRef = useRef<HTMLInputElement | null>(null)
+  const folderUploadInputRef = useRef<HTMLInputElement | null>(null)
+  const uploadDetailsRef = useRef<HTMLDetailsElement | null>(null)
+  const [fileCtx, setFileCtx] = useState<SftpFileContextMenu | null>(null)
   const [fileMenuPos, setFileMenuPos] = useState({ x: 0, y: 0 })
-  const fileCtxMenuRef = useRef(null)  // 文件行右键菜单引用
+  const fileCtxMenuRef = useRef<HTMLDivElement | null>(null)
 
   /** 
    * 加载目录
    * @param {string} dirPath 目录路径
    */
-  const loadDir = useCallback(async (dirPath) => {
+  const loadDir = useCallback(async (dirPath: string) => {
     if (!sftpSessionId) return
     setFileCtx(null)
     setLoading(true)
     setSelected(null)
     try {
-      const res = await window.zterm.sftp.list(sftpSessionId, dirPath)
+      const res = await getZterm().sftp.list(sftpSessionId, dirPath)
       const content = unwrapIpcOk(res)
-      setItems(Array.isArray(content.items) ? content.items : [])
+      setItems(Array.isArray(content.items) ? (content.items as SftpRemoteItem[]) : [])
       setPath(dirPath)
     } catch (e) {
       showErr(e)
@@ -122,7 +125,7 @@ export default function SftpPanel({ session }) {
   useEffect(() => {  // 监听进度变化，每次会话 ID 变化时重新加载目录
     if (!sftpSessionId) return
     loadDir('/')
-    const unsub = window.zterm.sftp.onProgress(sftpSessionId, (p) => setProgress(p))
+    const unsub = getZterm().sftp.onProgress(sftpSessionId, (p) => setProgress(p))
     return unsub
   }, [sftpSessionId, loadDir])
 
@@ -144,11 +147,11 @@ export default function SftpPanel({ session }) {
 
   useEffect(() => {  // 监听文件行右键菜单点击事件，点击菜单外区域自动关闭菜单
     if (!fileCtx) return
-    const onDocMouseDown = (e) => {
-      if (e.target?.closest?.('.context-menu')) return
+    const onDocMouseDown = (e: globalThis.MouseEvent) => {
+      if ((e.target as Element | null)?.closest?.('.context-menu')) return
       setFileCtx(null)
     }
-    const onKey = (e) => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') setFileCtx(null)
     }
     document.addEventListener('mousedown', onDocMouseDown)
@@ -160,13 +163,13 @@ export default function SftpPanel({ session }) {
   }, [fileCtx])
 
   useEffect(() => {  // 监听上传菜单点击事件，点击菜单外区域自动关闭菜单
-    const closeUploadMenuIfOutside = (e) => {
+    const closeUploadMenuIfOutside = (e: globalThis.MouseEvent) => {
       const root = uploadDetailsRef.current
       if (!root?.open) return
-      if (root.contains(e.target)) return
+      if (e.target instanceof Node && root.contains(e.target)) return
       root.removeAttribute('open')
     }
-    const onEscape = (e) => {
+    const onEscape = (e: globalThis.KeyboardEvent) => {
       if (e.key !== 'Escape') return
       const root = uploadDetailsRef.current
       if (!root?.open) return
@@ -191,9 +194,9 @@ export default function SftpPanel({ session }) {
    * 点击文件（文件夹）
    * @param {Object} item 文件（文件夹）对象
    */
-  const handleItemClick = (item) => {
+  const handleItemClick = (item: SftpRemoteItem) => {
     if (item.isDir) {
-      loadDir(item.path)
+      loadDir(item.path ?? path)
     } else {
       setSelected(selected?.path === item.path ? null : item)
     }
@@ -204,9 +207,10 @@ export default function SftpPanel({ session }) {
    * @param {Object} item 文件（文件夹）对象
    * @param {Event} e 事件对象
    */
-  const handleDelete = async (item) => {
+  const handleDelete = async (item: SftpRemoteItem) => {
+    if (!sftpSessionId) return
     if (!confirm(t('sftp.confirmDelete', { name: item.name }))) return
-    const res = await window.zterm.sftp.delete(sftpSessionId, item.path)
+    const res = await getZterm().sftp.delete(sftpSessionId, item.path ?? '')
     if (res.success) loadDir(path)
     else alert(ipcErr(res, 'sftp.unknownError'))
   }
@@ -219,6 +223,7 @@ export default function SftpPanel({ session }) {
 
   /** 提交创建文件夹 */
   const commitCreateDir = async () => {
+    if (!sftpSessionId) return
     const name = createDirName.trim()
     if (!name) { setCreatingDir(false); return }
     if (INVALID_LABEL_CHARS.test(name)) {
@@ -226,7 +231,7 @@ export default function SftpPanel({ session }) {
       return
     }
     const newPath = path === '/' ? '/' + name : path + '/' + name
-    const res = await window.zterm.sftp.mkdir(sftpSessionId, newPath)
+    const res = await getZterm().sftp.mkdir(sftpSessionId, newPath)
     if (res.success) {
       setCreatingDir(false)
       setCreateDirName('')
@@ -239,13 +244,14 @@ export default function SftpPanel({ session }) {
    * 开始重命名
    * @param {Object} item 文件（文件夹）对象
    */
-  const startRename = (item) => {
+  const startRename = (item: SftpRemoteItem) => {
     setRenaming(item)
     setRenameValue(item.name)
   }
 
   /** 提交重命名 */
   const commitRename = async () => {
+    if (!sftpSessionId) return
     if (!renaming) { setRenaming(null); return }
     const nextName = renameValue.trim()
     const prevName = (renaming?.name ?? '').trim()
@@ -256,10 +262,10 @@ export default function SftpPanel({ session }) {
       return
     }
     const dir = path === '/' ? '' : path
-    const oldPath = renaming.path
+    const oldPath = renaming.path ?? ''
     const newPath = dir + '/' + nextName
     setRenaming(null)
-    const res = await window.zterm.sftp.rename(sftpSessionId, oldPath, newPath)
+    const res = await getZterm().sftp.rename(sftpSessionId, oldPath, newPath)
     if (res.success) loadDir(path)
     else alert(ipcErr(res, 'sftp.unknownError'))
   }
@@ -269,15 +275,17 @@ export default function SftpPanel({ session }) {
    * @param {Object} item 文件（文件夹）对象
    * @param {Event} e 事件对象
    */
-  const handleDownload = async (item) => {
-    const pick = await window.zterm?.paths?.chooseDirectory?.()
+  const handleDownload = async (item: SftpRemoteItem) => {
+    if (!sftpSessionId) return
+    const pick = await getZterm().paths.chooseDirectory()
     const dir = pick?.content?.path
     if (!pick?.success || pick?.content?.canceled || !dir) return
     const localBase = dir.endsWith('/') ? dir.slice(0, -1) : dir
     const localPath = `${localBase}/${item.name}`
+    const remotePath = item.path ?? ''
     const res = item.isDir
-      ? await window.zterm.sftp.downloadDir(sftpSessionId, item.path, localPath)
-      : await window.zterm.sftp.download(sftpSessionId, item.path, localPath)
+      ? await getZterm().sftp.downloadDir(sftpSessionId, remotePath, localPath)
+      : await getZterm().sftp.download(sftpSessionId, remotePath, localPath)
     alertIpcFailure(t, res, 'sftp.downloadFail')
   }
 
@@ -287,12 +295,13 @@ export default function SftpPanel({ session }) {
    * @param {Set} cache 缓存集合
    * @returns {Promise<boolean>} 是否成功
   */
-  const ensureRemoteDir = async (remoteDir, cache) => {
+  const ensureRemoteDir = async (remoteDir: string, cache: Set<string>) => {
+    if (!sftpSessionId) return false
     if (!remoteDir || remoteDir === '/') return true
     if (cache.has(remoteDir)) return true // 如果缓存集合中已存在该目录，直接返回 true
     const parent = remoteDir.includes('/') ? remoteDir.split('/').slice(0, -1).join('/') || '/' : '/' // 获取父目录
     await ensureRemoteDir(parent, cache) // 递归确保父目录存在
-    const res = await window.zterm.sftp.mkdir(sftpSessionId, remoteDir)
+    const res = await getZterm().sftp.mkdir(sftpSessionId, remoteDir)
     if (isIpcSuccess(res)) { cache.add(remoteDir); return true }
     const msg = ipcErr(res, '')
     if (/exist|exists|failure/i.test(msg)) { cache.add(remoteDir); return true }
@@ -339,12 +348,13 @@ export default function SftpPanel({ session }) {
    * @returns {Promise<void>} 是否成功
    */
   const handlePickFilesUpload = async (fileList: FileList | null) => {
+    if (!sftpSessionId) return
     try {
       const files = Array.from(fileList || []).filter((f: File) => getLocalFilePath(f))
       if (!files.length) return
       for (const f of files) {
         const remotePath = (path === '/' ? '' : path) + '/' + f.name
-        const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
+        const res = await getZterm().sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
         assertIpcSuccess(res)
       }
       loadDir(path)
@@ -359,12 +369,13 @@ export default function SftpPanel({ session }) {
    * @returns {Promise<void>} 是否成功
    */
   const handlePickFolderUpload = async (fileList: FileList | null) => {
+    if (!sftpSessionId) return
     try {
       const files = Array.from(fileList || []).filter(
         (f: File) => getLocalFilePath(f) && f.webkitRelativePath,
       )
       if (!files.length) return
-      const cache = new Set()
+      const cache = new Set<string>()
       const dirsToCreate = new Set<string>()
       for (const f of files) {
         const segments = f.webkitRelativePath.split('/')
@@ -380,7 +391,7 @@ export default function SftpPanel({ session }) {
         const remotePath = remoteBase + f.webkitRelativePath
         const remoteDir = remotePath.split('/').slice(0, -1).join('/') || '/'
         await ensureRemoteDir(remoteDir, cache)
-        const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
+        const res = await getZterm().sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
         assertIpcSuccess(res)
       }
       loadDir(path)
@@ -394,10 +405,11 @@ export default function SftpPanel({ session }) {
    * @param {Event} e 事件对象
    * @returns {Promise<void>} 是否成功
    */
-  const handleDropUpload = async (e) => {
+  const handleDropUpload = async (e: ReactDragEvent<HTMLDivElement>) => {
+    if (!sftpSessionId) return
     e.preventDefault()
     try {
-      const cache = new Set()  // 缓存集合：存储已创建的远程目录
+      const cache = new Set<string>()  // 缓存集合：存储已创建的远程目录
       const items = Array.from(e.dataTransfer?.items || []) as DataTransferItem[]  // 获取拖拽的文件列表
       const hasEntries = items.some((it) => typeof it.webkitGetAsEntry === 'function')  // 是否支持 entry（可处理文件夹拖拽）
       if (hasEntries) {
@@ -422,7 +434,7 @@ export default function SftpPanel({ session }) {
           const remotePath = remoteBase + relPath
           const remoteDir = remotePath.split('/').slice(0, -1).join('/') || '/' // 获取远程目录
           await ensureRemoteDir(remoteDir, cache) // 确保远程目录存在
-          const res = await window.zterm.sftp.upload(sftpSessionId, localPath, remotePath) // 上传文件
+          const res = await getZterm().sftp.upload(sftpSessionId, localPath, remotePath) // 上传文件
           assertIpcSuccess(res)
         }
         loadDir(path)
@@ -433,7 +445,7 @@ export default function SftpPanel({ session }) {
       if (!droppedFiles.length) return
       for (const f of droppedFiles) {  // 遍历要上传的文件列表
         const remotePath = (path === '/' ? '' : path) + '/' + f.name // 获取远程路径
-        const res = await window.zterm.sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath) // 上传文件
+        const res = await getZterm().sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath) // 上传文件
         assertIpcSuccess(res)
       }
       loadDir(path) // 刷新目录
@@ -447,7 +459,7 @@ export default function SftpPanel({ session }) {
    * @param {Event} e 事件对象
    * @param {Object} item 文件（文件夹）对象
    */
-  const openFileCtx = (e, item) => {
+  const openFileCtx = (e: ReactMouseEvent, item: SftpRemoteItem) => {
     e.preventDefault()
     e.stopPropagation()
     setFileMenuPos({ x: e.clientX, y: e.clientY })
@@ -546,7 +558,7 @@ export default function SftpPanel({ session }) {
 
       {progress && (
         <div className="sftp-progress">
-          <span>{progress.type === 'upload' ? t('sftp.progressUp') : t('sftp.progressDown')}: {progress.file.split('/').pop()}</span>
+          <span>{progress.type === 'upload' ? t('sftp.progressUp') : t('sftp.progressDown')}: {(progress.file ?? '').split('/').pop()}</span>
           <div className="sftp-progress-bar">
             <div className="sftp-progress-fill" style={{ width: progress.percent + '%' }} />
           </div>

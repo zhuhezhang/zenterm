@@ -1,4 +1,7 @@
-import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import {
+  useState, useRef, useEffect, useMemo, useCallback,
+  type ChangeEvent, type DragEvent, type KeyboardEvent, type MouseEvent,
+} from 'react'
 import { useI18n } from '@/context/I18nContext'
 import { uniqueLabelInGroup, ungroupSessionsUnderPath, vacatedNamedGroupIfEmpty } from '@/store/sessionStore'
 import {
@@ -11,8 +14,10 @@ import { hasInvalidLabelChars } from '../../lib/safeFileName'
 import SftpPanel from '../SftpPanel'
 import { Chevron, FolderIcon } from './icons'
 import SidebarTop from './SidebarTop'
-import SessionTreeNode from './SessionTreeNode'
+import SessionTreeNodeView from './SessionTreeNode'
 import SidebarContextMenu from './SidebarContextMenu'
+import type { SidebarContextMenuState, SidebarProps } from '@/types/components'
+import type { SessionTreeNode as TreeNode } from '@/types/session'
 import '@/styles/sidebar.css'
 
 /**
@@ -34,7 +39,7 @@ import '@/styles/sidebar.css'
  * @param {function} props.onUpdatePlaceholders 更新分组占位符的回调函数
  * @returns {JSX.Element} 侧边栏组件
  */
-export default function Sidebar(props) {
+export default function Sidebar(props: SidebarProps) {
   const {
     open, onToggle, savedSessions, onNewSession, onConnectSaved, onDeleteSaved, onUpdateSessions,
     onDuplicateSaved = () => {},
@@ -44,31 +49,24 @@ export default function Sidebar(props) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})  // 展开状态，key 是分组路径，value 是是否展开
   const [sessionsCollapsed, setSessionsCollapsed] = useState(false)  // 会话是否收起
-  const [contextMenu, setContextMenu] = useState(null)  // 上下文菜单状态，包含 x、y 坐标、类型和数据
-  const [renaming, setRenaming] = useState(null)  // 重命名状态，包含路径和新的名称
-  const [renameVal, setRenameVal] = useState('')  // 重命名输入值
-  const [renamingSession, setRenamingSession] = useState(null)  // 重命名会话状态，包含 savedId 和新的标签
+  const [contextMenu, setContextMenu] = useState<SidebarContextMenuState | null>(null)
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [renameVal, setRenameVal] = useState('')
+  const [renamingSession, setRenamingSession] = useState<string | null>(null)
   const [renameSessionVal, setRenameSessionVal] = useState('')  // 重命名会话输入值
   const [sftpExpanded, setSftpExpanded] = useState(true)  // SFTP 是否展开
   const [sessionSearchQuery, setSessionSearchQuery] = useState('')  // 会话搜索查询(按会话名、主机或串口路径搜索已保存会话)
-  const [keyboardFocusId, setKeyboardFocusId] = useState(null)  // 搜索框聚焦时方向键选中的树节点 id
-  const [dragOver, setDragOver] = useState(null)  // 被拖拽对象所在实时位置，包含id和zone，也就是拖拽分组/会话时经过的分组路径或会话id和 zone（group/session/drop(表示被拖拽对象在根分组上方)）
+  const [keyboardFocusId, setKeyboardFocusId] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState<{ id: string; zone: string } | null>(null)
   /** 被拖拽分组/会话的分组路径或者会话id和type（group/session） */
-  const dragRef = useRef(null)  
-  /** 重命名分组输入引用 */
-  const renameGroupInputRef = useRef(null)  
-  /** 重命名分组警告引用 */
-  const renameGroupAlertingRef = useRef(false)  
-  /** 重命名分组忽略 blur 引用（blur 事件也就是失去焦点事件） */
+  const dragRef = useRef<{ id: string; type: string } | null>(null)
+  const renameGroupInputRef = useRef<HTMLInputElement | null>(null)
+  const renameGroupAlertingRef = useRef(false)
   const ignoreRenameGroupBlurRef = useRef(false)
-  /** 重命名会话输入引用 */
-  const renameSessionInputRef = useRef(null)  
-  /** 重命名会话警告引用 */
-  const renameSessionAlertingRef = useRef(false)  
-  /** 重命名会话忽略 blur 引用（blur 事件也就是失去焦点事件） */
-  const ignoreRenameSessionBlurRef = useRef(false)  
-  /** 开始搜索前各分组的展开/收起快照，清空搜索后恢复 */
-  const expandedBeforeSearchRef = useRef(null)
+  const renameSessionInputRef = useRef<HTMLInputElement | null>(null)
+  const renameSessionAlertingRef = useRef(false)
+  const ignoreRenameSessionBlurRef = useRef(false)
+  const expandedBeforeSearchRef = useRef<Record<string, boolean> | null>(null)
   /** 当前分组展开状态快照，用于搜索框方向键选中树项时滚动到该树项所在位置 */
   const expandedRef = useRef(expanded)
   expandedRef.current = expanded
@@ -78,12 +76,8 @@ export default function Sidebar(props) {
    * @param {string} path 分组路径
    * @returns {boolean} 是否展开
    */
-  const isExp = (path) => expanded[path] === true
-  /**
-   * 切换展开状态
-   * @param {string} path 分组路径
-   */
-  const togExp = (path) => setExpanded(p => ({ ...p, [path]: !isExp(path) }))
+  const isExp = (path: string) => expanded[path] === true
+  const togExp = (path: string) => setExpanded((p) => ({ ...p, [path]: !isExp(path) }))
   /** 清除搜索框方向键对分组/会话的高亮选中 */
   const clearKeyboardFocus = useCallback(() => setKeyboardFocusId(null), [])
 
@@ -91,7 +85,7 @@ export default function Sidebar(props) {
    * 更新会话搜索词；进入搜索时快照分组展开状态，结束搜索时恢复
    * @param {string} next 新的搜索框内容
    */
-  const updateSessionSearchQuery = useCallback((next) => {
+  const updateSessionSearchQuery = useCallback((next: string) => {
     const nextTrim = String(next).trim()
     const prevTrim = sessionSearchQuery.trim()
     if (!prevTrim && nextTrim) {
@@ -110,14 +104,17 @@ export default function Sidebar(props) {
    * @param {string} type 类型
    * @param {any} data 数据
    */
-  const openCtx = (e, type, data) => { e.preventDefault(); e.stopPropagation(); setContextMenu({ x: e.clientX, y: e.clientY, type, data }) }
+  const openCtx = (e: MouseEvent, type: SidebarContextMenuState['type'], data: SidebarContextMenuState['data']) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setContextMenu({ x: e.clientX, y: e.clientY, type, data } as SidebarContextMenuState)
+  }
   /** 关闭上下文菜单 */
   const closeCtx = () => setContextMenu(null)
 
   /** 导入会话的文件输入引用 */
-  const importSessionsFileRef = useRef(null)
-  /** 与设置页「导入会话」一致：合并 JSON 中的会话并尽量将明文敏感字段吸入 vault */
-  const handleImportSessionsFile = useCallback(async (e) => {
+  const importSessionsFileRef = useRef<HTMLInputElement | null>(null)
+  const handleImportSessionsFile = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     try {
@@ -136,8 +133,8 @@ export default function Sidebar(props) {
 
   useEffect(() => {  // 右键菜单打开后，点击菜单外区域自动关闭
     if (!contextMenu) return
-    const onDocMouseDown = (e) => {
-      if (e.target?.closest?.('.context-menu')) return
+    const onDocMouseDown = (e: globalThis.MouseEvent) => {
+      if ((e.target as Element | null)?.closest?.('.context-menu')) return
       closeCtx()
     }
     document.addEventListener('mousedown', onDocMouseDown)
@@ -146,8 +143,10 @@ export default function Sidebar(props) {
 
   /** 展开所有分组 */
   const expandAll = () => {
-    const all = {}  // 展开状态，key 是分组路径，value 是是否展开
-    const collectGroups = (nodes) => nodes.forEach(n => { if (n.type === 'group') { all[n.path] = true; collectGroups(n.children) } })
+    const all: Record<string, boolean> = {}
+    const collectGroups = (nodes: TreeNode[]) => nodes.forEach((n) => {
+      if (n.type === 'group') { all[n.path] = true; collectGroups(n.children) }
+    })
     collectGroups(buildTree(savedSessions, groupPlaceholders))  // 收集所有分组路径
     setExpanded(all)  // 设置展开状态
     setSessionsCollapsed(false)  // 设置会话不收起
@@ -162,10 +161,12 @@ export default function Sidebar(props) {
    * 展开该分组所有子项
    * @param {string} groupPath 分组路径
    */
-  const expandGroupAll = (groupPath) => {
-    const all = {}  // 展开状态，key 是分组路径，value 是是否展开
-    const collectGroups = (nodes) => nodes.forEach(n => { if (n.type === 'group') { all[n.path] = true; collectGroups(n.children) } })  // 收集所有分组路径
-    const walk = (nodes) => {  // 遍历所有分组，收集该分组及其子项的路径
+  const expandGroupAll = (groupPath: string) => {
+    const all: Record<string, boolean> = {}
+    const collectGroups = (nodes: TreeNode[]) => nodes.forEach((n) => {
+      if (n.type === 'group') { all[n.path] = true; collectGroups(n.children) }
+    })
+    const walk = (nodes: TreeNode[]): boolean => {
       for (const n of nodes) {
         if (n.type !== 'group') continue
         if (n.path === groupPath) {  // 如果当前分组是目标分组，收集该分组及其子项
@@ -185,7 +186,7 @@ export default function Sidebar(props) {
    * 收起该分组所有子项
    * @param {string} groupPath 分组路径
    */
-  const collapseGroupAll = (groupPath) => {
+  const collapseGroupAll = (groupPath: string) => {
     setExpanded(prev => {
       const next = { ...prev }
       Object.keys(next).forEach(k => {
@@ -200,7 +201,7 @@ export default function Sidebar(props) {
    * @param {string} oldPath 旧路径
    * @param {string} newName 新名称
    */
-  const renameGroup = (oldPath, newName) => {
+  const renameGroup = (oldPath: string, newName: string) => {
     const trimmed = newName.trim()
     if (!trimmed) { setRenaming(null); return }  // 如果新名称是空，取消编辑，不做任何重命名（也不弹提示）
     if (hasInvalidLabelChars(trimmed)) {  // 非法字符校验 + 弹窗后重新聚焦输入框
@@ -257,10 +258,10 @@ export default function Sidebar(props) {
    * 删除分组
    * @param {string} path 分组路径
    */
-  const deleteGroup = (path) => {
+  const deleteGroup = (path: string) => {
     const w = settings?.deleteGroupWithSessions  // 是否删除分组时连带删除其下的所有会话
     const name = path.split('/').pop()  // 获取分组名称
-    const msg = w ? t('sidebar.deleteGroupWithKids', { name }) : t('sidebar.deleteGroupOnly', { name })
+    const msg = w ? t('sidebar.deleteGroupWithKids', { name: name ?? path }) : t('sidebar.deleteGroupOnly', { name: name ?? path })
     if (settings?.confirmDeleteGroup !== false && !confirm(msg)) return  // 如果配置了不确认删除，则不删除
     if (w)  // 如果配置了删除分组时连带删除其下的所有会话，则删除所有会话
       onUpdateSessions(savedSessions.filter(s => s.group !== path && !s.group?.startsWith(path + '/')))
@@ -274,7 +275,7 @@ export default function Sidebar(props) {
    * @param {string} id 会话 ID
    * @param {string} label 会话名称
    */
-  const deleteSession = (id, label) => {
+  const deleteSession = (id: string, label: string) => {
     if (settings?.confirmDeleteSession !== false && !confirm(t('sidebar.deleteSession', { label }))) return  // 如果配置了不确认删除，则不删除
     onDeleteSaved(id)
   }
@@ -283,14 +284,14 @@ export default function Sidebar(props) {
    * 复制会话
    * @param {string} id 要复制的会话 ID
    */
-  const dupSession = (id) => onDuplicateSaved(id)
+  const dupSession = (id: string) => onDuplicateSaved(id)
 
   /** 
    * 重命名会话
    * @param {string} 要重命名的会话的savedId 会话 ID
    * @param {string} newLabel 新名称
    */
-  const renameSession = (savedId, newLabel) => {
+  const renameSession = (savedId: string, newLabel: string) => {
     const trimmed = newLabel.trim()
     if (!trimmed) {
       setRenamingSession(null)  // 空标签：恢复原标签，不做任何重命名（也不弹提示）
@@ -321,7 +322,7 @@ export default function Sidebar(props) {
    * @param {string} id 拖拽对象 ID
    * @param {string} type 拖拽对象类型，'session' 或 'group'
    */
-  const dStart = (e, id, type) => {
+  const dStart = (e: DragEvent, id: string, type: string) => {
     dragRef.current = { id, type }
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', id)
@@ -333,7 +334,7 @@ export default function Sidebar(props) {
    * @param {string} id 拖拽对象 ID
    * @param {string} zone 拖拽区域，'group' 或 'session' 或 'ungroup'
    */
-  const dOver = (e, id, zone) => {
+  const dOver = (e: DragEvent, id: string, zone: string) => {
     e.preventDefault(); e.stopPropagation()
     setDragOver(prev => (prev?.id === id && prev?.zone === zone) ? prev : { id, zone })  // 设置拖拽区域
   }
@@ -341,7 +342,9 @@ export default function Sidebar(props) {
    * 拖拽离开
    * @param {Event} e 事件
    */
-  const dLeave = (e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(null) }
+  const dLeave = (e: DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver(null)
+  }
   /** 结束拖拽 */
   const dEnd = () => { dragRef.current = null; setDragOver(null) }
   
@@ -350,7 +353,7 @@ export default function Sidebar(props) {
    * @param {string} id 拖拽对象 ID
    * @param {string} zone 拖拽区域，'group' 或 'session' 或 'ungroup'
    */
-  const isDO = (id, zone) => dragOver?.id === id && dragOver?.zone === zone
+  const isDO = (id: string, zone: string) => dragOver?.id === id && dragOver?.zone === zone
   /**
    * 收集所有分组路径
    * @returns {Set<string>} 所有分组路径集合
@@ -367,8 +370,8 @@ export default function Sidebar(props) {
    * @param {string} movingGroupPath 移动中的分组路径
    * @returns {string} 唯一名称，如果首选名称已存在，则返回首选名称(1)、(2) 等后缀
    */
-  const uniqueGroupNameUnder = (parentPath, preferredName, movingGroupPath) => {
-    const used = new Set()
+  const uniqueGroupNameUnder = (parentPath: string, preferredName: string, movingGroupPath: string) => {
+    const used = new Set<string>()
     for (const p of collectAllGroupPaths()) {
       if (p === movingGroupPath || p.startsWith(movingGroupPath + '/')) continue
       if (parentPath) {
@@ -392,7 +395,7 @@ export default function Sidebar(props) {
    * @param {Event} e 事件
    * @param {string} groupPath 目标分组路径
    */
-  const dropOnGroup = (e, groupPath) => {
+  const dropOnGroup = (e: DragEvent, groupPath: string) => {
     e.preventDefault(); e.stopPropagation(); setDragOver(null)
     const src = dragRef.current; if (!src) return
     if (src.type === 'session') {  // 会话拖拽到分组，检查是否有同名会话
@@ -413,7 +416,7 @@ export default function Sidebar(props) {
     } else if (src.type === 'group' && src.id !== groupPath && !groupPath.startsWith(src.id + '/')) {  // 分组拖拽到分组，检查是否有同名分组
       const oldPath = src.id  // 获取源分组路径
       const preferredName = oldPath.split('/').pop()  // 获取源分组名称
-      const targetName = uniqueGroupNameUnder(groupPath, preferredName, oldPath)  // 确保目标分组名称在父分组下唯一
+      const targetName = uniqueGroupNameUnder(groupPath, preferredName ?? '', oldPath)  // 确保目标分组名称在父分组下唯一
       const newPath = groupPath + '/' + targetName  // 构建新的分组路径
 
       onUpdateSessions(savedSessions.map(s =>
@@ -434,7 +437,7 @@ export default function Sidebar(props) {
    * @param {string} sessId 目标会话 ID
    * @param {string} groupPath 目标会话所属分组路径
    */
-  const dropOnSession = (e, sessId, groupPath) => {
+  const dropOnSession = (e: DragEvent, sessId: string, groupPath: string) => {
     e.preventDefault(); e.stopPropagation(); setDragOver(null)
     const src = dragRef.current; if (!src || src.type !== 'session' || src.id === sessId) return  // 如果源对象不是会话，或者源对象 ID 与目标会话 ID 相同，则不处理
     const arr = savedSessions.slice()  // 获取会话列表副本
@@ -460,7 +463,7 @@ export default function Sidebar(props) {
    * 拖拽到无分组（根分组）区域
    * @param {Event} e 事件
    */
-  const dropUngroup = (e) => {
+  const dropUngroup = (e: DragEvent) => {
     e.preventDefault(); setDragOver(null)
     const src = dragRef.current
     if (!src) return
@@ -475,7 +478,7 @@ export default function Sidebar(props) {
     } else if (src.type === 'group') {  // 拖的是分组
       const oldPath = src.id
       const preferredName = oldPath.split('/').pop()  // 获取源分组名称
-      const targetName = uniqueGroupNameUnder('', preferredName, oldPath)  // 确保目标分组名称在父分组下唯一
+      const targetName = uniqueGroupNameUnder('', preferredName ?? '', oldPath)  // 确保目标分组名称在父分组下唯一
       const newPath = targetName  // 构建新的分组路径
       onUpdateSessions(savedSessions.map(s =>
         s.group === oldPath ? { ...s, group: newPath } :
@@ -529,7 +532,7 @@ export default function Sidebar(props) {
   }, [keyboardFocusId, sessionsCollapsed, visibleTreeItems])
 
   /** 搜索框键盘：方向键选中树项，回车连接/展开；无选中且搜索非空时回车新建连接 */
-  const handleSessionSearchKeyDown = useCallback((e) => {
+  const handleSessionSearchKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       if (visibleTreeItems.length === 0) return
       e.preventDefault()
@@ -547,8 +550,8 @@ export default function Sidebar(props) {
     const focused = visibleTreeItems.find((i) => i.id === keyboardFocusId)
     if (focused) {
       e.preventDefault()
-      if (focused.type === 'group') togExp(focused.node.path)
-      else onConnectSaved(focused.node.session)
+      if (focused.type === 'group' && focused.node.type === 'group') togExp(focused.node.path)
+      else if (focused.node.type === 'session') onConnectSaved(focused.node.session)
       return
     }
     if (!searchTrim) return
@@ -646,7 +649,7 @@ export default function Sidebar(props) {
                   </div>
                 )}
                 {tree.map(node => (
-                  <SessionTreeNode key={node.id} node={node} depth={0}
+                  <SessionTreeNodeView key={node.id} node={node} depth={0}
                     keyboardFocusId={keyboardFocusId}
                     isExp={isExp} togExp={togExp} openCtx={openCtx} onConnectSaved={onConnectSaved}
                     renaming={renaming} renameVal={renameVal} setRenameVal={setRenameVal}

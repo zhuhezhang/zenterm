@@ -5,7 +5,7 @@ import { INVALID_LABEL_CHARS } from '../../shared/safeFileName'
  * @param {string} value 标签/分组名
  * @returns {boolean} 是否包含非法标签字符
  */
-export function hasInvalidLabelChars(value) {
+export function hasInvalidLabelChars(value: unknown) {
   return INVALID_LABEL_CHARS.test(String(value ?? ''))
 }
 
@@ -14,8 +14,8 @@ export function hasInvalidLabelChars(value) {
  * @param {string} raw 原始文件名
  * @returns {string} 安全文件名
  */
-export function safeFileToken(raw) {
-  return (raw || 'session')
+export function safeFileToken(raw: unknown) {
+  return String(raw || 'session')
     .replace(INVALID_LABEL_CHARS, '')
     .replace(/\s+/g, '_')
     .replace(/^[._]+|[._]+$/g, '')

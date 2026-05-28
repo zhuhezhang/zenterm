@@ -1,8 +1,9 @@
-import { useState, useRef, useLayoutEffect } from 'react'
+import { useState, useRef, useLayoutEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/context/I18nContext'
 import { addGroupPlaceholder, exportSessions } from '@/store/sessionStore'
 import { hasInvalidLabelChars } from '../../lib/safeFileName'
+import type { SidebarContextMenuProps } from '@/types/components'
 
 /**
  * 上下文菜单组件：显示会话、分组、子分组、新分组等操作的上下文菜单
@@ -33,13 +34,13 @@ export default function SidebarContextMenu({
   setRenaming, setRenameVal, groupPlaceholders, onUpdatePlaceholders,
   expandAll, collapseAll, expandGroupAll, collapseGroupAll,
   setRenamingSession, setRenameSessionVal, savedSessions, importSessionsFileRef,
-}) {
+}: SidebarContextMenuProps) {
   const { t } = useI18n()
-  const [subInput, setSubInput] = useState(null)  // 子分组名称输入值
-  const [newGroupInput, setNewGroupInput] = useState(null)  // 新分组名称输入值
-  const subInputRef = useRef(null)  // 子分组名称输入引用
-  const newGroupInputRef = useRef(null)  // 新分组名称输入引用
-  const menuRef = useRef(null)  // 上下文菜单引用
+  const [subInput, setSubInput] = useState<string | null>(null)
+  const [newGroupInput, setNewGroupInput] = useState<string | null>(null)
+  const subInputRef = useRef<HTMLInputElement | null>(null)
+  const newGroupInputRef = useRef<HTMLInputElement | null>(null)
+  const menuRef = useRef<HTMLDivElement | null>(null)
   const [menuPos, setMenuPos] = useState({ x: ctx.x, y: ctx.y })  // 上下文菜单位置
 
   useLayoutEffect(() => {  // 根据视口边界动态修正菜单位置，避免底部/右侧被遮挡
@@ -53,7 +54,7 @@ export default function SidebarContextMenu({
     setMenuPos((prev) => (prev.x === nextX && prev.y === nextY ? prev : { x: nextX, y: nextY }))
   }, [ctx.x, ctx.y, subInput, newGroupInput])
 
-  const renderInBody = (node) => {  // 把侧边栏右键菜单改成 Portal 渲染到 document.body，不再受 sb-sessions-scroll 或侧边栏容器裁剪影响可视范围
+  const renderInBody = (node: ReactNode) => {
     if (!document?.body) return null
     return createPortal(node, document.body)
   }
@@ -69,6 +70,7 @@ export default function SidebarContextMenu({
               const trimmed = subInput.trim()
               if (!trimmed) { alert(t('sidebar.groupNameEmpty')); return }
               if (hasInvalidLabelChars(trimmed)) { alert(t('sidebar.groupNameInvalid')); return }
+              if (ctx.type !== 'group') return
               onUpdatePlaceholders?.(addGroupPlaceholder(groupPlaceholders, `${ctx.data}/${trimmed}`))
               setSubInput(null); closeCtx()
             }
@@ -137,11 +139,11 @@ export default function SidebarContextMenu({
         <button type="button" onClick={() => { onNewSession(ctx.data.type, ctx.data); closeCtx() }}>{t('sidebar.edit')}</button>
         <button type="button" onClick={() => { setRenamingSession(ctx.data.savedId); setRenameSessionVal(ctx.data.label || ''); closeCtx() }}>{t('sidebar.rename')}</button>
         <button type="button" onClick={() => { dupSession(ctx.data.savedId); closeCtx() }}>{t('sidebar.duplicate')}</button>
-        <button type="button" className="danger" onClick={() => { deleteSession(ctx.data.savedId, ctx.data.label); closeCtx() }}>{t('sidebar.delete')}</button>
+        <button type="button" className="danger" onClick={() => { deleteSession(ctx.data.savedId, ctx.data.label ?? ''); closeCtx() }}>{t('sidebar.delete')}</button>
       </>)}
       {ctx.type === 'group' && (<>
         <button type="button" onClick={() => { onNewSession('ssh', { group: ctx.data }); closeCtx() }}>{t('sidebar.newSession')}</button>
-        <button type="button" onClick={() => { setRenaming(ctx.data); setRenameVal(ctx.data.split('/').pop()); closeCtx() }}>{t('sidebar.renameGroup')}</button>
+        <button type="button" onClick={() => { setRenaming(ctx.data); setRenameVal(ctx.data.split('/').pop() ?? ''); closeCtx() }}>{t('sidebar.renameGroup')}</button>
         <button type="button" onClick={() => setSubInput('')}>{t('sidebar.newSubGroup')}</button>
         <div className="context-menu-divider" />
         <button type="button" onClick={() => { expandGroupAll(ctx.data); closeCtx() }}>{t('sidebar.expandGroup')}</button>

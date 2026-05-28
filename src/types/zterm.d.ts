@@ -1,4 +1,4 @@
-/** Preload 暴露的 window.zterm API（与 electron/preload.cjs 对齐） */
+/** Preload 暴露的 window.zterm API（与 electron/preload.cjs 对齐），用这份声明让 App.tsx 等能写 window.zterm.xxx 并有类型提示 */
 
 export interface IpcContent {
   [key: string]: unknown
@@ -23,6 +23,8 @@ export interface ZTermProgress {
   type?: string
   transferred?: number
   total?: number
+  percent?: number
+  file?: string
 }
 
 export interface ZTermWindowApi {

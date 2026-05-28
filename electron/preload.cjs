@@ -1,3 +1,5 @@
+/** 暴露给渲染进程的 window.zterm API，与 src/types/zterm.d.ts 对齐 */
+
 const { contextBridge, ipcRenderer, webUtils } = require('electron')
 
 contextBridge.exposeInMainWorld('zterm', {  // 在渲染进程中通过window.zterm访问暴露的API

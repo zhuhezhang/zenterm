@@ -1,0 +1,12 @@
+﻿
+> zterm@1.2.3 typecheck
+> tsc --noEmit
+
+src/components/SettingsDialog.tsx(568,120): error TS2322: Type 'string | number | true | HighlightRule[] | AlgorithmPreferences' is not assignable to type 'string | number'.
+  Type 'boolean' is not assignable to type 'string | number'.
+src/components/SettingsDialog.tsx(570,115): error TS2322: Type 'string | number | true | HighlightRule[] | AlgorithmPreferences' is not assignable to type 'string | number'.
+  Type 'boolean' is not assignable to type 'string | number'.
+src/components/TerminalPanel.tsx(168,88): error TS2345: Argument of type 'undefined' is not assignable to parameter of type '() => boolean'.
+src/lib/settings/sanitizeImport.ts(288,7): error TS2322: Type 'string | number | boolean | HighlightRule[] | AlgorithmPreferences' is not assignable to type 'never'.
+  Type 'string' is not assignable to type 'never'.
+src/lib/terminalEncodingService.ts(53,12): error TS2532: Object is possibly 'undefined'.

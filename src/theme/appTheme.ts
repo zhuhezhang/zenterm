@@ -1,9 +1,12 @@
+import type { AppTheme } from '@/types/settings'
+import type { ITheme } from '@xterm/xterm'
+
 /**
  * 根据设置解析当前应使用的亮/暗主题（auto 时读取系统 prefers-color-scheme）
  * @param {AppThemeSetting} appTheme 主题名称
  * @returns {AppThemeResolved} 当前实际主题名称
  */
-export function resolveEffectiveAppTheme(appTheme) {
+export function resolveEffectiveAppTheme(appTheme: AppTheme): 'dark' | 'light' {
   if (appTheme === 'light') return 'light'
   if (appTheme === 'dark') return 'dark'
   try {
@@ -18,7 +21,7 @@ export function resolveEffectiveAppTheme(appTheme) {
  * @param {AppThemeResolved} mode 主题名称
  * @returns {Record<string, string>} xterm 内置主题对象
  */
-export function getXtermTheme(mode) {
+export function getXtermTheme(mode: 'dark' | 'light'): ITheme {
   if (mode === 'light') {
     return {
       background: '#ffffff',

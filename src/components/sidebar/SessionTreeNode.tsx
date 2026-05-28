@@ -1,3 +1,5 @@
+import type { SessionType } from '@/types/session'
+import type { SessionTreeNodeComponentProps } from '@/types/components'
 import ConnectionTypeIcon from '../common'
 import { Chevron, FolderIcon, TYPE_COLORS } from './icons'
 
@@ -41,7 +43,7 @@ export default function SessionTreeNode({
   renamingSession, renameSessionVal, setRenamingSession, setRenameSessionVal, renameSession, renameSessionInputRef,
   ignoreRenameSessionBlurRef,
   dStart, dEnd, dOver, dLeave, dropOnGroup, dropOnSession, isDO,
-}) {
+}: SessionTreeNodeComponentProps) {
   const indent = depth * 14 + 14
   const isKbFocused = keyboardFocusId === node.id
   if (node.type === 'group') {
@@ -77,7 +79,7 @@ export default function SessionTreeNode({
           )}
           <span className="sb-count">{node.children.length}</span>
         </div>
-        {open && node.children.map(child => (
+        {open && node.children.map((child) => (
           <SessionTreeNode key={child.id} node={child} depth={depth + 1}
             keyboardFocusId={keyboardFocusId}
             isExp={isExp} togExp={togExp} openCtx={openCtx} onConnectSaved={onConnectSaved}
@@ -111,7 +113,7 @@ export default function SessionTreeNode({
       onClick={() => !isRenamingThis && onConnectSaved(s)}
       onContextMenu={e => openCtx(e, 'session', s)}
       title={`${s.type?.toUpperCase()} ${s.host || s.path || ''}`}>
-      <span className="sb-session-icon" style={{ color: TYPE_COLORS[s.type] }}>{ConnectionTypeIcon[s.type]}</span>
+      <span className="sb-session-icon" style={{ color: TYPE_COLORS[s.type as SessionType] }}>{ConnectionTypeIcon[s.type as SessionType]}</span>
       {isRenamingThis ? (
         <input className="sb-rename-input" value={renameSessionVal} autoFocus ref={renameSessionInputRef}
           onClick={e => e.stopPropagation()}

@@ -21,15 +21,15 @@ export const TERMINAL_ENCODING_OPTIONS = [
   { value: 'latin1', label: 'Latin-1 (ISO-8859-1)' },
 ]
 
-const decoderCache = new Map()
+const decoderCache = new Map<string, TextDecoder>()
 
 /**
  * @param {string} encoding
  * @returns {TextDecoder}
  */
-function getTextDecoder(encoding) {
+function getTextDecoder(encoding: string) {
   const key = normalizeTerminalEncoding(encoding)
-  if (decoderCache.has(key)) return decoderCache.get(key)
+  if (decoderCache.has(key)) return decoderCache.get(key)!
   let dec
   try {
     dec = new TextDecoder(key, { fatal: false, ignoreBOM: true })
@@ -46,11 +46,11 @@ function getTextDecoder(encoding) {
  * @param {string} [encoding]
  * @returns {string}
  */
-export function decodeIncomingTerminalWire(binary, encoding) {
+export function decodeIncomingTerminalWire(binary: string, encoding?: string) {
   if (binary == null || binary === '') return ''
   const bytes = uint8ArrayFromBinaryWire(binary)
   try {
-    return getTextDecoder(encoding).decode(bytes)
+    return getTextDecoder(encoding ?? DEFAULT_TERMINAL_ENCODING).decode(bytes)
   } catch {
     return new TextDecoder(DEFAULT_TERMINAL_ENCODING, { fatal: false }).decode(bytes)
   }
@@ -61,6 +61,6 @@ export function decodeIncomingTerminalWire(binary, encoding) {
  * @param {{ encoding?: string } | null | undefined} session
  * @returns {string}
  */
-export function sessionTerminalEncoding(session) {
+export function sessionTerminalEncoding(session: { encoding?: string } | null | undefined) {
   return normalizeTerminalEncoding(session?.encoding)
 }

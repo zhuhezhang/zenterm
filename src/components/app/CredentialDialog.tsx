@@ -1,23 +1,18 @@
 import { useState } from 'react'
 import { useI18n } from '@/context/I18nContext'
+import type { CredentialDialogProps } from '@/types/components'
 
-/**
- * 连接已保存会话时补充缺失的认证信息（用户名、密码或私钥路径等）
- * @param {Object} props 组件属性
- * @param {string} props.username 用户名
- * @param {string} props.password 密码
- * @param {string} props.privateKey 私钥路径
- * @param {string} props.passphrase 私钥密码短语
- * @param {Object} props.session 会话配置对象 { type, host, port, username, password, privateKey, passphrase, savedId, group, output }
- * @param {boolean} props.saveSecretsToVault 设置中是否开启「保存敏感凭据到加密存储」
- * @param {Function} props.onConnect 仅连接，不把本次输入的敏感信息写入加密库
- * @param {Function} props.onSaveAndConnect 更新已保存会话并连接；仅当 saveSecretsToVault 为 true 时由上层把敏感信息写入 vault
- * @param {Function} props.onClose 关闭对话框
- */
 export default function CredentialDialog({
-  username, password, privateKey, passphrase, session, saveSecretsToVault,
-  onConnect, onSaveAndConnect, onClose,
-}) {
+  username,
+  password,
+  privateKey,
+  passphrase,
+  session,
+  saveSecretsToVault,
+  onConnect,
+  onSaveAndConnect,
+  onClose,
+}: CredentialDialogProps) {
   const { t } = useI18n()
   const [user, setUser] = useState(username || '')
   const [pass, setPass] = useState(password || '')
@@ -60,7 +55,7 @@ export default function CredentialDialog({
                   <input
                     placeholder={t('connect.privateKeyPath')}
                     value={pkey}
-                    autoFocus={hasUser && !hasPkey}
+                    autoFocus={!!hasUser && !hasPkey}
                     onChange={e => setPkey(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && submitSaveAndConnect()}
                   />

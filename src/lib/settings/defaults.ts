@@ -1,4 +1,5 @@
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../../shared/sshAlgorithmDefaults'
+import type { AppSettings } from '../../types/settings'
 
 /** 主界面左侧会话栏默认宽度（px），与 App 分割条逻辑一致 */
 export const DEFAULT_SIDEBAR_WIDTH = 300
@@ -14,7 +15,7 @@ export const TERMINAL_SCROLLBACK_MAX = 500_000
 export const SSH_ALGORITHM_SECTION_KEYS = ['kex', 'serverHostKey', 'cipher', 'hmac', 'compress']
 
 /** 默认设置项 */
-export const DEFAULT_SETTINGS = {
+export const DEFAULT_SETTINGS: AppSettings = {
   /** 应用界面主题：dark | light | auto（跟随系统亮暗） */
   appTheme: 'auto',
   /** 界面语言：auto 跟随系统 | zh 简体中文 | en English */

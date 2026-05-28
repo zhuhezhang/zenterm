@@ -11,6 +11,13 @@ import {
   mergeSessionFormDefaults, normalizeBackspaceMode, clampPortFieldString, parseSessionPort,
   buildSessionLabel, validateSessionGroupLabel,
 } from '../lib/session/utils'
+import type { ConnectDialogProps } from '../types/components'
+import type {
+  ConnectCredDialogState,
+  SerialFormProps,
+  SessionFormFieldsProps,
+} from '../types/connectDialog'
+import type { SessionConfig, SessionFormValues, SessionType } from '../types/session'
 import '../styles/dialog.css'
 
 /**
@@ -19,14 +26,17 @@ import '../styles/dialog.css'
  * @param {Array<{ path?: string }>} ports 枚举的串口列表
  * @returns {boolean} 是否与枚举列表一致，如果请求的串口路径为空则返回 false
  */
-function isSerialPathInEnumeratedList(requestedPath, ports) {
+function isSerialPathInEnumeratedList(
+  requestedPath: string,
+  ports: { path?: string }[],
+): boolean {
   const req = String(requestedPath ?? '').trim()
   if (!req) return false
   const paths = (ports || []).map((p) => p?.path).filter(Boolean)
   const win = typeof process !== 'undefined' && process.platform === 'win32'
   if (win) {
     const rl = req.toLowerCase()
-    return paths.some((p) => p.toLowerCase() === rl)
+    return paths.some((p) => p != null && p.toLowerCase() === rl)
   }
   return paths.includes(req)
 }
@@ -42,28 +52,33 @@ function isSerialPathInEnumeratedList(requestedPath, ports) {
  * @param {Function} props.onSaveOnly 仅保存的回调函数，参数为配置对象
  * @param {Function} props.onClose 关闭对话框的回调函数
  */
-export default function ConnectDialog({ type, initialData, savedGroups, onConnect, onSaveAndConnect, onSaveOnly, onClose }) {
-  const { t } = useI18n()  // 国际化翻译函数
-  const [tab, setTab] = useState(type || 'ssh')  // 当前协议类型
-  const [form, setForm] = useState(() => mergeSessionFormDefaults(type || 'ssh', initialData))  // 表单数据
-  const [ports, setPorts] = useState([])  // 串口列表
-  const [error, setError] = useState('')  // 错误信息
-  const [credDialog, setCredDialog] = useState(null)  // { username, password, privateKey, passphrase, callback } 或 null，表示是否显示凭证输入对话框以及初始值和连接回调函数
-  
-  /** 用户名输入框引用，用来聚焦到用户名输入框 */
-  const credUserInputRef = useRef(null)
-  /** 私钥输入框引用，用来聚焦到私钥输入框 */
-  const credPkeyInputRef = useRef(null)
-  /** 密码输入框引用，用来聚焦到密码输入框 */
-  const credPassInputRef = useRef(null)
-  /** 避免在凭证弹层内每次输入都重复 focus，只在本次打开时聚焦一次，用一个布尔值来记录是否已经聚焦过 */
+export default function ConnectDialog({
+  type,
+  initialData,
+  savedGroups,
+  onConnect,
+  onSaveAndConnect,
+  onSaveOnly,
+  onClose,
+}: ConnectDialogProps) {
+  const { t } = useI18n()
+  const [tab, setTab] = useState<SessionType>(type || 'ssh')
+  const [form, setForm] = useState<SessionFormValues>(() =>
+    mergeSessionFormDefaults(type || 'ssh', initialData ?? undefined),
+  )
+  const [ports, setPorts] = useState<{ path?: string }[]>([])
+  const [error, setError] = useState('')
+  const [credDialog, setCredDialog] = useState<ConnectCredDialogState | null>(null)
+
+  const credUserInputRef = useRef<HTMLInputElement | null>(null)
+  const credPkeyInputRef = useRef<HTMLInputElement | null>(null)
+  const credPassInputRef = useRef<HTMLInputElement | null>(null)
   const credFocusAppliedRef = useRef(false)
-  /** SSH / Telnet 各自上次在表单里编辑的端口；经 Serial 中转切换时也须恢复，不能沿用表单里残留的 port */
-  const portByTabRef = useRef(null)
-  if (!portByTabRef.current) {
+  const portByTabRef = useRef<{ ssh: string; telnet: string }>({ ssh: '', telnet: '' })
+  if (!portByTabRef.current.ssh) {
     const initialTab = type || 'ssh'
-    const initialForm = mergeSessionFormDefaults(initialTab, initialData)
-    const toRefPort = (tab, raw) => {
+    const initialForm = mergeSessionFormDefaults(initialTab, initialData ?? undefined)
+    const toRefPort = (tab: SessionType, raw: unknown) => {
       const fallback = tab === 'ssh' ? SSH_SESSION_DEFAULT.port : TELNET_SESSION_DEFAULT.port
       const s = String(raw ?? '').trim()
       return s === '' ? String(fallback) : clampPortFieldString(s) || String(fallback)
@@ -79,7 +94,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
    * SSH 与 Telnet 互切时端口不跟随对方，恢复该协议上次使用的端口（首次为 22 / 23）。
    * @param {string} next 新的协议类型
    */
-  const switchTab = (next) => {
+  const switchTab = (next: SessionType) => {
     if (next === tab) return
     const from = tab
     setForm((prev) => {
@@ -105,7 +120,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
   /** 刷新串口列表，用于串口连接时选择串口设备 */
   const refreshSerialPorts = useCallback(() => {  // useCallback: 记忆化回调函数，避免重复创建回调函数，提高性能。当依赖项变化时，回调函数会被重新创建并记忆化
     window.zterm?.serial.listPorts().then((res) => {
-      setPorts(ipcPortsFromResponse(res))
+      setPorts(ipcPortsFromResponse(res) as { path?: string }[])
     })
   }, [])
 
@@ -122,7 +137,10 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
       const t = initialData.type || type || 'ssh'
       const sec = t === 'telnet' ? {} : await fetchSessionSecrets(sid)
       if (cancelled) return
-      const merged = { ...mergeSessionFormDefaults(t, initialData), ...sec }
+      const merged: SessionFormValues = {
+        ...mergeSessionFormDefaults(t, initialData ?? undefined),
+        ...sec,
+      }
       if (t === 'ssh' || t === 'telnet') {
         const s = String(merged.port ?? '').trim()
         const fallback = t === 'ssh' ? SSH_SESSION_DEFAULT.port : TELNET_SESSION_DEFAULT.port
@@ -139,7 +157,8 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
    * @param {string} key 设置项的键
    * @param {string} value 设置项的值
    */
-  const set = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
+  const set = <K extends keyof SessionFormValues>(k: K, v: SessionFormValues[K]) =>
+    setForm((prev) => ({ ...prev, [k]: v }))
 
   /**
    * 表单验证函数。根据当前协议类型和表单数据检查必填项是否填写，分组和标签是否包含非法字符，返回错误信息字符串
@@ -163,14 +182,14 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
    * 构建配置对象，准备连接或保存。根据当前协议类型和表单数据生成一个完整的配置对象，进行必要的类型转换和默认值处理，同时生成标签名称（如果未指定标签则根据协议和主机信息生成）。该配置对象将作为连接或保存的参数传递给回调函数
    * @returns {Object} 配置对象
    */
-  const buildConfig = () => ({
+  const buildConfig = (): SessionConfig => ({
     ...form,
     type: tab,
     backspaceMode: normalizeBackspaceMode(form.backspaceMode) ?? 'auto',
     port: parseSessionPort(form.port),
-    baudRate: parseInt(form.baudRate, 10) || SERIAL_SESSION_DEFAULT.baudRate,
-    dataBits: parseInt(form.dataBits, 10) || SERIAL_SESSION_DEFAULT.dataBits,
-    stopBits: parseInt(form.stopBits, 10) || SERIAL_SESSION_DEFAULT.stopBits,
+    baudRate: parseInt(String(form.baudRate ?? ''), 10) || SERIAL_SESSION_DEFAULT.baudRate,
+    dataBits: parseInt(String(form.dataBits ?? ''), 10) || SERIAL_SESSION_DEFAULT.dataBits,
+    stopBits: parseInt(String(form.stopBits ?? ''), 10) || SERIAL_SESSION_DEFAULT.stopBits,
     label: form.label?.trim() || buildSessionLabel(tab, form),
   })
 
@@ -208,7 +227,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
    * @param {Object} config 配置对象
    * @returns {boolean} 是否需要输入凭证
    */
-  const needsCredentials = (config) => {
+  const needsCredentials = (config: SessionConfig) => {
     if (config.type === 'telnet') return false
     if (config.type === 'ssh') {
       if (!config.username?.trim()) return true
@@ -224,7 +243,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
    * @param {Function} fn 连接或保存的回调函数，参数为配置对象
    * @param {boolean} requireCreds 是否需要检查凭证（用户名和密码），默认为 true
    */
-  const act = (fn, requireCreds = true) => {
+  const act = (fn: (config: SessionConfig) => void, requireCreds = true) => {
     const e = validate()
     if (e) return setError(e)
     const config = buildConfig()
@@ -271,7 +290,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
               <input
                 ref={credUserInputRef}
                 value={username}
-                onChange={e => setCredDialog(prev => ({ ...prev, username: e.target.value }))}
+                onChange={e => setCredDialog(prev => prev ? { ...prev, username: e.target.value } : null)}
                 onKeyDown={e => e.key === 'Enter' && applyCred()}
               />
             </FormRow>
@@ -282,7 +301,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
                     ref={credPkeyInputRef}
                     placeholder={t('connect.privateKeyPath')}
                     value={privateKey}
-                    onChange={e => setCredDialog(prev => ({ ...prev, privateKey: e.target.value }))}
+                    onChange={e => setCredDialog(prev => prev ? { ...prev, privateKey: e.target.value } : null)}
                     onKeyDown={e => e.key === 'Enter' && applyCred()}
                   />
                 </FormRow>
@@ -291,7 +310,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
                     type="password"
                     placeholder={t('connect.passphrasePh')}
                     value={passphrase}
-                    onChange={e => setCredDialog(prev => ({ ...prev, passphrase: e.target.value }))}
+                    onChange={e => setCredDialog(prev => prev ? { ...prev, passphrase: e.target.value } : null)}
                     onKeyDown={e => e.key === 'Enter' && applyCred()}
                   />
                 </FormRow>
@@ -302,7 +321,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
                   ref={credPassInputRef}
                   type="password"
                   value={password}
-                  onChange={e => setCredDialog(prev => ({ ...prev, password: e.target.value }))}
+                  onChange={e => setCredDialog(prev => prev ? { ...prev, password: e.target.value } : null)}
                   onKeyDown={e => e.key === 'Enter' && applyCred()}
                 />
               </FormRow>
@@ -323,7 +342,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
         <div className="dialog-header">
           <div className="dialog-tabs">
             {['ssh', 'telnet', 'serial'].map((proto) => (
-              <button key={proto} type="button" className={`dialog-tab ${tab===proto?'active':''}`} onClick={() => switchTab(proto)}>
+              <button key={proto} type="button" className={`dialog-tab ${tab===proto?'active':''}`} onClick={() => switchTab(proto as SessionType)}>
                 {proto === 'ssh' ? 'SSH' : proto === 'telnet' ? 'Telnet' : 'Serial'}
               </button>
             ))}
@@ -333,10 +352,10 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
 
         <div className="dialog-body">
           <FormRow label={t('connect.label')}>
-            <input placeholder={t('connect.labelPh')} value={form.label} onChange={e => set('label', e.target.value)} />
+            <input placeholder={t('connect.labelPh')} value={form.label ?? ''} onChange={e => set('label', e.target.value)} />
           </FormRow>
           <FormRow label={t('connect.group')}>
-            <input placeholder={t('connect.groupPh')} value={form.group} onChange={e => set('group', e.target.value)} list="group-list" />
+            <input placeholder={t('connect.groupPh')} value={form.group ?? ''} onChange={e => set('group', e.target.value)} list="group-list" />
             <datalist id="group-list">
               {(savedGroups||[]).map(g => <option key={g} value={g} />)}
             </datalist>
@@ -378,7 +397,7 @@ export default function ConnectDialog({ type, initialData, savedGroups, onConnec
  * @param {boolean} visible 是否可见
  * @returns {JSX.Element} SSH 表单
  */
-function SshForm({ form, set, visible }) {
+function SshForm({ form, set, visible }: SessionFormFieldsProps) {
   const { t } = useI18n()
   if (!visible) return null
   return (
@@ -431,7 +450,7 @@ function SshForm({ form, set, visible }) {
  * @param {boolean} visible 是否可见
  * @returns {JSX.Element} Telnet 表单
  */
-function TelnetForm({ form, set, visible }) {
+function TelnetForm({ form, set, visible }: SessionFormFieldsProps) {
   const { t } = useI18n()
   if (!visible) return null
   return (
@@ -455,7 +474,7 @@ function TelnetForm({ form, set, visible }) {
  * @param {Function} onRefreshPorts 重新枚举串口（路径必须与枚举结果一致方可连接）
  * @returns {JSX.Element} Serial 表单
  */
-function SerialForm({ form, set, ports, visible, onRefreshPorts }) {
+function SerialForm({ form, set, ports, visible, onRefreshPorts }: SerialFormProps) {
   const { t } = useI18n()
   if (!visible) return null
   return (
@@ -473,7 +492,12 @@ function SerialForm({ form, set, ports, visible, onRefreshPorts }) {
           {t('connect.refresh')}
         </button>
         <datalist id="port-list">
-          {ports.map(p => <option key={p.path} value={p.path}>{p.path}{p.manufacturer ? ` (${p.manufacturer})` : ''}</option>)}
+          {ports.map((p) => (
+            <option key={p.path} value={p.path}>
+              {p.path}
+              {p.manufacturer ? ` (${p.manufacturer})` : ''}
+            </option>
+          ))}
         </datalist>
       </FormRow>
       <FormRow label={t('connect.baudRate')}>

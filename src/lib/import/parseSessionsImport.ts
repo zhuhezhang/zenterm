@@ -2,6 +2,8 @@ import { createImportError } from './handleImportErrors'
 import { assertImportFilePathAllowed } from './validateImportFilePath'
 import { readImportJson, unwrapExportPayload } from './parseImportFile'
 import { normalizeImportedSession } from '../session/normalizeSession'
+import type { SessionImportWarning } from '../../types/import'
+import type { SavedSession } from '../../types/session'
 import { IMPORT_MAX_SESSION_COUNT } from './constants'
 
 /**
@@ -9,20 +11,19 @@ import { IMPORT_MAX_SESSION_COUNT } from './constants'
  * @param {File} file 导入的 JSON 文件对象
  * @returns {Promise<{ sessions: Record<string, unknown>[], stats: { total: number, accepted: number, skipped: number }, warnings: import('../session/importWarnings').SessionImportWarning[] }>} 解析后的会话列表、统计信息和导入警告列表
  */
-export async function validateAndParseSessionsImport(file) {
+export async function validateAndParseSessionsImport(file: File) {
   await assertImportFilePathAllowed(file)
   const parsed = await readImportJson(file)
-  const rows = unwrapExportPayload(parsed, 'sessions')
+  const rows = unwrapExportPayload(parsed, 'sessions') as unknown[]
   if (rows.length > IMPORT_MAX_SESSION_COUNT) {
     throw createImportError('tooManySessions', { max: IMPORT_MAX_SESSION_COUNT })
   }
 
-  const sessions = []
+  const sessions: SavedSession[] = []
   let skipped = 0
-  /** @type {import('../session/importWarnings').SessionImportWarning[]} */
-  const warnings = []
+  const warnings: SessionImportWarning[] = []
 
-  rows.forEach((raw, index) => {
+  rows.forEach((raw: unknown, index: number) => {
     const oneBased = index + 1
     const result = normalizeImportedSession(raw)
     if (result.ok) {

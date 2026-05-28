@@ -1,3 +1,4 @@
+import type { SessionType } from '../../types/session'
 import { DEFAULT_TERMINAL_ENCODING } from '../terminalEncodingService'
 
 /** 端口最小值 */
@@ -86,7 +87,7 @@ export const SERIAL_SESSION_DEFAULT = {
  * @param {'ssh'|'telnet'|'serial'} type 会话类型
  * @returns {Record<string, unknown>} 数值型默认值
  */
-export function getSessionStorageDefaults(type) {
+export function getSessionStorageDefaults(type: SessionType): Record<string, unknown> {
   if (type === 'ssh') return { ...SSH_SESSION_DEFAULT }
   if (type === 'telnet') return { ...TELNET_SESSION_DEFAULT }
   return { ...SERIAL_SESSION_DEFAULT }
@@ -97,7 +98,7 @@ export function getSessionStorageDefaults(type) {
  * @param {'ssh'|'telnet'|'serial'} type 会话类型
  * @returns {Record<string, unknown>} 表单默认值
  */
-export function getSessionFormDefaults(type) {
+export function getSessionFormDefaults(type: SessionType): Record<string, unknown> {
   /** 表单输入框绑定时需为字符串的数值字段，与 SESSION_TYPE_FIELDS 对应 */
   const SESSION_FORM_NUMERIC_KEYS = {
     ssh: ['port'],

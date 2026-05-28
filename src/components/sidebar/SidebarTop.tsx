@@ -6,7 +6,9 @@
  * @param {function} props.onOpenSettings 打开设置界面的回调函数
  * @returns {JSX.Element} 侧边栏顶部组件
  */
-export default function SidebarTop({ open, onToggle, onOpenSettings, t }) {
+import type { SidebarTopProps } from '@/types/components'
+
+export default function SidebarTop({ open, onToggle, onOpenSettings, t }: SidebarTopProps) {
   return (
     <div className="sidebar-top">
       <button type="button" className="sidebar-toggle" onClick={onToggle} title={open ? t('sidebar.collapse') : t('sidebar.expand')}>

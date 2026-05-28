@@ -1,7 +1,19 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import type { AppMainProps } from './types/app'
+import type { AppSettings, AppTheme } from './types/settings'
+import type {
+  ActiveSession,
+  CredentialDialogState,
+  SavedSession,
+  SessionConfig,
+  SessionType,
+  TerminalClearFn,
+  TerminalTextGetter,
+} from './types/session'
+import type { IpcResult } from './types/zterm'
 import { I18nProvider, useI18n } from '@/context/I18nContext'
 import TitleBar from '@/components/TitleBar'
-import Sidebar from '@/components/Sidebar'
+import Sidebar from '@/components/sidebar/Sidebar'
 import TabBar from '@/components/TabBar'
 import TerminalPanel from '@/components/TerminalPanel'
 import ConnectDialog from '@/components/ConnectDialog'
@@ -34,7 +46,11 @@ import './styles/app.css'
  * @param {Array} nextSessions addSavedSession 之后的列表
  * @returns {string|undefined} 需恢复为占位符的分组路径，不需要则 undefined
  */
-function vacatedGroupPathIfEmpty(beforeSession, newConfig, nextSessions) {
+function vacatedGroupPathIfEmpty(
+  beforeSession: SavedSession | null | undefined,
+  newConfig: SessionConfig,
+  nextSessions: SavedSession[],
+): string | undefined {
   if (!beforeSession) return undefined
   const oldG = beforeSession.group
   if (!oldG) return undefined
@@ -51,14 +67,14 @@ function vacatedGroupPathIfEmpty(beforeSession, newConfig, nextSessions) {
  * @param {Function} props.setSettings 设置回调函数
  * @returns {React.ReactNode} 应用主组件
  */
-function AppMain({ settings, setSettings }) {
+function AppMain({ settings, setSettings }: AppMainProps) {
   const { t } = useI18n()
 
   /** 凭据同步失败提示（后端已 i18n 的文案直接显示） */
-  const alertVaultSyncError = (r) => {
+  const alertVaultSyncError = (r: IpcResult | null | undefined) => {
     alertIpcFailure(t, r, 'credentials.encryptionUnavailable')
   }
-  const [appThemePreview, setAppThemePreview] = useState(null)  // 设置弹窗内预览主题（未保存不写 localStorage）；关闭取消时清空
+  const [appThemePreview, setAppThemePreview] = useState<AppTheme | null>(null)
   const appThemeEffective = useSyncedAppTheme(appThemePreview ?? settings.appTheme)  // ??表示如果 appThemePreview 为 null，则使用 settings.appTheme
   useEffect(() => {
     const eff = resolveEffectiveUiLanguage(settings.uiLanguage)
@@ -68,8 +84,8 @@ function AppMain({ settings, setSettings }) {
 
   // 局部变量无法在多次渲染中持久保存、更改局部变量不会触发渲染，因此使用 useState 来管理组件状态，
   // 它保留渲染之间的数据、更新状态(也就是useState的数据，比如这里的使用setSessions更新sessions)会触发组件(这里的组件就是APP)重新渲染以反映最新状态
-  const [sessions, setSessions]           = useState([])  // 当前活跃会话列表(上方tab标签页对应的会话)，每个会话对象包含 { id, type, host, username, ... } 等属性
-  const [activeId, setActiveId]           = useState(null)  // 当前活跃会话 ID
+  const [sessions, setSessions] = useState<ActiveSession[]>([])
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen]     = useState(true)  // 侧边栏是否打开
   const [sidebarWidth, setSidebarWidth]   = useState(() =>
     clampSidebarWidthPx(settings.sidebarWidth ?? DEFAULT_SIDEBAR_WIDTH, window.innerWidth)
@@ -80,14 +96,14 @@ function AppMain({ settings, setSettings }) {
       return w === cur ? cur : w
     })
   }, [settings.sidebarWidth])
-  const [savedSessions, setSavedSessions] = useState(() => loadSavedSessions())  // 已保存的会话配置列表，从 localStorage 加载
-  const [groupPlaceholders, setGroupPlaceholders] = useState(() => loadGroupPlaceholders())  // 分组占位符列表，从 localStorage 加载
-  const [showDialog, setShowDialog]       = useState(false)  // 是否显示连接对话框
-  const [showSettings, setShowSettings]   = useState(false)  // 是否显示设置对话框
-  const [dialogType, setDialogType]       = useState('ssh')  // 连接对话框类型：ssh/telnet/serial
-  const [dialogInitial, setDialogInitial] = useState(null)  // 连接对话框初始数据（编辑已保存会话时传入）
-  const terminalExportersRef = useRef({})  // 保存每个会话导出终端文本的 getter
-  const terminalClearScreenRef = useRef({})  // 每个标签页清屏回调（xterm.clear）
+  const [savedSessions, setSavedSessions] = useState<SavedSession[]>(() => loadSavedSessions())
+  const [groupPlaceholders, setGroupPlaceholders] = useState<string[]>(() => loadGroupPlaceholders())
+  const [showDialog, setShowDialog] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [dialogType, setDialogType] = useState<SessionType>('ssh')
+  const [dialogInitial, setDialogInitial] = useState<SessionConfig | null>(null)
+  const terminalExportersRef = useRef<Record<string, TerminalTextGetter>>({})
+  const terminalClearScreenRef = useRef<Record<string, TerminalClearFn>>({})
 
   /**
    * 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听器
@@ -106,7 +122,7 @@ function AppMain({ settings, setSettings }) {
    * @param {string} type 连接类型，可选值为 'ssh'、'telnet' 或 'serial'
    * @param {Object|null} initial 初始数据，编辑已保存会话时传入
    */
-  const openDialog = useCallback((type = 'ssh', initial = null) => {
+  const openDialog = useCallback((type: SessionType = 'ssh', initial: SessionConfig | null = null) => {
     setDialogType(type); setDialogInitial(initial); setShowDialog(true)
   }, [])
 
@@ -115,12 +131,12 @@ function AppMain({ settings, setSettings }) {
    * @param {Object} config 会话配置对象
    * @returns {string} 生成的会话 ID
    */
-  const launchSession = useCallback((config) => {
+  const launchSession = useCallback((config: SessionConfig | SavedSession): string => {
     const id = `sess-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`  // 生成唯一会话ID(格式为 sess-时间戳-4位随机字符串)
     // prev => ... 是函数形式的更新器，prev 代表更新前的旧 sessions 数组，使用函数形式可以确保你基于最新的状态更新，避免并发渲染时出现旧值问题
     // [...prev, {...}] 是使用展开运算符创建一个新的数组，包含旧数组的所有元素以及一个新的会话对象，这样做是为了保持状态的不可变性，确保 React 能正确检测到状态变化并重新渲染组件
     // { id, ...config, status: 'connecting' } 创建一个新的会话对象，包含生成的 ID、传入的配置（type、host、username 等）以及初始状态 'connecting'，然后添加到会话列表中
-    setSessions(prev => [...prev, { id, ...config, status: 'connecting' }])
+    setSessions((prev) => [...prev, { ...config, id, status: 'connecting' } as ActiveSession])
     setActiveId(id)
     return id
   }, [])
@@ -129,7 +145,7 @@ function AppMain({ settings, setSettings }) {
    * 删除会话：从会话列表中移除，更新活跃会话 ID（如果被删除的会话是当前活跃的，则切换到新的最后一个会话，否则保持不变），清除对应的 SFTP 状态
    * @param {string} id 要删除的会话 ID
    */
-  const removeSession = useCallback((id) => {
+  const removeSession = useCallback((id: string) => {
     setSessions(prev => {
       const next = prev.filter(s => s.id !== id)  // 过滤掉要删除的会话，生成新的会话列表
       setActiveId(cur => cur !== id ? cur : next[next.length - 1]?.id || null)  // 更新当前活跃会话 ID，如果被删除的会话是当前活跃的，则切换到新的最后一个会话，否则保持不变
@@ -144,7 +160,7 @@ function AppMain({ settings, setSettings }) {
    * @param {string} sessionId 会话 ID
    * @param {Function|null} getter 导出函数，传 null 表示卸载
    */
-  const registerTerminalExporter = useCallback((sessionId, getter) => {
+  const registerTerminalExporter = useCallback((sessionId: string, getter: TerminalTextGetter | null) => {
     if (!getter) {
       delete terminalExportersRef.current[sessionId]
       return
@@ -157,7 +173,7 @@ function AppMain({ settings, setSettings }) {
    * @param {string} sessionId 会话 ID
    * @param {Function|null} fn 清屏函数，传 null 表示卸载
    */
-  const registerTerminalClearScreen = useCallback((sessionId, fn) => {
+  const registerTerminalClearScreen = useCallback((sessionId: string, fn: TerminalClearFn | null) => {
     if (!fn) {
       delete terminalClearScreenRef.current[sessionId]
       return
@@ -169,7 +185,7 @@ function AppMain({ settings, setSettings }) {
    * 右键标签「清屏」：清当前标签对应 xterm 视口（含滚动缓冲由 xterm 行为决定）
    * @param {string} sessionId 会话 ID
    */
-  const handleClearTabScreen = useCallback((sessionId) => {
+  const handleClearTabScreen = useCallback((sessionId: string) => {
     terminalClearScreenRef.current[sessionId]?.()
   }, [])
 
@@ -177,7 +193,7 @@ function AppMain({ settings, setSettings }) {
    * 保存某个标签页的终端输出到文本文件
    * @param {string} sessionId 会话 ID
    */
-  const handleSaveTabOutput = useCallback(async (sessionId) => {
+  const handleSaveTabOutput = useCallback(async (sessionId: string) => {
     const getter = terminalExportersRef.current[sessionId]
     if (!getter) {
       alert(t('app.saveOutputNotReady'))
@@ -192,12 +208,14 @@ function AppMain({ settings, setSettings }) {
     const label = s?.label || `${s?.type?.toUpperCase?.() || 'SESSION'}_${s?.host || s?.path || s?.id || sessionId}`
     const filename = `${fileTimestamp()}_${safeFileToken(label)}.txt`
     try {
-      const res = await window.zterm.save.terminalOutput(filename, text)
+      const res = await window.zterm?.save?.terminalOutput(filename, text)
       if (res?.content?.canceled) return
       if (alertIpcFailure(t, res, 'app.saveOutputFail')) return
       alert(t('app.saveOutputOk'))
-    } catch (err) {
-      alert(t('app.saveOutputFail', { msg: err?.message ?? String(err) }))
+    } catch (err: unknown) {
+      alert(t('app.saveOutputFail', {
+        msg: err instanceof Error ? err.message : String(err),
+      }))
     }
   }, [sessions, t])
 
@@ -206,7 +224,7 @@ function AppMain({ settings, setSettings }) {
    * @param {string} id 会话 ID
    * @param {Object} updates 要更新的属性
    */
-  const updateSession = useCallback((id, updates) => {
+  const updateSession = useCallback((id: string, updates: Partial<ActiveSession>) => {
     setSessions(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
   }, [])
 
@@ -215,7 +233,7 @@ function AppMain({ settings, setSettings }) {
    * @param {Array} next 新的会话列表
    * @param {{ placeholderForVacatedGroup?: string }} [options] 编辑会话导致原分组被腾空时，传入原分组路径以写入占位符
    */
-  const updateSaved = useCallback((next, options?: { placeholderForVacatedGroup?: string }) => {
+  const updateSaved = useCallback((next: SavedSession[], options?: { placeholderForVacatedGroup?: string }) => {
     setSavedSessions(next)
     saveSessions(next)
     setGroupPlaceholders(prev => {
@@ -234,7 +252,7 @@ function AppMain({ settings, setSettings }) {
    * 更新分组占位符列表变量，并保存到localStorage
    * @param {Array} next 新的占位符列表
    */
-  const updatePlaceholders = useCallback((next) => {
+  const updatePlaceholders = useCallback((next: string[]) => {
     setGroupPlaceholders(next)
     saveGroupPlaceholders(next)
   }, [])
@@ -243,7 +261,7 @@ function AppMain({ settings, setSettings }) {
    * 仅保存会话（编辑/新建）：若 initialData 有 savedId，则编辑该会话；否则新建。同时检查是否需要添加占位分组
    * @param {Object} c 会话配置对象
    */
-  const handleSaveOnly = useCallback(async (c) => {
+  const handleSaveOnly = useCallback(async (c: SessionConfig) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
     const before = dialogInitial?.savedId
       ? savedSessions.find(s => s.savedId === dialogInitial.savedId)
@@ -252,8 +270,10 @@ function AppMain({ settings, setSettings }) {
     const vacated = vacatedGroupPathIfEmpty(before, config, next)
     updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
     const sid = resolveAffectedSavedId(savedSessions, next, config)
-    const r = await syncSessionSecretsToVault(sid, config, settings)
-    alertVaultSyncError(r)
+    if (sid) {
+      const r = await syncSessionSecretsToVault(sid, config, settings)
+      alertVaultSyncError(r)
+    }
     setShowDialog(false)
   }, [savedSessions, updateSaved, dialogInitial, settings, t])
 
@@ -261,7 +281,7 @@ function AppMain({ settings, setSettings }) {
    * 保存并连接：先保存会话配置（编辑/新建），然后启动会话。同时检查是否需要添加占位分组
    * @param {Object} c 会话配置对象
    */
-  const handleSaveAndConn = useCallback(async (c) => {
+  const handleSaveAndConn = useCallback(async (c: SessionConfig) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
     const before = dialogInitial?.savedId
       ? savedSessions.find(s => s.savedId === dialogInitial.savedId)
@@ -270,8 +290,10 @@ function AppMain({ settings, setSettings }) {
     const vacated = vacatedGroupPathIfEmpty(before, config, next)
     updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
     const sid = resolveAffectedSavedId(savedSessions, next, config)
-    const r = await syncSessionSecretsToVault(sid, config, settings)
-    alertVaultSyncError(r)
+    if (sid) {
+      const r = await syncSessionSecretsToVault(sid, config, settings)
+      alertVaultSyncError(r)
+    }
     launchSession(c)
     setShowDialog(false)
   }, [savedSessions, updateSaved, launchSession, dialogInitial, settings, t])
@@ -280,14 +302,17 @@ function AppMain({ settings, setSettings }) {
    * 直接连接：不保存会话配置，直接启动会话
    * @param {Object} c 会话配置对象
    */
-  const handleConnect = useCallback((c) => { launchSession(c); setShowDialog(false) }, [launchSession])
-  const [credDialogState, setCredDialogState] = useState(null)  // 凭证对话框：已合并 vault 的 session + 表单初值（无 callback，由下方专用 handler 处理）
+  const handleConnect = useCallback((c: SessionConfig) => {
+    launchSession(c)
+    setShowDialog(false)
+  }, [launchSession])
+  const [credDialogState, setCredDialogState] = useState<CredentialDialogState | null>(null)
 
   /**
    * 凭证对话框「保存并连接」：更新已保存会话；仅当 saveSecretsToVault 为 true 时把密码/私钥等写入加密库
    * @param {Object} config 含 savedId 的完整连接配置
    */
-  const handleCredentialSaveAndConnect = useCallback(async (config) => {
+  const handleCredentialSaveAndConnect = useCallback(async (config: SessionConfig) => {
     if (!config?.savedId) {
       launchSession(config)
       return
@@ -306,7 +331,7 @@ function AppMain({ settings, setSettings }) {
    * 连接已保存会话：SSH 缺凭据时弹出凭证对话框；Telnet/Serial 直接启动
    * @param {Object} s 会话配置对象
    */
-  const handleConnSaved = useCallback((s) => {
+  const handleConnSaved = useCallback((s: SavedSession) => {
     void (async () => {
       if (s.type === 'serial' || s.type === 'telnet') {
         launchSession(s)
@@ -354,7 +379,7 @@ function AppMain({ settings, setSettings }) {
    * 删除已保存会话：从 savedSessions 变量中移除会话、考虑是否需要添加占位分组，然后保存到本地 localStorage
    * @param {string} id 会话 ID
    */
-  const handleDelSaved = useCallback((id) => {
+  const handleDelSaved = useCallback((id: string) => {
     const deleted = savedSessions.find(s => s.savedId === id)
     void removeVaultEntry(id)
     const next = removeSavedSession(savedSessions, id)
@@ -378,7 +403,7 @@ function AppMain({ settings, setSettings }) {
    * @param {string} fromId 被拖动的会话 ID
    * @param {string} toId 目标位置的会话 ID
    */
-  const handleDuplicateSaved = useCallback(async (savedId) => {
+  const handleDuplicateSaved = useCallback(async (savedId: string) => {
     const next = duplicateSavedSession(savedSessions, savedId)
     const added = next.find((s) => !savedSessions.some((o) => o.savedId === s.savedId))
     if (added?.savedId) await duplicateVaultEntry(savedId, added.savedId)
@@ -390,7 +415,7 @@ function AppMain({ settings, setSettings }) {
    * @param {string} fromId 被拖动的会话 ID
    * @param {string} toId 目标位置的会话 ID
    */
-  const handleTabReorder  = useCallback((fromId, toId) => {
+  const handleTabReorder = useCallback((fromId: string, toId: string) => {
     setSessions(prev => {
       const from = prev.findIndex(s => s.id === fromId)  // 找到被拖动的会话在当前列表中的索引，如果找不到则返回 -1
       const to = prev.findIndex(s => s.id === toId)  // 找到目标位置的会话在当前列表中的索引，如果找不到则返回 -1
@@ -440,7 +465,7 @@ function AppMain({ settings, setSettings }) {
                     settings={settings} appThemeEffective={appThemeEffective}
                     onRegisterExport={registerTerminalExporter}
                     onRegisterClearScreen={registerTerminalClearScreen}
-                    onUpdate={(upd) => { updateSession(s.id, upd) }}
+                    onUpdate={(upd: Partial<ActiveSession>) => { updateSession(s.id, upd) }}
                   />
                 ))
               }
@@ -469,7 +494,7 @@ function AppMain({ settings, setSettings }) {
           passphrase={credDialogState.passphrase}
           session={credDialogState.session}
           saveSecretsToVault={!!settings.saveSecretsToVault}
-          onConnect={(username, password, privateKey, passphrase) => {
+          onConnect={(username: string, password: string, privateKey: string, passphrase: string) => {
             const config = {
               ...credDialogState.session,
               username,
@@ -480,7 +505,7 @@ function AppMain({ settings, setSettings }) {
             setCredDialogState(null)
             launchSession(config)
           }}
-          onSaveAndConnect={async (username, password, privateKey, passphrase) => {
+          onSaveAndConnect={async (username: string, password: string, privateKey: string, passphrase: string) => {
             const config = {
               ...credDialogState.session,
               username,
@@ -499,13 +524,13 @@ function AppMain({ settings, setSettings }) {
           settings={settings}
           savedSessions={savedSessions}
           onUpdateSessions={updateSaved}
-          onUpdatePlaceholders={(ph) => { setGroupPlaceholders(ph); saveGroupPlaceholders(ph) }}
+          onUpdatePlaceholders={(ph: string[]) => { setGroupPlaceholders(ph); saveGroupPlaceholders(ph) }}
           onAppThemePreview={setAppThemePreview}
           onClose={() => {
             setAppThemePreview(null)
             setShowSettings(false)
           }}
-          onSave={(s) => {
+          onSave={(s: AppSettings) => {
             setAppThemePreview(null)
             setSettings(s)
             void reapplyVaultPoliciesForAllSessions(savedSessions, s)
@@ -518,7 +543,7 @@ function AppMain({ settings, setSettings }) {
 
 /** 应用主组件 */
 export default function App() {
-  const [settings, setSettings] = useState(() => {
+  const [settings, setSettings] = useState<AppSettings>(() => {
     const s = loadSettings()
     syncUiLanguageToMain(s.uiLanguage)  // 同步界面语言至主进程
     return s

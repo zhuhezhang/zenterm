@@ -195,7 +195,7 @@ zterm/
 │
 ├── index.html                           # Vite HTML entry (CSP injected by vite plugin)
 ├── vite.config.js                       # React (oxc) plugin, dev server, inline Electron CSP plugin
-├── jsconfig.json                        # Path aliases / JS tooling hints
+├── tsconfig.json                        # TypeScript / IDE (src, electron, shared, tests)
 ├── package.json                         # Scripts, dependencies, electron-builder config
 ├── package-lock.json
 ├── README.md                            # English documentation

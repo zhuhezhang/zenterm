@@ -1,3 +1,5 @@
+import type { NormalizeImportedSessionResult, SessionImportWarning } from '../../types/import'
+import type { SavedSession, SessionType } from '../../types/session'
 import { TERMINAL_ENCODING_OPTIONS, normalizeTerminalEncoding } from '../terminalEncodingService'
 import {
   getSessionStorageDefaults, SESSION_TYPE_SET, AUTH_TYPE_SET, BAUD_RATE_SET, PARITY_SET, PORT_MIN, PORT_MAX,
@@ -11,6 +13,10 @@ import {
 /** 允许的终端编码的值集合 */
 const ALLOWED_TERMINAL_ENCODINGS = new Set(TERMINAL_ENCODING_OPTIONS.map((o) => o.value))
 
+function isPlainObject(raw: unknown): raw is Record<string, unknown> {
+  return raw != null && typeof raw === 'object' && !Array.isArray(raw)
+}
+
 /**
  * 解析导入的终端编码
  * @param {unknown} raw 原始终端编码
@@ -18,7 +24,11 @@ const ALLOWED_TERMINAL_ENCODINGS = new Set(TERMINAL_ENCODING_OPTIONS.map((o) => 
  * @param {import('./importWarnings').SessionImportWarning[]} warnings 导入警告列表
  * @returns {string} 规范化后的终端编码
  */
-function resolveImportedEncoding(raw, fallback, warnings) {
+function resolveImportedEncoding(
+  raw: Record<string, unknown>,
+  fallback: string,
+  warnings: SessionImportWarning[],
+): string {
   const baseEnc = normalizeTerminalEncoding(fallback)
   if (!('encoding' in /** @type {Record<string, unknown>} */ (raw))) {
     return baseEnc
@@ -51,7 +61,12 @@ function resolveImportedEncoding(raw, fallback, warnings) {
  * @param {Record<string, unknown>} base 基础会话
  * @param {import('./importWarnings').SessionImportWarning[]} warnings 导入警告列表
  */
-function applySerialStorageFieldsWithWarnings(merged, item, base, warnings) {
+function applySerialStorageFieldsWithWarnings(
+  merged: Record<string, unknown>,
+  item: Record<string, unknown>,
+  base: Record<string, unknown>,
+  warnings: SessionImportWarning[],
+): void {
   merged.path = String(item.path).trim()
 
   if ('baudRate' in item) {
@@ -60,7 +75,7 @@ function applySerialStorageFieldsWithWarnings(merged, item, base, warnings) {
       pushSessionImportWarning(warnings, 'fieldDefaulted', {
         field: 'baudRate',
         value: String(item.baudRate),
-        result: base.baudRate,
+        result: String(base.baudRate ?? ''),
       })
       merged.baudRate = base.baudRate
     } else {
@@ -76,7 +91,7 @@ function applySerialStorageFieldsWithWarnings(merged, item, base, warnings) {
       pushSessionImportWarning(warnings, 'fieldDefaulted', {
         field: 'dataBits',
         value: String(item.dataBits),
-        result: base.dataBits,
+        result: String(base.dataBits ?? ''),
       })
       merged.dataBits = base.dataBits
     } else {
@@ -92,7 +107,7 @@ function applySerialStorageFieldsWithWarnings(merged, item, base, warnings) {
       pushSessionImportWarning(warnings, 'fieldDefaulted', {
         field: 'stopBits',
         value: String(item.stopBits),
-        result: base.stopBits,
+        result: String(base.stopBits ?? ''),
       })
       merged.stopBits = base.stopBits
     } else {
@@ -108,7 +123,7 @@ function applySerialStorageFieldsWithWarnings(merged, item, base, warnings) {
       pushSessionImportWarning(warnings, 'fieldDefaulted', {
         field: 'parity',
         value: String(item.parity),
-        result: base.parity,
+        result: String(base.parity ?? ''),
       })
       merged.parity = base.parity
     } else {
@@ -124,15 +139,14 @@ function applySerialStorageFieldsWithWarnings(merged, item, base, warnings) {
  * @param {unknown} raw 待规范的会话
  * @returns {{ ok: true, session: Record<string, unknown>, warnings: import('./importWarnings').SessionImportWarning[] } | { ok: false, reason: string }} 规范化后的会话或规范化失败的原因
  */
-export function normalizeImportedSession(raw) {
-  /** @type {import('./importWarnings').SessionImportWarning[]} */
-  const warnings = []
+export function normalizeImportedSession(raw: unknown): NormalizeImportedSessionResult {
+  const warnings: SessionImportWarning[] = []
 
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+  if (!isPlainObject(raw)) {
     return { ok: false, reason: 'notObject' }
   }
-  const item = /** @type {Record<string, unknown>} */ (raw)
-  const type = String(item.type ?? '').trim().toLowerCase()
+  const item = raw
+  const type = String(item.type ?? '').trim().toLowerCase() as SessionType
   if (!SESSION_TYPE_SET.has(type)) return { ok: false, reason: 'invalidType' }
 
   if (type === 'ssh' || type === 'telnet') {
@@ -160,7 +174,7 @@ export function normalizeImportedSession(raw) {
         pushSessionImportWarning(warnings, 'fieldDefaulted', {
           field: 'port',
           value: String(item.port),
-          result: merged.port,
+          result: Number(merged.port),
         })
       }
     }
@@ -196,7 +210,11 @@ export function normalizeImportedSession(raw) {
     applySerialStorageFieldsWithWarnings(merged, item, base, warnings)
   }
 
-  merged.encoding = resolveImportedEncoding(item, base.encoding, warnings)
+  merged.encoding = resolveImportedEncoding(
+    item,
+    String((base as Record<string, unknown>).encoding ?? ''),
+    warnings,
+  )
 
   if ('backspaceMode' in item) {
     const bm = normalizeBackspaceMode(item.backspaceMode)
@@ -229,12 +247,14 @@ export function normalizeImportedSession(raw) {
   }
 
   const stored = pickSessionStorageFields(merged)
-  const session: Record<string, unknown> = {
+  const session = {
     ...stored,
-    label: merged.label,
+    label: String(merged.label),
     savedId,
     savedAt,
-  }
+    type,
+    group: String(merged.group ?? ''),
+  } as SavedSession
 
   if (type === 'ssh') {
     if (typeof item.password === 'string') session.password = item.password

@@ -16,7 +16,9 @@ export function Chevron() {
  * @param {boolean} props.open 是否展开
  * @returns {JSX.Element} 文件夹图标组件
  */
-export function FolderIcon({ open }) {
+import type { FolderIconProps } from '@/types/components'
+
+export function FolderIcon({ open }: FolderIconProps) {
   return (
     <svg width="18" height="23" viewBox="0 0 16 16" fill="currentColor" opacity="0.85">
       {open

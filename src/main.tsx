@@ -1,15 +1,8 @@
-import React, { Component, type ErrorInfo, type ReactNode } from 'react'
+import React, { Component, type ErrorInfo } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import type { ErrorBoundaryProps, ErrorBoundaryState } from './types/app'
 import './styles/global.css'
-
-interface ErrorBoundaryProps {
-  children: ReactNode
-}
-
-interface ErrorBoundaryState {
-  error: Error | null
-}
 
 /**  React 错误边界组件，用于捕获子组件渲染过程中发生的错误，并显示友好的错误信息界面 */
 class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {

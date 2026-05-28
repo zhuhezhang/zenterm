@@ -1,4 +1,5 @@
 import { isIpcFailure } from '../ipc/ipcResponse'
+import type { LoggingMode } from '../../types/settings'
 import {
   DEFAULT_SIDEBAR_WIDTH, TERMINAL_SCROLLBACK_DEFAULT, TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX,
 } from './defaults'
@@ -10,9 +11,9 @@ import {
  * @returns {number} 限制后的侧边栏宽度
  */
 export function clampSidebarWidthPx(
-  width,
-  innerWidth = typeof window !== 'undefined' ? window.innerWidth : 1200,
-  fallback = DEFAULT_SIDEBAR_WIDTH,
+  width: unknown,
+  innerWidth: number = typeof window !== 'undefined' ? window.innerWidth : 1200,
+  fallback: number = DEFAULT_SIDEBAR_WIDTH,
 ) {
   const iw = Math.max(320, Math.floor(Number(innerWidth)) || 1200)
   const min = Math.max(80, Math.floor(iw * 0.10))
@@ -27,7 +28,10 @@ export function clampSidebarWidthPx(
  * @param {unknown} raw 用户输入的滚动行数
  * @returns {number} 规范后的滚动行数
  */
-export function clampTerminalScrollback(raw, fallback = TERMINAL_SCROLLBACK_DEFAULT) {
+export function clampTerminalScrollback(
+  raw: unknown,
+  fallback: number = TERMINAL_SCROLLBACK_DEFAULT,
+) {
   const n = Math.floor(Number(raw))
   if (!Number.isFinite(n)) return fallback
   if (n < TERMINAL_SCROLLBACK_MIN) return TERMINAL_SCROLLBACK_MIN
@@ -40,7 +44,7 @@ export function clampTerminalScrollback(raw, fallback = TERMINAL_SCROLLBACK_DEFA
  * @param {unknown} m 用户输入的日志模式
  * @returns {'none'|'stream'|'buffer'} 规范后的日志模式
  */
-export function normalizeLoggingMode(m) {
+export function normalizeLoggingMode(m: unknown): LoggingMode {
   const v = String(m ?? '').trim().toLowerCase()
   if (v === 'none') return 'none'
   if (v === 'stream') return 'stream'
@@ -52,7 +56,7 @@ export function normalizeLoggingMode(m) {
  * @param {string} p 路径
  * @returns {boolean}
  */
-export function isLikelyAbsoluteLogPath(p) {
+export function isLikelyAbsoluteLogPath(p: unknown) {
   const s = String(p ?? '').trim()
   if (!s) return false
   return s.startsWith('/') || s.startsWith('\\') || /^[a-zA-Z]:[\\/]/.test(s)
@@ -64,7 +68,7 @@ export function isLikelyAbsoluteLogPath(p) {
  * @param {string} [fallback] 非法时回退路径（通常为当前设置）
  * @returns {Promise<string>}
  */
-export async function normalizeImportedLogPath(raw, fallback = '') {
+export async function normalizeImportedLogPath(raw: unknown, fallback: string = '') {
   const fb = typeof fallback === 'string' ? fallback : ''
   if (typeof raw !== 'string') return fb
   const p = raw.trim()

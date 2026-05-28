@@ -1,3 +1,7 @@
+import type { AlgorithmCategory } from '../../types/algorithm'
+import type { AlgorithmPreferences } from '../../../shared/sshAlgorithmDefaults'
+import type { SettingsImportWarning } from '../../types/import'
+import type { AppSettings, HighlightRule, UiLanguageSetting } from '../../types/settings'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../../shared/sshAlgorithmDefaults'
 import { SSH_ALGORITHM_OPTION_POOL } from './sshAlgorithmOptions'
 import { resolveEffectiveUiLanguage } from '../resolveUiLanguage'
@@ -13,7 +17,7 @@ import {
  * @param {unknown} raw 待判断的对象
  * @returns {boolean} 是否为纯对象
  */
-function isPlainObject(raw) {
+function isPlainObject(raw: unknown): raw is Record<string, unknown> {
   return raw != null && typeof raw === 'object' && !Array.isArray(raw)
 }
 
@@ -22,7 +26,7 @@ function isPlainObject(raw) {
  * @param {Record<string, unknown>} current 当前应用设置
  * @returns {Record<string, unknown>}
  */
-function cloneCurrentSettings(current) {
+function cloneCurrentSettings(current: Partial<AppSettings>): AppSettings {
   const base = { ...DEFAULT_SETTINGS, ...current }
   return {
     ...base,
@@ -49,9 +53,9 @@ const HIGHLIGHT_RULE_FIELD_DEFAULTS = {
  * @param {unknown[]} rules 现有高亮规则列表
  * @returns {{ ids: Set<string>, names: Set<string> }}
  */
-function collectHighlightRuleKeys(rules) {
-  const ids = new Set()
-  const names = new Set()
+function collectHighlightRuleKeys(rules: unknown[]): { ids: Set<string>; names: Set<string> } {
+  const ids = new Set<string>()
+  const names = new Set<string>()
   for (const r of rules) {
     if (!isPlainObject(r)) continue
     if (typeof r.id === 'string' && r.id.trim()) ids.add(r.id.trim())
@@ -66,7 +70,7 @@ function collectHighlightRuleKeys(rules) {
  * @param {boolean} fallback 默认值
  * @returns {boolean} 规范化后的布尔值
  */
-function normalizeImportedHighlightBoolean(raw, fallback) {
+function normalizeImportedHighlightBoolean(raw: unknown, fallback: boolean): boolean {
   return typeof raw === 'boolean' ? raw : fallback
 }
 
@@ -76,7 +80,7 @@ function normalizeImportedHighlightBoolean(raw, fallback) {
  * @param {string} fallback 默认值
  * @returns {string} 规范化后的颜色
  */
-function normalizeImportedHighlightColor(raw, fallback) {
+function normalizeImportedHighlightColor(raw: unknown, fallback: string): string {
   if (typeof raw !== 'string') return fallback
   const c = raw.trim()
   return c || fallback
@@ -87,7 +91,7 @@ function normalizeImportedHighlightColor(raw, fallback) {
  * @param {unknown} raw 原始高亮规则
  * @returns {string|null} 拒绝原因码；null 表示可继续规范化
  */
-function getHighlightRuleRejectReason(raw) {
+function getHighlightRuleRejectReason(raw: unknown): string | null {
   if (!isPlainObject(raw)) return 'invalidFormat'
   if (typeof raw.pattern !== 'string' || !raw.pattern) return 'missingPattern'
   const useRegex = normalizeImportedHighlightBoolean(raw.useRegex, HIGHLIGHT_RULE_FIELD_DEFAULTS.useRegex)
@@ -107,9 +111,9 @@ function getHighlightRuleRejectReason(raw) {
  * @param {string} id 已解析的规则 id
  * @returns {Record<string, unknown>|null} 规范化后的高亮规则
  */
-function normalizeImportedHighlightRule(raw, id) {
+function normalizeImportedHighlightRule(raw: unknown, id: string): HighlightRule | null {
   if (getHighlightRuleRejectReason(raw)) return null
-  const r = /** @type {Record<string, unknown>} */ (raw)
+  const r = raw as Record<string, unknown>
   const pattern = r.pattern
   const enabled = normalizeImportedHighlightBoolean(r.enabled, HIGHLIGHT_RULE_FIELD_DEFAULTS.enabled)
   const useRegex = normalizeImportedHighlightBoolean(r.useRegex, HIGHLIGHT_RULE_FIELD_DEFAULTS.useRegex)
@@ -118,7 +122,15 @@ function normalizeImportedHighlightRule(raw, id) {
     HIGHLIGHT_RULE_FIELD_DEFAULTS.caseSensitive,
   )
   const color = normalizeImportedHighlightColor(r.color, HIGHLIGHT_RULE_FIELD_DEFAULTS.color)
-  return { id, enabled, useRegex, caseSensitive, pattern, color, name: r.name }
+  return {
+    id,
+    enabled,
+    useRegex,
+    caseSensitive,
+    pattern: String(pattern),
+    color,
+    name: String(r.name ?? ''),
+  }
 }
 
 /**
@@ -129,7 +141,12 @@ function normalizeImportedHighlightRule(raw, id) {
  * @param {import('./importWarnings').SettingsImportWarning[]} warnings 导入警告列表
  * @returns {Record<string, unknown>[]} 规范化后的高亮规则列表
  */
-function mergeImportedHighlightRules(imported, currentRules, lang, warnings) {
+function mergeImportedHighlightRules(
+  imported: unknown[],
+  currentRules: HighlightRule[],
+  lang: 'zh' | 'en',
+  warnings: SettingsImportWarning[],
+): HighlightRule[] {
   const base = currentRules.map((r) => ({ ...r }))
   const { ids, names } = collectHighlightRuleKeys(base)
   imported.forEach((raw, index) => {
@@ -175,21 +192,26 @@ function mergeImportedHighlightRules(imported, currentRules, lang, warnings) {
  * @param {import('./importWarnings').SettingsImportWarning[]} warnings 导入警告列表
  * @returns {Record<string, string[]>} 规范化后的算法偏好
  */
-function normalizeAlgorithmPreferences(raw, current, warnings) {
+function normalizeAlgorithmPreferences(
+  raw: unknown,
+  current: AlgorithmPreferences,
+  warnings: SettingsImportWarning[],
+): AlgorithmPreferences {
   const base = {
     ...DEFAULT_ALGORITHM_PREFERENCES,
     ...(isPlainObject(current) ? current : {}),
   }
   if (!isPlainObject(raw)) return base
   const out = { ...base }
-  for (const key of SSH_ALGORITHM_SECTION_KEYS) {
+  for (const key of SSH_ALGORITHM_SECTION_KEYS as AlgorithmCategory[]) {
     if (!(key in raw)) continue
-    if (!Array.isArray(raw[key])) {
+    const rawSection = (raw as Record<string, unknown>)[key]
+    if (!Array.isArray(rawSection)) {
       pushSettingsImportWarning(warnings, 'algorithmSectionInvalidType', { section: key })
       continue
     }
     const pool = SSH_ALGORITHM_OPTION_POOL[key]
-    const rawList = raw[key]
+    const rawList = rawSection
     const picked = rawList.filter((v) => typeof v === 'string' && pool.includes(v))
     const unique = [...new Set(picked)]
     if (!unique.length) {
@@ -215,7 +237,7 @@ const UI_LANGUAGE_SET = new Set(['auto', 'en', 'zh'])
 const LOGGING_MODE_SET = new Set(['none', 'stream', 'buffer'])
 
 /** 布尔设置项的键 */
-const BOOLEAN_SETTING_KEYS = [
+const BOOLEAN_SETTING_KEYS: (keyof AppSettings)[] = [
   'confirmDeleteSession',
   'confirmDeleteGroup',
   'deleteGroupWithSessions',
@@ -229,16 +251,21 @@ const BOOLEAN_SETTING_KEYS = [
  * @param {Record<string, unknown>} currentSettings 导入前的当前设置
  * @returns {Promise<{ settings: Record<string, unknown>, warnings: import('./importWarnings').SettingsImportWarning[] }>}
  */
-export async function sanitizeImportedSettings(raw, currentSettings) {
-  /** @type {import('./importWarnings').SettingsImportWarning[]} */
-  const warnings = []
+export async function sanitizeImportedSettings(
+  raw: unknown,
+  currentSettings: AppSettings,
+): Promise<{ settings: AppSettings; warnings: SettingsImportWarning[] }> {
+  const warnings: SettingsImportWarning[] = []
   const current = cloneCurrentSettings(currentSettings)
-  const stripped = {}
-  for (const key of new Set(Object.keys(DEFAULT_SETTINGS))) {
+  if (!isPlainObject(raw)) {
+    return { settings: current, warnings }
+  }
+  const stripped: Record<string, unknown> = {}
+  for (const key of Object.keys(DEFAULT_SETTINGS)) {
     if (key in raw) stripped[key] = raw[key]
   }
 
-  let out = { ...current, ...stripped }
+  let out: AppSettings = { ...current, ...stripped } as AppSettings
 
   if ('appTheme' in stripped) {  // 应用主题是否在导入文件中
     const v = String(out.appTheme)
@@ -257,7 +284,7 @@ export async function sanitizeImportedSettings(raw, currentSettings) {
   for (const key of BOOLEAN_SETTING_KEYS) {
     if (!(key in stripped)) continue
     if (typeof stripped[key] !== 'boolean') {
-      out[key] = current[key]
+      ;(out as unknown as Record<string, unknown>)[key] = current[key]
       pushSettingsImportWarning(warnings, 'invalidBoolean', { field: key })
     }
   }
@@ -280,7 +307,7 @@ export async function sanitizeImportedSettings(raw, currentSettings) {
       out.loggingMode = current.loggingMode
       pushSettingsImportWarning(warnings, 'invalidEnum', { field: 'loggingMode', value: String(stripped.loggingMode ?? '') })
     } else {
-      out.loggingMode = v
+      out.loggingMode = v as AppSettings['loggingMode']
     }
   }
   if ('logPath' in stripped) {

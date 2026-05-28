@@ -1,24 +1,29 @@
+import type {
+  BackspaceMode,
+  PickedSessionFields,
+  SavedSession,
+  SessionConfig,
+  SessionFormValues,
+  SessionGroupLabelError,
+  SessionType,
+} from '../../types/session'
 import {
-  PORT_MIN, PORT_MAX, SESSION_TYPE_FIELDS, BAUD_RATE_SET, PARITY_SET,
-  LABEL_ILLEGAL_CHARS_RE, GROUP_ILLEGAL_CHARS_RE, getSessionFormDefaults,
+  PORT_MIN,
+  PORT_MAX,
+  SESSION_TYPE_FIELDS,
+  BAUD_RATE_SET,
+  PARITY_SET,
+  LABEL_ILLEGAL_CHARS_RE,
+  GROUP_ILLEGAL_CHARS_RE,
+  getSessionFormDefaults,
 } from './defaults'
 
-/**
- * 规范化退格模式
- * @param {string} v 待规范的退格模式
- * @returns {'auto'|'del'|'bs'|null} 规范化后的退格模式
- */
-export function normalizeBackspaceMode(v) {
+export function normalizeBackspaceMode(v: unknown): BackspaceMode | null {
   const s = String(v ?? '').toLowerCase()
   return s === 'auto' || s === 'del' || s === 'bs' ? s : null
 }
 
-/**
- * 端口输入框：严格限制在 0–65535；空字符串保留便于清空重输
- * @param {string} raw 待规范的端口
- * @returns {string} 规范化后的端口
- */
-export function clampPortFieldString(raw) {
+export function clampPortFieldString(raw: unknown): string {
   const s = String(raw ?? '').trim()
   if (s === '') return ''
   const n = parseInt(s, 10)
@@ -26,25 +31,14 @@ export function clampPortFieldString(raw) {
   return String(Math.min(PORT_MAX, Math.max(PORT_MIN, n)))
 }
 
-/**
- * 保存/导入：无效或空值时使用 fallback
- * @param {unknown} raw 待规范的端口
- * @param {number} fallback 默认端口
- * @returns {number} 规范化后的端口
- */
-export function clampSessionPort(raw, fallback) {
+export function clampSessionPort(raw: unknown, fallback: number): number {
   if (raw === '' || raw == null) return fallback
   const n = typeof raw === 'number' ? raw : parseInt(String(raw), 10)
   if (!Number.isFinite(n)) return fallback
   return Math.min(PORT_MAX, Math.max(PORT_MIN, n))
 }
 
-/**
- * 构建连接配置：空或非法端口返回 undefined
- * @param {unknown} raw 待规范的端口
- * @returns {number|undefined} 规范化后的端口
- */
-export function parseSessionPort(raw) {
+export function parseSessionPort(raw: unknown): number | undefined {
   const s = String(raw ?? '').trim()
   if (s === '') return undefined
   const n = parseInt(s, 10)
@@ -52,13 +46,10 @@ export function parseSessionPort(raw) {
   return Math.min(PORT_MAX, Math.max(PORT_MIN, n))
 }
 
-/**
- * 构建会话标签
- * @param {string} tab 会话类型
- * @param {Record<string, unknown>} form 表单数据
- * @returns {string} 构建后的会话标签
- */
-export function buildSessionLabel(tab, form) {
+export function buildSessionLabel(
+  tab: SessionType | string,
+  form: SessionFormValues | Record<string, unknown>,
+): string {
   if (tab === 'serial') {
     const raw = String(form.path || 'Serial')
     return raw.replace(new RegExp(LABEL_ILLEGAL_CHARS_RE.source, 'g'), '').trim() || 'Serial'
@@ -67,17 +58,16 @@ export function buildSessionLabel(tab, form) {
     const raw = String(form.host || 'Telnet')
     return raw.replace(new RegExp(LABEL_ILLEGAL_CHARS_RE.source, 'g'), '').trim() || 'Telnet'
   }
-  const raw = (form.username ? String(form.username) + '@' : '') + (form.host || tab.toUpperCase())
-  return raw.replace(new RegExp(LABEL_ILLEGAL_CHARS_RE.source, 'g'), '').trim() || tab.toUpperCase()
+  const raw =
+    (form.username ? String(form.username) + '@' : '') +
+    (form.host || String(tab).toUpperCase())
+  return raw.replace(new RegExp(LABEL_ILLEGAL_CHARS_RE.source, 'g'), '').trim() || String(tab).toUpperCase()
 }
 
-/**
- * 验证会话分组和标签
- * @param {string} [group] 会话分组
- * @param {string} [label] 会话标签
- * @returns {string|null} 验证结果
- */
-export function validateSessionGroupLabel(group, label) {
+export function validateSessionGroupLabel(
+  group?: string,
+  label?: string,
+): SessionGroupLabelError | null {
   const g = group ?? ''
   const l = label ?? ''
   if (g.startsWith('/')) return 'groupSlashStart'
@@ -87,45 +77,37 @@ export function validateSessionGroupLabel(group, label) {
   return null
 }
 
-/**
- * 合并表单默认值和初始值
- * @param {string} tab 会话类型
- * @param {Object} [initial] 初始表单数据
- * @returns {Record<string, unknown>} 合并后的表单数据
- */
-export function mergeSessionFormDefaults(tab, initial) {
-  const base = getSessionFormDefaults(tab)
-  const merged = initial ? { ...base, ...initial } : { ...base }
+export function mergeSessionFormDefaults(
+  tab: SessionType | string,
+  initial?: SessionConfig | SessionFormValues,
+): SessionFormValues {
+  const base = getSessionFormDefaults(tab as SessionType) as SessionFormValues
+  const merged: SessionFormValues = initial ? { ...base, ...initial } : { ...base }
   merged.backspaceMode = normalizeBackspaceMode(merged.backspaceMode) ?? 'auto'
   return merged
 }
 
-/**
- * 选择需要保存的字段
- * @param {Record<string, unknown>} config 待选择的字段
- * @returns {Record<string, unknown>} 选择后的字段
- */
-export function pickSessionStorageFields(config) {
-  const type = config?.type
-  const allowed = SESSION_TYPE_FIELDS[type] || []
-  const picked = {}
+export function pickSessionStorageFields(config: SessionConfig): PickedSessionFields {
+  const type = config?.type as SessionType
+  const allowed =
+    SESSION_TYPE_FIELDS[type as keyof typeof SESSION_TYPE_FIELDS] ?? []
+  const picked: Record<string, unknown> = {}
   for (const key of allowed) {
     if (config[key] !== undefined) picked[key] = config[key]
   }
   return {
     type,
-    label: config.label,
-    group: config.group,
+    label: String(config.label ?? ''),
+    group: String(config.group ?? ''),
     ...picked,
-  }
+  } as PickedSessionFields
 }
 
-/**
- * 应用串口存储字段
- * @param {Record<string, unknown>} item 待应用的字段
- * @param {Record<string, unknown>} base 基础字段
- */
-export function applySerialStorageFields(merged, item, base) {
+export function applySerialStorageFields(
+  merged: Record<string, unknown>,
+  item: Record<string, unknown>,
+  base: Record<string, unknown>,
+): void {
   merged.path = String(item.path).trim()
   const baud = parseInt(String(item.baudRate ?? base.baudRate), 10)
   merged.baudRate = Number.isFinite(baud) ? baud : base.baudRate

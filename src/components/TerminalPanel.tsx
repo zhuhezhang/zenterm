@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type MutableRefObject } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -12,9 +12,14 @@ import { translateRender } from '../i18n/translateRender'
 import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage'
 import { safeFileToken } from '../lib/safeFileName'
 import { assertIpcSuccess } from '../lib/ipc/ipcError'
+import { getZterm } from '@/lib/ipc/getZterm'
 import { formatThrownIpcError } from '@/lib/ipc/formatIpcError'
 import { getXtermTheme } from '../theme/appTheme'
 import '@xterm/xterm/css/xterm.css'
+import type { TerminalPanelProps } from '../types/components'
+import type { ActiveSession, SessionType } from '../types/session'
+import type { AppSettings } from '../types/settings'
+import type { SessionLogHandle } from '../types/terminal'
 import '../styles/terminal.css'
 
 /**
@@ -29,23 +34,26 @@ import '../styles/terminal.css'
  * @param {Function} props.onRegisterExport 注册导出终端输出函数的回调，参数为 (sessionId, getter|null)
  * @param {Function} [props.onRegisterClearScreen] 注册清屏函数的回调，参数为 (sessionId, fn|null)
  */
-export default function TerminalPanel({ session, active, onUpdate, settings, appThemeEffective = 'dark', onRegisterExport, onRegisterClearScreen }) {
-  /** 终端容器的 DOM 引用，用于挂载 xterm 实例 */
-  const containerRef = useRef(null)
-  /** Terminal 实例引用，保存对 xterm 实例的访问以便在不同函数中使用 */
-  const termRef      = useRef(null)
-  /** FitAddon 实例引用，用于在窗口大小变化时调整终端尺寸 */
-  const fitAddonRef  = useRef(null)
-  /** 清理函数列表引用，用于存储连接相关的清理函数（如事件监听器、连接断开函数等），组件卸载时调用这些函数进行清理 */
-  const cleanupRef   = useRef([])
-  /** 日志写入引用：由 setupLogging 挂载，支持 buffer（屏幕快照）与 stream（原始流追加） */
-  const logFileRef   = useRef(null)
-  /** 同一标签页（同一 session.id）内复用首次生成的日志文件名，断开按 R 重连仍写入同一 .log */
-  const logFileStemStateRef = useRef({ sessionId: null, stem: null })
-  /** 断连状态引用，标记当前连接是否已断开，用于在按键监听中判断是否允许重连 */
+export default function TerminalPanel({
+  session,
+  active,
+  onUpdate,
+  settings,
+  appThemeEffective = 'dark',
+  onRegisterExport,
+  onRegisterClearScreen,
+}: TerminalPanelProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const termRef = useRef<Terminal | null>(null)
+  const fitAddonRef = useRef<FitAddon | null>(null)
+  const cleanupRef = useRef<Array<() => void>>([])
+  const logFileRef = useRef<SessionLogHandle | null>(null)
+  const logFileStemStateRef = useRef<{ sessionId: string | null; stem: string | null }>({
+    sessionId: null,
+    stem: null,
+  })
   const disconnectedRef = useRef(false)
-  /** 设置对象引用，保持对最新设置的访问以便在事件处理函数中使用，避免闭包问题导致访问到过时的设置值 */
-  const settingsRef  = useRef(settings)
+  const settingsRef = useRef<AppSettings>(settings)
   useEffect(() => { settingsRef.current = settings }, [settings])
 
   useEffect(() => {  // 组件初次挂载时：创建终端实例、连接会话，并设置相关事件监听器；组件卸载时：调用 cleanupRef 中的函数进行清理
@@ -94,7 +102,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
       return
     }
     setupLogging(session, settings, logFileRef, logFileStemStateRef, settingsRef)
-    logFileRef.current?.setTerminal?.(term ?? null)
+    if (term) logFileRef.current?.setTerminal?.(term)
   }, [session.id, settings.loggingMode, settings.logPath])
 
   useEffect(() => {  // 滚动缓冲行数：保存设置后更新已存在终端（xterm 支持运行时改 options.scrollback）
@@ -117,7 +125,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
 
   useEffect(() => {  // 当 active 状态变化时，如果当前标签页变为活跃，则调整终端尺寸并聚焦终端，确保用户界面正确显示并且用户可以立即输入
     if (active && fitAddonRef.current) {
-      setTimeout(() => { try { fitAddonRef.current.fit() } catch (e) {} ; termRef.current?.focus() }, 50)
+      setTimeout(() => { try { fitAddonRef.current?.fit() } catch (e) {} ; termRef.current?.focus() }, 50)
     }
   }, [active])
 
@@ -149,13 +157,16 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
         cleanupRef.current.forEach(fn => { try { fn() } catch (e) {} })  // 调用 cleanupRef 中的函数清理之前的连接状态和事件监听器，确保重连时不会有遗留的状态或监听器干扰新的连接
         cleanupRef.current = []
         try { logFileRef.current?.flushNow?.() } catch (_) {}  // 先刷盘，再换日志控制器
-        const ro = new ResizeObserver(() => { try { fitAddonRef.current.fit() } catch (e) {} })  // 重连时要重新监听容器尺寸变化
-        ro.observe(containerRef.current)
+        const container = containerRef.current
+        const fitAddon = fitAddonRef.current
+        if (!container || !fitAddon) return
+        const ro = new ResizeObserver(() => { try { fitAddonRef.current?.fit() } catch (e) {} })  // 重连时要重新监听容器尺寸变化
+        ro.observe(container)
         cleanupRef.current.push(() => ro.disconnect())
         setupLogging(session, settingsRef.current, logFileRef, logFileStemStateRef, settingsRef)  // 重连：复用本标签页首次连接时的日志文件
         logFileRef.current?.setTerminal?.(term)
         writelnWithLog(term, logFileRef, `\r\x1b[33m${translateRender(resolveEffectiveUiLanguage(settings?.uiLanguage), 'terminal.reconnecting')}\x1b[0m`)
-        connectSession(term, fitAddonRef.current, session, onUpdate, cleanupRef, disconnectedRef, null, logFileRef, settingsRef)
+        connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, () => false, logFileRef, settingsRef)
       }
     })
     return () => d.dispose()
@@ -168,12 +179,7 @@ export default function TerminalPanel({ session, active, onUpdate, settings, app
   )
 }
 
-/**
- * 导出终端缓冲区中的所有可见文本（包含滚动历史）
- * @param {Terminal|null} term xterm 终端实例
- * @returns {string} 终端纯文本内容
- */
-function exportTerminalBuffer(term) {
+function exportTerminalBuffer(term: Terminal | null): string {
   if (!term) return ''
   const buf = term.buffer.active
   const lines = []
@@ -191,7 +197,11 @@ function exportTerminalBuffer(term) {
  * @param {{ current: { scheduleSnapshot?: () => void, enqueue?: (s: string) => void } | null }} logRef 日志引用，包含 scheduleSnapshot 和 enqueue 方法
  * @param {string} lineForWriteln 传给 term.writeln 的字符串（不含结尾换行），用于写入终端
  */
-function writelnWithLog(term, logRef, lineForWriteln) {
+function writelnWithLog(
+  term: Terminal,
+  logRef: MutableRefObject<SessionLogHandle | null>,
+  lineForWriteln: string,
+): void {
   term.writeln(lineForWriteln)
   logRef.current?.scheduleSnapshot?.()
   logRef.current?.enqueue?.(lineForWriteln + '\r\n')
@@ -206,7 +216,7 @@ function writelnWithLog(term, logRef, lineForWriteln) {
  * @param {Object|null|undefined} session 当前会话（含 per-session backspaceMode）
  * @returns {string} 规范化后的数据
  */
-function normalizeInputData(type, data, session) {
+function normalizeInputData(type: SessionType | string, data: string, session: ActiveSession): string {
   const mode = String(session?.backspaceMode || 'auto').toLowerCase()
   if (mode === 'del') return data.replace(/\x08/g, '\x7f')
   if (mode === 'bs') return data.replace(/\x7f/g, '\x08')
@@ -220,7 +230,7 @@ function normalizeInputData(type, data, session) {
  * @param {string} hex 十六进制颜色字符串
  * @returns {[number, number, number]} RGB 数组，如果输入无效则返回黄色 [255, 255, 0] 作为默认值
  */
-function parseHexColor(hex) {
+function parseHexColor(hex: string): [number, number, number] {
   if (!hex || typeof hex !== 'string') return [255, 255, 0]
   let raw = hex.trim()
   if (raw.startsWith('#')) raw = raw.slice(1)
@@ -237,7 +247,7 @@ function parseHexColor(hex) {
  * @param {Object} settings 设置对象
  * @returns {string} 应用高亮规则后的文本
  */
-function applyHighlightRules(text, settings) {
+function applyHighlightRules(text: string, settings: AppSettings | undefined): string {
   if (!text || !settings?.highlightRules?.length) return text
   let output = text
   for (const rule of settings.highlightRules) {
@@ -254,7 +264,7 @@ function applyHighlightRules(text, settings) {
     }
     const [r, g, b] = parseHexColor(rule.color)
     const ansi = `\x1b[38;2;${r};${g};${b}m`
-    output = output.replace(regex, (match) => `${ansi}${match}\x1b[0m`)
+    output = output.replace(regex, (match: string) => `${ansi}${match}\x1b[0m`)
   }
   return output
 }
@@ -265,7 +275,7 @@ function applyHighlightRules(text, settings) {
  * @param {string} s 文本字符串
  * @returns {number} 下标
  */
-function nextLineBreakEndIndex(s) {
+function nextLineBreakEndIndex(s: string): number {
   for (let i = 0; i < s.length; i++) {
     const c = s.charCodeAt(i)
     if (c === 0x0a) return i
@@ -283,7 +293,7 @@ function nextLineBreakEndIndex(s) {
  * @param {number} scrollback 滚动缓冲行数（由设置 clamp）
  * @returns {Terminal} 配置好的 Terminal 实例
  */
-function createTerminal(themeMode, scrollback) {
+function createTerminal(themeMode: 'dark' | 'light', scrollback: number): Terminal {
   return new Terminal({
     fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", Menlo, monospace',  // 左到右为字体的优先级
     fontSize: 14,
@@ -302,7 +312,10 @@ function createTerminal(themeMode, scrollback) {
  * @param {Terminal} term - xterm 终端实例
  * @param {Object} settingsRef 设置对象的引用，包含用户偏好设置
  */
-function applyTerminalSettings(term, settingsRef) {
+function applyTerminalSettings(
+  term: Terminal,
+  settingsRef: MutableRefObject<AppSettings>,
+): void {
   term.onSelectionChange(() => {  // 监听选中时复制：通过 settingsRef 实时读取，保证设置变化后立即生效
     const interact = settingsRef.current?.terminalInteract ?? true  // ?? 是空值合并运算符，表示如果 terminalInteract 不为 null 或 undefined 则使用它，否则默认 true
     if (!interact) return
@@ -314,7 +327,7 @@ function applyTerminalSettings(term, settingsRef) {
   
   const addCtx = () => {  // 右键粘贴：等 term.element 挂载后注册
     if (!term.element) { setTimeout(addCtx, 50); return }  // addCtx 函数递归检查 term.element 是否存在（xterm.js 挂载后才可用），不存在则 50ms 后重试
-    term.element.addEventListener('contextmenu', async (e) => {  // 在 term.element 上监听 contextmenu（右键菜单）事件
+    term.element.addEventListener('contextmenu', async (e: MouseEvent) => {  // 在 term.element 上监听 contextmenu（右键菜单）事件
       const interact = settingsRef.current?.terminalInteract ?? true
       if (!interact) return
       e.preventDefault()
@@ -329,7 +342,7 @@ function applyTerminalSettings(term, settingsRef) {
  * @param {string} s 文本字符串
  * @returns {string} 去掉已完整的 ANSI/OSC 等转义序列后的文本
  */
-function stripCompleteAnsiEscapes(s) {
+function stripCompleteAnsiEscapes(s: string): string {
   if (!s) return ''
   return s
     .replace(/\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]/g, '')
@@ -345,9 +358,9 @@ function stripCompleteAnsiEscapes(s) {
  * @param {string} s 文本字符串
  * @returns {{ body: string, carry: string }} 包含已去掉转义序列的文本和可能未闭合的转义前缀
  */
-function peelIncompleteAnsiSuffix(s) {
+function peelIncompleteAnsiSuffix(s: string): { body: string; carry: string } {
   if (!s) return { body: '', carry: '' }
-  let m
+  let m: RegExpMatchArray | null
   if ((m = s.match(/\x1b\](?:[^\x07\x1b]|\x1b(?!\\))*$/))) {
     return { body: s.slice(0, -m[0].length), carry: m[0] }
   }
@@ -368,7 +381,7 @@ function peelIncompleteAnsiSuffix(s) {
  * @param {string} s 文本字符串
  * @returns {string} 去掉其余 C0 控制符（保留 \t \n \r）后的文本
  */
-function stripOtherC0Controls(s) {
+function stripOtherC0Controls(s: string): string {
   return s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
 }
 
@@ -378,7 +391,7 @@ function stripOtherC0Controls(s) {
  * @param {string} chunk 终端输出
  * @returns {{ text: string, carry: string }} 包含已去掉转义序列的文本和可能未闭合的转义前缀
  */
-function stripAnsiForLogChunk(carry, chunk) {
+function stripAnsiForLogChunk(carry: string, chunk: string): { text: string; carry: string } {
   const raw = carry + chunk
   const { body, carry: nextCarry } = peelIncompleteAnsiSuffix(raw)
   const text = stripOtherC0Controls(stripCompleteAnsiEscapes(body))
@@ -393,7 +406,13 @@ function stripAnsiForLogChunk(carry, chunk) {
  * @param {{ current: { sessionId: string|null, stem: string|null } }} logFileStemStateRef 日志文件名状态引用，包含 sessionId 和 stem
  * @param {{ current?: object } | null} _settingsRef 预留与调用方签名一致（本函数内以创建时的 logKind 为准）
  */
-function setupLogging(session, settings, logFileRef, logFileStemStateRef, _settingsRef) {
+function setupLogging(
+  session: ActiveSession,
+  settings: AppSettings,
+  logFileRef: MutableRefObject<SessionLogHandle | null>,
+  logFileStemStateRef: MutableRefObject<{ sessionId: string | null; stem: string | null }>,
+  _settingsRef: MutableRefObject<AppSettings>,
+): void {
   if (normalizeLoggingMode(settings?.loggingMode) === 'none') return
   const logDir = resolveLoggingDirectory(settings)
   if (!logDir) return
@@ -425,7 +444,7 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
   // --- stream（追加）
   let pending = ''
   let ansiCarry = ''
-  let streamTimer = null
+  let streamTimer: number | null = null
   /** 刷新待处理流数据 */
   const flushPendingStream = () => {
     streamTimer = null
@@ -436,7 +455,7 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
   }
 
   /** 将数据追加到日志文件中 */
-  const enqueue = (chunk) => {
+  const enqueue = (chunk: string) => {
     if (logKind !== 'stream') return
     if (chunk === '' || chunk == null) return
     if (typeof chunk !== 'string') return
@@ -451,9 +470,9 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
 
   // --- buffer（整文件覆盖）
   /** xterm 终端实例 */
-  let terminal = null
+  let terminal: Terminal | null = null
   /** 定时器引用，用于延迟执行快照 */
-  let snapshotTimer = null
+  let snapshotTimer: number | null = null
   /** 快照延迟时间 */
   const SNAPSHOT_DEBOUNCE_MS = 80
   /** 刷新快照 */
@@ -504,7 +523,7 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
     }
   }
 
-  const setTerminal = (t) => {
+  const setTerminal = (t: Terminal | null) => {
     terminal = t
   }
 
@@ -523,21 +542,31 @@ function setupLogging(session, settings, logFileRef, logFileStemStateRef, _setti
  * @param {{ current: { setTerminal?: (t: import('@xterm/xterm').Terminal) => void, scheduleSnapshot?: () => void, enqueue?: (chunk: string) => void, flushNow?: () => void } | null }} logFileRef 会话日志：buffer / stream 由设置决定，flushNow 立即刷盘
  * @param {Object} settingsRef 设置引用，用于读取实时终端行为设置
  */
-async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, isCancelled, logFileRef, settingsRef) {
-  const { id, type } = session  // 从会话对象中提取会话 ID 和类型（SSH/Telnet/Serial）
+async function connectSession(
+  term: Terminal,
+  fitAddon: FitAddon,
+  session: ActiveSession,
+  onUpdate: (updates: Partial<ActiveSession>) => void,
+  cleanupRef: MutableRefObject<Array<() => void>>,
+  disconnectedRef: MutableRefObject<boolean>,
+  isCancelled: () => boolean,
+  logFileRef: MutableRefObject<SessionLogHandle | null>,
+  settingsRef: MutableRefObject<AppSettings>,
+): Promise<void> {
+  const { id, type } = session
   const terminalEncoding = sessionTerminalEncoding(session)
   const L = () => resolveEffectiveUiLanguage(settingsRef.current?.uiLanguage)
-  const writeInfo    = (m) => writelnWithLog(term, logFileRef, `\r\x1b[33m${m}\x1b[0m`)
-  const writeError   = (m) => writelnWithLog(term, logFileRef, `\r\x1b[31m${m}\x1b[0m`)
-  const writeSuccess = (m) => writelnWithLog(term, logFileRef, `\r\x1b[32m${m}\x1b[0m`)
+  const writeInfo = (m: string) => writelnWithLog(term, logFileRef, `\r\x1b[33m${m}\x1b[0m`)
+  const writeError = (m: string) => writelnWithLog(term, logFileRef, `\r\x1b[31m${m}\x1b[0m`)
+  const writeSuccess = (m: string) => writelnWithLog(term, logFileRef, `\r\x1b[32m${m}\x1b[0m`)
   // errorKnown:false 直出原文; true 则按 error 路径走 i18n
-  const terminalErr = (e) => formatThrownIpcError((p, params) => translateRender(L(), p, params), e)
+  const terminalErr = (e: unknown) => formatThrownIpcError((p, params) => translateRender(L(), p, params), e)
 
   /**
    * 连接断开处理函数：在终端显示断开消息，提示用户按 R 重连，更新会话状态为断开，并设置断连标记
    * @param {string} msgKey terminal.* 文案键
    */
-  const onDisconnect = (msgKey) => {
+  const onDisconnect = (msgKey: string) => {
     writeInfo(`\r\n${translateRender(L(), msgKey)}`)
     writeInfo(`\x1b[2m${translateRender(L(), 'terminal.pressR')}\x1b[0m`)
     disconnectedRef.current = true
@@ -546,7 +575,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
 
   // 串口下行小块聚合：高亮规则需在足够长的文本上匹配，UART 常逐字节到达
   let serialHighlightBuf = ''
-  let serialHighlightIdleTimer = null
+  let serialHighlightIdleTimer: number | null = null
   /** 串口高亮缓冲区空闲时刷新：避免长时间无数据时高亮规则无法匹配 */
   const flushSerialHighlightIdle = () => {
     serialHighlightIdleTimer = null
@@ -568,7 +597,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
    * 数据接收处理函数：将接收到的二进制数据转换为 UTF-8 字符串，写入终端并记录日志
    * @param {string} data 接收到的二进制数据字符串
    */
-  const recv = (data) => {
+  const recv = (data: string) => {
     const decoded = decodeIncomingTerminalWire(data, terminalEncoding)
     if (type !== 'serial') { // 非串口：直接应用高亮规则
       const highlighted = applyHighlightRules(decoded, settingsRef.current)
@@ -606,45 +635,46 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
   }
 
   if (type === 'ssh') {
-    writeInfo(translateRender(L(), 'terminal.sshConnecting', { host: session.host, port: session.port || 22 }))
+    writeInfo(translateRender(L(), 'terminal.sshConnecting', { host: session.host ?? '', port: session.port ?? 22 }))
     try {
-      const connectPayload = {
+      const zterm = getZterm()
+      const connectPayload: Record<string, unknown> = {
         ...session,
         algorithms: settingsRef.current?.algorithmPreferences,
       }
-      const res = await window.zterm.ssh.connect(id, connectPayload)
+      const res = await zterm.ssh.connect(id, connectPayload)
       if (isCancelled?.()) return   // 组件已卸载，放弃后续注册
       assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
       const dim = fitAddon.proposeDimensions() || { cols: 80, rows: 24 }  // 获取终端建议尺寸（列和行），默认80x24
-      window.zterm.ssh.resize(id, dim.cols, dim.rows)
+      zterm.ssh.resize(id, dim.cols, dim.rows)
 
-      const r1 = window.zterm.ssh.onData(id, recv)  // 注册 SSH 数据接收事件监听器，使用 recv 函数处理数据
-      const r2 = window.zterm.ssh.onClose(id, () => onDisconnect('terminal.closed'))  // 注册 SSH 关闭事件监听器，调用 onDisconnect 处理断开
+      const r1 = zterm.ssh.onData(id, recv)  // 注册 SSH 数据接收事件监听器，使用 recv 函数处理数据
+      const r2 = zterm.ssh.onClose(id, () => onDisconnect('terminal.closed'))  // 注册 SSH 关闭事件监听器，调用 onDisconnect 处理断开
       const d1 = term.onData((data) => {  // 注册终端数据事件监听器，用户输入时发送到 SSH（回显由对端数据经 recv 记入日志，避免与本地按键重复）
-        window.zterm.ssh.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
+        zterm.ssh.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
       })
-      const d2 = term.onResize(({ cols, rows }) => window.zterm.ssh.resize(id, cols, rows))  // 注册终端尺寸变化事件监听器，调整 SSH 连接尺寸
-      cleanupRef.current.push(r1, r2, () => d1.dispose(), () => d2.dispose(), () => window.zterm.ssh.disconnect(id))  // 将所有清理函数添加到 cleanupRef 列表，包括移除监听器和断开连接
+      const d2 = term.onResize(({ cols, rows }) => zterm.ssh.resize(id, cols, rows))  // 注册终端尺寸变化事件监听器，调整 SSH 连接尺寸
+      cleanupRef.current.push(r1, r2, () => d1.dispose(), () => d2.dispose(), () => zterm.ssh.disconnect(id))  // 将所有清理函数添加到 cleanupRef 列表，包括移除监听器和断开连接
 
       if (session.enableSftp) {  // 如果会话配置启用 SFTP，则尝试连接 SFTP，并在连接成功后更新会话状态以显示 SFTP 功能
         try {
-          const sftpPayload = {
+          const sftpPayload: Record<string, unknown> = {
             ...session,
             algorithms: settingsRef.current?.algorithmPreferences,
           }
-          const sr = await window.zterm.sftp.connect(id + '-sftp', sftpPayload)
+          const sr = await zterm.sftp.connect(id + '-sftp', sftpPayload)
           if (isCancelled?.()) return
           if (sr.success) {
             onUpdate({ status: 'connected', sftpReady: true })
-            cleanupRef.current.push(() => window.zterm.sftp.disconnect(id + '-sftp'))
+            cleanupRef.current.push(() => zterm.sftp.disconnect(id + '-sftp'))
           } else {
             assertIpcSuccess(sr)
           }
         } catch (e) { 
           writeError(terminalErr(e))
-          window.zterm.ssh.sendData(id, '\n', terminalEncoding)
+          zterm.ssh.sendData(id, '\n', terminalEncoding)
           onUpdate({ sftpReady: false })
         }
       }
@@ -655,19 +685,20 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
     }
 
   } else if (type === 'telnet') {
-    writeInfo(translateRender(L(), 'terminal.telnetConnecting', { host: session.host, port: session.port || 23 }))
+    writeInfo(translateRender(L(), 'terminal.telnetConnecting', { host: session.host ?? '', port: session.port ?? 23 }))
     try {
-      const res = await window.zterm.telnet.connect(id, session)
+      const zterm = getZterm()
+      const res = await zterm.telnet.connect(id, session as unknown as Record<string, unknown>)
       if (isCancelled?.()) return
       assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
-      const r1 = window.zterm.telnet.onData(id, recv)
-      const r2 = window.zterm.telnet.onClose(id, () => onDisconnect('terminal.closed'))
+      const r1 = zterm.telnet.onData(id, recv)
+      const r2 = zterm.telnet.onClose(id, () => onDisconnect('terminal.closed'))
       const d1 = term.onData((data) => {
-        window.zterm.telnet.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
+        zterm.telnet.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
       })
-      cleanupRef.current.push(r1, r2, () => d1.dispose(), () => window.zterm.telnet.disconnect(id))
+      cleanupRef.current.push(r1, r2, () => d1.dispose(), () => zterm.telnet.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
       writeError(terminalErr(e))
@@ -675,17 +706,18 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
     }
 
   } else if (type === 'serial') {
-    writeInfo(translateRender(L(), 'terminal.serialOpening', { path: session.path, baud: session.baudRate || 9600 }))
+    writeInfo(translateRender(L(), 'terminal.serialOpening', { path: session.path ?? '', baud: session.baudRate ?? 9600 }))
     try {
-      const res = await window.zterm.serial.connect(id, session)
+      const zterm = getZterm()
+      const res = await zterm.serial.connect(id, session as unknown as Record<string, unknown>)
       if (isCancelled?.()) return
       assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.serialOpened'))
       onUpdate({ status: 'connected' })
-      const r1 = window.zterm.serial.onData(id, recv)
-      const r2 = window.zterm.serial.onClose(id, () => onDisconnect('terminal.portClosed'))
+      const r1 = zterm.serial.onData(id, recv)
+      const r2 = zterm.serial.onClose(id, () => onDisconnect('terminal.portClosed'))
       const d1 = term.onData((data) => {
-        window.zterm.serial.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
+        zterm.serial.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
       })
       cleanupRef.current.push(() => { // 清理：清除定时器，退出前刷出串口尾块（与 recv 一致记入日志）
         if (serialHighlightIdleTimer != null) {
@@ -699,7 +731,7 @@ async function connectSession(term, fitAddon, session, onUpdate, cleanupRef, dis
           logFileRef.current?.enqueue?.(highlighted)
           serialHighlightBuf = ''
         }
-      }, r1, r2, () => d1.dispose(), () => window.zterm.serial.disconnect(id))
+      }, r1, r2, () => d1.dispose(), () => zterm.serial.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
       writeError(terminalErr(e))

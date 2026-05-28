@@ -1,3 +1,6 @@
+import type { TranslateFn } from '../../types/i18n'
+import type { IpcThrownError } from '../../types/errors'
+import type { IpcResult } from '../../types/zterm'
 import { ipcErrorFields, isIpcFailure } from './ipcResponse'
 
 /**
@@ -7,7 +10,11 @@ import { ipcErrorFields, isIpcFailure } from './ipcResponse'
  * @param {Record<string, string|number>} [params] 错误参数（如{name: '张三'}）
  * @returns {string} 展示文案
  */
-export function formatIpcError(t, code, params) {
+export function formatIpcError(
+  t: TranslateFn,
+  code: unknown,
+  params?: Record<string, string | number>,
+): string {
   const c = String(code ?? '').trim()
   if (!c) return ''
   const p = { ...(params || {}) }
@@ -32,13 +39,20 @@ export function formatIpcError(t, code, params) {
  * @param {string} [fallbackKey] i18n 键
  * @returns {boolean} 是否已 alert
  */
-export function alertIpcFailure(t, res, fallbackKey) {
+export function alertIpcFailure(
+  t: TranslateFn,
+  res: IpcResult | null | undefined,
+  fallbackKey?: string,
+): boolean {
   if (!isIpcFailure(res)) return false
   alert(formatIpcResponseError(t, res) || (fallbackKey ? t(fallbackKey) : ''))
   return true
 }
 
-export function formatIpcResponseError(t, res) {
+export function formatIpcResponseError(
+  t: TranslateFn,
+  res: IpcResult | null | undefined,
+): string {
   if (!isIpcFailure(res)) return ''
   const { error, errorParams, errorKnown } = ipcErrorFields(res)
   if (errorKnown === false) return String(error ?? '')
@@ -51,14 +65,15 @@ export function formatIpcResponseError(t, res) {
  * @param {unknown} err 错误对象
  * @returns {string} 展示文案
  */
-export function formatThrownIpcError(t, err) {
+export function formatThrownIpcError(t: TranslateFn, err: unknown): string {
   if (!err) return ''
+  const e = err as IpcThrownError
   return formatIpcResponseError(t, {
     success: false,
-    errorKnown: err.errorKnown,
+    errorKnown: e.errorKnown ?? false,
     content: {
-      error: err.message ?? err.error,
-      errorParams: err.errorParams,
+      error: e.message ?? String((err as { error?: string }).error ?? ''),
+      errorParams: e.errorParams,
     },
   })
 }

@@ -6,7 +6,7 @@ import { EXPORT_ENVELOPE_VERSION, IMPORT_MAX_BYTES } from './constants'
  * @param {File} file 导入的 JSON 文件
  * @returns {Promise<unknown>} 解析后的 JSON 对象
  */
-export function readImportJson(file) {
+export function readImportJson(file: File): Promise<unknown> {
   return new Promise((resolve, reject) => {
     if (!file || !(file.size >= 0)) {
       reject(createImportError('readFailed'))
@@ -35,11 +35,11 @@ export function readImportJson(file) {
  * @param {'sessions'|'settings'} expectedKind 期望的类型
  * @returns {unknown} 解包后的数据（会话列表或设置对象）
  */
-export function unwrapExportPayload(parsed, expectedKind) {
+export function unwrapExportPayload(parsed: unknown, expectedKind: 'sessions' | 'settings'): unknown {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {  // 如果解析后的 JSON 对象不是对象或数组，则抛出错误
     throw createImportError('invalidPayload')
   }
-  const envelope = /** @type {Record<string, unknown>} */ (parsed)  // 将解析后的 JSON 对象转换为对象
+  const envelope = parsed as Record<string, unknown>  // 将解析后的 JSON 对象转换为对象
   if (envelope.ztermExport !== expectedKind) {
     throw createImportError('wrongFileType', { kindKey: expectedKind })
   }
@@ -63,7 +63,7 @@ export function unwrapExportPayload(parsed, expectedKind) {
  * @param {unknown} data 数据
  * @returns {Record<string, unknown>} 导出 envelope
  */
-export function buildExportEnvelope(kind, data) {
+export function buildExportEnvelope(kind: 'sessions' | 'settings', data: unknown) {
   return {
     ztermExport: kind,
     version: EXPORT_ENVELOPE_VERSION,

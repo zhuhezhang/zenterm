@@ -195,7 +195,7 @@ zterm/
 │
 ├── index.html                           # Vite HTML 入口（CSP 由 vite 插件注入）
 ├── vite.config.js                       # React (oxc) 插件、开发服务器、内联 Electron CSP 插件
-├── jsconfig.json                        # 路径别名 / JS 工具提示
+├── tsconfig.json                        # TypeScript / IDE（src、electron、shared、tests）
 ├── package.json                         # 脚本、依赖、electron-builder 配置
 ├── package-lock.json
 ├── README.md                            # 英文文档

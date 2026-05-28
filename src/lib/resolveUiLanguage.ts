@@ -5,7 +5,7 @@
  * @param {string[]} tags 语言标签列表
  * @returns {'zh'|'en'} 解析后的语言
  */
-export function detectLangFromLocaleTags(tags) {
+export function detectLangFromLocaleTags(tags: string[]) {
   for (const tag of tags) {
     const lower = String(tag || '').toLowerCase()
     if (lower === 'zh' || lower.startsWith('zh-')) return 'zh'
@@ -51,7 +51,7 @@ export function resolveEffectiveUiLanguage(
  * 同步界面语言至主进程 (仅传 zh/en, 不传 auto) 
  * @param {string|undefined} stored `auto` | `zh` | `en`
  */
-export function syncUiLanguageToMain(stored) {
+export function syncUiLanguageToMain(stored?: string) {
   try {
     window.zterm?.others?.setUiLanguage?.(resolveEffectiveUiLanguage(stored))
   } catch (_) {}

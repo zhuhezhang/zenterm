@@ -1,36 +1,25 @@
+import type { TranslateFn } from '../../types/i18n'
+import type { SessionImportWarning } from '../../types/import'
 import { pushImportWarning } from '../import/pushImportWarning'
 import { SESSION_GROUP_LABEL_ERROR_KEYS } from './defaults'
 
-/**
- * 添加导入警告
- * @param {SessionImportWarning[]} warnings 导入警告列表
- * @param {string} code 警告代码
- * @param {Record<string, string|number>} [params] 警告参数
- */
-export function pushSessionImportWarning(warnings, code, params) {
+export function pushSessionImportWarning(
+  warnings: SessionImportWarning[],
+  code: string,
+  params?: Record<string, string | number>,
+): void {
   pushImportWarning(warnings, code, params)
 }
 
-/**
- * 解析连接字段标签
- * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {string} fieldKey 字段键
- * @returns {string} 字段标签
- */
-function resolveConnectFieldLabel(t, fieldKey) {
+function resolveConnectFieldLabel(t: TranslateFn, fieldKey: string): string {
   const labelKey = `connect.${fieldKey}`
   const label = t(labelKey)
   return label !== labelKey ? label : fieldKey
 }
 
-/**
- * 解析连接原因
- * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {string} reason 原因
- * @returns {string} 原因文本
- */
-function formatSessionSkipReason(t, reason) {
-  const connectKey = SESSION_GROUP_LABEL_ERROR_KEYS[reason]
+function formatSessionSkipReason(t: TranslateFn, reason: string): string {
+  const connectKey =
+    SESSION_GROUP_LABEL_ERROR_KEYS[reason as keyof typeof SESSION_GROUP_LABEL_ERROR_KEYS]
   if (connectKey) {
     const msg = t(connectKey)
     if (msg !== connectKey) return msg
@@ -40,14 +29,11 @@ function formatSessionSkipReason(t, reason) {
   return msg !== key ? msg : reason
 }
 
-/**
- * 格式化导入警告
- * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {SessionImportWarning} warning 导入警告
- * @returns {string} 格式化后的导入警告
- */
-export function formatSessionImportWarning(t, warning) {
-  const params = { ...(warning.params || {}) }
+export function formatSessionImportWarning(
+  t: TranslateFn,
+  warning: SessionImportWarning,
+): string {
+  const params: Record<string, string | number> = { ...(warning.params || {}) }
   if (typeof params.field === 'string') {
     params.fieldLabel = resolveConnectFieldLabel(t, params.field)
   }
@@ -63,13 +49,10 @@ export function formatSessionImportWarning(t, warning) {
   return msg !== key ? msg : warning.code
 }
 
-/**
- * 格式化导入警告列表
- * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {SessionImportWarning[]} warnings 导入警告列表
- * @returns {string} 格式化后的导入警告列表
- */
-export function formatSessionImportWarnings(t, warnings) {
+export function formatSessionImportWarnings(
+  t: TranslateFn,
+  warnings: SessionImportWarning[],
+): string {
   if (!warnings?.length) return ''
   return warnings.map((w) => formatSessionImportWarning(t, w)).join('\n')
 }

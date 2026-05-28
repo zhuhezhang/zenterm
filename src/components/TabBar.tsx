@@ -1,6 +1,9 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, type DragEvent, type MouseEvent } from 'react'
 import { useI18n } from '../context/I18nContext'
 import ConnectionTypeIcon from './common'
+import type { TabBarProps } from '../types/components'
+import type { ActiveSession } from '../types/session'
+import type { TabContextMenu } from '../types/tabBar'
 import '../styles/tabbar.css'
 
 /** 状态点图标映射 */
@@ -22,11 +25,20 @@ const STATUS_CLS = { connecting: 'connecting', connected: 'connected', disconnec
  * @param {function} props.onSaveOutput 保存标签页终端输出的回调函数，参数为会话 ID
  * @param {function} [props.onClearScreen] 清屏回调，参数为会话 ID（对应标签页的 xterm.clear）
  */
-export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, onReorder, onSaveOutput, onClearScreen }) {
+export default function TabBar({
+  sessions,
+  activeId,
+  onSelect,
+  onClose,
+  onNew,
+  onReorder,
+  onSaveOutput,
+  onClearScreen,
+}: TabBarProps) {
   const { t } = useI18n()
-  const [ctxMenu, setCtxMenu] = useState(null)  // 右键菜单状态，包含 { x, y, id, idx }，表示菜单位置和对应的标签页 ID 和索引
-  const dragRef = useRef(null)  // 当前拖拽的标签 ID
-  const tabsRef = useRef(null)  // 标签容器的 DOM 引用
+  const [ctxMenu, setCtxMenu] = useState<TabContextMenu | null>(null)
+  const dragRef = useRef<string | null>(null)
+  const tabsRef = useRef<HTMLDivElement | null>(null)
   const prevCountRef = useRef(sessions.length) // 上一次会话数量的引用，用于检测新增标签页
 
   // useEffect 监听 sessions.length 变化，如果增加了新的会话且 tabsRef 已经挂载，就将 scrollLeft 设置为 scrollWidth，
@@ -40,8 +52,8 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
 
   useEffect(() => {  // 右键菜单打开后，点击菜单外区域自动关闭
     if (!ctxMenu) return
-    const onDocMouseDown = (e) => {
-      if (e.target?.closest?.('.tab-context-menu')) return
+    const onDocMouseDown = (e: globalThis.MouseEvent) => {
+      if ((e.target as Element | null)?.closest?.('.tab-context-menu')) return
       closeCtx()
     }
     document.addEventListener('mousedown', onDocMouseDown)
@@ -55,7 +67,7 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
    * @param {string} id 要关闭的标签页 ID
    * @param {number} idx 要关闭的标签页索引
    */
-  const openCtx = (e, id, idx) => {
+  const openCtx = (e: MouseEvent, id: string, idx: number) => {
     e.preventDefault()
     e.stopPropagation()  // 阻止事件冒泡，避免触发父元素的点击事件
     setCtxMenu({ x: e.clientX, y: e.clientY, id, idx })
@@ -67,22 +79,22 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
    * 关闭标签页
    * @param {string} id 要关闭的标签页 ID
    */
-  const closeTab    = (id) => { onClose(id); closeCtx() }
+  const closeTab = (id: string) => { onClose(id); closeCtx() }
   /**
    * 关闭其他标签页
    * @param {string} id 要保留的标签页 ID
    */
-  const closeOthers = (id) => { sessions.filter(s => s.id !== id).forEach(s => onClose(s.id)); closeCtx() }
+  const closeOthers = (id: string) => { sessions.filter(s => s.id !== id).forEach(s => onClose(s.id)); closeCtx() }
   /**
    * 关闭左侧标签页
    * @param {number} idx 要关闭的标签页索引
    */
-  const closeLeft   = (idx) => { sessions.slice(0, idx).forEach(s => onClose(s.id)); closeCtx() }
+  const closeLeft = (idx: number) => { sessions.slice(0, idx).forEach(s => onClose(s.id)); closeCtx() }
   /**
    * 关闭右侧标签页
    * @param {number} idx 要关闭的标签页索引
    */
-  const closeRight  = (idx) => { sessions.slice(idx + 1).forEach(s => onClose(s.id)); closeCtx() }
+  const closeRight = (idx: number) => { sessions.slice(idx + 1).forEach(s => onClose(s.id)); closeCtx() }
   /** 关闭全部标签页 */
   const closeAll    = () => { sessions.forEach(s => onClose(s.id)); closeCtx() }
 
@@ -92,7 +104,7 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
    * @param {Event} e 拖拽事件对象
    * @param {string} id 当前拖拽的标签页 ID
    */
-  const onDragStart = (e, id) => {
+  const onDragStart = (e: DragEvent<HTMLDivElement>, id: string) => {
     dragRef.current = id
     e.dataTransfer.effectAllowed = 'move'  // 告诉浏览器这次拖拽是移动操作；这会影响拖拽光标样式和可用 drop 行为；说明用户移动标签，而不是复制
     e.dataTransfer.setData('text/plain', id)  // 设置拖拽数据为标签 ID，虽然在这个实现中我们不依赖这个数据，但它是必须的，否则某些浏览器可能无法正确处理拖拽事件
@@ -104,7 +116,7 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
    * onDragOver 调用 e.preventDefault() 以允许 drop，并设置拖拽效果为 move。
    * @param {Event} e 拖拽事件对象
    */
-  const onDragOver = (e) => {
+  const onDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
   }
@@ -115,7 +127,7 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
    * @param {Event} e 拖拽事件对象
    * @param {string} toId 放下目标的标签页 ID
    */
-  const onDrop = (e, toId) => {
+  const onDrop = (e: DragEvent<HTMLDivElement>, toId: string) => {
     e.preventDefault()
     const fromId = dragRef.current
     if (!fromId || fromId === toId) return
@@ -128,7 +140,7 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
    * onDragEnd 将 dragRef.current 重置为 null，并移除 dragging 类。
    * @param {Event} e 拖拽事件对象
    */
-  const onDragEnd = (e) => {
+  const onDragEnd = (e: DragEvent<HTMLDivElement>) => {
     e.currentTarget.classList.remove('dragging')
     dragRef.current = null
   }
@@ -147,9 +159,10 @@ export default function TabBar({ sessions, activeId, onSelect, onClose, onNew, o
             onDragEnd={onDragEnd}
             onDragOver={onDragOver}
             onDrop={(e) => onDrop(e, s.id)}
+            title={s.label || `${s.type?.toUpperCase()} ${s.host || s.path || ''}`}
           >
             <span className="tab-icon">{ConnectionTypeIcon[s.type] || '⌨'}</span>
-            <span className={`tab-status ${STATUS_CLS[s.status] || ''}`}>{STATUS_DOT[s.status] || '○'}</span>
+            <span className={`tab-status ${STATUS_CLS[s.status as keyof typeof STATUS_CLS] || ''}`}>{STATUS_DOT[s.status as keyof typeof STATUS_DOT] || '○'}</span>
             <span className="tab-label">{s.label || `${s.type?.toUpperCase()} ${s.host || s.path || ''}`}</span>
             {s.sftpReady && <span className="tab-sftp-badge" title={t('tabbar.sftpReady')}>⇅</span>}
             <button className="tab-close" onClick={e => { e.stopPropagation(); onClose(s.id) }} title={t('tabbar.closeTab')}>×</button>

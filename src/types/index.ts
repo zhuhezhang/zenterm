@@ -1,0 +1,18 @@
+/** 前端领域类型统一入口（按模块再导出，便于 `@/types` 引用） */
+
+export type * from './algorithm'
+export type * from './app'
+export type * from './components'
+export type * from './connectDialog'
+export type * from './credentials'
+export type * from './errors'
+export type * from './i18n'
+export type * from './import'
+export type * from './session'
+export type * from './settings'
+export type * from './settingsUi'
+export type * from './sftp'
+export type * from './tabBar'
+export type * from './terminal'
+
+export type * from './zterm'

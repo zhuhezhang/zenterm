@@ -1,14 +1,11 @@
-import { ipcContent, ipcErrorFields, isIpcSuccess } from './ipcResponse'
 import type { IpcThrownError } from '../../types/errors'
+import type { IpcContent, IpcResult } from '../../types/zterm'
+import { ipcContent, ipcErrorFields, isIpcSuccess } from './ipcResponse'
 
 /**
  * 将 IPC 响应转为 Error (保留 errorParams / errorKnown 供 formatThrownIpcError)
  */
-export function ipcErrorFromResponse(res: {
-  success?: boolean
-  errorKnown?: boolean
-  content?: Record<string, unknown>
-}): IpcThrownError {
+export function ipcErrorFromResponse(res: IpcResult | null | undefined): IpcThrownError {
   const { error, errorParams, errorKnown } = ipcErrorFields(res)
   const e = new Error(error) as IpcThrownError
   if (errorParams) e.errorParams = errorParams
@@ -21,7 +18,9 @@ export function ipcErrorFromResponse(res: {
  * @param {{ success?: boolean, errorKnown?: boolean, content?: Record<string, unknown> } | null | undefined} res
  * @returns {NonNullable<typeof res>}
  */
-export function assertIpcSuccess(res) {
+export function assertIpcSuccess<T extends IpcContent = IpcContent>(
+  res: IpcResult<T> | null | undefined,
+): IpcResult<T> & { success: true } {
   if (!isIpcSuccess(res)) {
     throw ipcErrorFromResponse(
       res ?? { success: false, errorKnown: true, content: { error: 'app.invalidRequest' } },
@@ -35,6 +34,8 @@ export function assertIpcSuccess(res) {
  * @param {{ success?: boolean, content?: Record<string, unknown> } | null | undefined} res
  * @returns {Record<string, unknown>}
  */
-export function unwrapIpcOk(res) {
-  return ipcContent(assertIpcSuccess(res))
+export function unwrapIpcOk<T extends IpcContent = IpcContent>(
+  res: IpcResult<T> | null | undefined,
+): T {
+  return ipcContent(assertIpcSuccess(res)) as T
 }

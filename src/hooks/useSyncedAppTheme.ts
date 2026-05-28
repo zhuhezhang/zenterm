@@ -1,4 +1,5 @@
 import { useState, useLayoutEffect } from 'react'
+import type { AppTheme } from '@/types/settings'
 import { resolveEffectiveAppTheme } from '@/theme/appTheme'
 
 /**
@@ -6,8 +7,8 @@ import { resolveEffectiveAppTheme } from '@/theme/appTheme'
  * @param {'dark'|'light'|'auto'} appTheme
  * @returns {'dark'|'light'} 当前实际亮暗
  */
-export function useSyncedAppTheme(appTheme) {
-  const [effective, setEffective] = useState(() => resolveEffectiveAppTheme(appTheme))
+export function useSyncedAppTheme(appTheme: AppTheme): 'dark' | 'light' {
+  const [effective, setEffective] = useState<'dark' | 'light'>(() => resolveEffectiveAppTheme(appTheme))
 
   useLayoutEffect(() => {
     const apply = () => {

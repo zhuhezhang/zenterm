@@ -1,4 +1,6 @@
 import { formatSettingsImportWarnings } from '../settings/importWarnings'
+import type { SettingsImportWarning } from '../../types/import'
+import type { TranslateFn } from '../../types/i18n'
 import { formatImportError } from './handleImportErrors'
 
 /**
@@ -6,7 +8,7 @@ import { formatImportError } from './handleImportErrors'
  * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
  * @param {import('../settings/importWarnings').SettingsImportWarning[]} warnings 导入警告列表
  */
-export function reportSettingsImportResult(t, warnings) {
+export function reportSettingsImportResult(t: TranslateFn, warnings: SettingsImportWarning[]) {
   if (warnings.length) {
     alert(t('settings.importSettingsPartial', { details: formatSettingsImportWarnings(t, warnings) }))
   } else {
@@ -19,6 +21,6 @@ export function reportSettingsImportResult(t, warnings) {
  * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
  * @param {unknown} err 错误
  */
-export function reportSettingsImportError(t, err) {
+export function reportSettingsImportError(t: TranslateFn, err: unknown) {
   alert(t('settings.importFail', { msg: formatImportError(t, err) }))
 }

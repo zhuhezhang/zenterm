@@ -1,19 +1,20 @@
+import type { ChangeEvent } from 'react'
+import type { TranslateFn } from '../../types/i18n'
+import type { SessionImportWarning } from '../../types/import'
+import type { SavedSession } from '../../types/session'
 import { validateAndParseSessionsImport } from './parseSessionsImport'
 import { mergeImportedSessions } from './mergeImportedSessions'
 import { formatSessionImportWarnings } from '../session/importWarnings'
 import { formatImportError } from './handleImportErrors'
 
-/**
- * 解析、合并导入会话并吸入 vault 明文敏感字段
- * @param {File} file 导入的 JSON 文件对象
- * @param {Record<string, unknown>[]} savedSessions 现有会话列表
- * @param {(sessions: Record<string, unknown>[]) => Promise<Record<string, unknown>[]>} absorbSecrets 吸入 vault 明文敏感字段
- * @returns {Promise<{ sessions: Record<string, unknown>[], addedCount: number, warnings: import('../session/importWarnings').SessionImportWarning[] }>} 导入后的会话列表、新增数量和导入警告列表
- */
-export async function applySessionsImport(file, savedSessions, absorbSecrets) {
+export async function applySessionsImport(
+  file: File,
+  savedSessions: SavedSession[],
+  absorbSecrets: (sessions: SavedSession[]) => Promise<SavedSession[]>,
+): Promise<{ sessions: SavedSession[]; addedCount: number; warnings: SessionImportWarning[] }> {
   const beforeCount = savedSessions.length
   const { sessions: imported, warnings: parseWarnings } = await validateAndParseSessionsImport(file)
-  const mergeWarnings = []
+  const mergeWarnings: SessionImportWarning[] = []
   const merged = mergeImportedSessions(savedSessions, imported, mergeWarnings)
   const sessions = await absorbSecrets(merged)
   return {
@@ -23,12 +24,10 @@ export async function applySessionsImport(file, savedSessions, absorbSecrets) {
   }
 }
 
-/**
- * 报告导入会话结果
- * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {{ addedCount: number, warnings: import('../session/importWarnings').SessionImportWarning[] }} result 导入结果
- */
-export function reportSessionsImportResult(t, { addedCount, warnings }) {
+export function reportSessionsImportResult(
+  t: TranslateFn,
+  { addedCount, warnings }: { addedCount: number; warnings: SessionImportWarning[] },
+): void {
   if (warnings.length) {
     alert(t('settings.importSessionsPartial', {
       n: addedCount,
@@ -39,19 +38,10 @@ export function reportSessionsImportResult(t, { addedCount, warnings }) {
   }
 }
 
-/**
- * 报告导入会话错误
- * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {unknown} err 错误
- */
-export function reportSessionsImportError(t, err) {
+export function reportSessionsImportError(t: TranslateFn, err: unknown): void {
   alert(t('settings.importFail', { msg: formatImportError(t, err) }))
 }
 
-/**
- * 重置 file input，以便可再次选择同一文件
- * @param {Event & { target: HTMLInputElement }} e 事件
- */
-export function resetImportFileInput(e) {
+export function resetImportFileInput(e: ChangeEvent<HTMLInputElement>): void {
   e.target.value = ''
 }

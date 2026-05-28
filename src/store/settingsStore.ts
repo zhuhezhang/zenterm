@@ -1,4 +1,7 @@
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults'
+import type { AppSettings } from '../types/settings'
+import type { TranslateFn } from '../types/i18n'
+import type { SettingsImportWarning } from '../types/import'
 import { syncUiLanguageToMain } from '../lib/resolveUiLanguage'
 import { downloadJsonExport } from '../lib/import/downloadJsonExport'
 import { validateAndParseSettingsImport } from '../lib/import/parseSettingsImport'
@@ -42,7 +45,7 @@ export function getDownloadsPathCached() {
  * @param {string} base 系统下载目录
  * @returns {string}
  */
-function buildDefaultLogPathFromBase(base) {
+function buildDefaultLogPathFromBase(base: string) {
   if (!base || typeof base !== 'string') return ''
   const trimmed = base.replace(/[/\\]+$/, '')
   const sep = trimmed.includes('\\') ? '\\' : '/'
@@ -62,7 +65,7 @@ export function getDefaultLogPath() {
  * @param {{ logPath?: string }} [settings] 当前应用设置
  * @returns {string} 实际用于写入日志的目录
  */
-export function resolveLoggingDirectory(settings) {
+export function resolveLoggingDirectory(settings?: Pick<AppSettings, 'logPath'>) {
   try {
     const custom = settings?.logPath != null ? String(settings.logPath).trim() : ''
     if (custom) return custom
@@ -76,7 +79,7 @@ export function resolveLoggingDirectory(settings) {
  * 加载设置项，从 localStorage 获取并解析 JSON，如果失败则返回默认设置
  * @returns {Object} 设置项对象
  */
-export function loadSettings() {
+export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY)
     const saved = raw ? JSON.parse(raw) : {}
@@ -106,7 +109,7 @@ export function loadSettings() {
  * 保存设置项，将设置对象序列化为 JSON 存储到 localStorage 中
  * @param {Object} settings 要保存的设置项对象
  */
-export function saveSettings(settings) {
+export function saveSettings(settings: AppSettings): void {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)) } catch (e) {}
   syncUiLanguageToMain(settings?.uiLanguage)
 }
@@ -115,7 +118,7 @@ export function saveSettings(settings) {
  * 导设置项为 JSON 文件，文件名包含当前日期
  * @param {Object} settings 要导出的设置对象
  */
-export async function exportSettings(settings, t) {
+export async function exportSettings(settings: AppSettings, t: TranslateFn): Promise<void> {
   await downloadJsonExport('settings', settings, t)
 }
 
@@ -125,7 +128,10 @@ export async function exportSettings(settings, t) {
  * @param {Object} currentSettings 导入前的当前设置
  * @returns {Promise<{ settings: Object, warnings: import('../lib/settings/importWarnings').SettingsImportWarning[] }>}
  */
-export function importSettings(file, currentSettings) {
+export function importSettings(
+  file: File,
+  currentSettings: AppSettings,
+): Promise<{ settings: AppSettings; warnings: SettingsImportWarning[] }> {
   return validateAndParseSettingsImport(file, currentSettings)
 }
 
