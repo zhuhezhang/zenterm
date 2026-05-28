@@ -7,8 +7,8 @@ export const DEFAULT_TERMINAL_ENCODING = 'utf-8'
 
 /**
  * 规范编码名，供 TextDecoder / iconv-lite 使用
- * @param {string} [enc]
- * @returns {string}
+ * @param {string} [enc] 编码名
+ * @returns {string} 规范编码名
  */
 export function normalizeTerminalEncoding(enc) {
   const e = (enc && String(enc).trim().toLowerCase()) || DEFAULT_TERMINAL_ENCODING
@@ -20,8 +20,8 @@ export function normalizeTerminalEncoding(enc) {
 
 /**
  * 主进程 `Buffer#toString('binary')` / IPC 传来的「每字节一码元」字符串 → Uint8Array
- * @param {string} binary
- * @returns {Uint8Array}
+ * @param {string} binary 「每字节一码元」字符串
+ * @returns {Uint8Array} Uint8Array 字节数组
  */
 export function uint8ArrayFromBinaryWire(binary) {
   const bytes = new Uint8Array(binary.length)

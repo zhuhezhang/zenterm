@@ -2,8 +2,6 @@ import type {
   CSSProperties,
   DragEvent,
   MouseEvent,
-  MutableRefObject,
-  ReactNode,
   RefObject,
 } from 'react'
 import type { AppTheme, AppSettings } from './settings'
@@ -147,14 +145,14 @@ export interface SessionTreeNodeComponentProps {
   setRenaming: (v: string | null) => void
   renameGroup: (oldPath: string, newName: string) => void
   renameGroupInputRef: RefObject<HTMLInputElement | null>
-  ignoreRenameGroupBlurRef: MutableRefObject<boolean>
+  ignoreRenameGroupBlurRef: RefObject<boolean>
   renamingSession: string | null
   renameSessionVal: string
   setRenamingSession: (v: string | null) => void
   setRenameSessionVal: (v: string) => void
   renameSession: (savedId: string, newLabel: string) => void
   renameSessionInputRef: RefObject<HTMLInputElement | null>
-  ignoreRenameSessionBlurRef: MutableRefObject<boolean>
+  ignoreRenameSessionBlurRef: RefObject<boolean>
   dStart: (e: DragEvent, id: string, type: string) => void
   dEnd: () => void
   dOver: (e: DragEvent, id: string, zone: string) => void

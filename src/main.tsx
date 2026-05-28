@@ -1,4 +1,4 @@
-import React, { Component, type ErrorInfo } from 'react'
+import { Component, type ErrorInfo } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import type { ErrorBoundaryProps, ErrorBoundaryState } from './types/app'
