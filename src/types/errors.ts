@@ -1,4 +1,4 @@
-import type { IpcResult } from './zterm'
+import type { IpcResult } from './ipc'
 
 export interface ImportError extends Error {
   code: string

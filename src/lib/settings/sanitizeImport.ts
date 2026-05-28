@@ -1,7 +1,7 @@
 import type { AlgorithmCategory } from '../../types/algorithm'
 import type { AlgorithmPreferences } from '../../../shared/sshAlgorithmDefaults'
 import type { SettingsImportWarning } from '../../types/import'
-import type { AppSettings, HighlightRule, UiLanguageSetting } from '../../types/settings'
+import type { AppSettings, HighlightRule } from '../../types/settings'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../../shared/sshAlgorithmDefaults'
 import { SSH_ALGORITHM_OPTION_POOL } from './sshAlgorithmOptions'
 import { resolveEffectiveUiLanguage } from '../resolveUiLanguage'

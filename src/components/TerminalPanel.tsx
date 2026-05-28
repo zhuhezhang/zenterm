@@ -77,17 +77,17 @@ export default function TerminalPanel({
         logFileRef.current?.scheduleSnapshot?.()
       }
     })
-    cleanupRef.current.push(() => { try { logOnResize.dispose() } catch (e) {} })
+    cleanupRef.current.push(() => { try { logOnResize.dispose() } catch {} })
 
-    const ro = new ResizeObserver(() => { try { fitAddon.fit() } catch (e) {} })  // 监听容器尺寸变化，调整终端尺寸以适应新的容器大小
+    const ro = new ResizeObserver(() => { try { fitAddon.fit() } catch {} })  // 监听容器尺寸变化，调整终端尺寸以适应新的容器大小
     ro.observe(containerRef.current)
     cleanupRef.current.push(() => ro.disconnect())  // 将 ResizeObserver 的断开函数添加到 cleanupRef 中，以便组件卸载时调用来停止监听尺寸变化
 
     return () => {  // 清理：卸载时取消连接、清理监听器、刷盘会话日志、销毁终端
       cancelled = true
-      cleanupRef.current.forEach(fn => { try { fn() } catch (e) {} })
+      cleanupRef.current.forEach(fn => { try { fn() } catch {} })
       cleanupRef.current = []
-      try { logFileRef.current?.flushNow?.() } catch (_) {}
+      try { logFileRef.current?.flushNow?.() } catch {}
       logFileRef.current = null
       term.dispose()
     }
@@ -97,7 +97,7 @@ export default function TerminalPanel({
   useEffect(() => {
     const term = termRef.current
     if (normalizeLoggingMode(settings.loggingMode) === 'none') {
-      try { logFileRef.current?.flushNow?.() } catch (_) {}
+      try { logFileRef.current?.flushNow?.() } catch {}
       logFileRef.current = null
       return
     }
@@ -120,12 +120,12 @@ export default function TerminalPanel({
     term.options.theme = getXtermTheme(appThemeEffective)
     try {
       term.refresh(0, term.rows - 1)
-    } catch (_) {}
+    } catch {}
   }, [appThemeEffective])
 
   useEffect(() => {  // 当 active 状态变化时，如果当前标签页变为活跃，则调整终端尺寸并聚焦终端，确保用户界面正确显示并且用户可以立即输入
     if (active && fitAddonRef.current) {
-      setTimeout(() => { try { fitAddonRef.current?.fit() } catch (e) {} ; termRef.current?.focus() }, 50)
+      setTimeout(() => { try { fitAddonRef.current?.fit() } catch {} ; termRef.current?.focus() }, 50)
     }
   }, [active])
 
@@ -141,7 +141,7 @@ export default function TerminalPanel({
       if (!term) return
       try {
         term.clear()
-      } catch (_) {}
+      } catch {}
       logFileRef.current?.scheduleSnapshot?.()
     }
     onRegisterClearScreen?.(session.id, clear)
@@ -154,13 +154,13 @@ export default function TerminalPanel({
     const d = term.onKey(({ key }) => {
       if (disconnectedRef.current && (key === 'r' || key === 'R')) {  // 只有在连接断开状态下按 R 键才触发重连，避免误操作导致不必要的连接尝试
         disconnectedRef.current = false
-        cleanupRef.current.forEach(fn => { try { fn() } catch (e) {} })  // 调用 cleanupRef 中的函数清理之前的连接状态和事件监听器，确保重连时不会有遗留的状态或监听器干扰新的连接
+        cleanupRef.current.forEach(fn => { try { fn() } catch {} })  // 调用 cleanupRef 中的函数清理之前的连接状态和事件监听器，确保重连时不会有遗留的状态或监听器干扰新的连接
         cleanupRef.current = []
-        try { logFileRef.current?.flushNow?.() } catch (_) {}  // 先刷盘，再换日志控制器
+        try { logFileRef.current?.flushNow?.() } catch {}  // 先刷盘，再换日志控制器
         const container = containerRef.current
         const fitAddon = fitAddonRef.current
         if (!container || !fitAddon) return
-        const ro = new ResizeObserver(() => { try { fitAddonRef.current?.fit() } catch (e) {} })  // 重连时要重新监听容器尺寸变化
+        const ro = new ResizeObserver(() => { try { fitAddonRef.current?.fit() } catch {} })  // 重连时要重新监听容器尺寸变化
         ro.observe(container)
         cleanupRef.current.push(() => ro.disconnect())
         setupLogging(session, settingsRef.current, logFileRef, logFileStemStateRef, settingsRef)  // 重连：复用本标签页首次连接时的日志文件
@@ -259,7 +259,7 @@ function applyHighlightRules(text: string, settings: AppSettings | undefined): s
         : rule.pattern
       const flags = rule.caseSensitive === true ? 'g' : 'gi'
       regex = new RegExp(pattern, flags)
-    } catch (e) {
+    } catch {
       continue
     }
     const [r, g, b] = parseHexColor(rule.color)
@@ -481,7 +481,7 @@ function setupLogging(
     if (!terminal) return
     try {
       window.zterm.log.write(logDir, logFileName, exportTerminalBuffer(terminal))
-    } catch (_) {}
+    } catch {}
   }
 
   /** 计划快照 */

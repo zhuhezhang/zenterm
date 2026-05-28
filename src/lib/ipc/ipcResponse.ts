@@ -1,4 +1,5 @@
-import type { IpcContent, IpcResult, VaultGetContent } from '../../types/zterm'
+import type { IpcContent, IpcResult } from '../../types/ipc'
+import type { VaultGetContent } from '@/types/zterm'
 
 type IpcLike = IpcResult<IpcContent> | null | undefined
 

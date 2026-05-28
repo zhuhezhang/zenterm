@@ -404,8 +404,11 @@ export default function SettingsDialog({
     try {
       if (window.zterm?.paths?.chooseDirectory) {
         const picked = await window.zterm.paths.chooseDirectory()
-        if (isIpcSuccess(picked) && !picked?.content?.canceled && picked?.content?.path) {
-          await applyChosenLogPath(picked.content.path)
+        if (isIpcSuccess(picked) && !picked?.content?.canceled) {
+          const logPath = picked.content.path
+          if (typeof logPath === 'string' && logPath) {
+            await applyChosenLogPath(logPath)
+          }
         }
       } else if (window.showDirectoryPicker) {
         const dir = await window.showDirectoryPicker()
@@ -427,7 +430,7 @@ export default function SettingsDialog({
         }
         el.click()
       }
-    } catch (_) {}
+    } catch {}
   }
 
   /** 处理重置日志路径的操作，将日志路径设置恢复为默认值 */

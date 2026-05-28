@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, type DragEvent, type MouseEvent } from 're
 import { useI18n } from '../context/I18nContext'
 import ConnectionTypeIcon from './common'
 import type { TabBarProps } from '../types/components'
-import type { ActiveSession } from '../types/session'
 import type { TabContextMenu } from '../types/tabBar'
 import '../styles/tabbar.css'
 

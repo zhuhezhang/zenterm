@@ -10,7 +10,7 @@ import type {
   TerminalClearFn,
   TerminalTextGetter,
 } from './types/session'
-import type { IpcResult } from './types/zterm'
+import type { IpcResult } from './types/ipc'
 import { I18nProvider, useI18n } from '@/context/I18nContext'
 import TitleBar from '@/components/TitleBar'
 import Sidebar from '@/components/sidebar/Sidebar'

@@ -1,7 +1,7 @@
 import type { VaultSecretPayload, VaultSecretPartial } from '../types/credentials'
 import type { AppSettings } from '../types/settings'
 import type { SavedSession, SessionConfig } from '../types/session'
-import type { IpcResult } from '../types/zterm'
+import type { IpcResult } from '../types/ipc'
 import { vaultSecretsFromGetResponse } from '../lib/ipc/ipcResponse'
 
 export function buildSecretsSyncPayload(config: SessionConfig, settings: AppSettings): VaultSecretPayload {

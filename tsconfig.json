@@ -1,24 +1,20 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2022",
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "strict": true,
     "noFallthroughCasesInSwitch": true,
-    "allowJs": true,
-    "checkJs": false,
     "paths": {
       "@/*": ["./src/*"]
     },
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "electron", "shared", "tests"]
+  "include": ["src", "shared", "tests"],
+  "exclude": ["electron"]
 }

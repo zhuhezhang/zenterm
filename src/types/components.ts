@@ -1,18 +1,8 @@
-import type {
-  CSSProperties,
-  DragEvent,
-  MouseEvent,
-  RefObject,
-} from 'react'
+import type { CSSProperties, DragEvent, MouseEvent, RefObject } from 'react'
 import type { AppTheme, AppSettings } from './settings'
 import type {
-  ActiveSession,
-  SavedSession,
-  SessionConfig,
-  SessionTreeNode as TreeNode,
-  SessionType,
-  TerminalClearFn,
-  TerminalTextGetter,
+  ActiveSession, SavedSession, SessionConfig, SessionTreeNode as TreeNode, 
+  SessionType, TerminalClearFn, TerminalTextGetter
 } from './session'
 
 export interface ConnectDialogProps {

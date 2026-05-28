@@ -1,6 +1,6 @@
 import type { TranslateFn } from '../../types/i18n'
 import type { IpcThrownError } from '../../types/errors'
-import type { IpcResult } from '../../types/zterm'
+import type { IpcResult } from '../../types/ipc'
 import { ipcErrorFields, isIpcFailure } from './ipcResponse'
 
 /**

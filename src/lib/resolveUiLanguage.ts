@@ -54,5 +54,5 @@ export function resolveEffectiveUiLanguage(
 export function syncUiLanguageToMain(stored?: string) {
   try {
     window.zterm?.others?.setUiLanguage?.(resolveEffectiveUiLanguage(stored))
-  } catch (_) {}
+  } catch {}
 }

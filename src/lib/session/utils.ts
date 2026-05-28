@@ -1,7 +1,6 @@
 import type {
   BackspaceMode,
   PickedSessionFields,
-  SavedSession,
   SessionConfig,
   SessionFormValues,
   SessionGroupLabelError,

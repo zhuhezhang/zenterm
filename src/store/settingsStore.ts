@@ -100,7 +100,7 @@ export function loadSettings(): AppSettings {
     if (!['dark', 'light', 'auto'].includes(merged.appTheme)) merged.appTheme = 'auto'
     merged.sidebarWidth = clampSidebarWidthPx(merged.sidebarWidth, typeof window !== 'undefined' ? window.innerWidth : 1200)
     return merged
-  } catch (e) {
+  } catch {
     return { ...DEFAULT_SETTINGS }
   }
 }
@@ -110,7 +110,7 @@ export function loadSettings(): AppSettings {
  * @param {Object} settings 要保存的设置项对象
  */
 export function saveSettings(settings: AppSettings): void {
-  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)) } catch (e) {}
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)) } catch {}
   syncUiLanguageToMain(settings?.uiLanguage)
 }
 
