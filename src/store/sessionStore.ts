@@ -178,7 +178,12 @@ export function vacatedNamedGroupIfEmpty(
   return oldGroup
 }
 
-/** 编辑会话后，若原分组已无任何会话则返回该分组路径 */
+/**
+ * 编辑会话后，若原分组已无任何会话则返回该分组路径
+ * @param beforeGroup 保存前的分组路径
+ * @param newGroup 新分组路径
+ * @param nextSessions addSavedSession 之后的列表
+ */
 export function vacatedGroupIfMoved(
   beforeGroup: string | undefined,
   newGroup: string | undefined,

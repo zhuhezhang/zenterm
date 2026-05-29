@@ -1,6 +1,6 @@
 import type { Terminal } from '@xterm/xterm'
 import type { MutableRefObject } from 'react'
-import { safeFileToken } from '../safeFileName'
+import { safeFileToken } from '../../../shared/safeFileName'
 import { fileTimestamp } from '../util/fileTimestamp'
 import { resolveLoggingDirectory } from '../../store/settingsStore'
 import { normalizeLoggingMode } from '../settings/normalize'
@@ -8,6 +8,7 @@ import type { ActiveSession } from '../../types/session'
 import type { AppSettings } from '../../types/settings'
 import type { SessionLogHandle } from '../../types/terminal'
 
+/** 导出当前终端缓冲为纯文本（用于复制/保存） */
 export function exportTerminalBuffer(term: Terminal | null): string {
   if (!term) return ''
   const buf = term.buffer.active
@@ -20,6 +21,9 @@ export function exportTerminalBuffer(term: Terminal | null): string {
   return lines.join('\n').trimEnd()
 }
 
+/**
+ * 去掉已完整的 ANSI/OSC 等转义序列（CSI 如 [33m、[42D；OSC 至 BEL 或 ST 等）
+ */
 function stripCompleteAnsiEscapes(s: string): string {
   if (!s) return ''
   return s
@@ -31,6 +35,9 @@ function stripCompleteAnsiEscapes(s: string): string {
     .replace(/\x1b[78]/g, '')
 }
 
+/**
+ * 从串尾拆出可能未闭合的转义前缀，避免分包时把 \x1b 与 [33m 拆开误当成可见字符
+ */
 function peelIncompleteAnsiSuffix(s: string): { body: string; carry: string } {
   if (!s) return { body: '', carry: '' }
   let m: RegExpMatchArray | null
@@ -45,10 +52,14 @@ function peelIncompleteAnsiSuffix(s: string): { body: string; carry: string } {
   return { body: s, carry: '' }
 }
 
+/** 去掉其余 C0 控制符（保留 \t \n \r） */
 function stripOtherC0Controls(s: string): string {
   return s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
 }
 
+/**
+ * 将一段终端输出转为适合写入 .log 的纯文本（可见字符 + 换行制表）
+ */
 function stripAnsiForLogChunk(carry: string, chunk: string): { text: string; carry: string } {
   const raw = carry + chunk
   const { body, carry: nextCarry } = peelIncompleteAnsiSuffix(raw)
@@ -56,7 +67,10 @@ function stripAnsiForLogChunk(carry: string, chunk: string): { text: string; car
   return { text, carry: nextCarry }
 }
 
-/** 设置会话日志控制器 */
+/**
+ * 设置会话日志：buffer = xterm 缓冲快照整文件覆盖；stream = 下行流去 ANSI 后追加。
+ * @param _settingsRef 预留与调用方签名一致（本函数内以创建时的 logKind 为准）
+ */
 export function setupLogging(
   session: ActiveSession,
   settings: AppSettings,
@@ -68,23 +82,26 @@ export function setupLogging(
   const logDir = resolveLoggingDirectory(settings)
   if (!logDir) return
 
-  const logKind = normalizeLoggingMode(settings.loggingMode)
+  const logKind = normalizeLoggingMode(settings.loggingMode)  // 本控制器创建时的写入方式（关闭日志时 settings 可能已变为 none，收尾刷盘仍按此方式执行）
   const stemState = logFileStemStateRef.current
-  if (stemState.sessionId !== session.id) {
+  if (stemState.sessionId !== session.id) {  // 新会话：重置文件名 stem
     stemState.sessionId = session.id
     stemState.stem = null
   }
 
+  /** 同一标签页内复用的日志主文件名（不含 .log） */
   let logFileName = stemState.stem
-  if (!logFileName) {
+  if (!logFileName) {  // 首次连接：时间戳_会话名
     const sessionName = safeFileToken(session.label || session.host || session.path || session.id || 'session')
     logFileName = `${fileTimestamp()}_${sessionName}`
     stemState.stem = logFileName
   }
 
+  // --- stream（追加）
   let pending = ''
   let ansiCarry = ''
   let streamTimer: number | null = null
+  /** 刷新待处理流数据 */
   const flushPendingStream = () => {
     streamTimer = null
     if (!pending) return
@@ -93,6 +110,7 @@ export function setupLogging(
     window.zterm?.log?.append?.(logDir, logFileName, chunk)
   }
 
+  /** 将数据追加到日志文件中 */
   const enqueue = (chunk: string) => {
     if (logKind !== 'stream') return
     if (chunk === '' || chunk == null) return
@@ -106,9 +124,14 @@ export function setupLogging(
     streamTimer = window.setTimeout(flushPendingStream, 80)
   }
 
+  // --- buffer（整文件覆盖）
+  /** xterm 终端实例 */
   let terminal: Terminal | null = null
+  /** 定时器引用，用于延迟执行快照 */
   let snapshotTimer: number | null = null
+  /** 快照延迟时间 */
   const SNAPSHOT_DEBOUNCE_MS = 80
+  /** 刷新快照 */
   const flushSnapshot = () => {
     if (!window.zterm?.log?.write) return
     if (!terminal) return
@@ -117,6 +140,7 @@ export function setupLogging(
     } catch {}
   }
 
+  /** 计划快照 */
   const scheduleSnapshot = () => {
     if (logKind !== 'buffer') return
     if (!window.zterm?.log?.write) return
@@ -131,6 +155,7 @@ export function setupLogging(
     }, SNAPSHOT_DEBOUNCE_MS)
   }
 
+  /** 立即刷盘 */
   const flushNow = () => {
     if (snapshotTimer != null) {
       window.clearTimeout(snapshotTimer)

@@ -1,4 +1,4 @@
-import type { IpcResult } from './ipc'
+import type { IpcResult } from '../../shared/ipc'
 
 export interface ImportError extends Error {
   code: string

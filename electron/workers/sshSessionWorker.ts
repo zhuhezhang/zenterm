@@ -6,7 +6,7 @@ import { Client } from 'ssh2'
 import type { Duplex } from 'node:stream'
 import { bufferToBinaryWire } from '../lib/terminalEncodingService.js'
 import { buildSshConnectConfig } from '../lib/sshConnectConfig.js'
-import type { SshConnectConfig } from '../../shared/connectConfig.js'
+import type { SshConnectConfig } from '../../shared/zterm-api.js'
 
 if (!parentPort) throw new Error('worker_threads parentPort missing')
 const port = parentPort
@@ -44,13 +44,13 @@ function hostVerifier(key: Buffer, callback: (ok: boolean) => void) {
   const raw = Buffer.isBuffer(key) ? key : Buffer.from(key)
   const reqId = ++verifySeq
   verifyCallbacks.set(reqId, callback)
-  port.postMessage({  // 发送消息到主线程
+  port.postMessage({  // 发送消息到主线程；ssh2 的 hostVerifier 在 Worker 里，但弹框必须在主进程（要 dialog 和 BrowserWindow）
     type: 'HOST_VERIFY',
     reqId,
     host: config.host,
     port: config.port || 22,
     keyBase64: raw.toString('base64'),
-  })  // ssh2 的 hostVerifier 在 Worker 里，但 弹框必须在主进程（要 dialog 和 BrowserWindow），所以发消息到主线程
+  })
 }
 
 port.on('message', (msg: Record<string, unknown>) => {

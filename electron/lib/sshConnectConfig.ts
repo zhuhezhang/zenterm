@@ -1,8 +1,22 @@
 import type { AlgorithmPreferences } from '../../shared/sshAlgorithmDefaults.js'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
-import type { SshConnectConfig } from '../../shared/connectConfig.js'
+import type { SshConnectConfig } from '../../shared/zterm-api.js'
 
-/** 将渲染进程 SSH 连接载荷转为 ssh2 Client.connect 配置 */
+/**
+ * 构建连接配置，用于 SSH 连接
+ * @param cfg 配置
+ * @param cfg.host 主机名
+ * @param cfg.port 端口
+ * @param cfg.username 用户名
+ * @param cfg.algorithms 算法
+ * @param cfg.algorithms.kex 密钥交换算法
+ * @param cfg.algorithms.serverHostKey 服务器主机密钥算法
+ * @param cfg.algorithms.cipher 加密算法
+ * @param cfg.algorithms.hmac 消息认证码算法
+ * @param cfg.algorithms.compress 压缩算法
+ * @param hostVerifier 主机公钥校验器
+ * @returns 连接配置
+ */
 export function buildSshConnectConfig(
   cfg: SshConnectConfig,
   hostVerifier: (key: Buffer, callback: (ok: boolean) => void) => void,

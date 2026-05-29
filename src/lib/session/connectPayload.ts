@@ -3,7 +3,7 @@ import type {
   SerialConnectConfig,
   SshConnectConfig,
   TelnetConnectConfig,
-} from '../../../shared/connectConfig'
+} from '../../../shared/zterm-api'
 import type { ActiveSession } from '../../types/session'
 
 /** 提取 SSH / SFTP 连接所需字段 */

@@ -9,6 +9,10 @@ interface CompiledHighlightRule {
 let cachedRuleSource: HighlightRule[] | null = null
 let compiledRules: CompiledHighlightRule[] = []
 
+/**
+ * 解析十六进制颜色字符串，支持 #RGB 和 #RRGGBB 格式，返回 RGB 数组
+ * @returns RGB 数组，如果输入无效则返回黄色 [255, 255, 0] 作为默认值
+ */
 function parseHexColor(hex: string): [number, number, number] {
   if (!hex || typeof hex !== 'string') return [255, 255, 0]
   let raw = hex.trim()
@@ -46,7 +50,9 @@ function compileHighlightRules(settings: AppSettings | undefined): CompiledHighl
   return compiledRules
 }
 
-/** 对终端输出应用高亮规则（RegExp 在规则变更时预编译） */
+/**
+ * 应用高亮规则（RegExp 在规则变更时预编译，避免每 chunk 重建）
+ */
 export function applyHighlightRules(text: string, settings: AppSettings | undefined): string {
   if (!text) return text
   const rules = compileHighlightRules(settings)
@@ -58,7 +64,10 @@ export function applyHighlightRules(text: string, settings: AppSettings | undefi
   return output
 }
 
-/** 返回第一个行结束序列最后一个字符的下标 */
+/**
+ * 返回第一个行结束序列最后一个字符的下标（支持 \r\n、\n、单独 \r），无则 -1。
+ * 串口常按字节小块到达，高亮需在累积文本上匹配；按行切分可减少跨块断词。
+ */
 export function nextLineBreakEndIndex(s: string): number {
   for (let i = 0; i < s.length; i++) {
     const c = s.charCodeAt(i)

@@ -1,5 +1,5 @@
 import type { IpcThrownError } from '../../types/errors'
-import type { IpcContent, IpcResult } from '../../types/ipc'
+import type { IpcContent, IpcResult } from '../../../shared/ipc'
 import { ipcContent, ipcErrorFields, isIpcSuccess } from './ipcResponse'
 
 /**

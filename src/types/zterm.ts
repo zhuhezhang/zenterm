@@ -1,6 +1,4 @@
-/** 渲染进程：re-export shared 契约，并声明 window.zterm */
-export type * from '../../shared/zterm-api'
-
+/** 渲染进程：声明 window.zterm（类型定义见 shared/zterm-api.d.ts） */
 import type { ZTermApi } from '../../shared/zterm-api'
 
 declare global {

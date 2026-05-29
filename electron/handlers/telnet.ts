@@ -5,7 +5,7 @@ import { sendToRenderer } from '../lib/mainWindowSend.js'
 import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import { bufferToBinaryWire, encodeOutgoingTerminalData } from '../lib/terminalEncodingService.js'
 import type { MainWindowGetter } from '../types/handlers.js'
-import type { TelnetConnectConfig } from '../../shared/connectConfig.js'
+import type { TelnetConnectConfig } from '../../shared/zterm-api.js'
 
 /** 存储所有 Telnet 会话信息的 Map，键为会话 ID，值为 net.Socket 实例 */
 const telnetSessions = new Map<string, net.Socket>()

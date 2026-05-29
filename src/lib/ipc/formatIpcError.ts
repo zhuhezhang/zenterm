@@ -1,6 +1,6 @@
 import type { TranslateFn } from '../../types/i18n'
 import type { IpcThrownError } from '../../types/errors'
-import type { IpcResult } from '../../types/ipc'
+import type { IpcResult } from '../../../shared/ipc'
 import { ipcErrorFields, isIpcFailure } from './ipcResponse'
 
 /**
@@ -43,6 +43,12 @@ export function alertIpcFailure(
   return true
 }
 
+/**
+ * 从 IPC 响应对象取展示文案（是否翻译由 errorKnown 决定）
+ * @param t 翻译函数
+ * @param res 错误响应对象
+ * @returns 展示文案
+ */
 export function formatIpcResponseError(
   t: TranslateFn,
   res: IpcResult | null | undefined,

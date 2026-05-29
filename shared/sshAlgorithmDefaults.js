@@ -1,0 +1,52 @@
+"use strict";
+/**
+ * SSH/SFTP 算法默认偏好（与 ssh2 `algorithms` 字段结构一致）
+ * 前后端共用：新建会话、重置默认、Worker 连接时使用
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.DEFAULT_ALGORITHM_PREFERENCES = void 0;
+/** 连接与设置的默认算法偏好：优先 AEAD、EtM MAC、现代 KEX/主机密钥；不含 CBC、SHA-1 HMAC、ssh-rsa、DH-group14-sha1 等 */
+exports.DEFAULT_ALGORITHM_PREFERENCES = {
+    kex: [
+        'curve25519-sha256@libssh.org',
+        'curve25519-sha256',
+        'ecdh-sha2-nistp521',
+        'ecdh-sha2-nistp256',
+        'ecdh-sha2-nistp384',
+        'diffie-hellman-group18-sha512',
+        'diffie-hellman-group16-sha512',
+        'diffie-hellman-group14-sha256',
+        'diffie-hellman-group-exchange-sha256',
+        'diffie-hellman-group15-sha512',
+        'diffie-hellman-group17-sha512',
+    ],
+    serverHostKey: [
+        'ssh-ed25519',
+        'ecdsa-sha2-nistp256',
+        'ecdsa-sha2-nistp384',
+        'ecdsa-sha2-nistp521',
+        'rsa-sha2-512',
+        'rsa-sha2-256',
+    ],
+    cipher: [
+        'aes128-gcm@openssh.com',
+        'aes256-gcm@openssh.com',
+        'aes128-ctr',
+        'aes192-ctr',
+        'aes256-ctr',
+        'aes128-gcm',
+        'aes256-gcm',
+    ],
+    hmac: [
+        'hmac-sha2-256-etm@openssh.com',
+        'hmac-sha2-512-etm@openssh.com',
+        'hmac-sha1-etm@openssh.com',
+        'hmac-sha2-256',
+        'hmac-sha2-512',
+    ],
+    compress: [
+        'zlib@openssh.com',
+        'zlib',
+        'none',
+    ],
+};

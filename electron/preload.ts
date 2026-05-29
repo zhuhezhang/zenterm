@@ -39,7 +39,7 @@ const ztermApi = {
     onMaximized: (cb: (v: boolean) => void) => {
       const handler = (_: unknown, v: boolean) => cb(v)
       ipcRenderer.on('window:maximized', handler)
-      return () => ipcRenderer.removeListener('window:maximized', handler)
+      return () => ipcRenderer.removeListener('window:maximized', handler)  // 与 onData 相同，供组件卸载时取消订阅
     },
     isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
     zoomWheelStep: (deltaY: number) => ipcRenderer.send('window:zoomWheelStep', deltaY),

@@ -8,8 +8,8 @@ import { INVALID_LABEL_CHARS } from '../../shared/safeFileName'
 import { getZterm } from '@/lib/ipc/getZterm'
 import type { SftpPanelProps, SftpRemoteItem } from '@/types/components'
 import type { SftpFileContextMenu } from '@/types/sftp'
-import type { IpcResult } from '@/types/ipc'
-import type { ZTermProgress } from '@/types/zterm'
+import type { IpcResult } from '../../shared/ipc'
+import type { ZTermProgress } from '../../shared/zterm-api'
 import '../styles/sftp.css'
 
 /**

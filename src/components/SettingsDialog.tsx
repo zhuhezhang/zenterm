@@ -16,7 +16,10 @@ import {
   clampTerminalScrollback, normalizeLoggingMode,
 } from '../lib/settings/normalize'
 import {
-  SETTINGS_SCHEMA, SETTINGS_TABS, SETTINGS_TAB_SECTION_IDS, saveSettings, exportSettings, importSettings, getDefaultLogPath,
+  SETTINGS_SCHEMA, SETTINGS_TABS, SETTINGS_TAB_SECTION_IDS,
+} from '../lib/settings/schema'
+import {
+  saveSettings, exportSettings, importSettings, getDefaultLogPath,
 } from '../store/settingsStore'
 import {
   applySessionsImport, reportSessionsImportResult, reportSessionsImportError, resetImportFileInput,

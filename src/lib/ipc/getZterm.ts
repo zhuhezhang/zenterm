@@ -1,4 +1,4 @@
-import type { ZTermApi } from '@/types/zterm'
+import type { ZTermApi } from '../../../shared/zterm-api'
 
 /** 渲染进程内获取 preload 暴露的 bridge；不可用时抛错供调用方 catch */
 export function getZterm(): ZTermApi {

@@ -33,6 +33,16 @@ export interface IpcError extends Error {
   ipcKnown: boolean
 }
 
+/** 
+ * 判断是否为 ipc 错误
+ * @param e 未知对象
+ * @returns 是否为 ipc 错误
+ */
 export function isIpcError(e: unknown): e is IpcError {
-  return !!e && typeof e === 'object' && 'ipcCode' in e && typeof (e as IpcError).ipcCode === 'string'
+  return (
+    !!e &&
+    typeof e === 'object' &&
+    'ipcCode' in e &&
+    typeof (e as IpcError).ipcCode === 'string'
+  )
 }

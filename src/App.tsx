@@ -10,7 +10,7 @@ import type {
   TerminalClearFn,
   TerminalTextGetter,
 } from './types/session'
-import type { IpcResult } from './types/ipc'
+import type { IpcResult } from '../shared/ipc'
 import { I18nProvider, useI18n } from '@/context/I18nContext'
 import TitleBar from '@/components/TitleBar'
 import Sidebar from '@/components/sidebar/Sidebar'
@@ -24,7 +24,7 @@ const SettingsDialog = lazy(() => import('@/components/SettingsDialog'))
 import { useSyncedAppTheme } from '@/hooks/useSyncedAppTheme'
 import { useSidebarResize } from '@/hooks/useSidebarResize'
 import { fileTimestamp } from '@/lib/util/fileTimestamp'
-import { safeFileToken } from './lib/safeFileName'
+import { safeFileToken } from '../shared/safeFileName'
 import { loadSettings, refreshDownloadsPathCache, getDefaultLogPath } from './store/settingsStore'
 import { DEFAULT_SIDEBAR_WIDTH } from './lib/settings/defaults'
 import { clampSidebarWidthPx } from './lib/settings/normalize'
@@ -87,7 +87,6 @@ const TerminalPanelSlot = memo(function TerminalPanelSlot({
 })
 
 /**
-
  * 主界面（在 I18nProvider 内，可使用 useI18n）
  * @param {{ settings: object, setSettings: function }} props
  * @param {Object} props.settings 设置
@@ -102,7 +101,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
     alertIpcFailure(t, r, 'credentials.encryptionUnavailable')
   }
   const [appThemePreview, setAppThemePreview] = useState<AppTheme | null>(null)
-  const appThemeEffective = useSyncedAppTheme(appThemePreview ?? settings.appTheme)
+  const appThemeEffective = useSyncedAppTheme(appThemePreview ?? settings.appTheme)  // ??表示如果 appThemePreview 为 null，则使用 settings.appTheme
   const terminalSettings = useMemo(() => ({
     loggingMode: settings.loggingMode,
     logPath: settings.logPath,
@@ -320,6 +319,10 @@ function AppMain({ settings, setSettings }: AppMainProps) {
     setShowDialog(false)
   }, [savedSessions, updateSaved, dialogInitial, settings, t])
 
+  /**
+   * 保存并连接：先保存会话配置（编辑/新建），然后启动会话。同时检查是否需要添加占位分组
+   * @param {Object} c 会话配置对象
+   */
   const handleSaveAndConn = useCallback(async (c: SessionConfig) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
     const before = dialogInitial?.savedId

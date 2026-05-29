@@ -24,6 +24,12 @@ import type { ActiveSession, SessionType } from '../../types/session'
 import type { AppSettings } from '../../types/settings'
 import type { SessionLogHandle } from '../../types/terminal'
 
+/**
+ * 写入一行终端内容并按当前日志模式记入会话日志
+ * @param term xterm 终端实例
+ * @param logRef 日志引用，包含 scheduleSnapshot 和 enqueue 方法
+ * @param lineForWriteln 传给 term.writeln 的字符串（不含结尾换行），用于写入终端
+ */
 export function writelnWithLog(
   term: Terminal,
   logRef: MutableRefObject<SessionLogHandle | null>,
@@ -34,14 +40,30 @@ export function writelnWithLog(
   logRef.current?.enqueue?.(lineForWriteln + '\r\n')
 }
 
+/**
+ * 规范化用户输入，兼容部分设备对退格键的不同解释
+ * - 一些设备将 DEL(0x7f) 解释为“向前删除”，会导致必须先左移光标才能删除字符
+ * - 对 Telnet/Serial 会话把 DEL 转为 BS(0x08)，更符合设备控制台习惯
+ * @param type 会话类型
+ * @param data xterm 原始输入数据
+ * @param session 当前会话（含 per-session backspaceMode）
+ * @returns 规范化后的数据
+ */
 function normalizeInputData(type: SessionType | string, data: string, session: ActiveSession): string {
   const mode = String(session?.backspaceMode || 'auto').toLowerCase()
   if (mode === 'del') return data.replace(/\x08/g, '\x7f')
   if (mode === 'bs') return data.replace(/\x7f/g, '\x08')
+  // Auto：SSH 默认保留 DEL；Telnet/Serial 默认转为 BS，兼容更多设备
   if (type === 'telnet' || type === 'serial') return data.replace(/\x7f/g, '\x08')
   return data
 }
 
+/**
+ * 创建并配置 xterm 终端实例
+ * @param themeMode 主题名称
+ * @param scrollback 滚动缓冲行数（由设置 clamp）
+ * @returns 配置好的 Terminal 实例
+ */
 export function createTerminal(themeMode: 'dark' | 'light', scrollback: number): Terminal {
   return new Terminal({
     fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", Menlo, monospace',
@@ -50,19 +72,24 @@ export function createTerminal(themeMode: 'dark' | 'light', scrollback: number):
     cursorBlink: true,
     cursorStyle: 'bar',
     allowTransparency: true,
-    scrollback,
+    scrollback, // 由设置 terminalScrollback 控制，挂载后仍可改 options.scrollback
     windowsMode: false,
     theme: getXtermTheme(themeMode),
   })
 }
 
-/** 应用终端交互设置，返回清理函数 */
+/**
+ * 应用终端交互设置：根据用户设置启用选中复制和右键粘贴功能
+ * @param term xterm 终端实例
+ * @param settingsRef 设置对象的引用，包含用户偏好设置
+ * @returns 清理函数
+ */
 export function applyTerminalSettings(
   term: Terminal,
   settingsRef: MutableRefObject<AppSettings>,
 ): () => void {
-  const selDispose = term.onSelectionChange(() => {
-    const interact = settingsRef.current?.terminalInteract ?? true
+  const selDispose = term.onSelectionChange(() => {  // 监听选中时复制：通过 settingsRef 实时读取，保证设置变化后立即生效
+    const interact = settingsRef.current?.terminalInteract ?? true  // ?? 是空值合并运算符，表示如果 terminalInteract 不为 null 或 undefined 则使用它，否则默认 true
     if (!interact) return
     const sel = term.getSelection()
     if (sel && sel.length > 0) {
@@ -74,13 +101,13 @@ export function applyTerminalSettings(
   let ctxEl: HTMLElement | null = null
   let ctxHandler: ((e: MouseEvent) => void) | null = null
 
-  const addCtx = () => {
+  const addCtx = () => {  // 右键粘贴：等 term.element 挂载后注册
     if (!term.element) {
-      ctxTimer = window.setTimeout(addCtx, 50)
+      ctxTimer = window.setTimeout(addCtx, 50)  // addCtx 函数递归检查 term.element 是否存在（xterm.js 挂载后才可用），不存在则 50ms 后重试
       return
     }
     ctxEl = term.element
-    ctxHandler = async (e: MouseEvent) => {
+    ctxHandler = async (e: MouseEvent) => {  // 在 term.element 上监听 contextmenu（右键菜单）事件
       const interact = settingsRef.current?.terminalInteract ?? true
       if (!interact) return
       e.preventDefault()
@@ -100,6 +127,18 @@ export function applyTerminalSettings(
   }
 }
 
+/**
+ * 连接会话：根据会话类型（SSH/Telnet/Serial）调用对应的连接函数，设置数据接收和连接关闭的处理函数，并将清理函数添加到 cleanupRef 以便组件卸载时调用
+ * @param term xterm 终端实例
+ * @param fitAddon FitAddon 实例，用于调整终端尺寸
+ * @param session 会话对象，包含连接信息和状态
+ * @param onUpdate 会话状态更新回调函数
+ * @param cleanupRef 清理函数引用，用于存储连接相关的清理函数
+ * @param disconnectedRef 断连状态引用，用于标记当前连接是否已断开
+ * @param isCancelled 可选的取消函数，组件卸载时返回 true，连接过程中定期调用以判断是否应放弃后续操作
+ * @param logFileRef 会话日志：buffer / stream 由设置决定，flushNow 立即刷盘
+ * @param settingsRef 设置引用，用于读取实时终端行为设置
+ */
 export async function connectSession(
   term: Terminal,
   fitAddon: FitAddon,
@@ -117,8 +156,12 @@ export async function connectSession(
   const writeInfo = (m: string) => writelnWithLog(term, logFileRef, `\r\x1b[33m${m}\x1b[0m`)
   const writeError = (m: string) => writelnWithLog(term, logFileRef, `\r\x1b[31m${m}\x1b[0m`)
   const writeSuccess = (m: string) => writelnWithLog(term, logFileRef, `\r\x1b[32m${m}\x1b[0m`)
-  const terminalErr = (e: unknown) => formatThrownIpcError((p, params) => translateRender(L(), p, params), e)
+  const terminalErr = (e: unknown) => formatThrownIpcError((p, params) => translateRender(L(), p, params), e)  // errorKnown:false 直出原文; true 则按 error 路径走 i18n
 
+  /**
+   * 连接断开处理函数：在终端显示断开消息，提示用户按 R 重连，更新会话状态为断开，并设置断连标记
+   * @param msgKey terminal.* 文案键
+   */
   const onDisconnect = (msgKey: string) => {
     writeInfo(`\r\n${translateRender(L(), msgKey)}`)
     writeInfo(`\x1b[2m${translateRender(L(), 'terminal.pressR')}\x1b[0m`)
@@ -126,8 +169,10 @@ export async function connectSession(
     onUpdate({ status: 'disconnected', sftpReady: false })
   }
 
+  // 串口下行小块聚合：高亮规则需在足够长的文本上匹配，UART 常逐字节到达
   let serialHighlightBuf = ''
   let serialHighlightIdleTimer: number | null = null
+  /** 串口高亮缓冲区空闲时刷新：避免长时间无数据时高亮规则无法匹配 */
   const flushSerialHighlightIdle = () => {
     serialHighlightIdleTimer = null
     if (!serialHighlightBuf) return
@@ -138,11 +183,16 @@ export async function connectSession(
     logFileRef.current?.scheduleSnapshot?.()
     logFileRef.current?.enqueue?.(highlighted)
   }
+  /** 计划串口高亮缓冲区空闲时刷新：避免长时间无数据时高亮规则无法匹配 */
   const scheduleSerialHighlightFlush = () => {
     if (serialHighlightIdleTimer != null) clearTimeout(serialHighlightIdleTimer)
     serialHighlightIdleTimer = window.setTimeout(flushSerialHighlightIdle, 32)
   }
 
+  /**
+   * 数据接收处理函数：将接收到的二进制数据转换为 UTF-8 字符串，写入终端并记录日志
+   * @param data 接收到的二进制数据字符串
+   */
   const recv = (data: string) => {
     const decoded = decodeIncomingTerminalWire(data, terminalEncoding)
     if (type !== 'serial') {
@@ -162,7 +212,7 @@ export async function connectSession(
       logFileRef.current?.scheduleSnapshot?.()
       logFileRef.current?.enqueue?.(highlighted)
     }
-    if (serialHighlightBuf.length > 8192) {
+    if (serialHighlightBuf.length > 8192) {  // 防止无换行长流撑爆缓冲
       const overflow = serialHighlightBuf
       serialHighlightBuf = ''
       const highlighted = applyHighlightRules(overflow, settingsRef.current)
@@ -201,6 +251,7 @@ export async function connectSession(
       const d2 = term.onResize(({ cols, rows }) => zterm.ssh.resize(id, cols, rows))
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => d2.dispose(), () => zterm.ssh.disconnect(id))
 
+      // SFTP 与 SSH 并行：失败只提示，不阻断 shell
       if (session.enableSftp) {
         try {
           const sftpPayload = pickSshConnectConfig(session, settingsRef.current?.algorithmPreferences)
@@ -214,7 +265,7 @@ export async function connectSession(
           }
         } catch (e) {
           writeError(terminalErr(e))
-          zterm.ssh.sendData(id, '\n', terminalEncoding)
+          zterm.ssh.sendData(id, '\n', terminalEncoding)  // 让用户看到错误后仍可操作 shell
           onUpdate({ sftpReady: false })
         }
       }
@@ -257,7 +308,7 @@ export async function connectSession(
       const d1 = term.onData((data) => {
         zterm.serial.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
       })
-      cleanupRef.current.push(() => {
+      cleanupRef.current.push(() => {  // 断开前刷掉串口高亮缓冲
         if (serialHighlightIdleTimer != null) {
           clearTimeout(serialHighlightIdleTimer)
           serialHighlightIdleTimer = null
@@ -278,6 +329,7 @@ export async function connectSession(
   }
 }
 
+/** 在容器内挂载 xterm（FitAddon、WebLinks、交互设置），返回实例与清理函数 */
 export function mountTerminal(
   container: HTMLDivElement,
   appThemeEffective: 'dark' | 'light',
@@ -286,9 +338,9 @@ export function mountTerminal(
   const term = createTerminal(appThemeEffective, clampTerminalScrollback(settingsRef.current?.terminalScrollback))
   const fitAddon = new FitAddon()
   term.loadAddon(fitAddon)
-  term.loadAddon(new WebLinksAddon())
-  term.open(container)
-  fitAddon.fit()
+  term.loadAddon(new WebLinksAddon())  // WebLinksAddon 负责将终端中的 URL 自动识别为可点击链接
+  term.open(container)  // 将 xterm 实例挂载到 container 指向的 DOM 元素上
+  fitAddon.fit()  // 初始调整终端尺寸以适应容器大小
   const disposeSettings = applyTerminalSettings(term, settingsRef)
   return { term, fitAddon, disposeSettings }
 }

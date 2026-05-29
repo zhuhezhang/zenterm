@@ -8,6 +8,7 @@ export const INVALID_GROUP_CHARS = new RegExp(
   `[\\\\:*?"\\u003c\\u003e|${String.fromCharCode(0)}]`,
 )
 
+/** 是否包含非法标签字符 */
 export function hasInvalidLabelChars(value: unknown) {
   return INVALID_LABEL_CHARS.test(String(value ?? ''))
 }
@@ -25,7 +26,7 @@ export function safeFileToken(raw: unknown) {
     .trim() || 'session'
 }
 
-/** 日志文件主名：非法字符替换为下划线 */
+/** 日志文件主名：非法字符替换为下划线（log:write / log:append） */
 export function sanitizeLogFileStem(raw: unknown) {
   return String(raw ?? '').replace(INVALID_LABEL_CHARS, '_').trim() || 'session'
 }

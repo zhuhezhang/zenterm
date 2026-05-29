@@ -134,5 +134,3 @@ export function importSettings(
 ): Promise<{ settings: AppSettings; warnings: SettingsImportWarning[] }> {
   return validateAndParseSettingsImport(file, currentSettings)
 }
-
-export { SETTINGS_TABS, SETTINGS_TAB_SECTION_IDS, SETTINGS_SCHEMA } from '../lib/settings/schema'

@@ -6,7 +6,7 @@ import { bufferToBinaryWire, encodeOutgoingTerminalData } from '../lib/terminalE
 import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import { translateMain } from '../i18n/translateMain.js'
 import type { MainWindowGetter } from '../types/handlers.js'
-import type { SerialConnectConfig } from '../../shared/connectConfig.js'
+import type { SerialConnectConfig } from '../../shared/zterm-api.js'
 
 let SerialPort: typeof SerialPortClass | undefined
 try {

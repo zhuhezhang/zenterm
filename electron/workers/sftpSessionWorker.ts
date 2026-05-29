@@ -14,7 +14,7 @@ import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, safeJoinLocalDownloadPathForRoots,
 } from '../lib/sftpLocalPathRoots.js'
 import { buildSshConnectConfig } from '../lib/sshConnectConfig.js'
-import type { SshConnectConfig } from '../../shared/connectConfig.js'
+import type { SshConnectConfig } from '../../shared/zterm-api.js'
 
 if (!parentPort) throw new Error('worker_threads parentPort missing')
 const port = parentPort
