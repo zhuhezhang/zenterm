@@ -1,9 +1,12 @@
-import type { BrowserWindow, IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron'
+import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron'
 import type { SerialPort as SerialPortClass, SerialPortInfo } from 'serialport'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
+import { sendToRenderer } from '../lib/mainWindowSend.js'
 import { bufferToBinaryWire, encodeOutgoingTerminalData } from '../lib/terminalEncodingService.js'
 import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import { translateMain } from '../i18n/translateMain.js'
+import type { MainWindowGetter } from '../types/handlers.js'
+import type { SerialConnectConfig } from '../../shared/connectConfig.js'
 
 let SerialPort: typeof SerialPortClass | undefined
 try {
@@ -33,7 +36,7 @@ function isSerialPathInEnumeratedList(requestedPath: unknown, ports: SerialPortI
 /**
  * 设置 Serial 相关的 IPC 处理函数
  */
-function setupSerialHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow) {
+function setupSerialHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
   ipcMain.handle('serial:listPorts', async (event: IpcMainInvokeEvent) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true, undefined, { ports: [] })
     if (!SerialPort) return ipcFail('serial.moduleUnavailable', true, undefined, { ports: [] })
@@ -50,7 +53,7 @@ function setupSerialHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow) {
     if (!SerialPort) return ipcFail('serial.moduleUnavailable', true)
     if (!id || typeof id !== 'string') return ipcFail('app.invalidRequest', true)
     if (!config || typeof config !== 'object') return ipcFail('app.invalidRequest', true)
-    const cfg = config as Record<string, unknown>
+    const cfg = config as SerialConnectConfig
 
     let enumerated: SerialPortInfo[]
     try {
@@ -87,16 +90,17 @@ function setupSerialHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow) {
         serialSessions.set(id, port)
 
         port.on('data', (data: Buffer) => {
-          mainWindow.webContents.send('serial:output', id, bufferToBinaryWire(data))
+          sendToRenderer(getMainWindow, 'serial:output', id, bufferToBinaryWire(data))
         })
 
         port.on('close', () => {
           serialSessions.delete(id)
-          mainWindow.webContents.send('serial:closed', id)
+          sendToRenderer(getMainWindow, 'serial:closed', id)
         })
 
         port.on('error', (err: Error) => {
-          mainWindow.webContents.send(
+          sendToRenderer(
+            getMainWindow,
             'serial:output',
             id,
             `\r\n${translateMain('serial.terminalErrorPrefix')} ${err.message}\r\n`,

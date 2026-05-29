@@ -6,7 +6,8 @@ import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage'
 import { exportSessions, saveSessions } from '../store/sessionStore'
 import { IMPORT_JSON_ACCEPT } from '../lib/import/constants'
 import { reportSettingsImportResult, reportSettingsImportError } from '../lib/import/reportSettingsImport'
-import { createHighlightRuleId, normalizeHighlightRulesForSave } from '../lib/settings/highlightRules'
+import { createHighlightRuleId } from '../lib/settings/highlightRules'
+import { buildSettingsFromForm } from '../lib/settings/buildSettingsFromForm'
 import { clearAllVaultEntries, absorbPlaintextSecretsFromImportedSessions } from '../store/credentialsBridge'
 import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS } from '../lib/settings/defaults'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults'
@@ -285,25 +286,14 @@ export default function SettingsDialog({
 
   /** 处理保存设置的操作，将当前表单数据保存到设置中，并调用 onSave 回调函数传递新的设置对象 */
   const handleSave = () => {
-    const next: AppSettings = {
-      ...form,
-      highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang),
-      terminalScrollback: clampTerminalScrollback(form.terminalScrollback),
-      loggingMode: normalizeLoggingMode(form.loggingMode),
-    }
+    const next = buildSettingsFromForm(form, msgLang)
     setForm(next)
     saveSettings(next)
     onSave(next)
   }
 
-  /** 保存设置后关闭对话框 */
   const handleSaveAndClose = () => {
-    const next: AppSettings = {
-      ...form,
-      highlightRules: normalizeHighlightRulesForSave(form.highlightRules, msgLang),
-      terminalScrollback: clampTerminalScrollback(form.terminalScrollback),
-      loggingMode: normalizeLoggingMode(form.loggingMode),
-    }
+    const next = buildSettingsFromForm(form, msgLang)
     setForm(next)
     saveSettings(next)
     onSave(next)

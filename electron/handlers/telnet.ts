@@ -1,8 +1,11 @@
 import net from 'net'
-import type { BrowserWindow, IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron'
+import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
+import { sendToRenderer } from '../lib/mainWindowSend.js'
 import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import { bufferToBinaryWire, encodeOutgoingTerminalData } from '../lib/terminalEncodingService.js'
+import type { MainWindowGetter } from '../types/handlers.js'
+import type { TelnetConnectConfig } from '../../shared/connectConfig.js'
 
 /** 存储所有 Telnet 会话信息的 Map，键为会话 ID，值为 net.Socket 实例 */
 const telnetSessions = new Map<string, net.Socket>()
@@ -95,12 +98,12 @@ function clearTelnetParserState(socket: net.Socket) {
 /**
  * 设置 Telnet 相关的 IPC 处理函数
  */
-function setupTelnetHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow) {
+function setupTelnetHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
   ipcMain.handle('telnet:connect', async (event: IpcMainInvokeEvent, id: unknown, config: unknown) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
     if (!config || typeof config !== 'object') return ipcFail('app.invalidRequest', true)
-    const cfg = config as Record<string, unknown>
+    const cfg = config as TelnetConnectConfig
 
     return new Promise((resolve) => {
       const socket = new net.Socket()
@@ -126,14 +129,14 @@ function setupTelnetHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow) {
       socket.on('data', (data: Buffer) => {
         const processed = stripTelnetStream(socket, data)
         if (processed.length > 0) {
-          mainWindow.webContents.send('telnet:output', id, bufferToBinaryWire(processed))
+          sendToRenderer(getMainWindow, 'telnet:output', id, bufferToBinaryWire(processed))
         }
       })
 
       socket.on('close', () => {
         clearTelnetParserState(socket)
         telnetSessions.delete(id)
-        mainWindow.webContents.send('telnet:closed', id)
+        sendToRenderer(getMainWindow, 'telnet:closed', id)
       })
 
       socket.on('error', (err: Error) => {

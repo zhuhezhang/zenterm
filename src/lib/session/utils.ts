@@ -13,7 +13,8 @@ import {
   BAUD_RATE_SET,
   PARITY_SET,
   LABEL_ILLEGAL_CHARS_RE,
-  GROUP_ILLEGAL_CHARS_RE,
+  hasInvalidLabelChars,
+  hasInvalidGroupChars,
   getSessionFormDefaults,
 } from './defaults'
 
@@ -51,16 +52,16 @@ export function buildSessionLabel(
 ): string {
   if (tab === 'serial') {
     const raw = String(form.path || 'Serial')
-    return raw.replace(new RegExp(LABEL_ILLEGAL_CHARS_RE.source, 'g'), '').trim() || 'Serial'
+    return raw.replace(LABEL_ILLEGAL_CHARS_RE, '').trim() || 'Serial'
   }
   if (tab === 'telnet') {
     const raw = String(form.host || 'Telnet')
-    return raw.replace(new RegExp(LABEL_ILLEGAL_CHARS_RE.source, 'g'), '').trim() || 'Telnet'
+    return raw.replace(LABEL_ILLEGAL_CHARS_RE, '').trim() || 'Telnet'
   }
   const raw =
     (form.username ? String(form.username) + '@' : '') +
     (form.host || String(tab).toUpperCase())
-  return raw.replace(new RegExp(LABEL_ILLEGAL_CHARS_RE.source, 'g'), '').trim() || String(tab).toUpperCase()
+  return raw.replace(LABEL_ILLEGAL_CHARS_RE, '').trim() || String(tab).toUpperCase()
 }
 
 export function validateSessionGroupLabel(
@@ -71,8 +72,8 @@ export function validateSessionGroupLabel(
   const l = label ?? ''
   if (g.startsWith('/')) return 'groupSlashStart'
   if (g.endsWith('/')) return 'groupSlashEnd'
-  if (g && GROUP_ILLEGAL_CHARS_RE.test(g)) return 'groupIllegalChars'
-  if (l && LABEL_ILLEGAL_CHARS_RE.test(l)) return 'labelIllegalChars'
+  if (g && hasInvalidGroupChars(g)) return 'groupIllegalChars'
+  if (l && hasInvalidLabelChars(l)) return 'labelIllegalChars'
   return null
 }
 

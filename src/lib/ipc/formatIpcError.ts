@@ -27,12 +27,6 @@ export function formatIpcError(
 }
 
 /**
- * 从 IPC 响应对象取展示文案（是否翻译由 errorKnown 决定）
- * @param {(path: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {{ success?: boolean, errorKnown?: boolean, content?: Record<string, unknown> }} res 错误响应对象
- * @returns {string} 展示文案
- */
-/**
  * 失败则 alert 并返回 true；成功或未失败返回 false
  * @param {(path: string, params?: Record<string, string|number>) => string} t
  * @param {{ success?: boolean, errorKnown?: boolean, content?: Record<string, unknown> } | null | undefined} res

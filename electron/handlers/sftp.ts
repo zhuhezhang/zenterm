@@ -1,16 +1,14 @@
-/**
- * sftp 后端处理流程参考 ssh 的解释，两者相似的
- */
-import type { BrowserWindow, IpcMain, IpcMainInvokeEvent } from 'electron'
+import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { Worker } from 'worker_threads'
 import { fileURLToPath } from 'url'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
+import { handleHostVerifyMessage } from '../lib/hostVerifyMessage.js'
+import { sendToRenderer } from '../lib/mainWindowSend.js'
 import { ipcFail, ipcFailFromThrown, ipcOk } from '../lib/ipcResponse.js'
 import { ipcFromWorkerCmdResult } from '../lib/workerCmdResult.js'
 import { collectResolvedRoots } from '../lib/localPathPolicy.js'
 import { assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots } from '../lib/sftpLocalPathRoots.js'
-import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
-import type { SftpSessionState } from '../types/handlers.js'
+import type { MainWindowGetter, SftpSessionState } from '../types/handlers.js'
 
 /** 存储每个 SFTP 会话对应的 Worker 与会话状态 */
 const sftpSessions = new Map<string, SftpSessionState>()
@@ -53,7 +51,7 @@ function rejectAllPending(session: SftpSessionState, error: string, errorParams?
 /**
  * 设置 SFTP 相关的 IPC 处理函数
  */
-function setupSFTPHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow) {
+function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
   ipcMain.handle('sftp:connect', async (event: IpcMainInvokeEvent, id: unknown, config: unknown) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
@@ -99,22 +97,11 @@ function setupSFTPHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow) {
 
       const onWorkerMessage = async (msg: Record<string, unknown>) => {
         if (msg.type === 'HOST_VERIFY') {
-          const raw = Buffer.from(String(msg.keyBase64), 'base64')
-          const ok = await verifySshHostKeyTrust(
-            mainWindow,
-            String(msg.host),
-            Number(msg.port) || 22,
-            raw,
-          )
-          try {
-            worker?.postMessage({ type: 'HOST_VERIFY_RESULT', reqId: msg.reqId, ok })
-          } catch {}
+          if (worker) await handleHostVerifyMessage(getMainWindow, worker, msg)
           return
         }
         if (msg.type === 'PROGRESS') {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('sftp:progress', id, msg.progress)
-          }
+          sendToRenderer(getMainWindow, 'sftp:progress', id, msg.progress)
           return
         }
         if (msg.type === 'CMD_RESULT') {

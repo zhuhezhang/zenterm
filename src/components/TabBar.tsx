@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type DragEvent, type MouseEvent } from 'react'
 import { useI18n } from '../context/I18nContext'
+import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick'
 import ConnectionTypeIcon from './common'
 import type { TabBarProps } from '../types/components'
 import type { TabContextMenu } from '../types/tabBar'
@@ -49,16 +50,6 @@ export default function TabBar({
     prevCountRef.current = sessions.length
   }, [sessions.length])
 
-  useEffect(() => {  // 右键菜单打开后，点击菜单外区域自动关闭
-    if (!ctxMenu) return
-    const onDocMouseDown = (e: globalThis.MouseEvent) => {
-      if ((e.target as Element | null)?.closest?.('.tab-context-menu')) return
-      closeCtx()
-    }
-    document.addEventListener('mousedown', onDocMouseDown)
-    return () => document.removeEventListener('mousedown', onDocMouseDown)
-  }, [ctxMenu])
-
   /** 
    * 右键菜单操作函数，分别用于关闭当前标签页、关闭其他标签页、关闭左侧标签页、关闭右侧标签页和关闭全部标签页。
    * 每个函数调用对应的 onClose 回调来关闭指定的标签页，并调用 closeCtx 来关闭右键菜单
@@ -74,6 +65,7 @@ export default function TabBar({
 
   /** 关闭右键菜单 */
   const closeCtx = () => setCtxMenu(null)
+  useDismissOnOutsideClick(!!ctxMenu, closeCtx, '.tab-context-menu')
   /**
    * 关闭标签页
    * @param {string} id 要关闭的标签页 ID

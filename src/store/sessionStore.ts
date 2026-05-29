@@ -69,16 +69,12 @@ export function addSavedSession(
   const newSession: SavedSession = { ...normalized, label, savedId: sid, savedAt: now }
 
   if (config.savedId) {
-    const next = sessions.map((s) =>
+    return sessions.map((s) =>
       s.savedId === config.savedId ? newSession : s,
     )
-    saveSessions(next)
-    return next
   }
 
-  const next = [...sessions, newSession]
-  saveSessions(next)
-  return next
+  return [...sessions, newSession]
 }
 
 export function duplicateSavedSession(
@@ -91,18 +87,14 @@ export function duplicateSavedSession(
   const newId = `saved-${now}-${Math.random().toString(36).slice(2, 6)}`
   const label = uniqueLabelInGroup(sessions, src.group, src.label)
   const copy: SavedSession = { ...src, savedId: newId, label, savedAt: now }
-  const next = [...sessions, copy]
-  saveSessions(next)
-  return next
+  return [...sessions, copy]
 }
 
 export function removeSavedSession(
   sessions: SavedSession[],
   savedId: string,
 ): SavedSession[] {
-  const next = sessions.filter((s) => s.savedId !== savedId)
-  saveSessions(next)
-  return next
+  return sessions.filter((s) => s.savedId !== savedId)
 }
 
 export function reorderSessions(
@@ -128,7 +120,6 @@ export function reorderSessions(
   } else {
     arr.push(moved)
   }
-  saveSessions(arr)
   return arr
 }
 
@@ -160,15 +151,11 @@ export function saveGroupPlaceholders(list: string[]): void {
 
 export function addGroupPlaceholder(list: string[], groupName: string): string[] {
   if (list.includes(groupName)) return list
-  const next = [...list, groupName]
-  saveGroupPlaceholders(next)
-  return next
+  return [...list, groupName]
 }
 
 export function removeGroupPlaceholder(list: string[], groupName: string): string[] {
-  const next = list.filter((g) => g !== groupName)
-  saveGroupPlaceholders(next)
-  return next
+  return list.filter((g) => g !== groupName)
 }
 
 export function prunePlaceholdersForOccupiedGroups(
@@ -189,6 +176,17 @@ export function vacatedNamedGroupIfEmpty(
   if (!oldGroup) return undefined
   if (nextSessions.some((s) => (s.group || '') === (oldGroup || ''))) return undefined
   return oldGroup
+}
+
+/** 编辑会话后，若原分组已无任何会话则返回该分组路径 */
+export function vacatedGroupIfMoved(
+  beforeGroup: string | undefined,
+  newGroup: string | undefined,
+  nextSessions: SavedSession[],
+): string | undefined {
+  if (!beforeGroup) return undefined
+  if ((beforeGroup || '') === (newGroup || '')) return undefined
+  return vacatedNamedGroupIfEmpty(beforeGroup, nextSessions)
 }
 
 export function getGroups(

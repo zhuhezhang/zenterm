@@ -54,6 +54,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    // .ts 优先于 .js，避免 shared/ 残留 CJS 产物遮蔽同名 .ts（Vite 默认 .js 在前）
+    extensions: ['.ts', '.tsx', '.mts', '.mjs', '.js', '.jsx', '.json'],
   },
   build: {
     outDir: 'dist',

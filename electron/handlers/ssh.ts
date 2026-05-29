@@ -1,11 +1,13 @@
-import type { BrowserWindow, IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron'
+import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron'
 import { Worker } from 'worker_threads'
 import { fileURLToPath } from 'url'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
-import { verifySshHostKeyTrust } from '../lib/sshKnownHosts.js'
+import { handleHostVerifyMessage } from '../lib/hostVerifyMessage.js'
+import { sendToRenderer } from '../lib/mainWindowSend.js'
 import { ipcFailFromThrown, ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import { encodeOutgoingTerminalData } from '../lib/terminalEncodingService.js'
-import type { SshSessionState } from '../types/handlers.js'
+import type { MainWindowGetter, SshSessionState } from '../types/handlers.js'
+import type { SshConnectConfig } from '../../shared/connectConfig.js'
 
 /** 存储每个 SSH 会话对应的 Worker 桥接状态（键id → 值{ worker: Worker, isClosed: boolean }） */
 const sshSessions = new Map<string, SshSessionState>()
@@ -16,7 +18,7 @@ const workerEntry = fileURLToPath(new URL('../workers/sshSessionWorker.js', impo
 /**
  * 设置 SSH 相关的 IPC 处理函数
  */
-function setupSSHHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow) {
+function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
   ipcMain.handle('ssh:connect', async (event: IpcMainInvokeEvent, id: unknown, config: unknown) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
@@ -63,9 +65,7 @@ function setupSSHHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow) {
         if (session.isClosed) return
         session.isClosed = true
         sshSessions.delete(id)
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('ssh:closed', id)
-        }
+        sendToRenderer(getMainWindow, 'ssh:closed', id)
         try {
           worker.terminate()
         } catch {}
@@ -73,22 +73,11 @@ function setupSSHHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow) {
 
       worker.on('message', async (msg: Record<string, unknown>) => {
         if (msg.type === 'HOST_VERIFY') {
-          const raw = Buffer.from(String(msg.keyBase64), 'base64')
-          const ok = await verifySshHostKeyTrust(
-            mainWindow,
-            String(msg.host),
-            Number(msg.port) || 22,
-            raw,
-          )
-          try {
-            worker.postMessage({ type: 'HOST_VERIFY_RESULT', reqId: msg.reqId, ok })
-          } catch {}
+          await handleHostVerifyMessage(getMainWindow, worker, msg)
           return
         }
         if (msg.type === 'OUTPUT') {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('ssh:output', id, msg.data)
-          }
+          sendToRenderer(getMainWindow, 'ssh:output', id, msg.data)
           return
         }
         if (msg.type === 'READY') {
@@ -145,12 +134,14 @@ function setupSSHHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow) {
     if (typeof id !== 'string') return ipcOk()
     const session = sshSessions.get(id)
     if (session?.worker) {
+      sshSessions.delete(id)
       try {
         session.worker.postMessage({ type: 'DISCONNECT' })
       } catch {}
+      const workerRef = session.worker
       setTimeout(() => {
         try {
-          session.worker.terminate()
+          workerRef.terminate()
         } catch {}
       }, 120)
     }
@@ -159,3 +150,4 @@ function setupSSHHandlers(ipcMain: IpcMain, mainWindow: BrowserWindow) {
 }
 
 export { setupSSHHandlers }
+export type { SshConnectConfig }

@@ -1,8 +1,9 @@
 import {
-  useState, useRef, useEffect, useMemo, useCallback,
+  useState, useRef, useEffect, useMemo, useCallback, lazy, Suspense,
   type ChangeEvent, type DragEvent, type KeyboardEvent, type MouseEvent,
 } from 'react'
 import { useI18n } from '@/context/I18nContext'
+import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick'
 import { uniqueLabelInGroup, ungroupSessionsUnderPath, vacatedNamedGroupIfEmpty } from '@/store/sessionStore'
 import {
   applySessionsImport, reportSessionsImportResult, reportSessionsImportError, resetImportFileInput,
@@ -11,7 +12,8 @@ import { IMPORT_JSON_ACCEPT } from '@/lib/import/constants'
 import { absorbPlaintextSecretsFromImportedSessions } from '@/store/credentialsBridge'
 import { buildTree, flattenVisibleTree, NO_GROUP_PLACEHOLDERS } from '@/lib/session/tree'
 import { hasInvalidLabelChars } from '../../lib/safeFileName'
-import SftpPanel from '../SftpPanel'
+
+const SftpPanel = lazy(() => import('../SftpPanel'))
 import { Chevron, FolderIcon } from './icons'
 import SidebarTop from './SidebarTop'
 import SessionTreeNodeView from './SessionTreeNode'
@@ -131,15 +133,7 @@ export default function Sidebar(props: SidebarProps) {
     resetImportFileInput(e)
   }, [savedSessions, onUpdateSessions, t])
 
-  useEffect(() => {  // 右键菜单打开后，点击菜单外区域自动关闭
-    if (!contextMenu) return
-    const onDocMouseDown = (e: globalThis.MouseEvent) => {
-      if ((e.target as Element | null)?.closest?.('.context-menu')) return
-      closeCtx()
-    }
-    document.addEventListener('mousedown', onDocMouseDown)
-    return () => document.removeEventListener('mousedown', onDocMouseDown)
-  }, [contextMenu])
+  useDismissOnOutsideClick(!!contextMenu, closeCtx, '.context-menu')
 
   /** 展开所有分组 */
   const expandAll = () => {
@@ -594,7 +588,11 @@ export default function Sidebar(props: SidebarProps) {
                 <span className="sftp-item-icon">📁</span>
                 <span className="sb-section-label">{t('sidebar.remoteFiles')}</span>
               </div>
-              {sftpExpanded && <SftpPanel session={activeSession} />}
+              {sftpExpanded && (
+                <Suspense fallback={null}>
+                  <SftpPanel session={activeSession} />
+                </Suspense>
+              )}
             </div>
           )}
           <div className={`sb-sessions-scroll${keyboardFocusId ? ' sb-keyboard-nav' : ''}`}>

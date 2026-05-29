@@ -1,5 +1,11 @@
 import type { SessionType } from '../../types/session'
 import { DEFAULT_TERMINAL_ENCODING } from '../terminalEncodingService'
+import {
+  INVALID_LABEL_CHARS,
+  INVALID_GROUP_CHARS,
+  hasInvalidLabelChars,
+  hasInvalidGroupChars,
+} from '../../../shared/safeFileName'
 
 /** 端口最小值 */
 export const PORT_MIN = 0
@@ -30,10 +36,12 @@ export const SESSION_TYPE_FIELDS = {
   serial: ['path', 'baudRate', 'dataBits', 'stopBits', 'parity', 'encoding', 'backspaceMode'],
 }
 
-/** 标签名非法字符（与 ConnectDialog 一致） */
-export const LABEL_ILLEGAL_CHARS_RE = /[/\\:*?"<>\x00]/
-/** 分组名非法字符 */
-export const GROUP_ILLEGAL_CHARS_RE = /[\\:*?"<>\x00]/
+/** @deprecated 使用 shared/safeFileName 的 INVALID_LABEL_CHARS */
+export const LABEL_ILLEGAL_CHARS_RE = INVALID_LABEL_CHARS
+/** @deprecated 使用 shared/safeFileName 的 INVALID_GROUP_CHARS */
+export const GROUP_ILLEGAL_CHARS_RE = INVALID_GROUP_CHARS
+
+export { hasInvalidLabelChars, hasInvalidGroupChars }
 
 /** 验证会话分组和标签返回码 → connect.* i18n 键 */
 export const SESSION_GROUP_LABEL_ERROR_KEYS = {

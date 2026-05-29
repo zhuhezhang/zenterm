@@ -1,16 +1,9 @@
 import type { IpcMain, IpcMainEvent } from 'electron'
 import fs from 'fs'
 import path from 'path'
-import { INVALID_LABEL_CHARS } from '../../shared/safeFileName.js'
+import { sanitizeLogFileStem } from '../../shared/safeFileName.js'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { assertLogWriteDirectoryAllowed } from '../lib/localPathPolicy.js'
-
-/**
- * 日志文件主名：非法字符替换为下划线（log:write / log:append）
- */
-export function sanitizeLogFileStem(raw: unknown) {
-  return String(raw ?? '').replace(INVALID_LABEL_CHARS, '_').trim() || 'session'
-}
 
 /**
  * 日志写入处理程序

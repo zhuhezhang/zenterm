@@ -98,6 +98,7 @@ export default function SftpPanel({ session }: SftpPanelProps) {
   const fileUploadInputRef = useRef<HTMLInputElement | null>(null)
   const folderUploadInputRef = useRef<HTMLInputElement | null>(null)
   const uploadDetailsRef = useRef<HTMLDetailsElement | null>(null)
+  const [uploadMenuOpen, setUploadMenuOpen] = useState(false)
   const [fileCtx, setFileCtx] = useState<SftpFileContextMenu | null>(null)
   const [fileMenuPos, setFileMenuPos] = useState({ x: 0, y: 0 })
   const fileCtxMenuRef = useRef<HTMLDivElement | null>(null)
@@ -163,18 +164,21 @@ export default function SftpPanel({ session }: SftpPanelProps) {
     }
   }, [fileCtx])
 
-  useEffect(() => {  // 监听上传菜单点击事件，点击菜单外区域自动关闭菜单
+  useEffect(() => {
+    if (!uploadMenuOpen) return
     const closeUploadMenuIfOutside = (e: globalThis.MouseEvent) => {
       const root = uploadDetailsRef.current
       if (!root?.open) return
       if (e.target instanceof Node && root.contains(e.target)) return
       root.removeAttribute('open')
+      setUploadMenuOpen(false)
     }
     const onEscape = (e: globalThis.KeyboardEvent) => {
       if (e.key !== 'Escape') return
       const root = uploadDetailsRef.current
       if (!root?.open) return
       root.removeAttribute('open')
+      setUploadMenuOpen(false)
     }
     document.addEventListener('mousedown', closeUploadMenuIfOutside)
     document.addEventListener('keydown', onEscape)
@@ -182,7 +186,7 @@ export default function SftpPanel({ session }: SftpPanelProps) {
       document.removeEventListener('mousedown', closeUploadMenuIfOutside)
       document.removeEventListener('keydown', onEscape)
     }
-  }, [])
+  }, [uploadMenuOpen])
 
   /** 上移到父目录 */
   const goUp = () => {
@@ -476,7 +480,11 @@ export default function SftpPanel({ session }: SftpPanelProps) {
       <div className="sftp-header">
         <span className="sftp-title">SFTP — {session.host}</span>
         <div className="sftp-toolbar">
-          <details ref={uploadDetailsRef} className="sftp-upload-details">
+          <details
+            ref={uploadDetailsRef}
+            className="sftp-upload-details"
+            onToggle={(e) => setUploadMenuOpen((e.currentTarget as HTMLDetailsElement).open)}
+          >
             <summary className="sftp-btn sftp-upload-summary" title={t('sftp.uploadTitle')}>{t('sftp.upload')}</summary>
             <div className="sftp-upload-menu" role="menu">
               <button

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo, lazy, Suspense, memo } from 'react'
 import type { AppMainProps } from './types/app'
 import type { AppSettings, AppTheme } from './types/settings'
 import type {
@@ -16,10 +16,11 @@ import TitleBar from '@/components/TitleBar'
 import Sidebar from '@/components/sidebar/Sidebar'
 import TabBar from '@/components/TabBar'
 import TerminalPanel from '@/components/TerminalPanel'
-import ConnectDialog from '@/components/ConnectDialog'
-import SettingsDialog from '@/components/SettingsDialog'
 import WelcomeScreen from '@/components/app/WelcomeScreen'
 import CredentialDialog from '@/components/app/CredentialDialog'
+
+const ConnectDialog = lazy(() => import('@/components/ConnectDialog'))
+const SettingsDialog = lazy(() => import('@/components/SettingsDialog'))
 import { useSyncedAppTheme } from '@/hooks/useSyncedAppTheme'
 import { useSidebarResize } from '@/hooks/useSidebarResize'
 import { fileTimestamp } from '@/lib/util/fileTimestamp'
@@ -30,34 +31,60 @@ import { clampSidebarWidthPx } from './lib/settings/normalize'
 import { resolveEffectiveUiLanguage, syncUiLanguageToMain } from './lib/resolveUiLanguage'
 import { alertIpcFailure } from '@/lib/ipc/formatIpcError'
 import {
-  loadSavedSessions, addSavedSession, removeSavedSession, duplicateSavedSession, saveSessions, getGroups,
-  loadGroupPlaceholders, saveGroupPlaceholders, addGroupPlaceholder, prunePlaceholdersForOccupiedGroups
+  loadSavedSessions, removeSavedSession, duplicateSavedSession, saveSessions, getGroups,
+  loadGroupPlaceholders, saveGroupPlaceholders, addGroupPlaceholder, prunePlaceholdersForOccupiedGroups,
+  vacatedNamedGroupIfEmpty,
 } from './store/sessionStore'
+import { prepareSavedSessionUpdate } from './lib/session/persistSavedSession'
 import {
   syncSessionSecretsToVault, resolveAffectedSavedId, mergeSessionWithVaultSecrets,
   removeVaultEntry, duplicateVaultEntry, reapplyVaultPoliciesForAllSessions,
 } from './store/credentialsBridge'
 import './styles/app.css'
 
-/**
- * 编辑已保存会话后，若原分组路径上已无任何会话，返回该路径以便添加占位分组
- * @param {Object|undefined} beforeSession 保存前的会话对象
- * @param {Object} newConfig 本次提交的配置（含 group）
- * @param {Array} nextSessions addSavedSession 之后的列表
- * @returns {string|undefined} 需恢复为占位符的分组路径，不需要则 undefined
- */
-function vacatedGroupPathIfEmpty(
-  beforeSession: SavedSession | null | undefined,
-  newConfig: SessionConfig,
-  nextSessions: SavedSession[],
-): string | undefined {
-  if (!beforeSession) return undefined
-  const oldG = beforeSession.group
-  if (!oldG) return undefined
-  if ((oldG || '') === (newConfig.group || '')) return undefined
-  if (nextSessions.some(s => (s.group || '') === (oldG || ''))) return undefined
-  return oldG
+function openCredentialDialog(merged: SessionConfig): CredentialDialogState {
+  return {
+    session: merged,
+    username: merged.username || '',
+    password: merged.password || '',
+    privateKey: merged.privateKey || '',
+    passphrase: merged.passphrase || '',
+  }
 }
+
+const TerminalPanelSlot = memo(function TerminalPanelSlot({
+  session,
+  active,
+  terminalSettings,
+  appThemeEffective,
+  updateSession,
+  onRegisterExport,
+  onRegisterClearScreen,
+}: {
+  session: ActiveSession
+  active: boolean
+  terminalSettings: AppSettings
+  appThemeEffective: 'dark' | 'light'
+  updateSession: (id: string, upd: Partial<ActiveSession>) => void
+  onRegisterExport: (sessionId: string, getter: TerminalTextGetter | null) => void
+  onRegisterClearScreen: (sessionId: string, fn: TerminalClearFn | null) => void
+}) {
+  const onUpdate = useCallback(
+    (upd: Partial<ActiveSession>) => updateSession(session.id, upd),
+    [session.id, updateSession],
+  )
+  return (
+    <TerminalPanel
+      session={session}
+      active={active}
+      settings={terminalSettings}
+      appThemeEffective={appThemeEffective}
+      onRegisterExport={onRegisterExport}
+      onRegisterClearScreen={onRegisterClearScreen}
+      onUpdate={onUpdate}
+    />
+  )
+})
 
 /**
 
@@ -75,7 +102,24 @@ function AppMain({ settings, setSettings }: AppMainProps) {
     alertIpcFailure(t, r, 'credentials.encryptionUnavailable')
   }
   const [appThemePreview, setAppThemePreview] = useState<AppTheme | null>(null)
-  const appThemeEffective = useSyncedAppTheme(appThemePreview ?? settings.appTheme)  // ??表示如果 appThemePreview 为 null，则使用 settings.appTheme
+  const appThemeEffective = useSyncedAppTheme(appThemePreview ?? settings.appTheme)
+  const terminalSettings = useMemo(() => ({
+    loggingMode: settings.loggingMode,
+    logPath: settings.logPath,
+    terminalScrollback: settings.terminalScrollback,
+    terminalInteract: settings.terminalInteract,
+    highlightRules: settings.highlightRules,
+    uiLanguage: settings.uiLanguage,
+    algorithmPreferences: settings.algorithmPreferences,
+  }), [
+    settings.loggingMode,
+    settings.logPath,
+    settings.terminalScrollback,
+    settings.terminalInteract,
+    settings.highlightRules,
+    settings.uiLanguage,
+    settings.algorithmPreferences,
+  ])
   useEffect(() => {
     const eff = resolveEffectiveUiLanguage(settings.uiLanguage)
     document.documentElement.lang = eff === 'en' ? 'en' : 'zh-CN'
@@ -266,8 +310,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
     const before = dialogInitial?.savedId
       ? savedSessions.find(s => s.savedId === dialogInitial.savedId)
       : null
-    const next = addSavedSession(savedSessions, config)
-    const vacated = vacatedGroupPathIfEmpty(before, config, next)
+    const { next, vacated } = prepareSavedSessionUpdate(savedSessions, config, before)
     updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
     const sid = resolveAffectedSavedId(savedSessions, next, config)
     if (sid) {
@@ -277,17 +320,12 @@ function AppMain({ settings, setSettings }: AppMainProps) {
     setShowDialog(false)
   }, [savedSessions, updateSaved, dialogInitial, settings, t])
 
-  /**
-   * 保存并连接：先保存会话配置（编辑/新建），然后启动会话。同时检查是否需要添加占位分组
-   * @param {Object} c 会话配置对象
-   */
   const handleSaveAndConn = useCallback(async (c: SessionConfig) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
     const before = dialogInitial?.savedId
       ? savedSessions.find(s => s.savedId === dialogInitial.savedId)
       : null
-    const next = addSavedSession(savedSessions, config)
-    const vacated = vacatedGroupPathIfEmpty(before, config, next)
+    const { next, vacated } = prepareSavedSessionUpdate(savedSessions, config, before)
     updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
     const sid = resolveAffectedSavedId(savedSessions, next, config)
     if (sid) {
@@ -318,8 +356,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
       return
     }
     const before = savedSessions.find((s) => s.savedId === config.savedId)
-    const next = addSavedSession(savedSessions, config)
-    const vacated = vacatedGroupPathIfEmpty(before, config, next)
+    const { next, vacated } = prepareSavedSessionUpdate(savedSessions, config, before)
     updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
     // 与「保存会话」一致：始终按当前设置同步 vault；仅 saveSecretsToVault 为 true 时才会把本次敏感字段写入加密库，否则写入 null 并清除该会话在库中的旧凭据
     const r = await syncSessionSecretsToVault(config.savedId, config, settings)
@@ -340,34 +377,16 @@ function AppMain({ settings, setSettings }: AppMainProps) {
       const merged = await mergeSessionWithVaultSecrets(s)
       if (merged.type === 'ssh') {
         if (!merged.username?.trim()) {
-          setCredDialogState({
-            session: merged,
-            username: merged.username || '',
-            password: merged.password || '',
-            privateKey: merged.privateKey || '',
-            passphrase: merged.passphrase || '',
-          })
+          setCredDialogState(openCredentialDialog(merged))
           return
         }
         if (merged.authType === 'privateKey') {
           if (!merged.privateKey?.trim()) {
-            setCredDialogState({
-              session: merged,
-              username: merged.username || '',
-              password: merged.password || '',
-              privateKey: merged.privateKey || '',
-              passphrase: merged.passphrase || '',
-            })
+            setCredDialogState(openCredentialDialog(merged))
             return
           }
         } else if (!merged.password?.trim()) {
-          setCredDialogState({
-            session: merged,
-            username: merged.username || '',
-            password: merged.password || '',
-            privateKey: merged.privateKey || '',
-            passphrase: merged.passphrase || '',
-          })
+          setCredDialogState(openCredentialDialog(merged))
           return
         }
         launchSession(merged)
@@ -383,20 +402,11 @@ function AppMain({ settings, setSettings }: AppMainProps) {
     const deleted = savedSessions.find(s => s.savedId === id)
     void removeVaultEntry(id)
     const next = removeSavedSession(savedSessions, id)
-    const g = deleted?.group
-    const emptyGroup =
-      g && !next.some(s => (s.group || '') === (g || '')) ? g : null  // 如果原分组不为空且在新的会话列表中不存在，则需要添加占位分组
-    setSavedSessions(next)
-    setGroupPlaceholders(prev => {
-      let p = prunePlaceholdersForOccupiedGroups(next, prev)
-      if (emptyGroup) return addGroupPlaceholder(p, emptyGroup)
-      const changed =
-        p.length !== prev.length ||
-        p.some((name, i) => name !== prev[i])
-      if (changed) saveGroupPlaceholders(p)
-      return p
-    })
-  }, [savedSessions])
+    const vacated = deleted?.group
+      ? vacatedNamedGroupIfEmpty(deleted.group, next)
+      : undefined
+    updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
+  }, [savedSessions, updateSaved])
 
   /**
    * 处理标签页重新排序：接收拖动的会话 ID 和目标位置的会话 ID，更新 sessions 顺序
@@ -461,11 +471,15 @@ function AppMain({ settings, setSettings }: AppMainProps) {
               {sessions.length === 0
                 ? <WelcomeScreen onNewSession={openDialog} />
                 : sessions.map(s => (
-                  <TerminalPanel key={s.id} session={s} active={s.id === activeId}
-                    settings={settings} appThemeEffective={appThemeEffective}
+                  <TerminalPanelSlot
+                    key={s.id}
+                    session={s}
+                    active={s.id === activeId}
+                    terminalSettings={terminalSettings as AppSettings}
+                    appThemeEffective={appThemeEffective}
+                    updateSession={updateSession}
                     onRegisterExport={registerTerminalExporter}
                     onRegisterClearScreen={registerTerminalClearScreen}
-                    onUpdate={(upd: Partial<ActiveSession>) => { updateSession(s.id, upd) }}
                   />
                 ))
               }
@@ -475,16 +489,18 @@ function AppMain({ settings, setSettings }: AppMainProps) {
       </div>
 
       {showDialog && (
-        <ConnectDialog
-          key={`${dialogType}-${dialogInitial?.savedId || 'new'}`}
-          type={dialogType}
-          initialData={dialogInitial}
-          savedGroups={savedGroups}
-          onConnect={handleConnect}
-          onSaveAndConnect={handleSaveAndConn}
-          onSaveOnly={handleSaveOnly}
-          onClose={() => setShowDialog(false)}
-        />
+        <Suspense fallback={null}>
+          <ConnectDialog
+            key={`${dialogType}-${dialogInitial?.savedId || 'new'}`}
+            type={dialogType}
+            initialData={dialogInitial}
+            savedGroups={savedGroups}
+            onConnect={handleConnect}
+            onSaveAndConnect={handleSaveAndConn}
+            onSaveOnly={handleSaveOnly}
+            onClose={() => setShowDialog(false)}
+          />
+        </Suspense>
       )}
       {credDialogState && (
         <CredentialDialog
@@ -520,22 +536,24 @@ function AppMain({ settings, setSettings }: AppMainProps) {
         />
       )}
       {showSettings && (
-        <SettingsDialog
-          settings={settings}
-          savedSessions={savedSessions}
-          onUpdateSessions={updateSaved}
-          onUpdatePlaceholders={(ph: string[]) => { setGroupPlaceholders(ph); saveGroupPlaceholders(ph) }}
-          onAppThemePreview={setAppThemePreview}
-          onClose={() => {
-            setAppThemePreview(null)
-            setShowSettings(false)
-          }}
-          onSave={(s: AppSettings) => {
-            setAppThemePreview(null)
-            setSettings(s)
-            void reapplyVaultPoliciesForAllSessions(savedSessions, s)
-          }}
-        />
+        <Suspense fallback={null}>
+          <SettingsDialog
+            settings={settings}
+            savedSessions={savedSessions}
+            onUpdateSessions={updateSaved}
+            onUpdatePlaceholders={updatePlaceholders}
+            onAppThemePreview={setAppThemePreview}
+            onClose={() => {
+              setAppThemePreview(null)
+              setShowSettings(false)
+            }}
+            onSave={(s: AppSettings) => {
+              setAppThemePreview(null)
+              setSettings(s)
+              void reapplyVaultPoliciesForAllSessions(savedSessions, s)
+            }}
+          />
+        </Suspense>
       )}
     </div>
   )

@@ -1,6 +1,7 @@
 /**
  * Preload 暴露的 window.zterm API 契约（preload 与渲染进程共用）
  */
+import type { AlgorithmPreferences } from './sshAlgorithmDefaults.js'
 import type { IpcResult } from './ipc.js'
 
 /** 进度信息 */
@@ -24,20 +25,62 @@ export type VaultGetContent =
   | { found: false; reason: VaultGetReason }
   | { found: true; password?: string; privateKey?: string; passphrase?: string }
 
+/** SSH / SFTP 连接载荷 */
+export interface SshConnectConfig {
+  host?: string
+  port?: number
+  username?: string
+  authType?: string
+  password?: string
+  privateKey?: string
+  passphrase?: string
+  enableSftp?: boolean
+  encoding?: string
+  backspaceMode?: string
+  algorithms?: Partial<AlgorithmPreferences>
+}
+
+export interface TelnetConnectConfig {
+  host?: string
+  port?: number
+  encoding?: string
+  backspaceMode?: string
+}
+
+export interface SerialConnectConfig {
+  path?: string
+  baudRate?: number
+  dataBits?: number
+  stopBits?: number
+  parity?: string
+  encoding?: string
+  backspaceMode?: string
+}
+
+export interface SerialPortInfo {
+  path?: string
+  manufacturer?: string
+  serialNumber?: string
+  pnpId?: string
+  locationId?: string
+  vendorId?: string
+  productId?: string
+}
+
 /** 窗口控制 API */
 export interface ZTermWindowApi {
   minimize: () => void
   maximize: () => void
   close: () => void
   setBackgroundColor: (hex: string) => void
-  onMaximized: (cb: (v: boolean) => void) => void
+  onMaximized: (cb: (v: boolean) => void) => () => void
   isMaximized: () => Promise<IpcResult<{ maximized: boolean }>>
   zoomWheelStep: (deltaY: number) => void
 }
 
 /** SSH 连接 API */
 export interface ZTermSshApi {
-  connect: (id: string, config: Record<string, unknown>) => Promise<IpcResult>
+  connect: (id: string, config: SshConnectConfig) => Promise<IpcResult>
   disconnect: (id: string) => Promise<IpcResult>
   sendData: (id: string, data: string, encoding?: string) => void
   resize: (id: string, cols: number, rows: number) => void
@@ -47,7 +90,7 @@ export interface ZTermSshApi {
 
 /** SFTP 连接 API */
 export interface ZTermSftpApi {
-  connect: (id: string, config: Record<string, unknown>) => Promise<IpcResult>
+  connect: (id: string, config: SshConnectConfig) => Promise<IpcResult>
   disconnect: (id: string) => Promise<IpcResult>
   list: (id: string, remotePath: string) => Promise<IpcResult<{ items: unknown[] }>>
   download: (id: string, remotePath: string, localPath: string) => Promise<IpcResult>
@@ -61,7 +104,7 @@ export interface ZTermSftpApi {
 
 /** Telnet 连接 API */
 export interface ZTermTelnetApi {
-  connect: (id: string, config: Record<string, unknown>) => Promise<IpcResult>
+  connect: (id: string, config: TelnetConnectConfig) => Promise<IpcResult>
   disconnect: (id: string) => Promise<IpcResult>
   sendData: (id: string, data: string, encoding?: string) => void
   onData: (id: string, cb: (data: string) => void) => () => void
@@ -70,8 +113,8 @@ export interface ZTermTelnetApi {
 
 /** 串口连接 API */
 export interface ZTermSerialApi {
-  listPorts: () => Promise<IpcResult<{ ports: unknown[] }>>
-  connect: (id: string, config: Record<string, unknown>) => Promise<IpcResult>
+  listPorts: () => Promise<IpcResult<{ ports: SerialPortInfo[] }>>
+  connect: (id: string, config: SerialConnectConfig) => Promise<IpcResult>
   disconnect: (id: string) => Promise<IpcResult>
   sendData: (id: string, data: string, encoding?: string) => void
   onData: (id: string, cb: (data: string) => void) => () => void

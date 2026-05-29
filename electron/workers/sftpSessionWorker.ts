@@ -5,8 +5,6 @@ import fs from 'fs'
 import { parentPort, workerData } from 'worker_threads'
 import { Client } from 'ssh2'
 import type { SftpClient, SftpDirEntry } from 'ssh2'
-import type { AlgorithmPreferences } from '../../shared/sshAlgorithmDefaults.js'
-import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
 import {
   postWorkerCmdFail,
   postWorkerCmdFailFromThrown,
@@ -15,59 +13,15 @@ import {
 import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, safeJoinLocalDownloadPathForRoots,
 } from '../lib/sftpLocalPathRoots.js'
+import { buildSshConnectConfig } from '../lib/sshConnectConfig.js'
+import type { SshConnectConfig } from '../../shared/connectConfig.js'
 
 if (!parentPort) throw new Error('worker_threads parentPort missing')
 const port = parentPort
 
 const { config, allowedRoots } = workerData as {
-  config: Record<string, unknown>
+  config: SshConnectConfig
   allowedRoots: string[]
-}
-
-/**
- * 构建连接配置
- * @param cfg 配置
- * @param hostVerifier 主机公钥校验器
- * @returns 连接配置
- */
-function buildConnectConfig(
-  cfg: Record<string, unknown>,
-  hostVerifier: (key: Buffer, callback: (ok: boolean) => void) => void,
-): Record<string, unknown> {
-  const connectConfig: Record<string, unknown> = {
-    host: cfg.host,
-    port: cfg.port || 22,
-    username: cfg.username,
-    readyTimeout: 60000,
-    keepaliveInterval: 10000,
-    hostVerifier,
-  }
-
-  const algorithms = cfg.algorithms as Partial<AlgorithmPreferences> | undefined
-  if (algorithms && typeof algorithms === 'object') {
-    const filtered: Partial<AlgorithmPreferences> = {}
-    for (const key in DEFAULT_ALGORITHM_PREFERENCES) {
-      const k = key as keyof AlgorithmPreferences
-      if (Array.isArray(algorithms[k]) && algorithms[k]!.length) {
-        filtered[k] = algorithms[k]
-      }
-    }
-    if (Object.keys(filtered).length) {
-      connectConfig.algorithms = filtered
-    }
-  }
-  if (!connectConfig.algorithms) {
-    connectConfig.algorithms = DEFAULT_ALGORITHM_PREFERENCES
-  }
-
-  if (cfg.authType === 'password') {
-    connectConfig.password = cfg.password
-  } else if (cfg.authType === 'privateKey') {
-    connectConfig.privateKey = cfg.privateKey
-    if (cfg.passphrase) connectConfig.passphrase = cfg.passphrase
-  }
-
-  return connectConfig
 }
 
 /** 主机公钥校验序列号 */
@@ -391,7 +345,7 @@ conn.on('error', (...args: unknown[]) => {
 })
 
 try {
-  conn.connect(buildConnectConfig(config, hostVerifier))
+  conn.connect(buildSshConnectConfig(config, hostVerifier))
 } catch (e) {
   postFail(e instanceof Error ? e.message : String(e))
 }
