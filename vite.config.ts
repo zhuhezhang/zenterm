@@ -58,6 +58,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    minify: 'esbuild',
+    cssMinify: true,
+    reportCompressedSize: false,
   },
   server: {
     port: 5173,

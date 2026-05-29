@@ -17,7 +17,21 @@ function maybeRename(): void {
   }
 }
 
-maybeRename()
-fs.watch(dir, { persistent: true }, (_event, filename) => {
-  if (filename === 'preload.js') maybeRename()
-})
+function startWatch(): void {
+  maybeRename()
+  fs.watch(dir, { persistent: true }, (_event, filename) => {
+    if (filename === 'preload.js') maybeRename()
+  })
+}
+
+// tsc may not have created the output dir yet when this script starts
+if (fs.existsSync(dir)) {
+  startWatch()
+} else {
+  const poll = setInterval(() => {
+    if (fs.existsSync(dir)) {
+      clearInterval(poll)
+      startWatch()
+    }
+  }, 100)
+}

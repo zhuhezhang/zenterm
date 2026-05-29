@@ -325,7 +325,7 @@ npm run dev
 | 串口列表为空                                                                                                             | 点击 **刷新**；Linux 用户需加入 `dialout` 组                                                                                                                                                                      |
 | 每次连接都提示主机密钥                                                                                                        | 检查 `userData` 是否可写；避免只读配置环境运行                                                                                                                                                                          |
 | 导入失败 / 文件类型错误                                                                                                      | 确认使用正确的导出文件（会话 vs 设置）；单文件不超过 8 MB                                                                                                                                                                      |
-| Windows 便携版 `ZTerm x.x.x.exe` 在资源管理器中图标异常，但右键 **属性** 里图标正常；`win-unpacked\ZTerm.exe` 与 `ZTerm Setup x.x.x.exe` 显示正常 | 图标已写入 exe，多为 Windows Shell **图标缓存**（反复用同名覆盖打包时常见）。将文件复制并改名为 `ZTerm-test.exe` 可快速验证；若改名后正常，结束并重启 `explorer.exe`，删除 `%LocalAppData%\Microsoft\Windows\Explorer\` 下的 `iconcache`*、`thumbcache*` 后再打开资源管理器 |
+| Windows 便携版 `ZTerm x.x.x.exe` 在资源管理器中图标异常，但右键 **属性** 里图标正常；`release\win-unpacked\ZTerm.exe` 与 `ZTerm Setup x.x.x.exe` 显示正常 | 图标已写入 exe，多为 Windows Shell **图标缓存**（反复用同名覆盖打包时常见）。将文件复制并改名为 `ZTerm-test.exe` 可快速验证；若改名后正常，结束并重启 `explorer.exe`，删除 `%LocalAppData%\Microsoft\Windows\Explorer\` 下的 `iconcache`*、`thumbcache*` 后再打开资源管理器 |
 
 
 ---
