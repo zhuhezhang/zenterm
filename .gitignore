@@ -7,3 +7,5 @@ release
 *.txt
 .cache
 audit-report.json
+shared/*.js
+shared/*.js.map
