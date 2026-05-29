@@ -1,4 +1,4 @@
-import type { AlgorithmCategory } from '../../types/algorithm'
+import type { AlgorithmCategory } from './algorithmCategory'
 import { DEFAULT_ALGORITHM_PREFERENCES } from '../../../shared/sshAlgorithmDefaults'
 
 /** 可与老旧 SSH 服务端兼容的遗留算法（选项池 = 默认 + 遗留；弱算法判定亦来源于此） */

@@ -1,3 +1,4 @@
+/** 渲染进程应用设置（localStorage）；algorithmPreferences 类型见 shared/sshAlgorithmDefaults */
 import type { AlgorithmPreferences } from '../../shared/sshAlgorithmDefaults'
 
 export type AppTheme = 'dark' | 'light' | 'auto'

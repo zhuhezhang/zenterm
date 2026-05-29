@@ -25,7 +25,7 @@ import {
   applySessionsImport, reportSessionsImportResult, reportSessionsImportError, resetImportFileInput,
 } from '../lib/import/applySessionsImport'
 import { HighlightRegexIcon, HighlightCaseIcon } from './settings/HighlightRuleIcons'
-import type { AlgorithmCategory } from '../types/algorithm'
+import type { AlgorithmCategory } from '../lib/settings/algorithmCategory'
 import type { SettingsDialogProps } from '../types/components'
 import type { AppSettings, AppTheme, HighlightRule } from '../types/settings'
 import type {

@@ -1,6 +1,6 @@
 import type { Terminal } from '@xterm/xterm'
 import type { MutableRefObject } from 'react'
-import { safeFileToken } from '../../../shared/safeFileName'
+import { safeFileToken } from '../../lib/safeFileName'
 import { fileTimestamp } from '../util/fileTimestamp'
 import { resolveLoggingDirectory } from '../../store/settingsStore'
 import { normalizeLoggingMode } from '../settings/normalize'

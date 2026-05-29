@@ -1,4 +1,4 @@
-/** 渲染进程：声明 window.zterm（类型定义见 shared/zterm-api.d.ts） */
+/** 渲染进程：将 shared/zterm-api 挂到 window.zterm（须保留 import，故用 .ts 而非纯 .d.ts） */
 import type { ZTermApi } from '../../shared/zterm-api'
 
 declare global {

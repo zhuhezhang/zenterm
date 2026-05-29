@@ -1,6 +1,6 @@
 /**
  * 主进程 ↔ 渲染进程 IPC 统一响应：{ success, content }；失败时另含 errorKnown
- * 前后端共用：主进程 ipcOk/ipcFail、渲染进程 window.zterm.invoke 返回值、formatIpcError 等
+ * 前后端共用类型；主进程构造/识别见 electron/lib/ipcResponse.ts（ipcOk、isIpcError 等）
  */
 
 /** IPC 响应 content 字段 */
@@ -31,18 +31,4 @@ export interface IpcError extends Error {
   ipcCode: string
   ipcParams: Record<string, string | number>
   ipcKnown: boolean
-}
-
-/** 
- * 判断是否为 ipc 错误
- * @param e 未知对象
- * @returns 是否为 ipc 错误
- */
-export function isIpcError(e: unknown): e is IpcError {
-  return (
-    !!e &&
-    typeof e === 'object' &&
-    'ipcCode' in e &&
-    typeof (e as IpcError).ipcCode === 'string'
-  )
 }

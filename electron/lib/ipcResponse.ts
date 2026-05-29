@@ -2,9 +2,22 @@
  * 主进程 → 渲染进程 IPC 统一响应：{ success, content }；失败时另含 errorKnown
  */
 import type { IpcContent, IpcError, IpcFail, IpcOk, IpcResult } from '../../shared/ipc.js'
-import { isIpcError } from '../../shared/ipc.js'
 
 export type { IpcContent, IpcError, IpcFail, IpcOk, IpcResult }
+
+/**
+ * 判断是否为 ipc 错误
+ * @param e 未知对象
+ * @returns 是否为 ipc 错误
+ */
+export function isIpcError(e: unknown): e is IpcError {
+  return (
+    !!e &&
+    typeof e === 'object' &&
+    'ipcCode' in e &&
+    typeof (e as IpcError).ipcCode === 'string'
+  )
+}
 
 /**
  * 成功响应（前端调用后端函数成功时，后端返回的成功响应）

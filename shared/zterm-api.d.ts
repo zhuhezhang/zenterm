@@ -1,5 +1,5 @@
 /**
- * Preload 暴露的 window.zterm API 契约（preload 与渲染进程共用）
+ * Preload / 主进程 / 渲染进程共用的 window.zterm API 契约（实现见 electron/preload.ts）
  */
 import type { AlgorithmPreferences } from './sshAlgorithmDefaults.js'
 import type { IpcResult } from './ipc.js'

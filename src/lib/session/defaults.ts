@@ -5,7 +5,7 @@ import {
   INVALID_GROUP_CHARS,
   hasInvalidLabelChars,
   hasInvalidGroupChars,
-} from '../../../shared/safeFileName'
+} from '../safeFileName'
 
 /** 端口最小值 */
 export const PORT_MIN = 0
@@ -36,9 +36,9 @@ export const SESSION_TYPE_FIELDS = {
   serial: ['path', 'baudRate', 'dataBits', 'stopBits', 'parity', 'encoding', 'backspaceMode'],
 }
 
-/** @deprecated 使用 shared/safeFileName 的 INVALID_LABEL_CHARS */
+/** @deprecated 使用 lib/safeFileName 的 INVALID_LABEL_CHARS */
 export const LABEL_ILLEGAL_CHARS_RE = INVALID_LABEL_CHARS
-/** @deprecated 使用 shared/safeFileName 的 INVALID_GROUP_CHARS */
+/** @deprecated 使用 lib/safeFileName 的 INVALID_GROUP_CHARS */
 export const GROUP_ILLEGAL_CHARS_RE = INVALID_GROUP_CHARS
 
 export { hasInvalidLabelChars, hasInvalidGroupChars }

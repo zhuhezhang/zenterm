@@ -1,3 +1,4 @@
+/** 主进程 IPC handler 内部类型（不跨进程共享） */
 import type {
   BrowserWindow,
   FileFilter,

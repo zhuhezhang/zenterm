@@ -1,7 +1,7 @@
 import type { IpcMain, IpcMainEvent } from 'electron'
 import fs from 'fs'
 import path from 'path'
-import { sanitizeLogFileStem } from '../../shared/safeFileName.js'
+import { sanitizeLogFileStem } from '../lib/safeFileName.js'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { assertLogWriteDirectoryAllowed } from '../lib/localPathPolicy.js'
 

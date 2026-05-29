@@ -1,4 +1,4 @@
-import type { AlgorithmCategory } from '../../types/algorithm'
+import type { AlgorithmCategory } from './algorithmCategory'
 import type { AlgorithmPreferences } from '../../../shared/sshAlgorithmDefaults'
 import type { SettingsImportWarning } from '../../types/import'
 import type { AppSettings, HighlightRule } from '../../types/settings'

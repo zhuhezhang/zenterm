@@ -7,7 +7,7 @@ import path from 'path'
 import { app } from 'electron'
 import { createIpcError, ipcFail, ipcOk } from './ipcResponse.js'
 import { isPathWithinResolvedRoots } from './localPathRoots.js'
-import { isIpcError } from '../../shared/ipc.js'
+import { isIpcError } from './ipcResponse.js'
 
 /** 允许的用户目录列表，重复项会被去重 */
 const PATH_NAMES = [

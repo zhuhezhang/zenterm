@@ -24,7 +24,7 @@ const SettingsDialog = lazy(() => import('@/components/SettingsDialog'))
 import { useSyncedAppTheme } from '@/hooks/useSyncedAppTheme'
 import { useSidebarResize } from '@/hooks/useSidebarResize'
 import { fileTimestamp } from '@/lib/util/fileTimestamp'
-import { safeFileToken } from '../shared/safeFileName'
+import { safeFileToken } from './lib/safeFileName'
 import { loadSettings, refreshDownloadsPathCache, getDefaultLogPath } from './store/settingsStore'
 import { DEFAULT_SIDEBAR_WIDTH } from './lib/settings/defaults'
 import { clampSidebarWidthPx } from './lib/settings/normalize'

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { INVALID_LABEL_CHARS, hasInvalidLabelChars, safeFileToken, sanitizeLogFileStem } from '../../shared/safeFileName'
+import { INVALID_LABEL_CHARS } from '../../shared/safeFileName'
+import { hasInvalidLabelChars, safeFileToken } from '../../src/lib/safeFileName'
+import { sanitizeLogFileStem } from '../../electron/lib/safeFileName'
 
 describe('INVALID_LABEL_CHARS', () => {
   it('is shared between renderer and main', () => {

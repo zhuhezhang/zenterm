@@ -1,3 +1,4 @@
+/** 渲染进程 IPC 错误包装（底层契约见 shared/ipc.ts） */
 import type { IpcResult } from '../../shared/ipc'
 
 export interface ImportError extends Error {
