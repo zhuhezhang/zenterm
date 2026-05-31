@@ -2,7 +2,7 @@ import { useState, useRef, useLayoutEffect, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '@/context/I18nContext'
 import { addGroupPlaceholder, exportSessions } from '@/store/sessionStore'
-import { hasInvalidLabelChars } from '../../../lib/safeFileName'
+import { hasInvalidLabelChars } from '@/lib/safeFileName'
 import type { SidebarContextMenuProps } from '@/types/components'
 
 /**

@@ -11,7 +11,7 @@ import {
 import { IMPORT_JSON_ACCEPT } from '@/lib/import/constants'
 import { absorbPlaintextSecretsFromImportedSessions } from '@/store/credentialsBridge'
 import { buildTree, flattenVisibleTree, NO_GROUP_PLACEHOLDERS } from '@/lib/session/tree'
-import { hasInvalidLabelChars } from '../../../lib/safeFileName'
+import { hasInvalidLabelChars } from '@/lib/safeFileName'
 
 const SftpPanel = lazy(() => import('../SftpPanel'))
 import { Chevron, FolderIcon } from './icons'
