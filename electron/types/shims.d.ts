@@ -57,26 +57,6 @@ declare module 'ssh2' {
   }
 }
 
-declare module 'serialport' {
-  import type { EventEmitter } from 'node:events'
-
-  export interface SerialPortInfo {
-    path?: string
-  }
-
-  export class SerialPort extends EventEmitter {
-    constructor(options: Record<string, unknown>)
-    static list(): Promise<SerialPortInfo[]>
-    open(callback: (err: Error | null) => void): void
-    write(data: Buffer | string): void
-    close(callback?: () => void): void
-    readonly isOpen: boolean
-    on(event: 'data', listener: (data: Buffer) => void): this
-    on(event: 'close', listener: () => void): this
-    on(event: 'error', listener: (err: Error) => void): this
-  }
-}
-
 declare module 'worker_threads' {
   interface WorkerOptions {
     /** Node ESM worker */

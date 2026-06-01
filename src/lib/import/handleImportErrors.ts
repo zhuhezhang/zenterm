@@ -1,4 +1,5 @@
 import { formatIpcResponseError } from '../ipc/formatIpcError'
+import type { TranslateFn } from '../../types/i18n'
 import type { ImportError } from '../../types/errors'
 
 /**
@@ -14,21 +15,22 @@ export function createImportError(
   return err
 }
 
-/**
- * 将导入错误转为国际化的用户可见文案
- * @param {(key: string, params?: Record<string, string|number>) => string} t 国际化的翻译函数
- * @param {unknown} err 导入错误
- * @returns {string} 用户可见文案
- */
-export function formatImportError(
-  t: (key: string, params?: Record<string, string | number>) => string,
-  err: unknown,
-) {
+export function isImportPathDeniedError(err: unknown): err is ImportError {
+  return !!err && typeof err === 'object' && 'code' in err && (err as ImportError).code === 'pathDenied'
+}
+
+/** 路径不在允许范围内（IPC 文案已含「导入失败」前缀，勿再用 settings.importFail 包裹） */
+export function formatImportPathDeniedMessage(t: TranslateFn, err: unknown): string {
+  const importErr = err as ImportError
+  const ipcMsg = importErr.ipc ? formatIpcResponseError(t, importErr.ipc) : ''
+  if (ipcMsg) return ipcMsg
+  return t('settings.importPathDenied', { hint: t('sftp.pathErrors.allowedRootsHint') })
+}
+
+/** 将非路径策略类的导入错误转为用户可见文案 */
+export function formatImportError(t: TranslateFn, err: unknown): string {
   const importErr = err as ImportError
   const code = err && typeof err === 'object' && 'code' in err ? importErr.code : null
-  if (code === 'pathDenied' && importErr.ipc) {
-    return formatIpcResponseError(t, importErr.ipc) || t('settings.importPathDenied')
-  }
   if (typeof code === 'string') {
     const key = `settings.importErrors.${code}`
     const params = { ...(importErr.params || {}) }
@@ -41,4 +43,13 @@ export function formatImportError(
   }
   if (err instanceof Error && err.message) return err.message
   return String(err ?? '')
+}
+
+/** 导入会话/设置失败：路径策略与其它错误分开展示，避免「导入失败」重复 */
+export function reportImportError(t: TranslateFn, err: unknown): void {
+  if (isImportPathDeniedError(err)) {
+    alert(formatImportPathDeniedMessage(t, err))
+    return
+  }
+  alert(t('settings.importFail', { msg: formatImportError(t, err) }))
 }

@@ -7,6 +7,7 @@ import type { Duplex } from 'node:stream'
 import { bufferToBinaryWire } from '../lib/terminalEncodingService.js'
 import { buildSshConnectConfig } from '../lib/sshConnectConfig.js'
 import type { SshConnectConfig } from '../../shared/zterm-api.js'
+import type { SshWorkerInboundMessage } from '../../shared/workerMessages.js'
 
 if (!parentPort) throw new Error('worker_threads parentPort missing')
 const port = parentPort
@@ -53,7 +54,7 @@ function hostVerifier(key: Buffer, callback: (ok: boolean) => void) {
   })
 }
 
-port.on('message', (msg: Record<string, unknown>) => {
+port.on('message', (msg: SshWorkerInboundMessage) => {
   if (msg.type === 'HOST_VERIFY_RESULT') {
     const reqId = Number(msg.reqId)
     const cb = verifyCallbacks.get(reqId)

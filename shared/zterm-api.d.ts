@@ -3,6 +3,7 @@
  */
 import type { AlgorithmPreferences } from './sshAlgorithmDefaults.js'
 import type { IpcResult } from './ipc.js'
+import type { SftpEntry } from './workerMessages.js'
 
 /** 进度信息 */
 export interface ZTermProgress {
@@ -92,7 +93,7 @@ export interface ZTermSshApi {
 export interface ZTermSftpApi {
   connect: (id: string, config: SshConnectConfig) => Promise<IpcResult>
   disconnect: (id: string) => Promise<IpcResult>
-  list: (id: string, remotePath: string) => Promise<IpcResult<{ items: unknown[] }>>
+  list: (id: string, remotePath: string) => Promise<IpcResult<{ items: SftpEntry[] }>>
   download: (id: string, remotePath: string, localPath: string) => Promise<IpcResult>
   downloadDir: (id: string, remoteDir: string, localDir: string) => Promise<IpcResult>
   upload: (id: string, localPath: string, remotePath: string) => Promise<IpcResult>

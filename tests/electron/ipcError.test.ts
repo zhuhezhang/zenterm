@@ -13,12 +13,12 @@ describe('ipcOk', () => {
 
 describe('ipcFailFromThrown', () => {
   it('preserves ipcCode and params in content', () => {
-    const e = createIpcError('sftp.pathErrors.localFileDenied', { kind: 'upload' })
+    const e = createIpcError('sftp.pathErrors.localDirDenied', { kind: 'upload' })
     expect(ipcFailFromThrown(e)).toEqual({
       success: false,
       errorKnown: true,
       content: {
-        error: 'sftp.pathErrors.localFileDenied',
+        error: 'sftp.pathErrors.localDirDenied',
         errorParams: { kind: 'upload' },
       },
     })

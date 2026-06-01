@@ -5,7 +5,6 @@ import type { SavedSession } from '../../types/session'
 import { validateAndParseSessionsImport } from './parseSessionsImport'
 import { mergeImportedSessions } from './mergeImportedSessions'
 import { formatSessionImportWarnings } from '../session/importWarnings'
-import { formatImportError } from './handleImportErrors'
 
 export async function applySessionsImport(
   file: File,
@@ -36,10 +35,6 @@ export function reportSessionsImportResult(
   } else {
     alert(t('settings.importSessionsOk', { n: addedCount }))
   }
-}
-
-export function reportSessionsImportError(t: TranslateFn, err: unknown): void {
-  alert(t('settings.importFail', { msg: formatImportError(t, err) }))
 }
 
 export function resetImportFileInput(e: ChangeEvent<HTMLInputElement>): void {

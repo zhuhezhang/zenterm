@@ -1,15 +1,12 @@
 import {
-  useState, useRef, useEffect, useMemo, useCallback, lazy, Suspense,
-  type ChangeEvent, type DragEvent, type KeyboardEvent, type MouseEvent,
+  useState, useRef, useEffect, useMemo, useCallback, lazy, Suspense, memo,
+  type KeyboardEvent, type MouseEvent,
 } from 'react'
 import { useI18n } from '@/context/I18nContext'
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick'
-import { uniqueLabelInGroup, ungroupSessionsUnderPath, vacatedNamedGroupIfEmpty } from '@/store/sessionStore'
-import {
-  applySessionsImport, reportSessionsImportResult, reportSessionsImportError, resetImportFileInput,
-} from '@/lib/import/applySessionsImport'
-import { IMPORT_JSON_ACCEPT } from '@/lib/import/constants'
-import { absorbPlaintextSecretsFromImportedSessions } from '@/store/credentialsBridge'
+import { useSessionsImport } from '@/hooks/useSessionsImport'
+import { useSidebarDragDrop } from '@/hooks/useSidebarDragDrop'
+import { uniqueLabelInGroup, ungroupSessionsUnderPath } from '@/store/sessionStore'
 import { buildTree, flattenVisibleTree, NO_GROUP_PLACEHOLDERS } from '@/lib/session/tree'
 import { hasInvalidLabelChars } from '@/lib/safeFileName'
 
@@ -41,7 +38,7 @@ import '@/styles/sidebar.css'
  * @param {function} props.onUpdatePlaceholders 更新分组占位符的回调函数
  * @returns {JSX.Element} 侧边栏组件
  */
-export default function Sidebar(props: SidebarProps) {
+export default memo(function Sidebar(props: SidebarProps) {
   const {
     open, onToggle, savedSessions, onNewSession, onConnectSaved, onDeleteSaved, onUpdateSessions,
     onDuplicateSaved = () => {},
@@ -59,9 +56,13 @@ export default function Sidebar(props: SidebarProps) {
   const [sftpExpanded, setSftpExpanded] = useState(true)  // SFTP 是否展开
   const [sessionSearchQuery, setSessionSearchQuery] = useState('')  // 会话搜索查询(按会话名、主机或串口路径搜索已保存会话)
   const [keyboardFocusId, setKeyboardFocusId] = useState<string | null>(null)
-  const [dragOver, setDragOver] = useState<{ id: string; zone: string } | null>(null)
-  /** 被拖拽分组/会话的分组路径或者会话id和type（group/session） */
-  const dragRef = useRef<{ id: string; type: string } | null>(null)
+  const {
+    dStart, dOver, dLeave, dEnd, isDO, dropOnGroup, dropOnSession, dropUngroup,
+  } = useSidebarDragDrop(savedSessions, groupPlaceholders, onUpdateSessions, onUpdatePlaceholders)
+  const { fileRef: importSessionsFileRef, handleFileChange: handleImportSessionsFile, accept: importAccept, triggerImport } = useSessionsImport(
+    savedSessions,
+    onUpdateSessions,
+  )
   const renameGroupInputRef = useRef<HTMLInputElement | null>(null)
   const renameGroupAlertingRef = useRef(false)
   const ignoreRenameGroupBlurRef = useRef(false)
@@ -113,25 +114,6 @@ export default function Sidebar(props: SidebarProps) {
   }
   /** 关闭上下文菜单 */
   const closeCtx = () => setContextMenu(null)
-
-  /** 导入会话的文件输入引用 */
-  const importSessionsFileRef = useRef<HTMLInputElement | null>(null)
-  const handleImportSessionsFile = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    try {
-      const result = await applySessionsImport(
-        file,
-        savedSessions,
-        absorbPlaintextSecretsFromImportedSessions,
-      )
-      onUpdateSessions(result.sessions)
-      reportSessionsImportResult(t, result)
-    } catch (err) {
-      reportSessionsImportError(t, err)
-    }
-    resetImportFileInput(e)
-  }, [savedSessions, onUpdateSessions, t])
 
   useDismissOnOutsideClick(!!contextMenu, closeCtx, '.context-menu')
 
@@ -310,182 +292,6 @@ export default function Sidebar(props: SidebarProps) {
     setRenamingSession(null)
   }
 
-  /** 
-   * 开始拖拽
-   * @param {Event} e 事件
-   * @param {string} id 拖拽对象 ID
-   * @param {string} type 拖拽对象类型，'session' 或 'group'
-   */
-  const dStart = (e: DragEvent, id: string, type: string) => {
-    dragRef.current = { id, type }
-    e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', id)
-    e.stopPropagation()
-  }
-  /**
-   * 拖拽经过
-   * @param {Event} e 事件
-   * @param {string} id 拖拽对象 ID
-   * @param {string} zone 拖拽区域，'group' 或 'session' 或 'ungroup'
-   */
-  const dOver = (e: DragEvent, id: string, zone: string) => {
-    e.preventDefault(); e.stopPropagation()
-    setDragOver(prev => (prev?.id === id && prev?.zone === zone) ? prev : { id, zone })  // 设置拖拽区域
-  }
-  /**
-   * 拖拽离开
-   * @param {Event} e 事件
-   */
-  const dLeave = (e: DragEvent) => {
-    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver(null)
-  }
-  /** 结束拖拽 */
-  const dEnd = () => { dragRef.current = null; setDragOver(null) }
-  
-  /**
-   * 当前被拖拽对象是否在某个ID和拖拽区域
-   * @param {string} id 拖拽对象 ID
-   * @param {string} zone 拖拽区域，'group' 或 'session' 或 'ungroup'
-   */
-  const isDO = (id: string, zone: string) => dragOver?.id === id && dragOver?.zone === zone
-  /**
-   * 收集所有分组路径
-   * @returns {Set<string>} 所有分组路径集合
-   */
-  const collectAllGroupPaths = (): Set<string> => {
-    const all = new Set<string>(groupPlaceholders as string[])  // 所有占位分组
-    savedSessions.forEach(s => { if (s.group) all.add(s.group) })  // 所有会话的 group 路径
-    return all  // 所有分组路径集合
-  }
-  /** 
-   * 确保分组名称在父分组下唯一
-   * @param {string} parentPath 父分组路径
-   * @param {string} preferredName 首选名称
-   * @param {string} movingGroupPath 移动中的分组路径
-   * @returns {string} 唯一名称，如果首选名称已存在，则返回首选名称(1)、(2) 等后缀
-   */
-  const uniqueGroupNameUnder = (parentPath: string, preferredName: string, movingGroupPath: string) => {
-    const used = new Set<string>()
-    for (const p of collectAllGroupPaths()) {
-      if (p === movingGroupPath || p.startsWith(movingGroupPath + '/')) continue
-      if (parentPath) {
-        if (!p.startsWith(parentPath + '/')) continue
-        const rest = p.slice(parentPath.length + 1)
-        const child = rest.split('/')[0]
-        if (child) used.add(child)
-      } else {
-        const child = p.split('/')[0]
-        if (child) used.add(child)
-      }
-    }
-    if (!used.has(preferredName)) return preferredName
-    let i = 1
-    while (used.has(`${preferredName}(${i})`)) i++
-    return `${preferredName}(${i})`
-  }
-
-  /**
-   * 拖拽到分组
-   * @param {Event} e 事件
-   * @param {string} groupPath 目标分组路径
-   */
-  const dropOnGroup = (e: DragEvent, groupPath: string) => {
-    e.preventDefault(); e.stopPropagation(); setDragOver(null)
-    const src = dragRef.current; if (!src) return
-    if (src.type === 'session') {  // 会话拖拽到分组，检查是否有同名会话
-      const movedSession = savedSessions.find(s => s.savedId === src.id)
-      if (!movedSession) return
-      const siblings = savedSessions.filter(s => (s.group || '') === groupPath && s.savedId !== src.id)
-      const used = new Set(siblings.map(s => s.label))
-      let newLabel = movedSession.label
-      if (used.has(newLabel)) {
-        let i = 1
-        while (used.has(`${movedSession.label}(${i})`)) i++
-        newLabel = `${movedSession.label}(${i})`
-      }
-
-      const next = savedSessions.map(s => s.savedId === src.id ? { ...s, group: groupPath, label: newLabel } : s)  // 更新会话的 group 路径和标签名
-      const v = vacatedNamedGroupIfEmpty(movedSession.group, next)
-      onUpdateSessions(next, v ? { placeholderForVacatedGroup: v } : undefined)  // 更新会话列表，如果需要恢复为占位分组，则设置占位分组
-    } else if (src.type === 'group' && src.id !== groupPath && !groupPath.startsWith(src.id + '/')) {  // 分组拖拽到分组，检查是否有同名分组
-      const oldPath = src.id  // 获取源分组路径
-      const preferredName = oldPath.split('/').pop()  // 获取源分组名称
-      const targetName = uniqueGroupNameUnder(groupPath, preferredName ?? '', oldPath)  // 确保目标分组名称在父分组下唯一
-      const newPath = groupPath + '/' + targetName  // 构建新的分组路径
-
-      onUpdateSessions(savedSessions.map(s =>
-        s.group === oldPath ? { ...s, group: newPath } :
-        s.group?.startsWith(oldPath + '/') ? { ...s, group: newPath + s.group.slice(oldPath.length) } : s
-      ))  // 更新会话列表，更新会话的 group 路径（包含子树）
-      onUpdatePlaceholders?.(Array.from(new Set(groupPlaceholders.map(g =>
-        g === oldPath ? newPath :
-        g.startsWith(oldPath + '/') ? newPath + g.slice(oldPath.length) : g
-      ))))  // 更新占位分组（用于下次新增分组时自动补全）
-    }
-    dragRef.current = null
-  }
-
-  /**
-   * 拖拽到会话
-   * @param {Event} e 事件
-   * @param {string} sessId 目标会话 ID
-   * @param {string} groupPath 目标会话所属分组路径
-   */
-  const dropOnSession = (e: DragEvent, sessId: string, groupPath: string) => {
-    e.preventDefault(); e.stopPropagation(); setDragOver(null)
-    const src = dragRef.current; if (!src || src.type !== 'session' || src.id === sessId) return  // 如果源对象不是会话，或者源对象 ID 与目标会话 ID 相同，则不处理
-    const arr = savedSessions.slice()  // 获取会话列表副本
-    const fi = arr.findIndex(s => s.savedId === src.id)  // 获取源会话在会话列表中的索引
-    const ti = arr.findIndex(s => s.savedId === sessId)  // 获取目标会话在会话列表中的索引
-    if (fi < 0 || ti < 0) return  // 防御性检查，索引异常就退出
-    const [item] = arr.splice(fi, 1)  // 从原位置移除被拖拽会话，拿到 item
-    const movedItem = { ...item, group: groupPath }  // 准备移动后的会话对象：分组改成目标分组
-    const siblings = arr.filter(s => (s.group || '') === groupPath)  // 获取目标分组下的所有会话
-    const used = new Set(siblings.map(s => s.label))
-    if (used.has(movedItem.label)) {  // 如果目标分组下有同名会话，则自动重命名
-      let i = 1
-      while (used.has(`${movedItem.label}(${i})`)) i++
-      movedItem.label = `${movedItem.label}(${i})`  // 自动添加后缀
-    }
-    arr.splice(ti, 0, movedItem)  // 将移动后的会话插入到目标位置
-    const v = vacatedNamedGroupIfEmpty(item.group, arr)  // 检查是否需要恢复为占位分组
-    onUpdateSessions(arr, v ? { placeholderForVacatedGroup: v } : undefined)  // 更新会话列表，如果需要恢复为占位分组，则设置占位分组
-    dragRef.current = null
-  }
-
-  /**
-   * 拖拽到无分组（根分组）区域
-   * @param {Event} e 事件
-   */
-  const dropUngroup = (e: DragEvent) => {
-    e.preventDefault(); setDragOver(null)
-    const src = dragRef.current
-    if (!src) return
-    if (src.type === 'session') {  // 拖的是会话
-      const movedSession = savedSessions.find(s => s.savedId === src.id)  // 找源会话对象；找不到就退出并清理状态
-      if (!movedSession) { dragRef.current = null; return }
-      const interim = savedSessions.map(s => s.savedId === src.id ? { ...s, group: '' } : s)  // 构造一个临时会话列表，把源会话的 group 设置为空
-      const newLabel = uniqueLabelInGroup(interim, '', movedSession.label, src.id)
-      const next = savedSessions.map(s => s.savedId === src.id ? { ...s, group: '', label: newLabel } : s)
-      const v = vacatedNamedGroupIfEmpty(movedSession.group, next)
-      onUpdateSessions(next, v ? { placeholderForVacatedGroup: v } : undefined)  // 更新会话列表，如果需要恢复为占位分组，则设置占位分组
-    } else if (src.type === 'group') {  // 拖的是分组
-      const oldPath = src.id
-      const preferredName = oldPath.split('/').pop()  // 获取源分组名称
-      const targetName = uniqueGroupNameUnder('', preferredName ?? '', oldPath)  // 确保目标分组名称在父分组下唯一
-      const newPath = targetName  // 构建新的分组路径
-      onUpdateSessions(savedSessions.map(s =>
-        s.group === oldPath ? { ...s, group: newPath } :
-        s.group?.startsWith(oldPath + '/') ? { ...s, group: newPath + s.group.slice(oldPath.length) } : s
-      ))  // 更新会话列表，更新会话的 group 路径（包含子树）
-      onUpdatePlaceholders?.(Array.from(new Set(groupPlaceholders.map(g =>
-        g === oldPath ? newPath :
-        g.startsWith(oldPath + '/') ? newPath + g.slice(oldPath.length) : g
-      ))))  // 对占位分组做同样的路径迁移
-    }
-    dragRef.current = null
-  }
-
   /** 搜索查询的 trimmed 版本 */
   const searchTrim = sessionSearchQuery.trim()
   /** 搜索查询的 lowercased 版本 */
@@ -577,7 +383,7 @@ export default function Sidebar(props: SidebarProps) {
 
   return (
     <div className={`sidebar ${open ? 'open' : 'closed'}`} style={open ? style : undefined} onClick={closeCtx}>
-      <input ref={importSessionsFileRef} type="file" accept={IMPORT_JSON_ACCEPT} style={{ display: 'none' }} onChange={handleImportSessionsFile} aria-hidden />
+      <input ref={importSessionsFileRef} type="file" accept={importAccept} style={{ display: 'none' }} onChange={handleImportSessionsFile} aria-hidden />
       <SidebarTop open={open} onToggle={onToggle} onOpenSettings={onOpenSettings} t={t} />
       {open && (
         <div className="sidebar-content">
@@ -633,7 +439,7 @@ export default function Sidebar(props: SidebarProps) {
                       <>
                         <span>{t('sidebar.noSaved')}</span>
                         <button type="button" className="sb-link" onClick={() => onNewSession('ssh')}>{t('sidebar.newConnection')}</button>
-                        <button type="button" className="sb-link" onClick={() => importSessionsFileRef.current?.click()}>{t('settings.importSessions')}</button>
+                        <button type="button" className="sb-link" onClick={triggerImport}>{t('settings.importSessions')}</button>
                       </>
                     ) : searchTrim ? (
                       <>
@@ -682,4 +488,4 @@ export default function Sidebar(props: SidebarProps) {
       )}
     </div>
   )
-}
+})

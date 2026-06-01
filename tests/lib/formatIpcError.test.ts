@@ -11,7 +11,7 @@ describe('formatIpcError', () => {
   })
 
   it('expands path kind params', () => {
-    const msg = formatIpcError(t, 'sftp.pathErrors.localFileDenied', { kind: 'download' })
+    const msg = formatIpcError(t, 'sftp.pathErrors.localDirDenied', { kind: 'download' })
     expect(msg).toContain('下载')
     expect(msg).toContain('路径须位于')
   })

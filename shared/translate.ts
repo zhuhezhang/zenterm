@@ -15,7 +15,7 @@ export type MessagesByLang = { zh: object; en: object }
  * 按点路径查表并替换 {name} 占位符
  * @param lang 语言
  * @param messagesByLang 各语言嵌套文案对象
- * @param path 点路径, 如 sftp.pathErrors.localFileDenied
+ * @param path 点路径, 如 sftp.pathErrors.localDirDenied
  * @param params 参数（如{name: '张三'}）
  * @returns 翻译后的文案
  */

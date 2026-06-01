@@ -6,9 +6,11 @@ import type { BrowserWindow } from 'electron'
 import { app, dialog } from 'electron'
 import fs from 'fs'
 import path from 'path'
-import crypto from 'crypto'
 import ssh2 from 'ssh2'
 import { translateMain } from '../i18n/translateMain.js'
+import { knownHostLookupKey, fingerprintHostKey } from '../../shared/sshKnownHostsUtils.js'
+
+export { knownHostLookupKey, fingerprintHostKey }
 
 /** ssh2 的 utils 模块，用于解析 SSH 主机公钥 */
 const ssh2utils = ssh2.utils
@@ -55,28 +57,6 @@ function saveStore(data: KnownHostStore) {
   const tmp = `${p}.tmp`
   fs.writeFileSync(tmp, JSON.stringify(data), 'utf8')
   fs.renameSync(tmp, p)
-}
-
-/** 
- * 生成主机指纹查找键
- * @param {string} host 主机名或 IP
- * @param {number} port 端口
- * @returns {string} 主机指纹查找键
- */
-export function knownHostLookupKey(host: unknown, port: unknown) {
-  const h = String(host ?? '').trim()
-  const p = Number(port) || 22
-  return `${h}:${p}`
-}
-
-/** 
- * 生成主机公钥指纹：对主机公钥二进制做 SHA256 再 Base64（与 ssh-keygen -lf 展示一致）
- * @param {Buffer|string} rawKey 主机公钥二进制
- * @returns {string} 主机公钥指纹
- */
-export function fingerprintHostKey(rawKey: Buffer | string) {
-  const buf = Buffer.isBuffer(rawKey) ? rawKey : Buffer.from(rawKey)
-  return crypto.createHash('sha256').update(buf).digest('base64')
 }
 
 /**

@@ -20,7 +20,7 @@ export default defineConfig(
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
-      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-require-imports': 'off',
       'no-control-regex': 'off',
       'prefer-const': 'off',

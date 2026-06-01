@@ -6,7 +6,7 @@ import { ipcErrorFields, isIpcFailure } from './ipcResponse'
 /**
  * 将 IPC 错误码译为界面文案（仅 errorKnown 为 true 时调用）
  * @param {(path: string, params?: Record<string, string|number>) => string} t translateRender / useI18n().t
- * @param {unknown} code 错误码（如 sftp.pathErrors.localFileDenied）
+ * @param {unknown} code 错误码（如 sftp.pathErrors.localDirDenied）
  * @param {Record<string, string|number>} [params] 错误参数（如{name: '张三'}）
  * @returns {string} 展示文案
  */

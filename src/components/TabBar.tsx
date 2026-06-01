@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type DragEvent, type MouseEvent } from 'react'
+import { useState, useRef, useEffect, memo, type DragEvent, type MouseEvent } from 'react'
 import { useI18n } from '../context/I18nContext'
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick'
 import ConnectionTypeIcon from './common'
@@ -25,7 +25,7 @@ const STATUS_CLS = { connecting: 'connecting', connected: 'connected', disconnec
  * @param {function} props.onSaveOutput 保存标签页终端输出的回调函数，参数为会话 ID
  * @param {function} [props.onClearScreen] 清屏回调，参数为会话 ID（对应标签页的 xterm.clear）
  */
-export default function TabBar({
+export default memo(function TabBar({
   sessions,
   activeId,
   onSelect,
@@ -181,4 +181,4 @@ export default function TabBar({
       )}
     </div>
   )
-}
+})

@@ -14,13 +14,18 @@ export type SessionFormSetter = <K extends keyof SessionFormValues>(
   v: SessionFormValues[K],
 ) => void
 
+/** SSH / Telnet 等协议共用的连接表单 props */
 export interface SessionFormFieldsProps {
   form: SessionFormValues
   set: SessionFormSetter
+  /** 为 false 时不渲染表单区块 */
   visible: boolean
 }
 
+/** Serial 连接表单 props（路径须与枚举列表一致方可连接） */
 export interface SerialFormProps extends SessionFormFieldsProps {
+  /** 可用串口列表，用于 datalist 自动补全 */
   ports: { path?: string; manufacturer?: string }[]
+  /** 重新枚举串口 */
   onRefreshPorts: () => void
 }

@@ -1,45 +1,25 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect, type ReactNode } from 'react'
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, memo } from 'react'
 import { useI18n } from '../context/I18nContext'
 import { ipcPortsFromResponse } from '@/lib/ipc/ipcResponse'
 import { fetchSessionSecrets } from '../store/credentialsBridge'
 import { DEFAULT_TERMINAL_ENCODING, TERMINAL_ENCODING_OPTIONS } from '../lib/terminalEncodingService'
 import {
-  PORT_MIN, PORT_MAX, BAUD_RATES, PARITIES, SESSION_GROUP_LABEL_ERROR_KEYS,
+  SESSION_GROUP_LABEL_ERROR_KEYS,
   SSH_SESSION_DEFAULT, TELNET_SESSION_DEFAULT, SERIAL_SESSION_DEFAULT,
 } from '../lib/session/defaults'
 import {
   mergeSessionFormDefaults, normalizeBackspaceMode, clampPortFieldString, parseSessionPort,
   buildSessionLabel, validateSessionGroupLabel,
 } from '../lib/session/utils'
+import FormRow from './connect/FormRow'
+import SshForm from './connect/SshForm'
+import TelnetForm from './connect/TelnetForm'
+import SerialForm from './connect/SerialForm'
+import { isSerialPathInEnumeratedList } from '../../shared/isSerialPathInEnumeratedList'
 import type { ConnectDialogProps } from '../types/components'
-import type {
-  ConnectCredDialogState,
-  SerialFormProps,
-  SessionFormFieldsProps,
-} from '../types/connectDialog'
+import type { ConnectCredDialogState } from '../types/connectDialog'
 import type { SessionConfig, SessionFormValues, SessionType } from '../types/session'
 import '../styles/dialog.css'
-
-/**
- * 串口路径是否与 listPorts 结果一致（与主进程 serial.js 判定对齐；Windows 上对 COM 路径不区分大小写）
- * @param {string} requestedPath 请求的串口路径
- * @param {Array<{ path?: string }>} ports 枚举的串口列表
- * @returns {boolean} 是否与枚举列表一致，如果请求的串口路径为空则返回 false
- */
-function isSerialPathInEnumeratedList(
-  requestedPath: string,
-  ports: { path?: string }[],
-): boolean {
-  const req = String(requestedPath ?? '').trim()
-  if (!req) return false
-  const paths = (ports || []).map((p) => p?.path).filter(Boolean)
-  const win = typeof process !== 'undefined' && process.platform === 'win32'
-  if (win) {
-    const rl = req.toLowerCase()
-    return paths.some((p) => p != null && p.toLowerCase() === rl)
-  }
-  return paths.includes(req)
-}
 
 /**
  * 连接对话框组件：提供 SSH、Telnet、Serial 三种连接方式的配置界面，支持保存会话和直接连接
@@ -52,7 +32,7 @@ function isSerialPathInEnumeratedList(
  * @param {Function} props.onSaveOnly 仅保存的回调函数，参数为配置对象
  * @param {Function} props.onClose 关闭对话框的回调函数
  */
-export default function ConnectDialog({
+function ConnectDialog({
   type,
   initialData,
   savedGroups,
@@ -78,8 +58,8 @@ export default function ConnectDialog({
   if (!portByTabRef.current.ssh) {
     const initialTab = type || 'ssh'
     const initialForm = mergeSessionFormDefaults(initialTab, initialData ?? undefined)
-    const toRefPort = (tab: SessionType, raw: unknown) => {
-      const fallback = tab === 'ssh' ? SSH_SESSION_DEFAULT.port : TELNET_SESSION_DEFAULT.port
+    const toRefPort = (tabKey: SessionType, raw: unknown) => {
+      const fallback = tabKey === 'ssh' ? SSH_SESSION_DEFAULT.port : TELNET_SESSION_DEFAULT.port
       const s = String(raw ?? '').trim()
       return s === '' ? String(fallback) : clampPortFieldString(s) || String(fallback)
     }
@@ -134,19 +114,19 @@ export default function ConnectDialog({
     const sid = initialData?.savedId
     if (!sid) return
     void (async () => {
-      const t = initialData.type || type || 'ssh'
-      const sec = t === 'telnet' ? {} : await fetchSessionSecrets(sid)
+      const sessionType = initialData.type || type || 'ssh'
+      const sec = sessionType === 'telnet' ? {} : await fetchSessionSecrets(sid)
       if (cancelled) return
       const merged: SessionFormValues = {
-        ...mergeSessionFormDefaults(t, initialData ?? undefined),
+        ...mergeSessionFormDefaults(sessionType, initialData ?? undefined),
         ...sec,
       }
-      if (t === 'ssh' || t === 'telnet') {
+      if (sessionType === 'ssh' || sessionType === 'telnet') {
         const s = String(merged.port ?? '').trim()
-        const fallback = t === 'ssh' ? SSH_SESSION_DEFAULT.port : TELNET_SESSION_DEFAULT.port
-        portByTabRef.current[t] = s === '' ? String(fallback) : clampPortFieldString(s) || String(fallback)
+        const fallback = sessionType === 'ssh' ? SSH_SESSION_DEFAULT.port : TELNET_SESSION_DEFAULT.port
+        portByTabRef.current[sessionType] = s === '' ? String(fallback) : clampPortFieldString(s) || String(fallback)
       }
-      setTab(t)
+      setTab(sessionType)
       setForm(merged)
     })()
     return () => { cancelled = true }
@@ -341,8 +321,8 @@ export default function ConnectDialog({
       <div className="dialog">
         <div className="dialog-header">
           <div className="dialog-tabs">
-            {['ssh', 'telnet', 'serial'].map((proto) => (
-              <button key={proto} type="button" className={`dialog-tab ${tab===proto?'active':''}`} onClick={() => switchTab(proto as SessionType)}>
+            {(['ssh', 'telnet', 'serial'] as const).map((proto) => (
+              <button key={proto} type="button" className={`dialog-tab ${tab === proto ? 'active' : ''}`} onClick={() => switchTab(proto)}>
                 {proto === 'ssh' ? 'SSH' : proto === 'telnet' ? 'Telnet' : 'Serial'}
               </button>
             ))}
@@ -357,12 +337,12 @@ export default function ConnectDialog({
           <FormRow label={t('connect.group')}>
             <input placeholder={t('connect.groupPh')} value={form.group ?? ''} onChange={e => set('group', e.target.value)} list="group-list" />
             <datalist id="group-list">
-              {(savedGroups||[]).map(g => <option key={g} value={g} />)}
+              {(savedGroups || []).map(g => <option key={g} value={g} />)}
             </datalist>
           </FormRow>
           <div className="dialog-divider" />
-          <SshForm form={form} set={set} visible={tab==='ssh'} />
-          <TelnetForm form={form} set={set} visible={tab==='telnet'} />
+          <SshForm form={form} set={set} visible={tab === 'ssh'} />
+          <TelnetForm form={form} set={set} visible={tab === 'telnet'} />
           <SerialForm form={form} set={set} ports={ports} visible={tab === 'serial'} onRefreshPorts={refreshSerialPorts} />
           <FormRow label={t('connect.encoding')}>
             <select value={form.encoding || DEFAULT_TERMINAL_ENCODING} onChange={e => set('encoding', e.target.value)}>
@@ -390,159 +370,4 @@ export default function ConnectDialog({
   )
 }
 
-/**
- * SSH 表单组件。根据 form 数据渲染 SSH 连接的表单项，支持密码认证和私钥认证两种方式，根据 visible 控制是否渲染
- * @param {Object} form 表单数据
- * @param {Function} set 设置表单数据的函数
- * @param {boolean} visible 是否可见
- * @returns {JSX.Element} SSH 表单
- */
-function SshForm({ form, set, visible }: SessionFormFieldsProps) {
-  const { t } = useI18n()
-  if (!visible) return null
-  return (
-    <>
-      <FormRow label={t('connect.host')}>
-        <input placeholder={t('connect.hostPh')} value={form.host} onChange={e => set('host', e.target.value)} autoFocus />
-      </FormRow>
-      <FormRow label={t('connect.port')}>
-        <input type="number" min={PORT_MIN} max={PORT_MAX} value={form.port} onChange={e => set('port', clampPortFieldString(e.target.value))} style={{width:80}} />
-      </FormRow>
-      <FormRow label={t('connect.username')}>
-        <input placeholder={t('connect.usernamePh')} value={form.username || ''} onChange={e => set('username', e.target.value)} />
-      </FormRow>
-      <FormRow label={t('connect.authType')}>
-        <select value={form.authType} onChange={e => set('authType', e.target.value)}>
-          <option value="password">{t('connect.authPassword')}</option>
-          <option value="privateKey">{t('connect.authPrivateKey')}</option>
-        </select>
-      </FormRow>
-      {form.authType === 'password' ? (
-        <FormRow label={t('connect.password')}>
-          <input type="password" placeholder={t('connect.passwordPh')} value={form.password || ''} onChange={e => set('password', e.target.value)} />
-        </FormRow>
-      ) : (
-        <>
-          <FormRow label={t('connect.privateKey')}>
-            <input placeholder={t('connect.privateKeyPath')} value={form.privateKey} onChange={e => set('privateKey', e.target.value)} />
-          </FormRow>
-          <FormRow label={t('connect.passphrase')}>
-            <input type="password" placeholder={t('connect.passphrasePh')} value={form.passphrase} onChange={e => set('passphrase', e.target.value)} />
-          </FormRow>
-        </>
-      )}
-      <div className="dialog-divider" />
-      <FormRow label={t('connect.sftp')}>
-        <label className="toggle-row">
-          <input type="checkbox" checked={form.enableSftp} onChange={e => set('enableSftp', e.target.checked)} />
-          <span>{t('connect.enableSftp')}</span>
-        </label>
-      </FormRow>
-    </>
-  )
-}
-
-/**
- * Telnet 表单组件。根据 form 数据渲染 Telnet 连接的表单项，根据 visible 控制是否渲染
- * 
- * @param {Object} form 表单数据
- * @param {Function} set 设置表单数据的函数
- * @param {boolean} visible 是否可见
- * @returns {JSX.Element} Telnet 表单
- */
-function TelnetForm({ form, set, visible }: SessionFormFieldsProps) {
-  const { t } = useI18n()
-  if (!visible) return null
-  return (
-    <>
-      <FormRow label={t('connect.host')}>
-        <input placeholder={t('connect.hostPh')} value={form.host} onChange={e => set('host', e.target.value)} autoFocus />
-      </FormRow>
-      <FormRow label={t('connect.port')}>
-        <input type="number" min={PORT_MIN} max={PORT_MAX} value={form.port} onChange={e => set('port', clampPortFieldString(e.target.value))} style={{width:80}} />
-      </FormRow>
-    </>
-  )
-}
-
-/**
- * Serial 表单组件。根据 form 数据渲染串口连接的表单项，提供串口路径的输入和可用串口的选择，根据 visible 控制是否渲染
- * @param {Object} form 表单数据
- * @param {Function} set 设置表单数据的函数
- * @param {Array} ports 可用串口列表，用于 datalist 自动补全
- * @param {boolean} visible 是否可见
- * @param {Function} onRefreshPorts 重新枚举串口（路径必须与枚举结果一致方可连接）
- * @returns {JSX.Element} Serial 表单
- */
-function SerialForm({ form, set, ports, visible, onRefreshPorts }: SerialFormProps) {
-  const { t } = useI18n()
-  if (!visible) return null
-  return (
-    <>
-      <FormRow label={t('connect.serialPort')}>
-        <input
-          className="dialog-serial-path-input"
-          placeholder={t('connect.serialPh')}
-          value={form.path}
-          onChange={e => set('path', e.target.value)}
-          list="port-list"
-          autoFocus
-        />
-        <button type="button" className="dialog-serial-refresh-btn" onClick={onRefreshPorts}>
-          {t('connect.refresh')}
-        </button>
-        <datalist id="port-list">
-          {ports.map((p) => (
-            <option key={p.path} value={p.path}>
-              {p.path}
-              {p.manufacturer ? ` (${p.manufacturer})` : ''}
-            </option>
-          ))}
-        </datalist>
-      </FormRow>
-      <FormRow label={t('connect.baudRate')}>
-        <select value={form.baudRate} onChange={e => set('baudRate', e.target.value)}>
-          {BAUD_RATES.map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-      </FormRow>
-      <FormRow label={t('connect.dataBits')}>
-        <select value={form.dataBits} onChange={e => set('dataBits', e.target.value)}>
-          {['5','6','7','8'].map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
-      </FormRow>
-      <FormRow label={t('connect.stopBits')}>
-        <select value={form.stopBits} onChange={e => set('stopBits', e.target.value)}>
-          {['1','2'].map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
-      </FormRow>
-      <FormRow label={t('connect.parity')}>
-        <select value={form.parity} onChange={e => set('parity', e.target.value)}>
-          {PARITIES.map(v => <option key={v} value={v}>{v}</option>)}
-        </select>
-      </FormRow>
-    </>
-  )
-}
-
-/**
- * 表单行组件。用于在连接对话框中渲染标签和输入控件的行布局
- * @param {string} label 行标签
- * @param {JSX.Element} children 输入控件
- * @returns {JSX.Element} 表单行
- */
-function FormRow({
-  label,
-  children,
-  title,
-}: {
-  label: string
-  children: ReactNode
-  title?: string
-}) {
-  return (
-    <div className="form-row">
-      <label className="form-label" title={title}>{label}</label>
-      <div className="form-control">{children}</div>
-    </div>
-  )
-}
+export default memo(ConnectDialog)

@@ -1,11 +1,16 @@
 import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron'
-import type { SerialPort as SerialPortClass, SerialPortInfo } from 'serialport'
+import type { SerialPort as SerialPortClass } from 'serialport'
+
+/** serialport `list()` 返回的端口项（与 @serialport/bindings-interface 的 PortInfo 一致） */
+type SerialPortListEntry = Awaited<ReturnType<typeof SerialPortClass.list>>[number]
+type SerialPortInstance = InstanceType<typeof SerialPortClass>
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { sendToRenderer } from '../lib/mainWindowSend.js'
 import { bufferToBinaryWire, encodeOutgoingTerminalData } from '../lib/terminalEncodingService.js'
 import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import { translateMain } from '../i18n/translateMain.js'
 import type { MainWindowGetter } from '../types/handlers.js'
+import { isSerialPathInEnumeratedList } from '../../shared/isSerialPathInEnumeratedList.js'
 import type { SerialConnectConfig } from '../../shared/zterm-api.js'
 
 let SerialPort: typeof SerialPortClass | undefined
@@ -17,21 +22,7 @@ try {
 }
 
 /** 存储所有 Serial 会话信息的 Map，键为会话 ID，值为 SerialPort 实例 */
-const serialSessions = new Map<string, SerialPortClass>()
-
-/**
- * 请求的路径是否在当前枚举到的串口列表中（降低任意路径打开设备的风险）
- */
-function isSerialPathInEnumeratedList(requestedPath: unknown, ports: SerialPortInfo[]) {
-  const req = String(requestedPath ?? '').trim()
-  if (!req) return false
-  const paths = ports.map((p) => p?.path).filter(Boolean) as string[]
-  if (process.platform === 'win32') {
-    const rl = req.toLowerCase()
-    return paths.some((p) => p.toLowerCase() === rl)
-  }
-  return paths.includes(req)
-}
+const serialSessions = new Map<string, SerialPortInstance>()
 
 /**
  * 设置 Serial 相关的 IPC 处理函数
@@ -55,7 +46,7 @@ function setupSerialHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) 
     if (!config || typeof config !== 'object') return ipcFail('app.invalidRequest', true)
     const cfg = config as SerialConnectConfig
 
-    let enumerated: SerialPortInfo[]
+    let enumerated: SerialPortListEntry[]
     try {
       enumerated = await SerialPort.list()
     } catch {
@@ -66,16 +57,16 @@ function setupSerialHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) 
     }
 
     return new Promise((resolve) => {
-      let port: SerialPortClass
+      let port: SerialPortInstance
       try {
         port = new SerialPort({
-          path: cfg.path,
+          path: String(cfg.path),
           baudRate: (cfg.baudRate as number | undefined) || 9600,
           dataBits: (cfg.dataBits as number | undefined) || 8,
           stopBits: (cfg.stopBits as number | undefined) || 1,
           parity: (cfg.parity as string | undefined) || 'none',
           autoOpen: false,
-        })
+        } as ConstructorParameters<typeof SerialPortClass>[0])
       } catch (e) {
         resolve(ipcFail(e instanceof Error ? e.message : String(e), false))
         return

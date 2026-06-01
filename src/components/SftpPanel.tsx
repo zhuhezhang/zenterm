@@ -1,86 +1,26 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, memo, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useI18n } from '../context/I18nContext'
 import { alertIpcFailure, formatIpcResponseError, formatThrownIpcError } from '@/lib/ipc/formatIpcError'
 import { assertIpcSuccess, unwrapIpcOk } from '../lib/ipc/ipcError'
 import { isIpcSuccess } from '@/lib/ipc/ipcResponse'
 import { INVALID_LABEL_CHARS } from '../lib/safeFileName'
+import { getLocalFilePath } from '@/lib/sftp/localFilePath'
+import { readAllDirEntries } from '@/lib/sftp/readDirEntries'
 import { getZterm } from '@/lib/ipc/getZterm'
+import SftpFileList from './sftp/SftpFileList'
 import type { SftpPanelProps, SftpRemoteItem } from '@/types/components'
 import type { SftpFileContextMenu } from '@/types/sftp'
 import type { IpcResult } from '../../shared/ipc'
 import type { ZTermProgress } from '../../shared/zterm-api'
 import '../styles/sftp.css'
 
-/**
- * 沙盒渲染进程不提供 File.path，须通过 preload 的 webUtils.getPathForFile。
- * @param {File} file 文件对象
- * @returns {string} 文件路径
- */
-function getLocalFilePath(file: File): string {
-  if (!file) return ''
-  const bridge = window.zterm?.paths?.getPathForFile
-  if (typeof bridge === 'function') {
-    try {
-      const p = bridge(file)
-      if (p) return p
-    } catch {
-      /* 非磁盘文件等 */
-    }
-  }
-  return file.path || ''
-}
-
-/** 
- * 读满目录项（readEntries 单次最多约 100 条，须循环）
- * @param {DirectoryReader} reader 目录读取器
- * @returns {Promise<Array<FileEntry>>} 目录项列表
- */
-function readAllDirEntries(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
-  return new Promise((resolve) => {
-    const all: FileSystemEntry[] = []
-    const step = () => {
-      reader.readEntries((batch) => {
-        if (!batch.length) resolve(all)
-        else {
-          all.push(...batch)
-          step()
-        }
-      })
-    }
-    step()
-  })
-}
-
-/** 
- * 格式化文件大小
- * @param {number} bytes 文件大小
- * @returns {string} 格式化后的文件大小
- */
-function formatSize(bytes: number | null | undefined): string {
-  if (bytes == null) return '-'
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB'
-  return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB'
-}
-
-/** 
- * 格式化日期
- * @param {number} ms 日期时间戳
- * @returns {string} 格式化后的日期
- */
-function formatDate(ms: number | null | undefined): string {
-  if (!ms) return '-'
-  return new Date(ms).toLocaleString()
-}
-
 /** 
  * SFTP 面板组件
  * @param {Object} session 会话对象
  * @returns {JSX.Element} SFTP 面板组件
  */
-export default function SftpPanel({ session }: SftpPanelProps) {
+function SftpPanel({ session }: SftpPanelProps) {
   const { t } = useI18n()
   const ipcErr = (res: IpcResult | null | undefined, fallbackKey?: string) =>
     formatIpcResponseError(t, res) || (fallbackKey ? t(fallbackKey) : '')
@@ -575,43 +515,22 @@ export default function SftpPanel({ session }: SftpPanelProps) {
         </div>
       )}
 
-      <div className="sftp-file-list" onDragOver={e => e.preventDefault()} onDrop={handleDropUpload}>
-        {path !== '/' && (
-          <div className="sftp-item sftp-item-dir" onClick={goUp}>
-            <span className="sftp-item-icon">📂</span>
-            <span className="sftp-item-name">..</span>
-          </div>
-        )}
-        {loading && <div className="sftp-loading">{t('sftp.loading')}</div>}
-        {!loading && items.map(item => (
-          <div
-            key={item.path}
-            className={`sftp-item ${item.isDir ? 'sftp-item-dir' : 'sftp-item-file'} ${selected?.path === item.path ? 'selected' : ''} ${renaming?.path === item.path ? 'renaming' : ''}`}
-            onClick={() => handleItemClick(item)}
-            onContextMenu={(e) => openFileCtx(e, item)}
-          >
-            <span className="sftp-item-icon">{item.isDir ? '📁' : '📄'}</span>
-            {renaming?.path === item.path ? (
-              <input
-                className="sftp-rename-input"
-                value={renameValue}
-                autoFocus
-                onClick={e => e.stopPropagation()}
-                onChange={e => setRenameValue(e.target.value)}
-                onBlur={commitRename}
-                onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setRenaming(null) }}
-              />
-            ) : (
-              <span className="sftp-item-name">{item.name}</span>
-            )}
-            <span className="sftp-item-size">{item.isDir ? '' : formatSize(item.size)}</span>
-            <span className="sftp-item-date">{formatDate(item.mtime)}</span>
-          </div>
-        ))}
-        {!loading && items.length === 0 && (
-          <div className="sftp-empty">{t('sftp.empty')}</div>
-        )}
-      </div>
+      <SftpFileList
+        path={path}
+        items={items}
+        loading={loading}
+        selected={selected}
+        renaming={renaming}
+        renameValue={renameValue}
+        t={t}
+        onGoUp={goUp}
+        onItemClick={handleItemClick}
+        onItemContextMenu={openFileCtx}
+        onRenameValueChange={setRenameValue}
+        onCommitRename={commitRename}
+        onCancelRename={() => setRenaming(null)}
+        onDropUpload={handleDropUpload}
+      />
       {fileCtx && document.body && createPortal(
         <div
           ref={fileCtxMenuRef}
@@ -656,3 +575,5 @@ export default function SftpPanel({ session }: SftpPanelProps) {
     </div>
   )
 }
+
+export default memo(SftpPanel)

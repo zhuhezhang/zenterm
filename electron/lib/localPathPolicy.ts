@@ -114,7 +114,7 @@ export function validateLogWriteDirectory(logDir: string) {
 export function assertLocalFilePathAllowed(filePath: string, kind = 'read') {
   const resolved = path.resolve(String(filePath))
   if (!isPathWithinResolvedRoots(resolved, collectResolvedRoots())) {
-    throw createIpcError('sftp.pathErrors.localFileDenied', { kind })
+    throw createIpcError('sftp.pathErrors.localDirDenied', { kind })
   }
 }
 

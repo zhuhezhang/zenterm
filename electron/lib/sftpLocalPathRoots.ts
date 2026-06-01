@@ -12,7 +12,7 @@ import { isPathWithinResolvedRoots } from './localPathRoots.js'
 export function assertSftpLocalFilePathAllowedForRoots(localPath: string, roots: string[], kind: string) {
   const resolved = path.resolve(String(localPath))
   if (!isPathWithinResolvedRoots(resolved, roots)) {
-    throw createIpcError('sftp.pathErrors.localFileDenied', { kind })
+    throw createIpcError('sftp.pathErrors.localDirDenied', { kind })
   }
   const base = path.basename(resolved)
   if (!base || base === '.' || base === '..' || INVALID_LABEL_CHARS.test(base)) {
@@ -53,7 +53,7 @@ export function safeJoinLocalDownloadPathForRoots(localDir: string, name: string
     throw createIpcError('sftp.pathErrors.pathEscapeTarget', { kind })
   }
   if (!isPathWithinResolvedRoots(joined, roots)) {
-    throw createIpcError('sftp.pathErrors.localFileDenied', { kind })
+    throw createIpcError('sftp.pathErrors.localDirDenied', { kind })
   }
   return joined
 }
