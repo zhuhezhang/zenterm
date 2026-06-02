@@ -8,6 +8,7 @@ import { useSessionsImport } from '@/hooks/useSessionsImport'
 import { useSidebarDragDrop } from '@/hooks/useSidebarDragDrop'
 import { uniqueLabelInGroup, ungroupSessionsUnderPath } from '@/store/sessionStore'
 import { buildTree, flattenVisibleTree, NO_GROUP_PLACEHOLDERS } from '@/lib/session/tree'
+import { sessionEndpoint } from '@/types/session'
 import { hasInvalidLabelChars } from '@/lib/safeFileName'
 
 const SftpPanel = lazy(() => import('../SftpPanel'))
@@ -301,9 +302,8 @@ export default memo(function Sidebar(props: SidebarProps) {
     if (!searchLower) return savedSessions
     return savedSessions.filter((s) => {
       const label = (s.label || '').toLowerCase()
-      const host = (s.host || '').toLowerCase()
-      const serialPath = (s.path || '').toLowerCase()
-      return label.includes(searchLower) || host.includes(searchLower) || serialPath.includes(searchLower)
+      const endpoint = sessionEndpoint(s).toLowerCase()
+      return label.includes(searchLower) || endpoint.includes(searchLower)
     })
   }, [savedSessions, searchLower])
 

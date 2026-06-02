@@ -8,6 +8,7 @@ import { ipcFailFromThrown, ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import { encodeOutgoingTerminalData } from '../lib/terminalEncodingService.js'
 import type { MainWindowGetter, SshSessionState } from '../types/handlers.js'
 import type { SshConnectConfig } from '../../shared/zterm-api.js'
+import type { SshWorkerOutboundMessage } from '../../shared/workerMessages.js'
 
 /** 存储每个 SSH 会话对应的 Worker 桥接状态（键id → 值{ worker: Worker, isClosed: boolean }） */
 const sshSessions = new Map<string, SshSessionState>()
@@ -19,9 +20,8 @@ const workerEntry = fileURLToPath(new URL('../workers/sshSessionWorker.js', impo
  * 设置 SSH 相关的 IPC 处理函数
  */
 function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
-  ipcMain.handle('ssh:connect', async (event: IpcMainInvokeEvent, id: unknown, config: unknown) => {
+  ipcMain.handle('ssh:connect', async (event: IpcMainInvokeEvent, id: string, config: SshConnectConfig) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
 
     return new Promise((resolve) => {
       let settled = false
@@ -71,7 +71,7 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
         } catch {}
       }
 
-      worker.on('message', async (msg: Record<string, unknown>) => {
+      worker.on('message', async (msg: SshWorkerOutboundMessage) => {
         if (msg.type === 'HOST_VERIFY') {
           await handleHostVerifyMessage(getMainWindow, worker, msg)
           return
@@ -104,23 +104,21 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     })
   })
 
-  ipcMain.on('ssh:data', (event: IpcMainEvent, id: unknown, data: unknown, encoding: unknown) => {
+  ipcMain.on('ssh:data', (event: IpcMainEvent, id: string, data: string, encoding?: string) => {
     if (!isTrustedIpcSender(event.sender)) return
-    if (typeof id !== 'string') return
     const session = sshSessions.get(id)
     if (session?.worker) {
       try {
         session.worker.postMessage({
           type: 'WRITE',
-          data: encodeOutgoingTerminalData(data, typeof encoding === 'string' ? encoding : undefined),
+          data: encodeOutgoingTerminalData(data, encoding),
         })
       } catch {}
     }
   })
 
-  ipcMain.on('ssh:resize', (event: IpcMainEvent, id: unknown, cols: unknown, rows: unknown) => {
+  ipcMain.on('ssh:resize', (event: IpcMainEvent, id: string, cols: number, rows: number) => {
     if (!isTrustedIpcSender(event.sender)) return
-    if (typeof id !== 'string') return
     const session = sshSessions.get(id)
     if (session?.worker) {
       try {
@@ -129,9 +127,8 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     }
   })
 
-  ipcMain.handle('ssh:disconnect', async (event: IpcMainInvokeEvent, id: unknown) => {
+  ipcMain.handle('ssh:disconnect', async (event: IpcMainInvokeEvent, id: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcOk()
     const session = sshSessions.get(id)
     if (session?.worker) {
       sshSessions.delete(id)

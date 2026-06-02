@@ -39,12 +39,10 @@ function setupSerialHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) 
     }
   })
 
-  ipcMain.handle('serial:connect', async (event: IpcMainInvokeEvent, id: unknown, config: unknown) => {
+  ipcMain.handle('serial:connect', async (event: IpcMainInvokeEvent, id: string, config: SerialConnectConfig) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (!SerialPort) return ipcFail('serial.moduleUnavailable', true)
-    if (!id || typeof id !== 'string') return ipcFail('app.invalidRequest', true)
-    if (!config || typeof config !== 'object') return ipcFail('app.invalidRequest', true)
-    const cfg = config as SerialConnectConfig
+    const cfg = config
 
     let enumerated: SerialPortListEntry[]
     try {
@@ -103,18 +101,16 @@ function setupSerialHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) 
     })
   })
 
-  ipcMain.on('serial:data', (event: IpcMainEvent, id: unknown, data: unknown, encoding: unknown) => {
+  ipcMain.on('serial:data', (event: IpcMainEvent, id: string, data: string, encoding?: string) => {
     if (!isTrustedIpcSender(event.sender)) return
-    if (typeof id !== 'string') return
     const port = serialSessions.get(id)
     if (port && port.isOpen) {
-      port.write(encodeOutgoingTerminalData(data, typeof encoding === 'string' ? encoding : undefined))
+      port.write(encodeOutgoingTerminalData(data, encoding))
     }
   })
 
-  ipcMain.handle('serial:disconnect', async (event: IpcMainInvokeEvent, id: unknown) => {
+  ipcMain.handle('serial:disconnect', async (event: IpcMainInvokeEvent, id: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcOk()
     const port = serialSessions.get(id)
     if (port) {
       try {

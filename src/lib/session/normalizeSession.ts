@@ -1,52 +1,63 @@
 import type { NormalizeImportedSessionResult, SessionImportWarning } from '../../types/import'
-import type { SavedSession, SessionType } from '../../types/session'
+import type {
+  RawImportedSession,
+  SavedSession,
+  SerialSavedSession,
+  SessionType,
+  SshSavedSession,
+  SessionFormValues,
+  TelnetSavedSession,
+} from '../../types/session'
 import { TERMINAL_ENCODING_OPTIONS, normalizeTerminalEncoding } from '../terminalEncodingService'
 import {
-  getSessionStorageDefaults, SESSION_TYPE_SET, AUTH_TYPE_SET, BAUD_RATE_SET, PARITY_SET, PORT_MIN, PORT_MAX,
+  getSessionStorageDefaults,
+  SESSION_TYPE_SET,
+  AUTH_TYPE_SET,
+  BAUD_RATE_SET,
+  PARITY_SET,
+  PORT_MIN,
+  PORT_MAX,
 } from './defaults'
+import type { SerialStorageDefaults, SshStorageDefaults } from './defaults'
 import { pushSessionImportWarning } from './importWarnings'
 import {
-  normalizeBackspaceMode, clampSessionPort, buildSessionLabel, validateSessionGroupLabel,
+  normalizeBackspaceMode,
+  clampSessionPort,
+  buildSessionLabel,
+  validateSessionGroupLabel,
   pickSessionStorageFields,
+  applySerialStorageFields,
 } from './utils'
 
 /** 允许的终端编码的值集合 */
 const ALLOWED_TERMINAL_ENCODINGS = new Set(TERMINAL_ENCODING_OPTIONS.map((o) => o.value))
 
-function isPlainObject(raw: unknown): raw is Record<string, unknown> {
+function isPlainObject(raw: unknown): raw is RawImportedSession {
   return raw != null && typeof raw === 'object' && !Array.isArray(raw)
 }
 
-/**
- * 解析导入的终端编码
- * @param {unknown} raw 原始终端编码
- * @param {string} fallback 默认编码
- * @param {import('./importWarnings').SessionImportWarning[]} warnings 导入警告列表
- * @returns {string} 规范化后的终端编码
- */
 function resolveImportedEncoding(
-  raw: Record<string, unknown>,
+  raw: RawImportedSession,
   fallback: string,
   warnings: SessionImportWarning[],
 ): string {
   const baseEnc = normalizeTerminalEncoding(fallback)
-  if (!('encoding' in /** @type {Record<string, unknown>} */ (raw))) {
+  if (raw.encoding === undefined) {
     return baseEnc
   }
-  const item = /** @type {Record<string, unknown>} */ (raw)
-  if (typeof item.encoding !== 'string' || !item.encoding.trim()) {
+  if (typeof raw.encoding !== 'string' || !raw.encoding.trim()) {
     pushSessionImportWarning(warnings, 'fieldDefaulted', {
       field: 'encoding',
-      value: String(item.encoding ?? ''),
+      value: String(raw.encoding ?? ''),
       result: baseEnc,
     })
     return baseEnc
   }
-  const norm = normalizeTerminalEncoding(item.encoding)
+  const norm = normalizeTerminalEncoding(raw.encoding)
   if (!ALLOWED_TERMINAL_ENCODINGS.has(norm)) {
     pushSessionImportWarning(warnings, 'fieldDefaulted', {
       field: 'encoding',
-      value: item.encoding,
+      value: raw.encoding,
       result: baseEnc,
     })
     return baseEnc
@@ -54,22 +65,15 @@ function resolveImportedEncoding(
   return norm
 }
 
-/**
- * 应用串口存储字段并记录警告
- * @param {Record<string, unknown>} merged 合并后的会话
- * @param {Record<string, unknown>} item 原始会话
- * @param {Record<string, unknown>} base 基础会话
- * @param {import('./importWarnings').SessionImportWarning[]} warnings 导入警告列表
- */
 function applySerialStorageFieldsWithWarnings(
-  merged: Record<string, unknown>,
-  item: Record<string, unknown>,
-  base: Record<string, unknown>,
+  merged: Partial<SerialSavedSession>,
+  item: RawImportedSession,
+  base: SerialStorageDefaults,
   warnings: SessionImportWarning[],
 ): void {
   merged.path = String(item.path).trim()
 
-  if ('baudRate' in item) {
+  if ('baudRate' in item && item.baudRate !== undefined) {
     const baud = parseInt(String(item.baudRate), 10)
     if (!Number.isFinite(baud) || !BAUD_RATE_SET.has(String(baud))) {
       pushSessionImportWarning(warnings, 'fieldDefaulted', {
@@ -85,7 +89,7 @@ function applySerialStorageFieldsWithWarnings(
     merged.baudRate = base.baudRate
   }
 
-  if ('dataBits' in item) {
+  if ('dataBits' in item && item.dataBits !== undefined) {
     const dataBits = parseInt(String(item.dataBits), 10)
     if (!Number.isFinite(dataBits)) {
       pushSessionImportWarning(warnings, 'fieldDefaulted', {
@@ -101,7 +105,7 @@ function applySerialStorageFieldsWithWarnings(
     merged.dataBits = base.dataBits
   }
 
-  if ('stopBits' in item) {
+  if ('stopBits' in item && item.stopBits !== undefined) {
     const stopBits = parseInt(String(item.stopBits), 10)
     if (!Number.isFinite(stopBits)) {
       pushSessionImportWarning(warnings, 'fieldDefaulted', {
@@ -117,7 +121,7 @@ function applySerialStorageFieldsWithWarnings(
     merged.stopBits = base.stopBits
   }
 
-  if ('parity' in item) {
+  if ('parity' in item && item.parity !== undefined) {
     const parity = String(item.parity).toLowerCase()
     if (!PARITY_SET.has(parity)) {
       pushSessionImportWarning(warnings, 'fieldDefaulted', {
@@ -136,8 +140,6 @@ function applySerialStorageFieldsWithWarnings(
 
 /**
  * 将导入的原始会话规范为可保存结构（逻辑对齐 ConnectDialog.buildConfig + 保存会话）
- * @param {unknown} raw 待规范的会话
- * @returns {{ ok: true, session: Record<string, unknown>, warnings: import('./importWarnings').SessionImportWarning[] } | { ok: false, reason: string }} 规范化后的会话或规范化失败的原因
  */
 export function normalizeImportedSession(raw: unknown): NormalizeImportedSessionResult {
   const warnings: SessionImportWarning[] = []
@@ -162,61 +164,14 @@ export function normalizeImportedSession(raw: unknown): NormalizeImportedSession
   if (glErr) return { ok: false, reason: glErr }
 
   const base = getSessionStorageDefaults(type)
-  const merged: Record<string, unknown> = { ...base, ...item, type, group }
-
-  if (type === 'ssh' || type === 'telnet') {
-    merged.host = String(item.host).trim()
-    const portFallback = type === 'ssh' ? 22 : 23
-    merged.port = clampSessionPort(item.port, portFallback)
-    if ('port' in item && item.port !== '' && item.port != null) {
-      const rawN = typeof item.port === 'number' ? item.port : parseInt(String(item.port), 10)
-      if (!Number.isFinite(rawN) || rawN < PORT_MIN || rawN > PORT_MAX) {
-        pushSessionImportWarning(warnings, 'fieldDefaulted', {
-          field: 'port',
-          value: String(item.port),
-          result: Number(merged.port),
-        })
-      }
-    }
-    if (type === 'ssh') {
-      if ('authType' in item) {
-        const auth = String(item.authType).trim()
-        merged.authType = AUTH_TYPE_SET.has(auth) ? auth : 'password'
-        if (!AUTH_TYPE_SET.has(auth)) {
-          pushSessionImportWarning(warnings, 'fieldDefaulted', {
-            field: 'authType',
-            value: auth,
-            result: 'password',
-          })
-        }
-      } else {
-        merged.authType = (base as Record<string, unknown>).authType
-      }
-      merged.username = String(item.username ?? '').trim()
-      if ('enableSftp' in item) {
-        merged.enableSftp = Boolean(item.enableSftp)
-        if (typeof item.enableSftp !== 'boolean') {
-          pushSessionImportWarning(warnings, 'fieldDefaulted', {
-            field: 'enableSftp',
-            value: String(item.enableSftp),
-            result: String(merged.enableSftp),
-          })
-        }
-      } else {
-        merged.enableSftp = (base as Record<string, unknown>).enableSftp
-      }
-    }
-  } else {
-    applySerialStorageFieldsWithWarnings(merged, item, base, warnings)
-  }
-
-  merged.encoding = resolveImportedEncoding(
+  const encoding = resolveImportedEncoding(
     item,
-    String((base as Record<string, unknown>).encoding ?? ''),
+    String(base.encoding ?? ''),
     warnings,
   )
 
-  if ('backspaceMode' in item) {
+  let backspaceMode = 'auto'
+  if ('backspaceMode' in item && item.backspaceMode !== undefined) {
     const bm = normalizeBackspaceMode(item.backspaceMode)
     if (bm === null) {
       pushSessionImportWarning(warnings, 'fieldDefaulted', {
@@ -224,15 +179,10 @@ export function normalizeImportedSession(raw: unknown): NormalizeImportedSession
         value: String(item.backspaceMode),
         result: 'auto',
       })
-      merged.backspaceMode = 'auto'
     } else {
-      merged.backspaceMode = bm
+      backspaceMode = bm
     }
-  } else {
-    merged.backspaceMode = 'auto'
   }
-
-  merged.label = labelInput || buildSessionLabel(type, merged)
 
   const savedId = typeof item.savedId === 'string' && item.savedId.trim()
     ? item.savedId.trim()
@@ -246,20 +196,118 @@ export function normalizeImportedSession(raw: unknown): NormalizeImportedSession
     })
   }
 
-  const stored = pickSessionStorageFields(merged)
-  const session = {
-    ...stored,
-    label: String(merged.label),
-    savedId,
-    savedAt,
-    type,
-    group: String(merged.group ?? ''),
-  } as SavedSession
+  const label = labelInput || buildSessionLabel(type, { ...item, type } as SessionFormValues)
+
+  let session: SavedSession
 
   if (type === 'ssh') {
-    if (typeof item.password === 'string') session.password = item.password
-    if (typeof item.privateKey === 'string') session.privateKey = item.privateKey
-    if (typeof item.passphrase === 'string') session.passphrase = item.passphrase
+    const sshBase = getSessionStorageDefaults('ssh') as SshStorageDefaults
+    const port = clampSessionPort(item.port, 22)
+    if ('port' in item && item.port !== '' && item.port != null) {
+      const rawN = typeof item.port === 'number' ? item.port : parseInt(String(item.port), 10)
+      if (!Number.isFinite(rawN) || rawN < PORT_MIN || rawN > PORT_MAX) {
+        pushSessionImportWarning(warnings, 'fieldDefaulted', {
+          field: 'port',
+          value: String(item.port),
+          result: port,
+        })
+      }
+    }
+
+    let authType = sshBase.authType
+    if ('authType' in item && item.authType !== undefined) {
+      const auth = String(item.authType).trim()
+      authType = AUTH_TYPE_SET.has(auth) ? auth : 'password'
+      if (!AUTH_TYPE_SET.has(auth)) {
+        pushSessionImportWarning(warnings, 'fieldDefaulted', {
+          field: 'authType',
+          value: auth,
+          result: 'password',
+        })
+      }
+    }
+
+    let enableSftp = sshBase.enableSftp
+    if ('enableSftp' in item && item.enableSftp !== undefined) {
+      enableSftp = Boolean(item.enableSftp)
+      if (typeof item.enableSftp !== 'boolean') {
+        pushSessionImportWarning(warnings, 'fieldDefaulted', {
+          field: 'enableSftp',
+          value: String(item.enableSftp),
+          result: String(enableSftp),
+        })
+      }
+    }
+
+    const sshSession: SshSavedSession = {
+      type: 'ssh',
+      savedId,
+      savedAt,
+      group,
+      label,
+      encoding,
+      backspaceMode,
+      host: String(item.host).trim(),
+      port,
+      username: String(item.username ?? '').trim(),
+      authType,
+      enableSftp,
+    }
+    if (typeof item.password === 'string') sshSession.password = item.password
+    if (typeof item.privateKey === 'string') sshSession.privateKey = item.privateKey
+    if (typeof item.passphrase === 'string') sshSession.passphrase = item.passphrase
+    session = pickSessionStorageFields(sshSession) as SshSavedSession
+    session.savedId = savedId
+    session.savedAt = savedAt
+  } else if (type === 'telnet') {
+    const port = clampSessionPort(item.port, 23)
+    if ('port' in item && item.port !== '' && item.port != null) {
+      const rawN = typeof item.port === 'number' ? item.port : parseInt(String(item.port), 10)
+      if (!Number.isFinite(rawN) || rawN < PORT_MIN || rawN > PORT_MAX) {
+        pushSessionImportWarning(warnings, 'fieldDefaulted', {
+          field: 'port',
+          value: String(item.port),
+          result: port,
+        })
+      }
+    }
+
+    const telnetSession: TelnetSavedSession = {
+      type: 'telnet',
+      savedId,
+      savedAt,
+      group,
+      label,
+      encoding,
+      backspaceMode,
+      host: String(item.host).trim(),
+      port,
+    }
+    session = pickSessionStorageFields(telnetSession) as TelnetSavedSession
+    session.savedId = savedId
+    session.savedAt = savedAt
+  } else {
+    const serialBase = getSessionStorageDefaults('serial') as SerialStorageDefaults
+    const serialFields: Partial<SerialSavedSession> = { type: 'serial' }
+    applySerialStorageFieldsWithWarnings(serialFields, item, serialBase, warnings)
+
+    const serialSession: SerialSavedSession = {
+      type: 'serial',
+      savedId,
+      savedAt,
+      group,
+      label,
+      encoding,
+      backspaceMode,
+      path: serialFields.path,
+      baudRate: serialFields.baudRate,
+      dataBits: serialFields.dataBits,
+      stopBits: serialFields.stopBits,
+      parity: serialFields.parity,
+    }
+    session = pickSessionStorageFields(serialSession) as SerialSavedSession
+    session.savedId = savedId
+    session.savedAt = savedAt
   }
 
   return { ok: true, session, warnings }

@@ -21,7 +21,7 @@ const verifyCallbacks = new Map<number, (ok: boolean) => void>()
 
 type SshShellStream = Duplex & {
   stderr: Duplex
-  setWindow: (rows: unknown, cols: unknown) => void
+  setWindow: (rows: number, cols: number) => void
   close?: () => void
 }
 

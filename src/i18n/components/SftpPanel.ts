@@ -41,7 +41,7 @@ export const SFTP = {
     },
     pathErrors: {
       allowedRootsHint:
-        '本地路径须位于用户主目录、文稿/文档、下载、桌面、图片、音乐、影片、本应用用户数据目录下。Windows 上还可使用系统盘（通常为 C 盘）以外的整盘路径',
+        '本地路径须位于用户主目录、文稿/文档、下载、桌面、图片、音乐、影片、本应用用户数据目录下。此外：Windows 可使用系统盘（通常为 C 盘）以外的整盘路径；Linux/Unix 可使用根文件系统（/）以外的独立挂载点（如 /mnt、/media）；macOS 可使用 /Volumes 下的卷',
       localDirDenied: '{kindLabel}失败：{hint}',
       invalidFilename: '{kindLabel}：非法文件名',
       pathEscapeTarget: '{kindLabel}：路径跳出目标目录',
@@ -89,7 +89,7 @@ export const SFTP = {
     },
     pathErrors: {
       allowedRootsHint:
-        "Local path must be under your home, Documents, Downloads, Desktop, Pictures, Music, Movies, this app's user data folder, or (on Windows) any drive letter other than the system drive (usually C:)",
+        "Local path must be under your home, Documents, Downloads, Desktop, Pictures, Music, Movies, or this app's user data folder. Additionally: on Windows, any drive letter other than the system drive (usually C:); on Linux/Unix, mount points outside the root filesystem (e.g. /mnt, /media); on macOS, volumes under /Volumes.",
       localDirDenied: '{kindLabel} failed: {hint}',
       invalidFilename: '{kindLabel}: invalid file name',
       pathEscapeTarget: '{kindLabel}: path escapes target folder',

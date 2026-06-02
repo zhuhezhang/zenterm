@@ -4,6 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
+import type { VaultGetContent, VaultSecretPartial } from '../../shared/zterm-api.js'
 
 interface VaultEntry {
   password?: string
@@ -75,45 +76,44 @@ function setupCredentialHandlers(ipcMain: IpcMain) {
     return ipcOk({ available: safeStorage.isEncryptionAvailable() })
   })
 
-  ipcMain.handle('credentials:get', async (event: IpcMainInvokeEvent, savedId: unknown) => {
+  ipcMain.handle('credentials:get', async (event: IpcMainInvokeEvent, savedId: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (!savedId || typeof savedId !== 'string') {
-      return ipcOk({ found: false, reason: 'invalidSavedId' })
+      return ipcOk({ found: false, reason: 'invalidSavedId' } satisfies VaultGetContent)
     }
     if (!safeStorage.isEncryptionAvailable()) {
-      return ipcOk({ found: false, reason: 'encryptionUnavailable' })
+      return ipcOk({ found: false, reason: 'encryptionUnavailable' } satisfies VaultGetContent)
     }
     const vault = readVault()
     const enc = vault.entries[savedId]
     if (!enc || typeof enc !== 'object') {
-      return ipcOk({ found: false, reason: 'notInVault' })
+      return ipcOk({ found: false, reason: 'notInVault' } satisfies VaultGetContent)
     }
-    const secrets: Record<string, unknown> = { found: true }
     try {
+      const secrets: Extract<VaultGetContent, { found: true }> = { found: true }
       if (enc.password) secrets.password = decryptField(enc.password)
       if (enc.privateKey) secrets.privateKey = decryptField(enc.privateKey)
       if (enc.passphrase) secrets.passphrase = decryptField(enc.passphrase)
+      return ipcOk(secrets)
     } catch (e) {
       console.error('credentials:get decrypt error', e)
-      return ipcOk({ found: false, reason: 'decryptFailed' })
+      return ipcOk({ found: false, reason: 'decryptFailed' } satisfies VaultGetContent)
     }
-    return ipcOk(secrets)
   })
 
-  ipcMain.handle('credentials:sync', async (event: IpcMainInvokeEvent, savedId: unknown, partial: unknown) => {
+  ipcMain.handle('credentials:sync', async (event: IpcMainInvokeEvent, savedId: string, partial: VaultSecretPartial) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (!savedId || typeof savedId !== 'string') return ipcFail('credentials.invalidSavedId', true)
     if (!safeStorage.isEncryptionAvailable()) {
       return ipcFail('credentials.encryptionUnavailable', true)
     }
     if (!partial || typeof partial !== 'object') return ipcFail('credentials.invalidSavedId', true)
-    const partialRecord = partial as Record<string, unknown>
     const vault = readVault()
     const cur = { ...(vault.entries[savedId] || {}) }
     const keys = ['password', 'privateKey', 'passphrase'] as const
     for (const k of keys) {
-      if (!Object.prototype.hasOwnProperty.call(partialRecord, k)) continue
-      const v = partialRecord[k]
+      if (!Object.prototype.hasOwnProperty.call(partial, k)) continue
+      const v = partial[k]
       if (v === null || v === undefined || v === '') {
         delete cur[k]
       } else if (typeof v === 'string') {
@@ -126,9 +126,9 @@ function setupCredentialHandlers(ipcMain: IpcMain) {
     return ipcOk()
   })
 
-  ipcMain.handle('credentials:remove', async (event: IpcMainInvokeEvent, savedId: unknown) => {
+  ipcMain.handle('credentials:remove', async (event: IpcMainInvokeEvent, savedId: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (!savedId || typeof savedId !== 'string') return ipcOk()
+    if (!savedId) return ipcOk()
     const vault = readVault()
     if (vault.entries[savedId]) {
       delete vault.entries[savedId]
@@ -137,9 +137,9 @@ function setupCredentialHandlers(ipcMain: IpcMain) {
     return ipcOk()
   })
 
-  ipcMain.handle('credentials:duplicate', async (event: IpcMainInvokeEvent, fromId: unknown, toId: unknown) => {
+  ipcMain.handle('credentials:duplicate', async (event: IpcMainInvokeEvent, fromId: string, toId: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (!fromId || !toId || typeof fromId !== 'string' || typeof toId !== 'string') {
+    if (!fromId || !toId) {
       return ipcFail('credentials.invalidSavedId', true)
     }
     const vault = readVault()

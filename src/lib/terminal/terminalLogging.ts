@@ -5,6 +5,7 @@ import { fileTimestamp } from '../util/fileTimestamp'
 import { resolveLoggingDirectory } from '../../store/settingsStore'
 import { normalizeLoggingMode } from '../settings/normalize'
 import type { ActiveSession } from '../../types/session'
+import { sessionEndpoint } from '../../types/session'
 import type { AppSettings } from '../../types/settings'
 import type { SessionLogHandle } from '../../types/terminal'
 
@@ -92,7 +93,7 @@ export function setupLogging(
   /** 同一标签页内复用的日志主文件名（不含 .log） */
   let logFileName = stemState.stem
   if (!logFileName) {  // 首次连接：时间戳_会话名
-    const sessionName = safeFileToken(session.label || session.host || session.path || session.id || 'session')
+    const sessionName = safeFileToken(session.label || sessionEndpoint(session) || session.id || 'session')
     logFileName = `${fileTimestamp()}_${sessionName}`
     stemState.stem = logFileName
   }

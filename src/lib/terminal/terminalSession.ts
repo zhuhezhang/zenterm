@@ -230,7 +230,7 @@ export async function connectSession(
     }
   }
 
-  if (type === 'ssh') {
+  if (session.type === 'ssh') {
     writeInfo(translateRender(L(), 'terminal.sshConnecting', { host: session.host ?? '', port: session.port ?? 22 }))
     try {
       const zterm = getZterm()
@@ -274,7 +274,7 @@ export async function connectSession(
       writeError(terminalErr(e))
       onUpdate({ status: 'error' })
     }
-  } else if (type === 'telnet') {
+  } else if (session.type === 'telnet') {
     writeInfo(translateRender(L(), 'terminal.telnetConnecting', { host: session.host ?? '', port: session.port ?? 23 }))
     try {
       const zterm = getZterm()
@@ -294,7 +294,7 @@ export async function connectSession(
       writeError(terminalErr(e))
       onUpdate({ status: 'error' })
     }
-  } else if (type === 'serial') {
+  } else if (session.type === 'serial') {
     writeInfo(translateRender(L(), 'terminal.serialOpening', { path: session.path ?? '', baud: session.baudRate ?? 9600 }))
     try {
       const zterm = getZterm()

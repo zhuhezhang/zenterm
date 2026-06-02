@@ -4,11 +4,11 @@ import type {
   SshConnectConfig,
   TelnetConnectConfig,
 } from '../../../shared/zterm-api'
-import type { ActiveSession } from '../../types/session'
+import type { ActiveSshSession, ActiveTelnetSession, ActiveSerialSession } from '../../types/session'
 
 /** 提取 SSH / SFTP 连接所需字段 */
 export function pickSshConnectConfig(
-  session: ActiveSession,
+  session: ActiveSshSession,
   algorithms?: Partial<AlgorithmPreferences>,
 ): SshConnectConfig {
   return {
@@ -26,7 +26,7 @@ export function pickSshConnectConfig(
   }
 }
 
-export function pickTelnetConnectConfig(session: ActiveSession): TelnetConnectConfig {
+export function pickTelnetConnectConfig(session: ActiveTelnetSession): TelnetConnectConfig {
   return {
     host: session.host,
     port: session.port,
@@ -35,7 +35,7 @@ export function pickTelnetConnectConfig(session: ActiveSession): TelnetConnectCo
   }
 }
 
-export function pickSerialConnectConfig(session: ActiveSession): SerialConnectConfig {
+export function pickSerialConnectConfig(session: ActiveSerialSession): SerialConnectConfig {
   return {
     path: session.path,
     baudRate: session.baudRate,

@@ -1,6 +1,7 @@
 import type { VaultSecretPayload, VaultSecretPartial } from '../types/credentials'
 import type { AppSettings } from '../types/settings'
-import type { SavedSession, SessionConfig } from '../types/session'
+import type { SavedSession, SessionConfig, SshSavedSession } from '../types/session'
+import { isSshSession } from '../types/session'
 import type { IpcResult } from '../../shared/ipc'
 import { vaultSecretsFromGetResponse } from '../lib/ipc/ipcResponse'
 
@@ -68,9 +69,12 @@ export async function reapplyVaultPoliciesForAllSessions(
   if (!availRes?.success || availRes.content?.available === false) return
 
   for (const s of savedSessions) {
-    if (!s.savedId || s.type !== 'ssh') continue
+    if (!s.savedId || !isSshSession(s)) continue
     const sec = await fetchSessionSecrets(s.savedId)
-    const full: SessionConfig = { ...s, ...sec }
+    const full: SessionConfig = { ...s }
+    if (sec.password) full.password = sec.password
+    if (sec.privateKey) full.privateKey = sec.privateKey
+    if (sec.passphrase) full.passphrase = sec.passphrase
     await api.sync(s.savedId, buildSecretsSyncPayload(full, settings))
   }
 }
@@ -96,16 +100,17 @@ export async function absorbPlaintextSecretsFromImportedSessions(
 
   for (const s of sessions) {
     const copy: SavedSession = { ...s }
-    if (avail && api?.sync && s.savedId && s.type === 'ssh') {
+    if (avail && api?.sync && s.savedId && isSshSession(s)) {
       const partial: VaultSecretPartial = {}
       if (typeof s.password === 'string' && s.password) partial.password = s.password
       if (typeof s.privateKey === 'string' && s.privateKey) partial.privateKey = s.privateKey
       if (typeof s.passphrase === 'string' && s.passphrase) partial.passphrase = s.passphrase
       if (Object.keys(partial).length) await api.sync(s.savedId, partial)
+      const sshCopy = copy as SshSavedSession
+      delete sshCopy.password
+      delete sshCopy.privateKey
+      delete sshCopy.passphrase
     }
-    delete copy.password
-    delete copy.privateKey
-    delete copy.passphrase
     out.push(copy)
   }
 

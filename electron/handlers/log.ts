@@ -9,7 +9,7 @@ import { assertLogWriteDirectoryAllowed } from '../lib/localPathPolicy.js'
  * 日志写入处理程序
  */
 export function setupLogHandlers(ipcMain: IpcMain) {
-  ipcMain.on('log:write', (e: IpcMainEvent, logDir: unknown, logFileName: unknown, data: unknown) => {
+  ipcMain.on('log:write', (e: IpcMainEvent, logDir: string, logFileName: string, data: string) => {
     try {
       if (!isTrustedIpcSender(e.sender)) return
       if (!logDir) return
@@ -23,7 +23,7 @@ export function setupLogHandlers(ipcMain: IpcMain) {
     }
   })
 
-  ipcMain.on('log:append', (e: IpcMainEvent, logDir: unknown, logFileName: unknown, data: unknown) => {
+  ipcMain.on('log:append', (e: IpcMainEvent, logDir: string, logFileName: string, data: string) => {
     try {
       if (!isTrustedIpcSender(e.sender)) return
       if (!logDir || data == null || data === '') return

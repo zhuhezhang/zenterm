@@ -163,7 +163,7 @@ export default function SettingsSettingItem({
           onChange={(e) => {
             const v = e.target.value
             if (v === '' || v === '-') {
-              set(settingKey, v as unknown as AppSettings[typeof settingKey])
+              set(settingKey, v as AppSettings[typeof settingKey])
               return
             }
             const n = Number(v)

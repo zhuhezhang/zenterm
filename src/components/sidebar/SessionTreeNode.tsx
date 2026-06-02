@@ -1,4 +1,5 @@
 import type { SessionType } from '@/types/session'
+import { sessionEndpoint, sessionHasSftp } from '@/types/session'
 import type { SessionTreeNodeComponentProps } from '@/types/components'
 import ConnectionTypeIcon from '../common'
 import { Chevron, FolderIcon, TYPE_COLORS } from './icons'
@@ -112,7 +113,7 @@ export default function SessionTreeNode({
       onDrop={e => dropOnSession(e, node.id, s.group || '')}
       onClick={() => !isRenamingThis && onConnectSaved(s)}
       onContextMenu={e => openCtx(e, 'session', s)}
-      title={`${s.type?.toUpperCase()} ${s.host || s.path || ''}`}>
+      title={`${s.type?.toUpperCase()} ${sessionEndpoint(s)}`}>
       <span className="sb-session-icon" style={{ color: TYPE_COLORS[s.type as SessionType] }}>{ConnectionTypeIcon[s.type as SessionType]}</span>
       {isRenamingThis ? (
         <input className="sb-rename-input" value={renameSessionVal} autoFocus ref={renameSessionInputRef}
@@ -129,7 +130,7 @@ export default function SessionTreeNode({
       ) : (
         <span className="sb-label">{s.label || node.name}</span>
       )}
-      {s.enableSftp && !isRenamingThis && <span className="sb-sftp-badge" title="SFTP">⇅</span>}
+      {sessionHasSftp(s) && !isRenamingThis && <span className="sb-sftp-badge" title="SFTP">⇅</span>}
     </div>
   )
 }

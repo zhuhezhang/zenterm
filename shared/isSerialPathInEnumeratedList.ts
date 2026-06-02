@@ -6,7 +6,7 @@ export type SerialPortListEntry = { path?: string }
  * Windows 上对 COM 路径不区分大小写。
  */
 export function isSerialPathInEnumeratedList(
-  requestedPath: unknown,
+  requestedPath: string | null | undefined,
   ports: ReadonlyArray<SerialPortListEntry> | null | undefined,
 ): boolean {
   const req = String(requestedPath ?? '').trim()

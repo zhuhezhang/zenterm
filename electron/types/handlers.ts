@@ -8,6 +8,7 @@ import type {
   WebContents,
 } from 'electron'
 import type { Worker } from 'worker_threads'
+import type { SftpWorkerCmdResultMessage } from '../../shared/workerMessages.js'
 
 export type MainWindowGetter = () => BrowserWindow | null | undefined
 
@@ -23,7 +24,7 @@ export interface SaveFilePolicyOptions {
 
 export interface SftpSessionState {
   worker: Worker | null
-  pending: Map<number, (msg: Record<string, unknown>) => void>
+  pending: Map<number, (msg: SftpWorkerCmdResultMessage) => void>
   reqSeq: number
   isClosed: boolean
 }

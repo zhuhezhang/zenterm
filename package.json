@@ -1,6 +1,6 @@
 {
   "name": "zterm",
-  "version": "1.2.3",
+  "version": "3.2.1",
   "description": "A terminal emulator with SSH, SFTP, Telnet and Serial support",
   "type": "module",
   "main": "dist-electron/electron/main.js",

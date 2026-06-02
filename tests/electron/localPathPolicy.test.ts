@@ -7,7 +7,31 @@ vi.mock('electron', () => ({
   },
 }))
 
-import { validateLocalFilePath, validateLogWriteDirectory } from '../../electron/lib/localPathPolicy'
+import {
+  parseProcMountsForPolicy,
+  validateLocalFilePath,
+  validateLogWriteDirectory,
+} from '../../electron/lib/localPathPolicy'
+
+describe('parseProcMountsForPolicy', () => {
+  it('includes block-device mounts except root', () => {
+    const content = [
+      '/dev/nvme0n1p2 / ext4 rw,relatime 0 0',
+      '/dev/nvme0n1p3 /home ext4 rw,relatime 0 0',
+      '/dev/sdb1 /mnt/data ext4 rw,relatime 0 0',
+      'tmpfs /run tmpfs rw,nosuid,nodev 0 0',
+    ].join('\n')
+    expect(parseProcMountsForPolicy(content)).toEqual([
+      path.resolve('/home'),
+      path.resolve('/mnt/data'),
+    ])
+  })
+
+  it('includes network filesystem mounts', () => {
+    const content = 'server:/export /mnt/nfs nfs4 rw 0 0'
+    expect(parseProcMountsForPolicy(content)).toEqual([path.resolve('/mnt/nfs')])
+  })
+})
 
 describe('localPathPolicy', () => {
   beforeEach(() => {

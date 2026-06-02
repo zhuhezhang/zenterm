@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import type { ZTermApi, ZTermProgress } from '../shared/zterm-api.js'
+import type { ZTermApi, ZTermProgress, VaultSecretPartial } from '../shared/zterm-api.js'
 
 type StreamPrefix = 'ssh' | 'telnet' | 'serial'
 
@@ -84,7 +84,7 @@ const ztermApi = {
   credentials: {
     isAvailable: () => ipcRenderer.invoke('credentials:isAvailable'),
     get: (savedId: string) => ipcRenderer.invoke('credentials:get', savedId),
-    sync: (savedId: string, partial: Record<string, unknown>) =>
+    sync: (savedId: string, partial: VaultSecretPartial) =>
       ipcRenderer.invoke('credentials:sync', savedId, partial),
     remove: (savedId: string) => ipcRenderer.invoke('credentials:remove', savedId),
     duplicate: (fromId: string, toId: string) => ipcRenderer.invoke('credentials:duplicate', fromId, toId),

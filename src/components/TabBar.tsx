@@ -3,6 +3,7 @@ import { useI18n } from '../context/I18nContext'
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick'
 import ConnectionTypeIcon from './common'
 import type { TabBarProps } from '../types/components'
+import { sessionEndpoint } from '../types/session'
 import type { TabContextMenu } from '../types/tabBar'
 import '../styles/tabbar.css'
 
@@ -150,11 +151,11 @@ export default memo(function TabBar({
             onDragEnd={onDragEnd}
             onDragOver={onDragOver}
             onDrop={(e) => onDrop(e, s.id)}
-            title={s.label || `${s.type?.toUpperCase()} ${s.host || s.path || ''}`}
+            title={s.label || `${s.type?.toUpperCase()} ${sessionEndpoint(s)}`}
           >
             <span className="tab-icon">{ConnectionTypeIcon[s.type] || '⌨'}</span>
             <span className={`tab-status ${STATUS_CLS[s.status as keyof typeof STATUS_CLS] || ''}`}>{STATUS_DOT[s.status as keyof typeof STATUS_DOT] || '○'}</span>
-            <span className="tab-label">{s.label || `${s.type?.toUpperCase()} ${s.host || s.path || ''}`}</span>
+            <span className="tab-label">{s.label || `${s.type?.toUpperCase()} ${sessionEndpoint(s)}`}</span>
             {s.sftpReady && <span className="tab-sftp-badge" title={t('tabbar.sftpReady')}>⇅</span>}
             <button className="tab-close" onClick={e => { e.stopPropagation(); onClose(s.id) }} title={t('tabbar.closeTab')}>×</button>
           </div>

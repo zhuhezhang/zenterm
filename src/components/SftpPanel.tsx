@@ -10,6 +10,7 @@ import { readAllDirEntries } from '@/lib/sftp/readDirEntries'
 import { getZterm } from '@/lib/ipc/getZterm'
 import SftpFileList from './sftp/SftpFileList'
 import type { SftpPanelProps, SftpRemoteItem } from '@/types/components'
+import { sessionEndpoint } from '@/types/session'
 import type { SftpFileContextMenu } from '@/types/sftp'
 import type { IpcResult } from '../../shared/ipc'
 import type { ZTermProgress } from '../../shared/zterm-api'
@@ -418,7 +419,7 @@ function SftpPanel({ session }: SftpPanelProps) {
   return (
     <div className="sftp-panel">
       <div className="sftp-header">
-        <span className="sftp-title">SFTP — {session.host}</span>
+        <span className="sftp-title">SFTP — {session.type === 'ssh' ? session.host : sessionEndpoint(session)}</span>
         <div className="sftp-toolbar">
           <details
             ref={uploadDetailsRef}

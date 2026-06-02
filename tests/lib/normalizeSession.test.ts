@@ -24,6 +24,7 @@ describe('normalizeImportedSession', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.session.type).toBe('ssh')
+    if (result.session.type !== 'ssh') return
     expect(result.session.host).toBe('192.168.1.1')
     expect(result.session.port).toBe(2222)
     expect(result.session.label).toBe('lab')
@@ -38,6 +39,7 @@ describe('normalizeImportedSession', () => {
     })
     expect(result.ok).toBe(true)
     if (!result.ok) return
+    if (result.session.type !== 'telnet') return
     expect(result.session.port).toBe(65535)
     expect(result.warnings.some(w => w.code === 'fieldDefaulted' && w.params?.field === 'port')).toBe(true)
   })

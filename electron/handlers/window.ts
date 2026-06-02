@@ -35,18 +35,18 @@ export function setupWindowHandlers(ipcMain: IpcMain, getMainWindow: MainWindowG
     if (!isTrustedIpcSender(e.sender)) return ipcFail('app.unauthorized', true)
     return ipcOk({ maximized: getMainWindow()?.isMaximized() ?? false })
   })
-  ipcMain.on('window:setBackgroundColor', (e: IpcMainEvent, hex: unknown) => {
+  ipcMain.on('window:setBackgroundColor', (e: IpcMainEvent, hex: string) => {
     if (!isTrustedIpcSender(e.sender)) return
     const mainWindow = getMainWindow()
-    if (!mainWindow || typeof hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(hex)) return
+    if (!mainWindow || !/^#[0-9a-fA-F]{6}$/.test(hex)) return
     try {
       mainWindow.setBackgroundColor(hex)
     } catch {}
   })
-  ipcMain.on('window:zoomWheelStep', (e: IpcMainEvent, deltaY: unknown) => {
+  ipcMain.on('window:zoomWheelStep', (e: IpcMainEvent, deltaY: number) => {
     if (!isTrustedIpcSender(e.sender) || process.platform !== 'darwin') return
     const mainWindow = getMainWindow()
-    if (!mainWindow || typeof deltaY !== 'number' || !Number.isFinite(deltaY) || deltaY === 0) return
+    if (!mainWindow || !Number.isFinite(deltaY) || deltaY === 0) return
     stepWebContentsZoom(mainWindow.webContents, deltaY < 0 ? 'in' : 'out')
   })
 }

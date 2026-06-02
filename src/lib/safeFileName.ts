@@ -8,16 +8,16 @@ export const INVALID_GROUP_CHARS = new RegExp(
 )
 
 /** 是否包含非法标签字符 */
-export function hasInvalidLabelChars(value: unknown) {
+export function hasInvalidLabelChars(value: string | null | undefined) {
   return INVALID_LABEL_CHARS.test(String(value ?? ''))
 }
 
-export function hasInvalidGroupChars(value: unknown) {
+export function hasInvalidGroupChars(value: string | null | undefined) {
   return INVALID_GROUP_CHARS.test(String(value ?? ''))
 }
 
 /** 过滤文件名非法字符，保留可读标签（终端导出等） */
-export function safeFileToken(raw: unknown) {
+export function safeFileToken(raw: string | null | undefined) {
   return String(raw || 'session')
     .replace(INVALID_LABEL_CHARS, '')
     .replace(/\s+/g, '_')

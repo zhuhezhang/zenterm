@@ -2,6 +2,14 @@ import type { Worker } from 'worker_threads'
 import { verifySshHostKeyTrust } from './sshKnownHosts.js'
 import type { MainWindowGetter } from '../types/handlers.js'
 
+type HostVerifyMessage = {
+  type: 'HOST_VERIFY'
+  reqId: number
+  host?: string
+  port: number
+  keyBase64: string
+}
+
 /**
  * Worker HOST_VERIFY 消息：主进程弹框校验主机密钥并回传结果。
  * ssh2 的 hostVerifier 在 Worker 里，但弹框必须在主进程（要 dialog 和 BrowserWindow）。
@@ -9,7 +17,7 @@ import type { MainWindowGetter } from '../types/handlers.js'
 export async function handleHostVerifyMessage(
   getMainWindow: MainWindowGetter,
   worker: Worker,
-  msg: Record<string, unknown>,
+  msg: HostVerifyMessage,
 ) {
   const raw = Buffer.from(String(msg.keyBase64), 'base64')
   const ok = await verifySshHostKeyTrust(

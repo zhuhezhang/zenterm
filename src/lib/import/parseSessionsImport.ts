@@ -14,7 +14,7 @@ import { IMPORT_MAX_SESSION_COUNT } from './constants'
 export async function validateAndParseSessionsImport(file: File) {
   await assertImportFilePathAllowed(file)
   const parsed = await readImportJson(file)
-  const rows = unwrapExportPayload(parsed, 'sessions') as unknown[]
+  const rows = unwrapExportPayload(parsed, 'sessions')
   if (rows.length > IMPORT_MAX_SESSION_COUNT) {
     throw createImportError('tooManySessions', { max: IMPORT_MAX_SESSION_COUNT })
   }

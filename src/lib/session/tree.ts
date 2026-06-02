@@ -1,4 +1,5 @@
 import type { FlattenedTreeItem, SavedSession, SessionTreeGroupNode, SessionTreeNode } from '../../types/session'
+import { sessionEndpoint } from '../../types/session'
 
 /** 搜索时 buildTree 不注入占位分组，避免无匹配会话下出现空分组树 */
 export const NO_GROUP_PLACEHOLDERS: string[] = []
@@ -26,7 +27,7 @@ export function buildTree(
     const sessNode: SessionTreeNode = {
       id: s.savedId,
       type: 'session',
-      name: s.label || s.host || s.savedId,
+      name: s.label || sessionEndpoint(s) || s.savedId,
       session: s,
     }
     if (s.group && groupMap[s.group]) groupMap[s.group].children.push(sessNode)

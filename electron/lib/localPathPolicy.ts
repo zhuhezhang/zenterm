@@ -1,6 +1,7 @@
 /**
  * 限制可写/可读的本地路径范围，降低渲染进程被滥用时任意读写磁盘的风险。
- * 允许常见用户目录、本应用 userData；Windows 上另允许系统盘以外的整盘路径。
+ * 允许常见用户目录、本应用 userData；Windows 上另允许系统盘以外的整盘路径；
+ * Linux/Unix 上另允许根文件系统（/）以外的独立挂载点整盘路径。
  */
 import fs from 'fs'
 import path from 'path'
@@ -21,9 +22,39 @@ const PATH_NAMES = [
   'videos',
 ]
 
+/** 非持久化 / 虚拟文件系统，不作为整盘放行根 */
+const PSEUDO_FSTYPES = new Set([
+  'tmpfs',
+  'devtmpfs',
+  'proc',
+  'sysfs',
+  'devpts',
+  'cgroup',
+  'cgroup2',
+  'pstore',
+  'bpf',
+  'tracefs',
+  'debugfs',
+  'securityfs',
+  'hugetlbfs',
+  'mqueue',
+  'configfs',
+  'fusectl',
+  'autofs',
+  'binfmt_misc',
+  'ramfs',
+  'overlay',
+  'squashfs',
+  'nsfs',
+  'efivarfs',
+  'rpc_pipefs',
+])
+
+/** 网络文件系统类型（无 /dev/ 设备节点时仍放行整挂载点） */
+const NETWORK_FSTYPES = new Set(['nfs', 'nfs4', 'cifs', 'smbfs', 'smb3'])
+
 /**
  * 获取 Windows 系统盘根路径（如 C:\），用于排除整盘放行
- * @returns {string} 系统盘根路径
  */
 function getWindowsSystemDriveRoot() {
   const fromEnv = process.env.SystemDrive || process.env.systemdrive
@@ -38,7 +69,6 @@ function getWindowsSystemDriveRoot() {
 
 /**
  * Windows：枚举已挂载且非系统盘的盘符根（如 D:\、E:\）
- * @returns {string[]} 已挂载且非系统盘的盘符根列表
  */
 function collectWindowsNonSystemDriveRoots() {
   if (process.platform !== 'win32') return []
@@ -57,9 +87,97 @@ function collectWindowsNonSystemDriveRoots() {
   return roots
 }
 
+function isPersistedMountDevice(device: string, fstype: string): boolean {
+  if (PSEUDO_FSTYPES.has(fstype)) return false
+  if (device.startsWith('/dev/')) return true
+  if (NETWORK_FSTYPES.has(fstype)) return true
+  if (fstype.startsWith('fuse.') && fstype !== 'fuse.portal') return true
+  return false
+}
+
+/**
+ * 从 /proc/mounts 或 /etc/mtab 内容解析非根（/）的块设备 / 网络挂载点
+ * （供 collectUnixNonSystemMountRoots 与单元测试使用）
+ */
+export function parseProcMountsForPolicy(content: string): string[] {
+  const systemRoot = path.resolve('/')
+  const seen = new Set<string>()
+  const roots: string[] = []
+
+  for (const line of content.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const parts = trimmed.split(/\s+/)
+    if (parts.length < 3) continue
+    const [device, mountpoint, fstype] = parts
+    if (!isPersistedMountDevice(device, fstype)) continue
+
+    const resolved = path.resolve(mountpoint)
+    if (resolved === systemRoot) continue
+    if (seen.has(resolved)) continue
+    seen.add(resolved)
+    roots.push(resolved)
+  }
+
+  return roots
+}
+
+/**
+ * macOS：/Volumes 下各卷宗根（外置盘、非系统 APFS 卷等）
+ */
+function collectDarwinVolumeRoots(): string[] {
+  const roots: string[] = []
+  try {
+    for (const name of fs.readdirSync('/Volumes')) {
+      if (name.startsWith('.')) continue
+      const vol = path.resolve('/Volumes', name)
+      try {
+        fs.accessSync(vol, fs.constants.F_OK)
+        roots.push(vol)
+      } catch {
+        /* 卷不可访问 */
+      }
+    }
+  } catch {
+    /* /Volumes 不可读 */
+  }
+  return roots
+}
+
+/**
+ * Linux/Unix：枚举根文件系统（/）以外的独立挂载点根（如 /mnt/data、/media/user/USB）
+ */
+function collectUnixNonSystemMountRoots(): string[] {
+  if (process.platform === 'win32') return []
+
+  if (process.platform === 'darwin') {
+    return collectDarwinVolumeRoots()
+  }
+
+  const sources = ['/proc/mounts', '/etc/mtab']
+  for (const src of sources) {
+    try {
+      const content = fs.readFileSync(src, 'utf8')
+      const candidates = parseProcMountsForPolicy(content)
+      const roots: string[] = []
+      for (const mountRoot of candidates) {
+        try {
+          fs.accessSync(mountRoot, fs.constants.F_OK)
+          roots.push(mountRoot)
+        } catch {
+          /* 挂载点不可访问 */
+        }
+      }
+      return roots
+    } catch {
+      continue
+    }
+  }
+  return []
+}
+
 /**
  * 收集所有已解析的允许根目录
- * @returns {string[]} 已解析的允许根目录列表，绝对路径且不含重复项
  */
 export function collectResolvedRoots(): string[] {
   const set = new Set<string>()
@@ -73,6 +191,9 @@ export function collectResolvedRoots(): string[] {
   }
   for (const driveRoot of collectWindowsNonSystemDriveRoots()) {
     set.add(driveRoot)
+  }
+  for (const mountRoot of collectUnixNonSystemMountRoots()) {
+    set.add(mountRoot)
   }
   return [...set]
 }

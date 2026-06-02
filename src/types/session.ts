@@ -11,14 +11,18 @@ export type SessionStatus =
 
 export type BackspaceMode = 'auto' | 'del' | 'bs'
 
-/** localStorage 中已保存的会话 */
-export interface SavedSession {
-  [key: string]: unknown
+/** 各会话类型共有的持久化字段 */
+export interface SessionBase {
   savedId: string
-  type: SessionType
   label: string
   group: string
   savedAt?: number
+  encoding?: string
+  backspaceMode?: BackspaceMode | string
+}
+
+export interface SshSavedSession extends SessionBase {
+  type: 'ssh'
   host?: string
   port?: number
   username?: string
@@ -27,17 +31,28 @@ export interface SavedSession {
   password?: string
   privateKey?: string
   passphrase?: string
+}
+
+export interface TelnetSavedSession extends SessionBase {
+  type: 'telnet'
+  host?: string
+  port?: number
+}
+
+export interface SerialSavedSession extends SessionBase {
+  type: 'serial'
   path?: string
   baudRate?: number
   dataBits?: number
   stopBits?: number
   parity?: string
-  encoding?: string
-  backspaceMode?: string
 }
 
-/** 顶部标签页中的活跃会话 */
-export interface ActiveSession extends SavedSession {
+/** localStorage 中已保存的会话 */
+export type SavedSession = SshSavedSession | TelnetSavedSession | SerialSavedSession
+
+/** 活跃会话在 SavedSession 之上附加的运行时字段 */
+export interface ActiveSessionFields {
   id: string
   status?: SessionStatus | string
   sftpOpen?: boolean
@@ -47,12 +62,37 @@ export interface ActiveSession extends SavedSession {
   errorMessage?: string
 }
 
-/** 连接对话框 / 启动会话 / 导入等使用的配置（已保存或临时） */
-export type SessionConfig = Partial<SavedSession> & {
-  type?: SessionType | string
+export type ActiveSshSession = SshSavedSession & ActiveSessionFields
+export type ActiveTelnetSession = TelnetSavedSession & ActiveSessionFields
+export type ActiveSerialSession = SerialSavedSession & ActiveSessionFields
+
+/** 顶部标签页中的活跃会话 */
+export type ActiveSession = ActiveSshSession | ActiveTelnetSession | ActiveSerialSession
+
+/** 连接对话框 / 启动会话使用的配置（字段并集，便于表单与 IPC 传参） */
+export interface SessionConfig {
   id?: string
-  status?: string
-  [key: string]: unknown
+  status?: SessionStatus | string
+  type?: SessionType | string
+  savedId?: string
+  savedAt?: number
+  label?: string
+  group?: string
+  encoding?: string
+  backspaceMode?: BackspaceMode | string
+  host?: string
+  port?: number | string
+  username?: string
+  authType?: string
+  enableSftp?: boolean
+  password?: string
+  privateKey?: string
+  passphrase?: string
+  path?: string
+  baudRate?: number | string
+  dataBits?: number | string
+  stopBits?: number | string
+  parity?: string
 }
 
 /** 连接对话框表单字段（字符串/数值混用，便于 input 绑定） */
@@ -119,9 +159,51 @@ export type SessionGroupLabelError =
   | 'groupIllegalChars'
   | 'labelIllegalChars'
 
+export type SshPickedFields = Omit<SshSavedSession, 'savedId' | 'savedAt'>
+export type TelnetPickedFields = Omit<TelnetSavedSession, 'savedId' | 'savedAt'>
+export type SerialPickedFields = Omit<SerialSavedSession, 'savedId' | 'savedAt'>
+
 /** pickSessionStorageFields 写入 localStorage 的字段形状 */
-export type PickedSessionFields = Omit<SavedSession, 'savedId' | 'savedAt'> & {
-  type: SessionType
-  label: string
-  group: string
+export type PickedSessionFields = SshPickedFields | TelnetPickedFields | SerialPickedFields
+
+/** 导入 JSON 中的原始会话字段（校验前） */
+export interface RawImportedSession {
+  type?: string
+  savedId?: string
+  savedAt?: string | number
+  group?: string
+  label?: string
+  host?: string
+  path?: string
+  port?: string | number
+  username?: string
+  authType?: string
+  enableSftp?: boolean | string | number
+  password?: string
+  privateKey?: string
+  passphrase?: string
+  encoding?: string
+  backspaceMode?: string
+  baudRate?: string | number
+  dataBits?: string | number
+  stopBits?: string | number
+  parity?: string
+}
+
+/** 会话连接端点（host 或 serial path） */
+export function sessionEndpoint(session: SavedSession | ActiveSession | SessionConfig): string {
+  if (session.type === 'serial') {
+    return String('path' in session ? session.path ?? '' : '')
+  }
+  return String('host' in session ? session.host ?? '' : '')
+}
+
+/** SSH 会话是否启用 SFTP */
+export function sessionHasSftp(session: SavedSession | ActiveSession | SessionConfig): boolean {
+  return session.type === 'ssh' && Boolean(session.enableSftp)
+}
+
+/** 是否为 SSH 会话（类型守卫） */
+export function isSshSession(session: SavedSession | ActiveSession | SessionConfig): session is SshSavedSession | ActiveSshSession {
+  return session.type === 'ssh'
 }

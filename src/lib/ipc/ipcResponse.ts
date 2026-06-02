@@ -1,5 +1,5 @@
 import type { IpcContent, IpcResult } from '../../../shared/ipc'
-import type { VaultGetContent } from '../../../shared/zterm-api'
+import type { SerialPortInfo, VaultGetContent } from '../../../shared/zterm-api'
 
 type IpcLike = IpcResult<IpcContent> | null | undefined
 
@@ -11,8 +11,8 @@ export function isIpcFailure(res: IpcLike): res is Extract<IpcLike, { success: f
   return res != null && res.success === false
 }
 
-export function ipcContent(res: IpcLike): IpcContent {
-  return res?.content && typeof res.content === 'object' ? res.content : {}
+export function ipcContent<T extends IpcContent = IpcContent>(res: IpcLike): T {
+  return (res?.content && typeof res.content === 'object' ? res.content : {}) as T
 }
 
 export function ipcErrorFields(res: IpcLike): {
@@ -39,9 +39,9 @@ export function ipcPathFromResponse(res: IpcLike): string {
   return typeof p === 'string' ? p : ''
 }
 
-export function ipcPortsFromResponse(res: IpcLike): unknown[] {
-  const ports = ipcContent(res).ports
-  return Array.isArray(ports) ? ports : []
+export function ipcPortsFromResponse(res: IpcLike): SerialPortInfo[] {
+  const content = ipcContent<{ ports?: SerialPortInfo[] }>(res)
+  return Array.isArray(content.ports) ? content.ports : []
 }
 
 const VAULT_SECRET_KEYS = ['password', 'privateKey', 'passphrase'] as const

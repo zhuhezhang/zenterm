@@ -8,10 +8,16 @@ import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { handleHostVerifyMessage } from '../lib/hostVerifyMessage.js'
 import { sendToRenderer } from '../lib/mainWindowSend.js'
 import { ipcFail, ipcFailFromThrown, ipcOk } from '../lib/ipcResponse.js'
-import { ipcFromWorkerCmdResult } from '../lib/workerCmdResult.js'
+import { ipcFailAsWorkerCmdResult, ipcFromWorkerCmdResult } from '../lib/workerCmdResult.js'
 import { collectResolvedRoots } from '../lib/localPathPolicy.js'
 import { assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots } from '../lib/sftpLocalPathRoots.js'
 import type { MainWindowGetter, SftpSessionState } from '../types/handlers.js'
+import type { SshConnectConfig } from '../../shared/zterm-api.js'
+import type {
+  SftpWorkerCmdPayload,
+  SftpWorkerCmdResultMessage,
+  SftpWorkerOutboundMessage,
+} from '../../shared/workerMessages.js'
 
 /** 存储每个 SFTP 会话对应的 Worker 与会话状态 */
 const sftpSessions = new Map<string, SftpSessionState>()
@@ -22,20 +28,21 @@ const workerEntry = fileURLToPath(new URL('../workers/sftpSessionWorker.js', imp
 /**
  * 发送命令到子进程 Worker
  */
-function workerCommand(session: SftpSessionState, payload: Record<string, unknown>) {
-  return new Promise<Record<string, unknown>>((resolve) => {
+function workerCommand(session: SftpSessionState, payload: SftpWorkerCmdPayload) {
+  return new Promise<SftpWorkerCmdResultMessage>((resolve) => {
     const reqId = ++session.reqSeq
     session.pending.set(reqId, resolve)
     try {
       if (!session.worker) {
         session.pending.delete(reqId)
-        resolve(ipcFail('sftp.noSession', true) as unknown as Record<string, unknown>)
+        resolve(ipcFailAsWorkerCmdResult(reqId, 'sftp.noSession'))
         return
       }
       session.worker.postMessage({ type: 'CMD', reqId, ...payload })
     } catch (e) {
       session.pending.delete(reqId)
-      resolve(ipcFailFromThrown(e) as unknown as Record<string, unknown>)
+      const fail = ipcFailFromThrown(e)
+      resolve(ipcFailAsWorkerCmdResult(reqId, fail.content.error, fail.errorKnown, fail.content.errorParams))
     }
   })
 }
@@ -44,9 +51,9 @@ function workerCommand(session: SftpSessionState, payload: Record<string, unknow
  * 拒绝所有等待的请求
  */
 function rejectAllPending(session: SftpSessionState, error: string, errorParams?: Record<string, string | number>) {
-  const payload = ipcFail(String(error), true, errorParams)
+  const payload = ipcFailAsWorkerCmdResult(0, String(error), true, errorParams)
   for (const res of session.pending.values()) {
-    res(payload as unknown as Record<string, unknown>)
+    res(payload)
   }
   session.pending.clear()
 }
@@ -55,7 +62,7 @@ function rejectAllPending(session: SftpSessionState, error: string, errorParams?
  * 设置 SFTP 相关的 IPC 处理函数
  */
 function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
-  ipcMain.handle('sftp:connect', async (event: IpcMainInvokeEvent, id: unknown, config: unknown) => {
+  ipcMain.handle('sftp:connect', async (event: IpcMainInvokeEvent, id: string, config: SshConnectConfig) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
 
@@ -98,7 +105,7 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
         } catch {}
       }
 
-      const onWorkerMessage = async (msg: Record<string, unknown>) => {
+      const onWorkerMessage = async (msg: SftpWorkerOutboundMessage) => {
         if (msg.type === 'HOST_VERIFY') {
           if (worker) await handleHostVerifyMessage(getMainWindow, worker, msg)
           return
@@ -120,7 +127,7 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
           return
         }
         if (msg.type === 'CONNECT_FAILED') {
-          finishFail(String(msg.error ?? 'sftp.connectionFailed'), msg.errorParams as Record<string, string | number> | undefined)
+          finishFail(String(msg.error ?? 'sftp.connectionFailed'), msg.errorParams)
           return
         }
         if (msg.type === 'CLOSED') {
@@ -154,9 +161,8 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     })
   })
 
-  ipcMain.handle('sftp:disconnect', async (event: IpcMainInvokeEvent, id: unknown) => {
+  ipcMain.handle('sftp:disconnect', async (event: IpcMainInvokeEvent, id: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcOk()
     const session = sftpSessions.get(id)
     if (session?.worker) {
       rejectAllPending(session, 'sftp.disconnected')
@@ -174,22 +180,20 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     return ipcOk()
   })
 
-  ipcMain.handle('sftp:list', async (event: IpcMainInvokeEvent, id: unknown, remotePath: unknown) => {
+  ipcMain.handle('sftp:list', async (event: IpcMainInvokeEvent, id: string, remotePath: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
     const msg = await workerCommand(session, { cmd: 'LIST', remotePath })
     return ipcFromWorkerCmdResult(msg)
   })
 
-  ipcMain.handle('sftp:download', async (event: IpcMainInvokeEvent, id: unknown, remotePath: unknown, localPath: unknown) => {
+  ipcMain.handle('sftp:download', async (event: IpcMainInvokeEvent, id: string, remotePath: string, localPath: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
     try {
-      assertSftpLocalFilePathAllowedForRoots(String(localPath), collectResolvedRoots(), 'download')
+      assertSftpLocalFilePathAllowedForRoots(localPath, collectResolvedRoots(), 'download')
     } catch (e) {
       return ipcFailFromThrown(e)
     }
@@ -197,13 +201,12 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     return ipcFromWorkerCmdResult(msg)
   })
 
-  ipcMain.handle('sftp:downloadDir', async (event: IpcMainInvokeEvent, id: unknown, remoteDir: unknown, localDir: unknown) => {
+  ipcMain.handle('sftp:downloadDir', async (event: IpcMainInvokeEvent, id: string, remoteDir: string, localDir: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
     try {
-      assertSftpLocalDirAllowedForRoots(String(localDir), collectResolvedRoots(), 'download')
+      assertSftpLocalDirAllowedForRoots(localDir, collectResolvedRoots(), 'download')
     } catch (e) {
       return ipcFailFromThrown(e)
     }
@@ -211,13 +214,12 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     return ipcFromWorkerCmdResult(msg)
   })
 
-  ipcMain.handle('sftp:upload', async (event: IpcMainInvokeEvent, id: unknown, localPath: unknown, remotePath: unknown) => {
+  ipcMain.handle('sftp:upload', async (event: IpcMainInvokeEvent, id: string, localPath: string, remotePath: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
     try {
-      assertSftpLocalFilePathAllowedForRoots(String(localPath), collectResolvedRoots(), 'upload')
+      assertSftpLocalFilePathAllowedForRoots(localPath, collectResolvedRoots(), 'upload')
     } catch (e) {
       return ipcFailFromThrown(e)
     }
@@ -225,27 +227,24 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     return ipcFromWorkerCmdResult(msg)
   })
 
-  ipcMain.handle('sftp:mkdir', async (event: IpcMainInvokeEvent, id: unknown, remotePath: unknown) => {
+  ipcMain.handle('sftp:mkdir', async (event: IpcMainInvokeEvent, id: string, remotePath: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
     const msg = await workerCommand(session, { cmd: 'MKDIR', remotePath })
     return ipcFromWorkerCmdResult(msg)
   })
 
-  ipcMain.handle('sftp:delete', async (event: IpcMainInvokeEvent, id: unknown, remotePath: unknown) => {
+  ipcMain.handle('sftp:delete', async (event: IpcMainInvokeEvent, id: string, remotePath: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
     const msg = await workerCommand(session, { cmd: 'DELETE', remotePath })
     return ipcFromWorkerCmdResult(msg)
   })
 
-  ipcMain.handle('sftp:rename', async (event: IpcMainInvokeEvent, id: unknown, oldPath: unknown, newPath: unknown) => {
+  ipcMain.handle('sftp:rename', async (event: IpcMainInvokeEvent, id: string, oldPath: string, newPath: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
     const msg = await workerCommand(session, { cmd: 'RENAME', oldPath, newPath })

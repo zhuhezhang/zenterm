@@ -1,4 +1,4 @@
-import type { SessionType } from '../../types/session'
+import type { SessionFormValues, SessionType } from '../../types/session'
 import { DEFAULT_TERMINAL_ENCODING } from '../terminalEncodingService'
 import {
   INVALID_LABEL_CHARS,
@@ -90,12 +90,15 @@ export const SERIAL_SESSION_DEFAULT = {
   backspaceMode: 'auto',
 }
 
+export type SshStorageDefaults = typeof SSH_SESSION_DEFAULT
+export type TelnetStorageDefaults = typeof TELNET_SESSION_DEFAULT
+export type SerialStorageDefaults = typeof SERIAL_SESSION_DEFAULT
+export type SessionStorageDefaults = SshStorageDefaults | TelnetStorageDefaults | SerialStorageDefaults
+
 /**
  * 获取会话保存/导入时的数值型默认值
- * @param {'ssh'|'telnet'|'serial'} type 会话类型
- * @returns {Record<string, unknown>} 数值型默认值
  */
-export function getSessionStorageDefaults(type: SessionType): Record<string, unknown> {
+export function getSessionStorageDefaults(type: SessionType): SessionStorageDefaults {
   if (type === 'ssh') return { ...SSH_SESSION_DEFAULT }
   if (type === 'telnet') return { ...TELNET_SESSION_DEFAULT }
   return { ...SERIAL_SESSION_DEFAULT }
@@ -103,19 +106,23 @@ export function getSessionStorageDefaults(type: SessionType): Record<string, unk
 
 /**
  * 获取会话连接对话框表单默认值（端口等为字符串，便于输入框绑定）
- * @param {'ssh'|'telnet'|'serial'} type 会话类型
- * @returns {Record<string, unknown>} 表单默认值
  */
-export function getSessionFormDefaults(type: SessionType): Record<string, unknown> {
+export function getSessionFormDefaults(type: SessionType): SessionFormValues {
   /** 表单输入框绑定时需为字符串的数值字段，与 SESSION_TYPE_FIELDS 对应 */
-  const SESSION_FORM_NUMERIC_KEYS = {
+  const SESSION_FORM_NUMERIC_KEYS: Record<SessionType, (keyof SessionFormValues)[]> = {
     ssh: ['port'],
     telnet: ['port'],
     serial: ['baudRate', 'dataBits', 'stopBits'],
   }
-  const out = { ...getSessionStorageDefaults(type) }
+  const out = { ...getSessionStorageDefaults(type) } as SessionFormValues
   for (const key of SESSION_FORM_NUMERIC_KEYS[type] ?? []) {
-    if (typeof out[key] === 'number') out[key] = String(out[key])
+    const v = out[key]
+    if (typeof v === 'number') {
+      if (key === 'port') out.port = String(v)
+      else if (key === 'baudRate') out.baudRate = String(v)
+      else if (key === 'dataBits') out.dataBits = String(v)
+      else if (key === 'stopBits') out.stopBits = String(v)
+    }
   }
   return out
 }

@@ -99,11 +99,8 @@ function clearTelnetParserState(socket: net.Socket) {
  * 设置 Telnet 相关的 IPC 处理函数
  */
 function setupTelnetHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
-  ipcMain.handle('telnet:connect', async (event: IpcMainInvokeEvent, id: unknown, config: unknown) => {
+  ipcMain.handle('telnet:connect', async (event: IpcMainInvokeEvent, id: string, config: TelnetConnectConfig) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcFail('app.invalidRequest', true)
-    if (!config || typeof config !== 'object') return ipcFail('app.invalidRequest', true)
-    const cfg = config as TelnetConnectConfig
 
     return new Promise((resolve) => {
       const socket = new net.Socket()
@@ -119,7 +116,7 @@ function setupTelnetHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) 
         resolveOnce(ipcFail('telnet.connectionTimeout', true))
       }, 10000)
 
-      socket.connect(Number(cfg.port) || 23, String(cfg.host), () => {
+      socket.connect(Number(config.port) || 23, String(config.host), () => {
         clearTimeout(timeout)
         connected = true
         telnetSessions.set(id, socket)
@@ -150,18 +147,16 @@ function setupTelnetHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) 
     })
   })
 
-  ipcMain.on('telnet:data', (event: IpcMainEvent, id: unknown, data: unknown, encoding: unknown) => {
+  ipcMain.on('telnet:data', (event: IpcMainEvent, id: string, data: string, encoding?: string) => {
     if (!isTrustedIpcSender(event.sender)) return
-    if (typeof id !== 'string') return
     const socket = telnetSessions.get(id)
     if (socket) {
-      socket.write(encodeOutgoingTerminalData(data, typeof encoding === 'string' ? encoding : undefined))
+      socket.write(encodeOutgoingTerminalData(data, encoding))
     }
   })
 
-  ipcMain.handle('telnet:disconnect', async (event: IpcMainInvokeEvent, id: unknown) => {
+  ipcMain.handle('telnet:disconnect', async (event: IpcMainInvokeEvent, id: string) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
-    if (typeof id !== 'string') return ipcOk()
     const socket = telnetSessions.get(id)
     if (socket) {
       try {

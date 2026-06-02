@@ -58,7 +58,7 @@ function ConnectDialog({
   if (!portByTabRef.current.ssh) {
     const initialTab = type || 'ssh'
     const initialForm = mergeSessionFormDefaults(initialTab, initialData ?? undefined)
-    const toRefPort = (tabKey: SessionType, raw: unknown) => {
+    const toRefPort = (tabKey: SessionType, raw: string | number | undefined) => {
       const fallback = tabKey === 'ssh' ? SSH_SESSION_DEFAULT.port : TELNET_SESSION_DEFAULT.port
       const s = String(raw ?? '').trim()
       return s === '' ? String(fallback) : clampPortFieldString(s) || String(fallback)
@@ -119,14 +119,16 @@ function ConnectDialog({
       if (cancelled) return
       const merged: SessionFormValues = {
         ...mergeSessionFormDefaults(sessionType, initialData ?? undefined),
-        ...sec,
+        ...(sec.password ? { password: sec.password } : {}),
+        ...(sec.privateKey ? { privateKey: sec.privateKey } : {}),
+        ...(sec.passphrase ? { passphrase: sec.passphrase } : {}),
       }
       if (sessionType === 'ssh' || sessionType === 'telnet') {
         const s = String(merged.port ?? '').trim()
         const fallback = sessionType === 'ssh' ? SSH_SESSION_DEFAULT.port : TELNET_SESSION_DEFAULT.port
         portByTabRef.current[sessionType] = s === '' ? String(fallback) : clampPortFieldString(s) || String(fallback)
       }
-      setTab(sessionType)
+      setTab(sessionType as SessionType)
       setForm(merged)
     })()
     return () => { cancelled = true }
@@ -141,15 +143,14 @@ function ConnectDialog({
     setForm((prev) => ({ ...prev, [k]: v }))
 
   /**
-   * 表单验证函数。根据当前协议类型和表单数据检查必填项是否填写，分组和标签是否包含非法字符，返回错误信息字符串
-   * @returns {string} 错误信息，如果没有错误则返回空字符串
+   * 表单验证。保存会话时可跳过串口是否在枚举列表中的校验（设备未插入时也可保存配置）。
    */
-  const validate = () => {
+  const validate = (forSave = false) => {
     if (tab === 'ssh' && !form.host?.trim()) return t('connect.errHost')
     if (tab === 'telnet' && !form.host?.trim()) return t('connect.errHost')
     if (tab === 'serial') {
       if (!form.path?.trim()) return t('connect.errSerial')
-      if (!isSerialPathInEnumeratedList(form.path, ports)) {
+      if (!forSave && !isSerialPathInEnumeratedList(form.path, ports)) {
         return t('connect.errSerialList')
       }
     }
@@ -223,8 +224,8 @@ function ConnectDialog({
    * @param {Function} fn 连接或保存的回调函数，参数为配置对象
    * @param {boolean} requireCreds 是否需要检查凭证（用户名和密码），默认为 true
    */
-  const act = (fn: (config: SessionConfig) => void, requireCreds = true) => {
-    const e = validate()
+  const act = (fn: (config: SessionConfig) => void, requireCreds = true, forSave = false) => {
+    const e = validate(forSave)
     if (e) return setError(e)
     const config = buildConfig()
 
@@ -361,9 +362,9 @@ function ConnectDialog({
 
         <div className="dialog-footer">
           <button className="btn-cancel" onClick={onClose}>{t('connect.cancel')}</button>
-          <button className="btn-save" onClick={() => act(onSaveOnly, false)}>{t('connect.save')}</button>
+          <button className="btn-save" onClick={() => act(onSaveOnly, false, true)}>{t('connect.save')}</button>
           <button className="btn-connect" onClick={() => act(onConnect, true)}>{t('connect.connectDirect')}</button>
-          <button className="btn-save-connect" onClick={() => act(onSaveAndConnect, true)}>{t('connect.saveAndConnect')}</button>
+          <button className="btn-save-connect" onClick={() => act(onSaveAndConnect, true, true)}>{t('connect.saveAndConnect')}</button>
         </div>
       </div>
     </div>

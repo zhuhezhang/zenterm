@@ -1,11 +1,17 @@
 import type {
   BackspaceMode,
   PickedSessionFields,
+  RawImportedSession,
+  SavedSession,
+  SerialSavedSession,
   SessionConfig,
   SessionFormValues,
   SessionGroupLabelError,
   SessionType,
+  SshSavedSession,
+  TelnetSavedSession,
 } from '../../types/session'
+import type { SerialStorageDefaults, SessionStorageDefaults } from './defaults'
 import {
   PORT_MIN,
   PORT_MAX,
@@ -18,12 +24,12 @@ import {
   getSessionFormDefaults,
 } from './defaults'
 
-export function normalizeBackspaceMode(v: unknown): BackspaceMode | null {
+export function normalizeBackspaceMode(v: string | number | boolean | null | undefined): BackspaceMode | null {
   const s = String(v ?? '').toLowerCase()
   return s === 'auto' || s === 'del' || s === 'bs' ? s : null
 }
 
-export function clampPortFieldString(raw: unknown): string {
+export function clampPortFieldString(raw: string | number | null | undefined): string {
   const s = String(raw ?? '').trim()
   if (s === '') return ''
   const n = parseInt(s, 10)
@@ -31,14 +37,14 @@ export function clampPortFieldString(raw: unknown): string {
   return String(Math.min(PORT_MAX, Math.max(PORT_MIN, n)))
 }
 
-export function clampSessionPort(raw: unknown, fallback: number): number {
+export function clampSessionPort(raw: string | number | null | undefined, fallback: number): number {
   if (raw === '' || raw == null) return fallback
   const n = typeof raw === 'number' ? raw : parseInt(String(raw), 10)
   if (!Number.isFinite(n)) return fallback
   return Math.min(PORT_MAX, Math.max(PORT_MIN, n))
 }
 
-export function parseSessionPort(raw: unknown): number | undefined {
+export function parseSessionPort(raw: string | number | null | undefined): number | undefined {
   const s = String(raw ?? '').trim()
   if (s === '') return undefined
   const n = parseInt(s, 10)
@@ -48,7 +54,7 @@ export function parseSessionPort(raw: unknown): number | undefined {
 
 export function buildSessionLabel(
   tab: SessionType | string,
-  form: SessionFormValues | Record<string, unknown>,
+  form: SessionFormValues,
 ): string {
   if (tab === 'serial') {
     const raw = String(form.path || 'Serial')
@@ -81,19 +87,22 @@ export function mergeSessionFormDefaults(
   tab: SessionType | string,
   initial?: SessionConfig | SessionFormValues,
 ): SessionFormValues {
-  const base = getSessionFormDefaults(tab as SessionType) as SessionFormValues
+  const base = getSessionFormDefaults(tab as SessionType)
   const merged: SessionFormValues = initial ? { ...base, ...initial } : { ...base }
   merged.backspaceMode = normalizeBackspaceMode(merged.backspaceMode) ?? 'auto'
   return merged
 }
 
 export function pickSessionStorageFields(config: SessionConfig): PickedSessionFields {
-  const type = config?.type as SessionType
+  const type = (config?.type ?? 'ssh') as SessionType
   const allowed =
     SESSION_TYPE_FIELDS[type as keyof typeof SESSION_TYPE_FIELDS] ?? []
-  const picked: Record<string, unknown> = {}
+  const picked: Record<string, string | number | boolean> = {}
   for (const key of allowed) {
-    if (config[key] !== undefined) picked[key] = config[key]
+    const v = config[key as keyof SessionConfig]
+    if (v !== undefined && (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean')) {
+      picked[key] = v
+    }
   }
   return {
     type,
@@ -104,9 +113,9 @@ export function pickSessionStorageFields(config: SessionConfig): PickedSessionFi
 }
 
 export function applySerialStorageFields(
-  merged: Record<string, unknown>,
-  item: Record<string, unknown>,
-  base: Record<string, unknown>,
+  merged: Partial<SerialSavedSession>,
+  item: RawImportedSession,
+  base: SerialStorageDefaults,
 ): void {
   merged.path = String(item.path).trim()
   const baud = parseInt(String(item.baudRate ?? base.baudRate), 10)

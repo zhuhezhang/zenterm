@@ -1,6 +1,9 @@
-/** 凭据库同步涉及的敏感字段 */
-export type VaultSecretKey = 'password' | 'privateKey' | 'passphrase'
+export type {
+  VaultSecretKey,
+  VaultSecretPartial,
+} from '../../shared/zterm-api.js'
 
-export type VaultSecretPayload = Record<VaultSecretKey, string | null>
-
-export type VaultSecretPartial = Partial<Record<VaultSecretKey, string>>
+export type VaultSecretPayload = Record<
+  import('../../shared/zterm-api.js').VaultSecretKey,
+  string | null
+>

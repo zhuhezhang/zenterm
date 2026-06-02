@@ -14,6 +14,11 @@ export interface ZTermProgress {
   file?: string
 }
 
+/** 凭据库同步涉及的敏感字段 */
+export type VaultSecretKey = 'password' | 'privateKey' | 'passphrase'
+
+export type VaultSecretPartial = Partial<Record<VaultSecretKey, string | null>>
+
 /** 凭据获取原因 */
 export type VaultGetReason =
   | 'invalidSavedId'
@@ -126,7 +131,7 @@ export interface ZTermSerialApi {
 export interface ZTermCredentialsApi {
   isAvailable: () => Promise<IpcResult<{ available: boolean }>>
   get: (savedId: string) => Promise<IpcResult<VaultGetContent>>
-  sync: (savedId: string, partial: Record<string, unknown>) => Promise<IpcResult>
+  sync: (savedId: string, partial: VaultSecretPartial) => Promise<IpcResult>
   remove: (savedId: string) => Promise<IpcResult>
   duplicate: (fromId: string, toId: string) => Promise<IpcResult>
   clearAll: () => Promise<IpcResult>

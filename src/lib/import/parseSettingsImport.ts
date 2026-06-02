@@ -10,7 +10,7 @@ import type { SettingsImportWarning } from '../../types/import'
  * @param {unknown} raw 待判断的对象
  * @returns {boolean} 是否为纯对象
  */
-function isPlainObject(raw: unknown): raw is Record<string, unknown> {
+function isPlainObject(raw: unknown): raw is Partial<AppSettings> {
   return raw != null && typeof raw === 'object' && !Array.isArray(raw)
 }
 

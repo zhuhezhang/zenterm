@@ -12,6 +12,7 @@ import type {
   TerminalClearFn,
   TerminalTextGetter,
 } from '@/types/session'
+import { sessionEndpoint } from '@/types/session'
 import type { IpcResult } from '../../shared/ipc'
 import { useI18n } from '@/context/I18nContext'
 import { alertIpcFailure } from '@/lib/ipc/formatIpcError'
@@ -195,7 +196,7 @@ export function SessionProvider({
       return
     }
     const s = sessions.find(v => v.id === sessionId)
-    const label = s?.label || `${s?.type?.toUpperCase?.() || 'SESSION'}_${s?.host || s?.path || s?.id || sessionId}`
+    const label = s?.label || `${s?.type?.toUpperCase?.() || 'SESSION'}_${(s && sessionEndpoint(s)) || s?.id || sessionId}`
     const filename = `${fileTimestamp()}_${safeFileToken(label)}.txt`
     try {
       const res = await window.zterm?.save?.terminalOutput(filename, text)

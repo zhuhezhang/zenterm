@@ -15,6 +15,10 @@ import {
 } from '../lib/sftpLocalPathRoots.js'
 import { buildSshConnectConfig } from '../lib/sshConnectConfig.js'
 import type { SshConnectConfig } from '../../shared/zterm-api.js'
+import type {
+  SftpWorkerCmdPayload,
+  SftpWorkerInboundMessage,
+} from '../../shared/workerMessages.js'
 
 if (!parentPort) throw new Error('worker_threads parentPort missing')
 const port = parentPort
@@ -177,7 +181,7 @@ function enqueueOp(fn: () => Promise<void>) {
  * @param {object} msg 命令消息
  * @returns {Promise<void>}
  */
-async function handleCmd(msg: Record<string, unknown>) {
+async function handleCmd(msg: SftpWorkerCmdPayload & { reqId: number }) {
   const reqId = Number(msg.reqId)
   const cmd = msg.cmd
   if (!state.sftp) {
@@ -196,11 +200,11 @@ async function handleCmd(msg: Record<string, unknown>) {
             const fullPath = base === '/' ? `/${name}` : `${base}/${name}`
             return {
               name,
+              type: item.attrs.isDirectory() ? 'd' : '-',
               path: fullPath,
               isDir: item.attrs.isDirectory(),
               size: item.attrs.size,
               mtime: item.attrs.mtime * 1000,
-              permissions: item.attrs.mode,
             }
           })
           .sort((a, b) => {
@@ -284,12 +288,12 @@ async function handleCmd(msg: Record<string, unknown>) {
   }
 }
 
-port.on('message', (msg: Record<string, unknown>) => {
+port.on('message', (msg: SftpWorkerInboundMessage) => {
   if (msg.type === 'HOST_VERIFY_RESULT') {
     const reqId = Number(msg.reqId)
     const cb = verifyCallbacks.get(reqId)
     verifyCallbacks.delete(reqId)
-    if (typeof cb === 'function') cb(!!msg.ok)
+    if (typeof cb === 'function') cb(msg.ok)
     return
   }
   if (msg.type === 'DISCONNECT') {

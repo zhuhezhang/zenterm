@@ -1,4 +1,6 @@
 import type { TranslateFn } from '../../types/i18n'
+import type { AppSettings } from '../../types/settings'
+import type { SavedSession } from '../../types/session'
 import { buildExportEnvelope } from './parseImportFile'
 import { EXPORT_FILENAME_PREFIX } from './constants'
 import { alertIpcFailure } from '../ipc/formatIpcError'
@@ -15,11 +17,24 @@ export function buildExportFilename(kind: ExportKind): string {
 }
 
 export async function downloadJsonExport(
+  kind: 'sessions',
+  data: SavedSession[],
+  t: TranslateFn,
+): Promise<void>
+export async function downloadJsonExport(
+  kind: 'settings',
+  data: AppSettings,
+  t: TranslateFn,
+): Promise<void>
+export async function downloadJsonExport(
   kind: ExportKind,
-  data: unknown,
+  data: SavedSession[] | AppSettings,
   t: TranslateFn,
 ): Promise<void> {
-  const payload = buildExportEnvelope(kind, data)
+  const payload =
+    kind === 'sessions'
+      ? buildExportEnvelope('sessions', data as SavedSession[])
+      : buildExportEnvelope('settings', data as AppSettings)
   const jsonText = JSON.stringify(payload, null, 2)
   const filename = buildExportFilename(kind)
   try {

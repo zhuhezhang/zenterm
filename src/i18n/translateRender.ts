@@ -9,6 +9,7 @@ import { TITLEBAR } from './components/TitleBar'
 import { WELCOME } from './components/app/WelcomeScreen'
 import { SIDEBAR } from './components/sidebar/Sidebar'
 import { SSH, TELNET, SERIAL } from './ipcErrors'
+import type { TranslateParams, UiLanguage } from '../types/i18n'
 
 /** 聚合各模块文案；键路径如 settings.title */
 const RENDER_MESSAGES = {
@@ -53,8 +54,6 @@ const RENDER_MESSAGES = {
  * @param {Record<string, string|number>} [params] 参数（如{name: '张三'}）
  * @returns {string} 翻译后的文案
  */
-import type { TranslateParams, UiLanguage } from '../types/i18n'
-
 export function translateRender(
   lang: UiLanguage | string,
   path: string,
