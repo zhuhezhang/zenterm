@@ -1,6 +1,4 @@
-/**
- * sftp 后端处理流程参考 ssh 的解释，两者相似的
- */
+/** sftp 后端处理流程参考 ssh 的解释，两者相似的 */
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { Worker } from 'worker_threads'
 import { fileURLToPath } from 'url'

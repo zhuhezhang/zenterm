@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, nativeImage } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
-import { setupSSHHandlers } from './handlers/ssh.js'
+import { setupSSHHandlers } from './handlers/ssh.js'  // import 里的路径是给「编译后 Node 运行时」看的，不是给编辑器里源码文件名看的。写 .js 是 TypeScript ESM 的规范要求，编译后 ssh.js 就会出现在 dist-electron/ 里
 import { setupSFTPHandlers } from './handlers/sftp.js'
 import { setupTelnetHandlers } from './handlers/telnet.js'
 import { setupSerialHandlers } from './handlers/serial.js'
@@ -62,7 +62,7 @@ function createWindow() {
     trafficLightPosition: { x: 16, y: 14 },  // macOS 左上角按钮位置调整
     backgroundColor: '#0d1117',
     webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),  // 预加载脚本，安全地暴露 IPC 接口
+      preload: path.join(__dirname, 'preload.cjs'),  // sandbox preload 须为 CJS（esbuild 输出）
       contextIsolation: true, // 启用上下文隔离
       nodeIntegration: false, // 禁用 Node.js 集成
       sandbox: true, // 启用沙盒模式

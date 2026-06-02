@@ -11,6 +11,8 @@ import type { BrowserWindow } from 'electron'
 
 /**
  * 弹出另存为对话框并写入文件（受 localPathPolicy 约束）
+ * @param mainWindow 主窗口
+ * @param SaveFilePolicyOptions 保存文件选项
  */
 async function saveFileWithPolicyDialog(
   mainWindow: BrowserWindow | undefined,
