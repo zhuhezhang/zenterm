@@ -1,6 +1,4 @@
-/**
- * 在独立 Worker 中运行 ssh2 客户端，避免 SSH 握手（DH 等）阻塞 Electron 主进程事件循环导致界面卡死。
- */
+/** 在独立 Worker 中运行 ssh2 客户端，避免 SSH 握手（DH 等）阻塞 Electron 主进程事件循环导致界面卡死 */
 import { parentPort, workerData } from 'worker_threads'
 import { Client } from 'ssh2'
 import type { Duplex } from 'node:stream'
@@ -38,8 +36,8 @@ const state: {
 
 /**
  * 主机公钥校验器
- * @param {Buffer} key 主机公钥
- * @param {function} callback 回调函数
+ * @param key 主机公钥
+ * @param callback 回调函数
  */
 function hostVerifier(key: Buffer, callback: (ok: boolean) => void) {
   const raw = Buffer.isBuffer(key) ? key : Buffer.from(key)
@@ -54,15 +52,15 @@ function hostVerifier(key: Buffer, callback: (ok: boolean) => void) {
   })
 }
 
-port.on('message', (msg: SshWorkerInboundMessage) => {
-  if (msg.type === 'HOST_VERIFY_RESULT') {
+port.on('message', (msg: SshWorkerInboundMessage) => {  // 监听来自主进程的消息
+  if (msg.type === 'HOST_VERIFY_RESULT') {  // 主机公钥校验结果
     const reqId = Number(msg.reqId)
     const cb = verifyCallbacks.get(reqId)
     verifyCallbacks.delete(reqId)
     if (typeof cb === 'function') cb(!!msg.ok)
     return
   }
-  if (msg.type === 'WRITE') {
+  if (msg.type === 'WRITE') {  // 写入数据
     if (state.stream && !state.stream.destroyed) {
       const buf = Buffer.isBuffer(msg.data)
         ? msg.data
@@ -71,13 +69,13 @@ port.on('message', (msg: SshWorkerInboundMessage) => {
     }
     return
   }
-  if (msg.type === 'RESIZE') {
+  if (msg.type === 'RESIZE') {  // 调整窗口大小
     if (state.stream && !state.stream.destroyed) {
       state.stream.setWindow(msg.rows, msg.cols)
     }
     return
   }
-  if (msg.type === 'DISCONNECT') {
+  if (msg.type === 'DISCONNECT') {  // 断开连接
     try {
       if (state.stream && typeof state.stream.close === 'function') {
         state.stream.close()
@@ -97,7 +95,7 @@ port.on('message', (msg: SshWorkerInboundMessage) => {
 let failSent = false
 /**
  * 发送失败消息
- * @param {string} message 错误消息
+ * @param message 错误消息
  */
 function postFail(message: string) {
   if (failSent) return
@@ -114,7 +112,7 @@ function postClosed() {
 
 state.conn = new Client()
 const conn = state.conn
-conn.on('ready', () => {
+conn.on('ready', () => {  // 连接准备就绪
   conn.shell({ term: 'xterm-256color' }, (err: Error | undefined, stream: SshShellStream) => {
     if (err) {
       try {
@@ -124,18 +122,18 @@ conn.on('ready', () => {
       return
     }
     state.stream = stream
-    stream.on('data', (data: Buffer) => {
+    stream.on('data', (data: Buffer) => {  // 输出数据
       port.postMessage({ type: 'OUTPUT', data: bufferToBinaryWire(data) })
     })
-    stream.stderr.on('data', (data: Buffer) => {
+    stream.stderr.on('data', (data: Buffer) => {  // 输出错误数据
       port.postMessage({ type: 'OUTPUT', data: bufferToBinaryWire(data) })
     })
-    stream.on('close', postClosed)
-    conn.on('close', postClosed)
+    stream.on('close', postClosed)  // 关闭流
+    conn.on('close', postClosed)  // 关闭连接
     port.postMessage({ type: 'READY' })
   })
 })
-conn.on('error', (...args: unknown[]) => {
+conn.on('error', (...args: unknown[]) => {  // 连接错误
   const err = args[0]
   postFail(err instanceof Error ? err.message : String(err))
 })

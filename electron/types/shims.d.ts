@@ -1,4 +1,4 @@
-declare module 'ssh2' {  // Node.js 内置模块 ssh2，这里是模块增强（可理解成继承）
+declare module 'ssh2' {  // Node.js 内置模块 ssh2，这里是模块增强（在原有基础上添加备注）
   import type { EventEmitter } from 'node:events'
   import type { Duplex } from 'node:stream'
 
@@ -89,29 +89,47 @@ declare module 'ssh2' {  // Node.js 内置模块 ssh2，这里是模块增强（
 
   /** SSH 客户端 */
   export class Client extends EventEmitter {
-    /** 连接 */
+    /** 
+     * 连接
+     * @param config 配置
+     */
     connect(config: Record<string, unknown>): void
-    /** 打开 shell */
+    /** 
+     * 打开 shell
+     * @param options 选项
+     * @param callback 回调函数，参数为错误和流
+     */
     shell(
       options: Record<string, unknown>,
       callback: (err: Error | undefined, stream: Duplex & { stderr: Duplex; setWindow: (rows: unknown, cols: unknown) => void }) => void,
     ): void
-    /** 创建 SFTP 客户端 */
+    /** 
+     * 创建 SFTP 客户端
+     * @param callback 回调函数，参数为错误和 SFTP 客户端
+     */
     sftp(callback: (err: Error | undefined, sftp: SftpClient) => void): void
     /** 关闭连接 */
     end(): void
-    /** 监听事件 */
+    /** 
+     * 监听事件
+     * @param event 事件
+     * @param listener 监听器
+     */
     on(event: string, listener: (...args: unknown[]) => void): this
   }
 
   /** SSH 工具 */
   export const utils: {
-    /** 解析密钥 */
+    /** 
+     * 解析密钥
+     * @param rawKey 原始密钥
+     * @returns 密钥类型
+     */
     parseKey(rawKey: Buffer | string): { type?: string } | Array<{ type?: string }> | null
   }
 }
 
-declare module 'worker_threads' {  // Node.js 内置模块 worker_threads，这里是模块增强（可理解成继承）
+declare module 'worker_threads' {  // Node.js 内置模块 worker_threads，这里是模块增强（在原有基础上添加备注）
   /** Worker 选项 */
   interface WorkerOptions {
     /** Worker 类型 */

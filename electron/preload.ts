@@ -1,7 +1,12 @@
+/** Preload模块：将 window.zterm API 契约挂载到 window.zterm（契约见 shared/zterm-api.d.ts） */
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { ZTermApi, ZTermProgress, VaultSecretPartial } from '../shared/zterm-api.js'
 
-/** SSH / Telnet / Serial 共用的流式会话 IPC 桥接 */
+/** 
+ * SSH / Telnet / Serial 共用的流式会话 IPC 桥接
+ * @param prefix 前缀：ssh / telnet / serial
+ * @returns 流式会话 IPC 桥接
+ */
 function createStreamSessionBridge(prefix: 'ssh' | 'telnet' | 'serial') {
   const outputChannel = `${prefix}:output`
   const closedChannel = `${prefix}:closed`
@@ -35,7 +40,7 @@ const ztermApi = {
     onMaximized: (cb: (v: boolean) => void) => {
       const handler = (_: unknown, v: boolean) => cb(v)
       ipcRenderer.on('window:maximized', handler)
-      return () => ipcRenderer.removeListener('window:maximized', handler)  // 与 onData 相同，供组件卸载时取消订阅
+      return () => ipcRenderer.removeListener('window:maximized', handler)  // 供组件卸载时取消监听
     },
     isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
     zoomWheelStep: (deltaY: number) => ipcRenderer.send('window:zoomWheelStep', deltaY),

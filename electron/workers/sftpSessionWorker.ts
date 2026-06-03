@@ -1,24 +1,15 @@
-/**
- * 在独立 Worker 中运行 SFTP（ssh2），避免 SSH 握手阻塞 Electron 主进程。
- */
+/** 在独立 Worker 中运行 SFTP（ssh2），避免 SSH 握手阻塞 Electron 主进程 */
 import fs from 'fs'
 import { parentPort, workerData } from 'worker_threads'
 import { Client } from 'ssh2'
 import type { SftpClient, SftpDirEntry } from 'ssh2'
-import {
-  postWorkerCmdFail,
-  postWorkerCmdFailFromThrown,
-  postWorkerCmdOk,
-} from '../lib/workerCmdResult.js'
+import { postWorkerCmdFail, postWorkerCmdFailFromThrown, postWorkerCmdOk } from '../lib/workerCmdResult.js'
+import { buildSshConnectConfig } from '../lib/sshConnectConfig.js'
+import type { SshConnectConfig } from '../../shared/zterm-api.js'
+import type { SftpWorkerCmdPayload, SftpWorkerInboundMessage } from '../../shared/workerMessages.js'
 import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, safeJoinLocalDownloadPathForRoots,
 } from '../lib/sftpLocalPathRoots.js'
-import { buildSshConnectConfig } from '../lib/sshConnectConfig.js'
-import type { SshConnectConfig } from '../../shared/zterm-api.js'
-import type {
-  SftpWorkerCmdPayload,
-  SftpWorkerInboundMessage,
-} from '../../shared/workerMessages.js'
 
 if (!parentPort) throw new Error('worker_threads parentPort missing')
 const port = parentPort
@@ -63,8 +54,8 @@ function hostVerifier(key: Buffer, callback: (ok: boolean) => void) {
 
 /**
  * 读取远程目录
- * @param {string} remotePath 远程路径
- * @returns {Promise<object[]>} 目录列表
+ * @param remotePath 远程路径
+ * @returns 目录列表
  */
 function sftpReaddir(remotePath: string): Promise<SftpDirEntry[]> {
   return new Promise((resolve, reject) => {
@@ -76,10 +67,9 @@ function sftpReaddir(remotePath: string): Promise<SftpDirEntry[]> {
 
 /**
  * 删除远程文件
- * @param {string} remotePath 远程路径
- * @returns {Promise<void>}
+ * @param remotePath 远程路径
  */
-function sftpUnlink(remotePath: string) {
+function sftpUnlink(remotePath: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     state.sftp!.unlink(remotePath, (err: Error | undefined) => (err ? reject(err) : resolve()))
   })
@@ -87,10 +77,9 @@ function sftpUnlink(remotePath: string) {
 
 /**
  * 删除远程目录
- * @param {string} remotePath 远程路径
- * @returns {Promise<void>}
+ * @param remotePath 远程路径
  */
-function sftpRmdir(remotePath: string) {
+function sftpRmdir(remotePath: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     state.sftp!.rmdir(remotePath, (err: Error | undefined) => (err ? reject(err) : resolve()))
   })
@@ -98,17 +87,16 @@ function sftpRmdir(remotePath: string) {
 
 /**
  * 删除远程文件或目录
- * @param {string} remotePath 远程路径
- * @returns {Promise<void>}
+ * @param remotePath 远程路径
  */
-async function deleteRecursive(remotePath: string) {
+async function deleteRecursive(remotePath: string): Promise<void> {
   try {
     await sftpUnlink(remotePath)
     return
   } catch {
     /* 可能是目录 */
   }
-  let list
+  let list: SftpDirEntry[]
   try {
     list = await sftpReaddir(remotePath)
   } catch {
@@ -126,11 +114,10 @@ async function deleteRecursive(remotePath: string) {
 
 /**
  * 下载远程目录
- * @param {string} remoteDir 远程目录
- * @param {string} localDir 本地目录
- * @returns {Promise<void>}
+ * @param remoteDir 远程目录
+ * @param localDir 本地目录
  */
-async function downloadDirRecursive(remoteDir: string, localDir: string) {
+async function downloadDirRecursive(remoteDir: string, localDir: string): Promise<void> {
   assertSftpLocalDirAllowedForRoots(localDir, allowedRoots, 'download')
   fs.mkdirSync(localDir, { recursive: true })
   const list = await sftpReaddir(remoteDir)
@@ -166,10 +153,10 @@ let opChain = Promise.resolve()
 
 /**
  * 入队操作
- * @param {function} fn 操作函数
- * @returns {Promise<void>}
+ * @param fn 操作函数
+ * @returns 操作链
  */
-function enqueueOp(fn: () => Promise<void>) {
+function enqueueOp(fn: () => Promise<void>): Promise<void> {
   opChain = opChain.then(fn).catch((e) => {
     console.error('sftpSessionWorker op', e)
   })
@@ -177,11 +164,10 @@ function enqueueOp(fn: () => Promise<void>) {
 }
 
 /**
- * 处理命令
- * @param {object} msg 命令消息
- * @returns {Promise<void>}
+ * 处理来自主进程的命令
+ * @param msg 命令消息，包含请求 ID 和命令类型
  */
-async function handleCmd(msg: SftpWorkerCmdPayload & { reqId: number }) {
+async function handleCmd(msg: SftpWorkerCmdPayload & { reqId: number }): Promise<void> {
   const reqId = Number(msg.reqId)
   const cmd = msg.cmd
   if (!state.sftp) {
@@ -191,7 +177,7 @@ async function handleCmd(msg: SftpWorkerCmdPayload & { reqId: number }) {
   const sftp = state.sftp
   try {
     switch (cmd) {
-      case 'LIST': {
+      case 'LIST': {  // 列出远程目录内容
         const list = await sftpReaddir(String(msg.remotePath))
         const base = String(msg.remotePath)
         const items = list
@@ -214,7 +200,7 @@ async function handleCmd(msg: SftpWorkerCmdPayload & { reqId: number }) {
         postWorkerCmdOk(port, reqId, { items })
         break
       }
-      case 'DOWNLOAD': {
+      case 'DOWNLOAD': {  // 下载远程文件
         assertSftpLocalFilePathAllowedForRoots(String(msg.localPath), allowedRoots, 'download')
         await new Promise<void>((resolve, reject) => {
           sftp.fastGet(String(msg.remotePath), String(msg.localPath), {
@@ -235,12 +221,12 @@ async function handleCmd(msg: SftpWorkerCmdPayload & { reqId: number }) {
         postWorkerCmdOk(port, reqId)
         break
       }
-      case 'DOWNLOAD_DIR': {
+      case 'DOWNLOAD_DIR': {  // 下载远程目录
         await downloadDirRecursive(String(msg.remoteDir), String(msg.localDir))
         postWorkerCmdOk(port, reqId)
         break
       }
-      case 'UPLOAD': {
+      case 'UPLOAD': {  // 上传本地文件到远程
         assertSftpLocalFilePathAllowedForRoots(String(msg.localPath), allowedRoots, 'upload')
         await new Promise<void>((resolve, reject) => {
           sftp.fastPut(String(msg.localPath), String(msg.remotePath), {
@@ -261,19 +247,19 @@ async function handleCmd(msg: SftpWorkerCmdPayload & { reqId: number }) {
         postWorkerCmdOk(port, reqId)
         break
       }
-      case 'MKDIR': {
+      case 'MKDIR': {  // 创建远程目录
         await new Promise<void>((resolve, reject) => {
           sftp.mkdir(String(msg.remotePath), (err: Error | undefined) => (err ? reject(err) : resolve(undefined)))
         })
         postWorkerCmdOk(port, reqId)
         break
       }
-      case 'DELETE': {
+      case 'DELETE': {  // 删除远程文件或目录
         await deleteRecursive(String(msg.remotePath))
         postWorkerCmdOk(port, reqId)
         break
       }
-      case 'RENAME': {
+      case 'RENAME': {  // 重命名远程文件或目录
         await new Promise<void>((resolve, reject) => {
           sftp.rename(String(msg.oldPath), String(msg.newPath), (err: Error | undefined) => (err ? reject(err) : resolve(undefined)))
         })
@@ -281,28 +267,28 @@ async function handleCmd(msg: SftpWorkerCmdPayload & { reqId: number }) {
         break
       }
       default:
-        postWorkerCmdFail(port, reqId, 'sftp.unknownCmd', true, { cmd: String(cmd) })
+        postWorkerCmdFail(port, reqId, 'sftp.unknownCmd', true, { cmd: String(cmd) })  // 未知命令
     }
   } catch (e) {
     postWorkerCmdFailFromThrown(port, reqId, e)
   }
 }
 
-port.on('message', (msg: SftpWorkerInboundMessage) => {
-  if (msg.type === 'HOST_VERIFY_RESULT') {
+port.on('message', (msg: SftpWorkerInboundMessage) => {  // 监听来自主进程的消息
+  if (msg.type === 'HOST_VERIFY_RESULT') {  // 主机公钥校验结果
     const reqId = Number(msg.reqId)
     const cb = verifyCallbacks.get(reqId)
     verifyCallbacks.delete(reqId)
     if (typeof cb === 'function') cb(msg.ok)
     return
   }
-  if (msg.type === 'DISCONNECT') {
+  if (msg.type === 'DISCONNECT') {  // 断开连接
     try {
       state.conn?.end()
     } catch {}
     return
   }
-  if (msg.type === 'CMD') {
+  if (msg.type === 'CMD') {  // 处理命令
     void enqueueOp(() => handleCmd(msg))
   }
 })
@@ -311,7 +297,7 @@ port.on('message', (msg: SftpWorkerInboundMessage) => {
 let failSent = false
 /**
  * 发送失败消息
- * @param {string} message 错误消息
+ * @param message 错误消息
  */
 function postFail(message: string) {
   if (failSent) return
@@ -328,7 +314,7 @@ function postClosed() {
 
 state.conn = new Client()
 const conn = state.conn
-conn.on('ready', () => {
+conn.on('ready', () => {  // 连接准备就绪
   conn.sftp((err: Error | undefined, sftp: SftpClient) => {
     if (err) {
       try {
@@ -343,7 +329,7 @@ conn.on('ready', () => {
   })
 })
 
-conn.on('error', (...args: unknown[]) => {
+conn.on('error', (...args: unknown[]) => {  // 连接错误
   const err = args[0]
   postFail(err instanceof Error ? err.message : String(err))
 })
