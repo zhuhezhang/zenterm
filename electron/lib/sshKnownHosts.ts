@@ -4,13 +4,11 @@
  */
 import type { BrowserWindow } from 'electron'
 import { app, dialog } from 'electron'
+import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
 import ssh2 from 'ssh2'
 import { translateMain } from '../i18n/translateMain.js'
-import { knownHostLookupKey, fingerprintHostKey } from '../../shared/sshKnownHostsUtils.js'
-
-export { knownHostLookupKey, fingerprintHostKey }
 
 /** ssh2 的 utils 模块，用于解析 SSH 主机公钥 */
 const ssh2utils = ssh2.utils
@@ -90,9 +88,9 @@ export async function verifySshHostKeyTrust(
   rawKey: Buffer,
 ) {
   const raw = Buffer.isBuffer(rawKey) ? rawKey : Buffer.from(rawKey)
-  const fp = fingerprintHostKey(raw)
+  const fp = crypto.createHash('sha256').update(raw).digest('base64')
   const keyType = parseHostKeyType(raw)
-  const hp = knownHostLookupKey(host, port)
+  const hp = `${String(host ?? '').trim()}:${Number(port) || 22}`
   const store = loadStore()
   const existing = store[hp]
   const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null

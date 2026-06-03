@@ -1,7 +1,7 @@
 import type { MessagePort } from 'node:worker_threads'
 import { ipcFail, ipcFailFromThrown, ipcOk } from './ipcResponse.js'
 import type { IpcFail, IpcResult } from '../../shared/ipc.js'
-import type { SftpWorkerCmdResultMessage } from '../../shared/workerMessages.js'
+import type { SftpWorkerCmdResultMessage } from '../types/workerMessages.js'
 
 /** Worker CMD_RESULT 消息上的元字段（其余并入 ipc content） */
 const WORKER_CMD_META = new Set(['type', 'reqId', 'success', 'error', 'errorParams', 'errorKnown'])

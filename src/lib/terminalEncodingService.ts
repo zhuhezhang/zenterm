@@ -5,7 +5,6 @@
 import {
   DEFAULT_TERMINAL_ENCODING,
   normalizeTerminalEncoding,
-  uint8ArrayFromBinaryWire,
 } from '../../shared/terminalEncoding'
 
 export { DEFAULT_TERMINAL_ENCODING, normalizeTerminalEncoding }
@@ -48,7 +47,8 @@ function getTextDecoder(encoding: string) {
  */
 export function decodeIncomingTerminalWire(binary: string, encoding?: string) {
   if (binary == null || binary === '') return ''
-  const bytes = uint8ArrayFromBinaryWire(binary)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i) & 0xff
   try {
     return getTextDecoder(encoding ?? DEFAULT_TERMINAL_ENCODING).decode(bytes)
   } catch {

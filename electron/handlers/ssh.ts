@@ -8,7 +8,7 @@ import { ipcFailFromThrown, ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import { encodeOutgoingTerminalData } from '../lib/terminalEncodingService.js'
 import type { MainWindowGetter, SshSessionState } from '../types/handlers.js'
 import type { SshConnectConfig } from '../../shared/zterm-api.js'
-import type { SshWorkerOutboundMessage } from '../../shared/workerMessages.js'
+import type { SshWorkerOutboundMessage } from '../types/workerMessages.js'
 
 /** 存储每个 SSH 会话对应的 Worker 桥接状态（键id → 值{ worker: Worker, isClosed: boolean }） */
 const sshSessions = new Map<string, SshSessionState>()

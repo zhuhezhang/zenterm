@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { INVALID_LABEL_CHARS } from '../../shared/safeFileName'
+import { INVALID_LABEL_CHARS } from '../../shared/others'
 import { hasInvalidLabelChars, safeFileToken } from '../../src/lib/safeFileName'
 import { sanitizeLogFileStem } from '../../electron/lib/safeFileName'
 

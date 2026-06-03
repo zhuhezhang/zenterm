@@ -1,3 +1,6 @@
+/** 主进程 ↔ Worker 线程消息类型（不跨 IPC 到渲染进程） */
+import type { SftpEntry } from '../../shared/others.js'
+
 /** SSH Worker 主进程 → Worker 入站消息 */
 export type SshWorkerInboundMessage =
   | { type: 'HOST_VERIFY_RESULT'; reqId: number; ok: boolean }
@@ -57,14 +60,3 @@ export type SftpWorkerOutboundMessage =
   | { type: 'CLOSED' }
   | { type: 'PROGRESS'; progress: SftpWorkerProgress }
   | SftpWorkerCmdResultMessage
-
-/** SFTP 目录项（主进程 / 渲染进程共用） */
-export interface SftpEntry {
-  name: string
-  type: 'd' | '-' | string
-  path?: string
-  isDir?: boolean
-  size?: number
-  modifyTime?: number
-  mtime?: number
-}

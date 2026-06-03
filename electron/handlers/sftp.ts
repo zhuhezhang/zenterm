@@ -15,7 +15,7 @@ import type {
   SftpWorkerCmdPayload,
   SftpWorkerCmdResultMessage,
   SftpWorkerOutboundMessage,
-} from '../../shared/workerMessages.js'
+} from '../types/workerMessages.js'
 
 /** 存储每个 SFTP 会话对应的 Worker 与会话状态 */
 const sftpSessions = new Map<string, SftpSessionState>()

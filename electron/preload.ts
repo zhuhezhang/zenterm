@@ -114,6 +114,6 @@ const ztermApi = {
   others: {
     setUiLanguage: (uiLanguage: 'zh' | 'en') => ipcRenderer.send('app:setUiLanguage', uiLanguage),
   },
-} satisfies ZTermApi
+} satisfies ZTermApi  // satisfies 在这里是类型断言，将 ztermApi 断言为 ZTermApi 类型
 
 contextBridge.exposeInMainWorld('zterm', ztermApi)

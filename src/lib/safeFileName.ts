@@ -1,4 +1,4 @@
-import { INVALID_LABEL_CHARS } from '../../shared/safeFileName'
+import { INVALID_LABEL_CHARS } from '../../shared/others'
 
 export { INVALID_LABEL_CHARS }
 

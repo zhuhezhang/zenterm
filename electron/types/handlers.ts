@@ -1,7 +1,7 @@
 /** 主进程 IPC handler 内部类型（不跨进程共享） */
 import type { BrowserWindow, FileFilter } from 'electron'
 import type { Worker } from 'worker_threads'
-import type { SftpWorkerCmdResultMessage } from '../../shared/workerMessages.js'
+import type { SftpWorkerCmdResultMessage } from './workerMessages.js'
 
 /** 获取主窗口的函数类型 */
 export type MainWindowGetter = () => BrowserWindow | null | undefined

@@ -5,16 +5,21 @@
 
 /** 连接与设置的默认算法偏好：优先 AEAD、EtM MAC、现代 KEX/主机密钥；不含 CBC、SHA-1 HMAC、ssh-rsa、DH-group14-sha1 等 */
 export interface AlgorithmPreferences {
+  /** 密钥交换算法：用于协商加密密钥 */
   kex: string[]
+  /** 服务器主机密钥算法：用于验证服务器身份 */
   serverHostKey: string[]
+  /** 加密算法：用于加密数据 */
   cipher: string[]
+  /** 消息认证码算法：用于验证数据完整性 */
   hmac: string[]
+  /** 压缩算法：用于压缩数据 */
   compress: string[]
 }
 
 /** 连接与设置的默认算法偏好：优先 AEAD、EtM MAC、现代 KEX/主机密钥；不含 CBC、SHA-1 HMAC、ssh-rsa、DH-group14-sha1 等 */
 export const DEFAULT_ALGORITHM_PREFERENCES: AlgorithmPreferences = {
-  kex: [ // 密钥交换算：用于协商加密密钥
+  kex: [
     'curve25519-sha256@libssh.org',
     'curve25519-sha256',
     'ecdh-sha2-nistp521',
@@ -27,7 +32,7 @@ export const DEFAULT_ALGORITHM_PREFERENCES: AlgorithmPreferences = {
     'diffie-hellman-group15-sha512',
     'diffie-hellman-group17-sha512',
   ],
-  serverHostKey: [ // 服务器主机密钥：用于验证服务器身份
+  serverHostKey: [
     'ssh-ed25519',
     'ecdsa-sha2-nistp256',
     'ecdsa-sha2-nistp384',
@@ -35,7 +40,7 @@ export const DEFAULT_ALGORITHM_PREFERENCES: AlgorithmPreferences = {
     'rsa-sha2-512',
     'rsa-sha2-256',
   ],
-  cipher: [ // 加密算法：用于加密数据
+  cipher: [
     'aes128-gcm@openssh.com',
     'aes256-gcm@openssh.com',
     'aes128-ctr',
@@ -44,14 +49,14 @@ export const DEFAULT_ALGORITHM_PREFERENCES: AlgorithmPreferences = {
     'aes128-gcm',
     'aes256-gcm',
   ],
-  hmac: [ // 消息认证码算法：用于验证数据完整性
+  hmac: [
     'hmac-sha2-256-etm@openssh.com',
     'hmac-sha2-512-etm@openssh.com',
     'hmac-sha1-etm@openssh.com',
     'hmac-sha2-256',
     'hmac-sha2-512',
   ],
-  compress: [ // 压缩算法：用于压缩数据
+  compress: [
     'zlib@openssh.com',
     'zlib',
     'none',

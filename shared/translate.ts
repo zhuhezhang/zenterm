@@ -7,9 +7,8 @@
  * - uiLanguage 的 auto 解析在 src/lib/resolveUiLanguage.js, 主进程仅收 zh/en
  */
 
-export type UiLang = 'zh' | 'en'
-
-export type MessagesByLang = { zh: object; en: object }
+type UiLang = 'zh' | 'en'
+type MessagesByLang = { zh: object; en: object }
 
 /**
  * 按点路径查表并替换 {name} 占位符
@@ -29,7 +28,7 @@ export function translate(
   const parts = path.split('.')
   let cur: unknown = messagesByLang[L]
   for (const p of parts) {
-    cur = (cur as Record<string, unknown>)?.[p]
+    cur = (cur as Record<string, unknown>)?.[p] // 将 cur 转换为 Record<string, unknown> 类型，并取 p 属性
   }
   if (typeof cur !== 'string') return path
   return cur.replace(/\{(\w+)\}/g, (_, k) => (params[k] != null ? String(params[k]) : `{${k}}`))
