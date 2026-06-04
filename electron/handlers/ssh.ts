@@ -77,30 +77,30 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
         } catch {}
       }
 
-      worker.on('message', async (msg: SshWorkerOutboundMessage) => {  // 处理来自子进程的消息
-        if (msg.type === 'HOST_VERIFY') {  // 处理来自子进程的 HOST_VERIFY 消息
+      worker.on('message', async (msg: SshWorkerOutboundMessage) => {  // 处理来自子线程的消息
+        if (msg.type === 'HOST_VERIFY') {  // 处理来自子线程的 HOST_VERIFY 消息
           await handleHostVerifyMessage(getMainWindow, worker, msg)
           return
         }
-        if (msg.type === 'OUTPUT') {  // 处理来自子进程的 OUTPUT 消息
+        if (msg.type === 'OUTPUT') {  // 处理来自子线程的 OUTPUT 消息
           sendToRenderer(getMainWindow, 'ssh:output', id, msg.data)
           return
         }
-        if (msg.type === 'READY') {  // 处理来自子进程的 READY 消息
+        if (msg.type === 'READY') {  // 处理来自子线程的 READY 消息
           sshSessions.set(id, session)
           finishOk()
           return
         }
-        if (msg.type === 'CONNECT_FAILED') {  // 处理来自子进程的 CONNECT_FAILED 消息
+        if (msg.type === 'CONNECT_FAILED') {  // 处理来自子线程的 CONNECT_FAILED 消息
           finishFail(String(msg.error ?? 'ssh.connectionFailed'))
           return
         }
-        if (msg.type === 'CLOSED') {  // 处理来自子进程的 CLOSED 消息
+        if (msg.type === 'CLOSED') {  // 处理来自子线程的 CLOSED 消息
           closeSessionOnce()
         }
       })
-      worker.on('error', (err: Error) => finishFail(err.message, undefined, false))  // 处理来自子进程的错误消息
-      worker.on('exit', (code) => {  // 处理来自子进程的退出消息
+      worker.on('error', (err: Error) => finishFail(err.message, undefined, false))  // 处理来自子线程的错误消息
+      worker.on('exit', (code) => {  // 处理来自子线程的退出消息
         if (!settled) {
           finishFail('ssh.workerExitUnexpected', { code })
         } else if (sshSessions.has(id) && !session.isClosed) {
@@ -142,7 +142,7 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
         session.worker.postMessage({ type: 'DISCONNECT' })
       } catch {}
       const workerRef = session.worker
-      setTimeout(() => {  // 延迟终止子进程
+      setTimeout(() => {  // 延迟终止子线程
         try {
           workerRef.terminate()
         } catch {}

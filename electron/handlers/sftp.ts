@@ -20,7 +20,7 @@ const sftpSessions = new Map<string, SftpSessionState>()
 const workerEntry = fileURLToPath(new URL('../workers/sftpSessionWorker.js', import.meta.url))
 
 /**
- * 发送命令到子进程 Worker
+ * 发送命令到子线程 Worker
  * @param session SFTP 会话状态
  * @param payload 命令负载
  * @returns 命令结果
@@ -111,39 +111,39 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
         } catch {}
       }
 
-      /** 处理来自子进程的消息 */
+      /** 处理来自子线程的消息 */
       const onWorkerMessage = async (msg: SftpWorkerOutboundMessage) => {
-        if (msg.type === 'HOST_VERIFY') {  // 处理来自子进程的 HOST_VERIFY 消息
+        if (msg.type === 'HOST_VERIFY') {  // 处理来自子线程的 HOST_VERIFY 消息
           if (worker) await handleHostVerifyMessage(getMainWindow, worker, msg)
           return
         }
-        if (msg.type === 'PROGRESS') {  // 处理来自子进程的 PROGRESS 消息
+        if (msg.type === 'PROGRESS') {  // 处理来自子线程的 PROGRESS 消息
           sendToRenderer(getMainWindow, 'sftp:progress', id, msg.progress)
           return
         }
-        if (msg.type === 'CMD_RESULT') {  // 处理来自子进程的 CMD_RESULT 消息
+        if (msg.type === 'CMD_RESULT') {  // 处理来自子线程的 CMD_RESULT 消息
           const reqId = Number(msg.reqId)
           const res = session.pending.get(reqId)
           session.pending.delete(reqId)
           res?.(msg)
           return
         }
-        if (msg.type === 'READY') {  // 处理来自子进程的 READY 消息
+        if (msg.type === 'READY') {  // 处理来自子线程的 READY 消息
           sftpSessions.set(id, session)
           finishOk()
           return
         }
-        if (msg.type === 'CONNECT_FAILED') {  // 处理来自子进程的 CONNECT_FAILED 消息
+        if (msg.type === 'CONNECT_FAILED') {  // 处理来自子线程的 CONNECT_FAILED 消息
           finishFail(String(msg.error ?? 'sftp.connectionFailed'), msg.errorParams)
           return
         }
-        if (msg.type === 'CLOSED') {  // 处理来自子进程的 CLOSED 消息
+        if (msg.type === 'CLOSED') {  // 处理来自子线程的 CLOSED 消息
           closeSessionOnce()
         }
       }
 
       try {
-        worker = new Worker(workerEntry, {  // 创建子进程 Worker
+        worker = new Worker(workerEntry, {  // 创建子线程 Worker
           type: 'module',
           workerData: {
             config,
@@ -156,9 +156,9 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
         return
       }
 
-      worker.on('message', onWorkerMessage)  // 监听来自子进程的消息
-      worker.on('error', (err: Error) => finishFail(err.message))  // 处理来自子进程的错误消息
-      worker.on('exit', (code) => {  // 处理来自子进程的退出消息
+      worker.on('message', onWorkerMessage)  // 监听来自子线程的消息
+      worker.on('error', (err: Error) => finishFail(err.message))  // 处理来自子线程的错误消息
+      worker.on('exit', (code) => {  // 处理来自子线程的退出消息
         if (!settled) {
           finishFail('sftp.workerExitUnexpected', { code })
         } else if (sftpSessions.has(id) && !session.isClosed) {  // 处理会话关闭
@@ -175,10 +175,10 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
       rejectAllPending(session, 'sftp.disconnected')  // 拒绝所有等待的请求
       sftpSessions.delete(id)
       try {
-        session.worker.postMessage({ type: 'DISCONNECT' })  // 发送断开连接消息到子进程
+        session.worker.postMessage({ type: 'DISCONNECT' })  // 发送断开连接消息到子线程
       } catch {}
       const workerRef = session.worker
-      setTimeout(() => {  // 延迟终止子进程
+      setTimeout(() => {  // 延迟终止子线程
         try {
           workerRef.terminate()
         } catch {}
@@ -191,7 +191,7 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
-    const msg = await workerCommand(session, { cmd: 'LIST', remotePath })  // 发送列出请求到子进程
+    const msg = await workerCommand(session, { cmd: 'LIST', remotePath })  // 发送列出请求到子线程
     return ipcFromWorkerCmdResult(msg)
   })
 
@@ -204,7 +204,7 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     } catch (e) {
       return ipcFailFromThrown(e)
     }
-    const msg = await workerCommand(session, { cmd: 'DOWNLOAD', remotePath, localPath })  // 发送下载请求到子进程
+    const msg = await workerCommand(session, { cmd: 'DOWNLOAD', remotePath, localPath })  // 发送下载请求到子线程
     return ipcFromWorkerCmdResult(msg)
   })
 
@@ -217,7 +217,7 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     } catch (e) {
       return ipcFailFromThrown(e)
     }
-    const msg = await workerCommand(session, { cmd: 'DOWNLOAD_DIR', remoteDir, localDir })  // 发送下载目录请求到子进程
+    const msg = await workerCommand(session, { cmd: 'DOWNLOAD_DIR', remoteDir, localDir })  // 发送下载目录请求到子线程
     return ipcFromWorkerCmdResult(msg)
   })
 
@@ -230,7 +230,7 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     } catch (e) {
       return ipcFailFromThrown(e)
     }
-    const msg = await workerCommand(session, { cmd: 'UPLOAD', localPath, remotePath })  // 发送上传请求到子进程
+    const msg = await workerCommand(session, { cmd: 'UPLOAD', localPath, remotePath })  // 发送上传请求到子线程
     return ipcFromWorkerCmdResult(msg)
   })
 
@@ -238,7 +238,7 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
-    const msg = await workerCommand(session, { cmd: 'MKDIR', remotePath })  // 发送创建目录请求到子进程
+    const msg = await workerCommand(session, { cmd: 'MKDIR', remotePath })  // 发送创建目录请求到子线程
     return ipcFromWorkerCmdResult(msg)
   })
 
@@ -254,7 +254,7 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     const session = sftpSessions.get(id)
     if (!session) return ipcFail('sftp.noSession', true)
-    const msg = await workerCommand(session, { cmd: 'RENAME', oldPath, newPath })  // 发送重命名请求到子进程
+    const msg = await workerCommand(session, { cmd: 'RENAME', oldPath, newPath })  // 发送重命名请求到子线程
     return ipcFromWorkerCmdResult(msg)
   })
 }

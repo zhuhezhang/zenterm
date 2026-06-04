@@ -1,4 +1,4 @@
-/** 在独立 Worker 中运行 SFTP（ssh2），避免 SSH 握手阻塞 Electron 主进程 */
+/** 在独立 Worker 线程中运行 SFTP（ssh2），避免 SSH 握手阻塞 Electron 主进程 */
 import fs from 'fs'
 import { parentPort, workerData } from 'worker_threads'
 import { Client } from 'ssh2'

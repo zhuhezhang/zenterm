@@ -20,6 +20,8 @@ export interface SessionFormFieldsProps {
   set: SessionFormSetter
   /** 为 false 时不渲染表单区块 */
   visible: boolean
+  /** 输入框回车时触发（如保存并连接） */
+  onEnter?: () => void
 }
 
 /** Serial 连接表单 props（路径须与枚举列表一致方可连接） */

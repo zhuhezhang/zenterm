@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect, memo } from 'react'
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, memo, type KeyboardEvent } from 'react'
 import { useI18n } from '../context/I18nContext'
 import { ipcPortsFromResponse } from '@/lib/ipc/ipcResponse'
 import { fetchSessionSecrets } from '../store/credentialsBridge'
@@ -218,12 +218,6 @@ function ConnectDialog({
     return false
   }
 
-  /**
-   * 连接/保存操作的统一处理函数
-   * 根据当前表单数据构建配置对象，进行表单验证，如果需要输入凭证则弹出凭证对话框，否则直接调用回调函数
-   * @param {Function} fn 连接或保存的回调函数，参数为配置对象
-   * @param {boolean} requireCreds 是否需要检查凭证（用户名和密码），默认为 true
-   */
   const act = (fn: (config: SessionConfig) => void, requireCreds = true, forSave = false) => {
     const e = validate(forSave)
     if (e) return setError(e)
@@ -240,6 +234,11 @@ function ConnectDialog({
       return  // 当在ssh或telnet连接界面不输入用户名连接时，由于上面setCredDialog会触发重新渲染，此时credDialog不再是null，就会渲染输入凭证组件。
     }
     fn(config)
+  }
+
+  const saveAndConnect = () => act(onSaveAndConnect, true, true)
+  const handleFormEnter = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') saveAndConnect()
   }
 
   if (credDialog) {  // 如果 credDialog 不为 null，则渲染凭证输入对话框，传入初始用户名、密码和连接回调函数
@@ -259,6 +258,38 @@ function ConnectDialog({
       callback(config)
     }
 
+    /**
+     * 处理凭证输入框回车事件。如果输入框为空，则聚焦到输入框，如果输入框不为空，则提交凭证
+     * @param field 输入框类型
+     */
+    const handleCredEnter = (field: 'user' | 'pkey' | 'pass' | 'passphrase') => {
+      const required: { id: 'user' | 'pkey' | 'pass'; ref: typeof credUserInputRef; value: string }[] = keyAuth
+        ? [
+            { id: 'user', ref: credUserInputRef, value: username },
+            { id: 'pkey', ref: credPkeyInputRef, value: privateKey },
+          ]
+        : [
+            { id: 'user', ref: credUserInputRef, value: username },
+            { id: 'pass', ref: credPassInputRef, value: password },
+          ]
+
+      if (field !== 'passphrase') {
+        const current = required.find(item => item.id === field)
+        if (current && !current.value.trim()) {
+          current.ref.current?.focus()
+          return
+        }
+      }
+
+      const firstEmpty = required.find(item => !item.value.trim())
+      if (firstEmpty) {
+        firstEmpty.ref.current?.focus()
+        return
+      }
+
+      applyCred()
+    }
+
     return (
       <div className="dialog-overlay" onClick={e => e.target === e.currentTarget && setCredDialog(null)}>
         <div className="dialog">
@@ -272,7 +303,7 @@ function ConnectDialog({
                 ref={credUserInputRef}
                 value={username}
                 onChange={e => setCredDialog(prev => prev ? { ...prev, username: e.target.value } : null)}
-                onKeyDown={e => e.key === 'Enter' && applyCred()}
+                onKeyDown={e => e.key === 'Enter' && handleCredEnter('user')}
               />
             </FormRow>
             {keyAuth ? (
@@ -280,10 +311,10 @@ function ConnectDialog({
                 <FormRow label={t('connect.privateKey')}>
                   <input
                     ref={credPkeyInputRef}
-                    placeholder={t('connect.privateKeyPath')}
+                    placeholder="/path/to/id_rsa"
                     value={privateKey}
                     onChange={e => setCredDialog(prev => prev ? { ...prev, privateKey: e.target.value } : null)}
-                    onKeyDown={e => e.key === 'Enter' && applyCred()}
+                    onKeyDown={e => e.key === 'Enter' && handleCredEnter('pkey')}
                   />
                 </FormRow>
                 <FormRow label={t('connect.passphrase')}>
@@ -292,7 +323,7 @@ function ConnectDialog({
                     placeholder={t('connect.passphrasePh')}
                     value={passphrase}
                     onChange={e => setCredDialog(prev => prev ? { ...prev, passphrase: e.target.value } : null)}
-                    onKeyDown={e => e.key === 'Enter' && applyCred()}
+                    onKeyDown={e => e.key === 'Enter' && handleCredEnter('passphrase')}
                   />
                 </FormRow>
               </>
@@ -303,7 +334,7 @@ function ConnectDialog({
                   type="password"
                   value={password}
                   onChange={e => setCredDialog(prev => prev ? { ...prev, password: e.target.value } : null)}
-                  onKeyDown={e => e.key === 'Enter' && applyCred()}
+                  onKeyDown={e => e.key === 'Enter' && handleCredEnter('pass')}
                 />
               </FormRow>
             )}
@@ -333,18 +364,18 @@ function ConnectDialog({
 
         <div className="dialog-body">
           <FormRow label={t('connect.label')}>
-            <input placeholder={t('connect.labelPh')} value={form.label ?? ''} onChange={e => set('label', e.target.value)} />
+            <input placeholder={t('connect.labelPh')} value={form.label ?? ''} onChange={e => set('label', e.target.value)} onKeyDown={handleFormEnter} />
           </FormRow>
           <FormRow label={t('connect.group')}>
-            <input placeholder={t('connect.groupPh')} value={form.group ?? ''} onChange={e => set('group', e.target.value)} list="group-list" />
+            <input placeholder={t('connect.groupPh')} value={form.group ?? ''} onChange={e => set('group', e.target.value)} list="group-list" onKeyDown={handleFormEnter} />
             <datalist id="group-list">
               {(savedGroups || []).map(g => <option key={g} value={g} />)}
             </datalist>
           </FormRow>
           <div className="dialog-divider" />
-          <SshForm form={form} set={set} visible={tab === 'ssh'} />
-          <TelnetForm form={form} set={set} visible={tab === 'telnet'} />
-          <SerialForm form={form} set={set} ports={ports} visible={tab === 'serial'} onRefreshPorts={refreshSerialPorts} />
+          <SshForm form={form} set={set} visible={tab === 'ssh'} onEnter={saveAndConnect} />
+          <TelnetForm form={form} set={set} visible={tab === 'telnet'} onEnter={saveAndConnect} />
+          <SerialForm form={form} set={set} ports={ports} visible={tab === 'serial'} onRefreshPorts={refreshSerialPorts} onEnter={saveAndConnect} />
           <FormRow label={t('connect.encoding')}>
             <select value={form.encoding || DEFAULT_TERMINAL_ENCODING} onChange={e => set('encoding', e.target.value)}>
               {TERMINAL_ENCODING_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -364,7 +395,7 @@ function ConnectDialog({
           <button className="btn-cancel" onClick={onClose}>{t('connect.cancel')}</button>
           <button className="btn-save" onClick={() => act(onSaveOnly, false, true)}>{t('connect.save')}</button>
           <button className="btn-connect" onClick={() => act(onConnect, true)}>{t('connect.connectDirect')}</button>
-          <button className="btn-save-connect" onClick={() => act(onSaveAndConnect, true, true)}>{t('connect.saveAndConnect')}</button>
+          <button className="btn-save-connect" onClick={saveAndConnect}>{t('connect.saveAndConnect')}</button>
         </div>
       </div>
     </div>
