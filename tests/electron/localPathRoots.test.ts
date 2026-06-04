@@ -1,6 +1,6 @@
 import path from 'path'
 import { describe, expect, it } from 'vitest'
-import { isPathWithinResolvedRoots } from '../../electron/lib/localPathRoots'
+import { isPathWithinResolvedRoots } from '../../electron/lib/localPathPolicy'
 
 describe('isPathWithinResolvedRoots', () => {
   const roots = [path.resolve('/home/user'), path.resolve('D:\\')]

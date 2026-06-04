@@ -26,9 +26,11 @@ const serialSessions = new Map<string, SerialPortInstance>()
 
 /**
  * 设置 Serial 相关的 IPC 处理函数
+ * @param ipcMain IPC 主进程
+ * @param getMainWindow 获取主窗口
  */
 function setupSerialHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
-  ipcMain.handle('serial:listPorts', async (event: IpcMainInvokeEvent) => {
+  ipcMain.handle('serial:listPorts', async (event: IpcMainInvokeEvent) => {  // 处理列出端口请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true, undefined, { ports: [] })
     if (!SerialPort) return ipcFail('serial.moduleUnavailable', true, undefined, { ports: [] })
     try {
@@ -39,7 +41,7 @@ function setupSerialHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) 
     }
   })
 
-  ipcMain.handle('serial:connect', async (event: IpcMainInvokeEvent, id: string, config: SerialConnectConfig) => {
+  ipcMain.handle('serial:connect', async (event: IpcMainInvokeEvent, id: string, config: SerialConnectConfig) => {  // 处理连接端口请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (!SerialPort) return ipcFail('serial.moduleUnavailable', true)
     const cfg = config
@@ -101,7 +103,7 @@ function setupSerialHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) 
     })
   })
 
-  ipcMain.on('serial:data', (event: IpcMainEvent, id: string, data: string, encoding?: string) => {
+  ipcMain.on('serial:data', (event: IpcMainEvent, id: string, data: string, encoding?: string) => {  // 处理发送数据请求
     if (!isTrustedIpcSender(event.sender)) return
     const port = serialSessions.get(id)
     if (port && port.isOpen) {
@@ -109,7 +111,7 @@ function setupSerialHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) 
     }
   })
 
-  ipcMain.handle('serial:disconnect', async (event: IpcMainInvokeEvent, id: string) => {
+  ipcMain.handle('serial:disconnect', async (event: IpcMainInvokeEvent, id: string) => {  // 处理断开连接请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     const port = serialSessions.get(id)
     if (port) {

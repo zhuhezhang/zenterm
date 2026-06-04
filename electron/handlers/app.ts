@@ -12,7 +12,8 @@ import type { BrowserWindow } from 'electron'
 /**
  * 弹出另存为对话框并写入文件（受 localPathPolicy 约束）
  * @param mainWindow 主窗口
- * @param SaveFilePolicyOptions 保存文件选项
+ * @param options 保存文件选项
+ * @returns 保存文件结果
  */
 async function saveFileWithPolicyDialog(
   mainWindow: BrowserWindow | undefined,
@@ -41,19 +42,21 @@ async function saveFileWithPolicyDialog(
 
 /**
  * 设置应用程序处理程序
+ * @param ipcMain IPC 主进程
+ * @param getMainWindow 获取主窗口
  */
 export function setupAppHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
-  ipcMain.on('app:setUiLanguage', (e: IpcMainEvent, uiLanguage: unknown) => {
+  ipcMain.on('app:setUiLanguage', (e: IpcMainEvent, uiLanguage: unknown) => {  // 监听设置语言事件
     if (!isTrustedIpcSender(e.sender)) return
     setStoredUiLanguage(uiLanguage === 'zh' ? 'zh' : 'en')
   })
 
-  ipcMain.handle('app:getDownloadsPath', (event: IpcMainInvokeEvent) => {
+  ipcMain.handle('app:getDownloadsPath', (event: IpcMainInvokeEvent) => {  // 处理获取下载路径请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     return ipcOk({ path: app.getPath('downloads') })
   })
 
-  ipcMain.handle('app:chooseDirectory', async (event: IpcMainInvokeEvent) => {
+  ipcMain.handle('app:chooseDirectory', async (event: IpcMainInvokeEvent) => {  // 处理选择目录请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     const mainWindow = getMainWindow()
     const openOptions = {
@@ -67,7 +70,7 @@ export function setupAppHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGett
     return ipcOk({ path: result.filePaths[0] })
   })
 
-  ipcMain.handle('app:validateLogDirectory', (event: IpcMainInvokeEvent, dir: unknown) => {
+  ipcMain.handle('app:validateLogDirectory', (event: IpcMainInvokeEvent, dir: unknown) => {  // 处理验证日志目录请求
     if (!isTrustedIpcSender(event.sender)) {
       return ipcFail('app.invalidRequest', true)
     }
@@ -76,7 +79,7 @@ export function setupAppHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGett
     return validateLogWriteDirectory(s)
   })
 
-  ipcMain.handle('app:validateLocalFilePath', (event: IpcMainInvokeEvent, filePath: unknown, kind: unknown) => {
+  ipcMain.handle('app:validateLocalFilePath', (event: IpcMainInvokeEvent, filePath: unknown, kind: unknown) => {  // 处理验证本地文件路径请求
     if (!isTrustedIpcSender(event.sender)) {
       return ipcFail('app.invalidRequest', true)
     }
@@ -85,7 +88,7 @@ export function setupAppHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGett
     return validateLocalFilePath(s, typeof kind === 'string' ? kind : 'read')
   })
 
-  ipcMain.handle('app:saveTerminalOutput', async (event: IpcMainInvokeEvent, defaultName: unknown, text: unknown) => {
+  ipcMain.handle('app:saveTerminalOutput', async (event: IpcMainInvokeEvent, defaultName: unknown, text: unknown) => {  // 处理保存终端输出请求
     if (!isTrustedIpcSender(event.sender)) {
       return ipcFail('app.unauthorized', true)
     }
@@ -98,7 +101,7 @@ export function setupAppHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGett
     })
   })
 
-  ipcMain.handle('app:saveJsonExport', async (event: IpcMainInvokeEvent, defaultName: unknown, jsonText: unknown) => {
+  ipcMain.handle('app:saveJsonExport', async (event: IpcMainInvokeEvent, defaultName: unknown, jsonText: unknown) => {  // 处理保存 JSON 导出请求
     if (!isTrustedIpcSender(event.sender)) {
       return ipcFail('app.unauthorized', true)
     }

@@ -8,6 +8,10 @@ const WORKER_CMD_META = new Set(['type', 'reqId', 'success', 'error', 'errorPara
 
 /**
  * 构造 Worker → 主进程 CMD_RESULT 消息体
+ * @param reqId 请求 ID
+ * @param success 是否成功
+ * @param extra 额外字段
+ * @returns Worker → 主进程 CMD_RESULT 消息体
  */
 export function buildWorkerCmdResultMessage(
   reqId: number,
@@ -17,6 +21,13 @@ export function buildWorkerCmdResultMessage(
   return { type: 'CMD_RESULT', reqId, success, ...extra }
 }
 
+/**
+ * 发送 Worker → 主进程 CMD_RESULT 消息
+ * @param parentPort 父线程端口
+ * @param reqId 请求 ID
+ * @param success 是否成功
+ * @param extra 额外字段
+ */
 export function postWorkerCmdResult(
   parentPort: MessagePort,
   reqId: number,
@@ -26,6 +37,12 @@ export function postWorkerCmdResult(
   parentPort.postMessage(buildWorkerCmdResultMessage(reqId, success, extra))
 }
 
+/**
+ * 发送 Worker → 主进程 CMD_RESULT 成功消息
+ * @param parentPort 父线程端口
+ * @param reqId 请求 ID
+ * @param content 内容
+ */
 export function postWorkerCmdOk(
   parentPort: MessagePort,
   reqId: number,
@@ -34,6 +51,14 @@ export function postWorkerCmdOk(
   postWorkerCmdResult(parentPort, reqId, true, content)
 }
 
+/**
+ * 发送 Worker → 主进程 CMD_RESULT 失败消息
+ * @param parentPort 父线程端口
+ * @param reqId 请求 ID
+ * @param error 错误信息
+ * @param errorKnown 是否已知错误
+ * @param errorParams 错误参数
+ */
 export function postWorkerCmdFail(
   parentPort: MessagePort,
   reqId: number,
@@ -49,6 +74,12 @@ export function postWorkerCmdFail(
   postWorkerCmdResult(parentPort, reqId, false, extra)
 }
 
+/**
+ * 发送 Worker → 主进程 CMD_RESULT 失败消息（从抛出异常转换）
+ * @param parentPort 父线程端口
+ * @param reqId 请求 ID
+ * @param e 异常
+ */
 export function postWorkerCmdFailFromThrown(parentPort: MessagePort, reqId: number, e: unknown) {
   const fail = ipcFailFromThrown(e)
   postWorkerCmdResult(parentPort, reqId, false, {
@@ -58,6 +89,11 @@ export function postWorkerCmdFailFromThrown(parentPort: MessagePort, reqId: numb
   })
 }
 
+/**
+ * 将 Worker CMD_RESULT 消息转换为 ipcFail
+ * @param msg Worker CMD_RESULT 消息
+ * @returns ipcFail
+ */
 function workerCmdResultToIpcFail(msg: SftpWorkerCmdResultMessage): IpcFail {
   const code = typeof msg.error === 'string' ? msg.error : 'app.unknownError'
   const errorKnown = msg.errorKnown !== false
@@ -65,7 +101,9 @@ function workerCmdResultToIpcFail(msg: SftpWorkerCmdResultMessage): IpcFail {
 }
 
 /**
- * Worker CMD_RESULT → ipcOk / ipcFail
+ * 将 Worker CMD_RESULT 消息转换为 ipcOk / ipcFail
+ * @param msg Worker CMD_RESULT 消息
+ * @returns ipcOk / ipcFail
  */
 export function ipcFromWorkerCmdResult(msg: SftpWorkerCmdResultMessage): IpcResult {
   if (msg.success === true) {
@@ -78,6 +116,14 @@ export function ipcFromWorkerCmdResult(msg: SftpWorkerCmdResultMessage): IpcResu
   return workerCmdResultToIpcFail(msg)
 }
 
+/**
+ * 将 ipcFail 转换为 Worker CMD_RESULT 消息
+ * @param reqId 请求 ID
+ * @param error 错误信息
+ * @param errorKnown 是否已知错误
+ * @param errorParams 错误参数
+ * @returns Worker CMD_RESULT 消息
+ */
 export function ipcFailAsWorkerCmdResult(
   reqId: number,
   error: string,

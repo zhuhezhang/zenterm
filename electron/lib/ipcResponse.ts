@@ -1,9 +1,5 @@
-/**
- * 主进程 → 渲染进程 IPC 统一响应：{ success, content }；失败时另含 errorKnown
- */
-import type { IpcContent, IpcError, IpcFail, IpcOk, IpcResult } from '../../shared/ipc.js'
-
-export type { IpcContent, IpcError, IpcFail, IpcOk, IpcResult }
+/** 主进程 → 渲染进程 IPC 统一响应：{ success, content }；失败时另含 errorKnown */
+import type { IpcContent, IpcError, IpcFail, IpcOk } from '../../shared/ipc.js'
 
 /**
  * 判断是否为 ipc 错误

@@ -7,8 +7,25 @@ import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
 import { createIpcError, ipcFail, ipcOk } from './ipcResponse.js'
-import { isPathWithinResolvedRoots } from './localPathRoots.js'
 import { isIpcError } from './ipcResponse.js'
+
+/**
+ * 判断绝对路径是否位于任一允许根目录下（不含 .. 逃逸）
+ * @param resolvedPath 绝对路径
+ * @param roots 允许根目录列表
+ * @returns 是否位于允许根目录下
+ */
+export function isPathWithinResolvedRoots(resolvedPath: string, roots: string[]): boolean {
+  const normalized = path.resolve(String(resolvedPath))
+  for (const root of roots) {
+    const base = path.resolve(String(root))
+    const rel = path.relative(base, normalized)
+    if (rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))) {
+      return true
+    }
+  }
+  return false
+}
 
 /** 允许的用户目录列表，重复项会被去重 */
 const PATH_NAMES = [
@@ -55,6 +72,7 @@ const NETWORK_FSTYPES = new Set(['nfs', 'nfs4', 'cifs', 'smbfs', 'smb3'])
 
 /**
  * 获取 Windows 系统盘根路径（如 C:\），用于排除整盘放行
+ * @returns 系统盘根路径
  */
 function getWindowsSystemDriveRoot() {
   const fromEnv = process.env.SystemDrive || process.env.systemdrive
@@ -69,6 +87,7 @@ function getWindowsSystemDriveRoot() {
 
 /**
  * Windows：枚举已挂载且非系统盘的盘符根（如 D:\、E:\）
+ * @returns 非系统盘根路径列表
  */
 function collectWindowsNonSystemDriveRoots() {
   if (process.platform !== 'win32') return []
@@ -87,6 +106,12 @@ function collectWindowsNonSystemDriveRoots() {
   return roots
 }
 
+/**
+ * 判断是否为持久化挂载设备
+ * @param device 设备路径
+ * @param fstype 文件系统类型
+ * @returns 是否为持久化挂载设备
+ */
 function isPersistedMountDevice(device: string, fstype: string): boolean {
   if (PSEUDO_FSTYPES.has(fstype)) return false
   if (device.startsWith('/dev/')) return true
@@ -98,6 +123,8 @@ function isPersistedMountDevice(device: string, fstype: string): boolean {
 /**
  * 从 /proc/mounts 或 /etc/mtab 内容解析非根（/）的块设备 / 网络挂载点
  * （供 collectUnixNonSystemMountRoots 与单元测试使用）
+ * @param content /proc/mounts 或 /etc/mtab 内容
+ * @returns 非根（/）的块设备 / 网络挂载点列表
  */
 export function parseProcMountsForPolicy(content: string): string[] {
   const systemRoot = path.resolve('/')
@@ -124,6 +151,7 @@ export function parseProcMountsForPolicy(content: string): string[] {
 
 /**
  * macOS：/Volumes 下各卷宗根（外置盘、非系统 APFS 卷等）
+ * @returns 卷宗根列表
  */
 function collectDarwinVolumeRoots(): string[] {
   const roots: string[] = []
@@ -146,6 +174,7 @@ function collectDarwinVolumeRoots(): string[] {
 
 /**
  * Linux/Unix：枚举根文件系统（/）以外的独立挂载点根（如 /mnt/data、/media/user/USB）
+ * @returns 独立挂载点根列表
  */
 function collectUnixNonSystemMountRoots(): string[] {
   if (process.platform === 'win32') return []
@@ -178,6 +207,7 @@ function collectUnixNonSystemMountRoots(): string[] {
 
 /**
  * 收集所有已解析的允许根目录
+ * @returns 允许根目录列表
  */
 export function collectResolvedRoots(): string[] {
   const set = new Set<string>()
@@ -200,7 +230,7 @@ export function collectResolvedRoots(): string[] {
 
 /**
  * 校验日志写入目录是否合法，必须位于允许的用户根目录范围内
- * @param {string} logDir 日志根目录（来自设置）
+ * @param logDir 日志根目录（来自设置）
  */
 export function assertLogWriteDirectoryAllowed(logDir: string) {
   const resolved = path.resolve(String(logDir))
@@ -211,8 +241,8 @@ export function assertLogWriteDirectoryAllowed(logDir: string) {
 
 /**
  * 校验日志目录是否允许写入（供设置界面等展示提示，不抛错）
- * @param {string} logDir 日志目录（来自设置）
- * @returns {import('../../shared/ipc.js').IpcOk | import('../../shared/ipc.js').IpcFail}
+ * @param logDir 日志目录（来自设置）
+ * @returns IPC 成功响应或失败响应
  */
 export function validateLogWriteDirectory(logDir: string) {
   try {
@@ -229,8 +259,8 @@ export function validateLogWriteDirectory(logDir: string) {
 
 /**
  * 校验本地文件路径是否位于允许根目录内（导入 JSON、保存终端输出等）
- * @param {string} filePath 本地文件绝对路径
- * @param {string} kind IPC 错误 kind 参数（import / saveOutput 等）
+ * @param filePath 本地文件绝对路径
+ * @param kind IPC 错误 kind 参数（import / saveOutput 等）
  */
 export function assertLocalFilePathAllowed(filePath: string, kind = 'read') {
   const resolved = path.resolve(String(filePath))
@@ -241,8 +271,9 @@ export function assertLocalFilePathAllowed(filePath: string, kind = 'read') {
 
 /**
  * 校验本地文件路径（供渲染进程 IPC 调用，不抛错）
- * @param {string} filePath 本地文件路径
- * @param {string} [kind] 操作类型
+ * @param filePath 本地文件路径
+ * @param kind 操作类型
+ * @returns IPC 成功响应或失败响应
  */
 export function validateLocalFilePath(filePath: string, kind = 'read') {
   try {

@@ -6,19 +6,27 @@ import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import type { VaultGetContent, VaultSecretPartial } from '../../shared/zterm-api.js'
 
+/** 凭据存储条目 */
 interface VaultEntry {
+  /** 密码 */
   password?: string
+  /** 私钥 */
   privateKey?: string
+  /**  passphrase */
   passphrase?: string
 }
 
+/** 凭据存储 */
 interface Vault {
+  /** 版本 */
   v: number
+  /** 条目 */
   entries: Record<string, VaultEntry>
 }
 
 /**
  * 获取凭据存储文件路径
+ * @returns 凭据存储文件路径
  */
 function vaultPath() {
   return path.join(app.getPath('userData'), 'zterm-credentials-vault.json')
@@ -26,6 +34,7 @@ function vaultPath() {
 
 /**
  * 读取凭据存储文件
+ * @returns 凭据存储
  */
 function readVault(): Vault {
   try {
@@ -41,6 +50,7 @@ function readVault(): Vault {
 
 /**
  * 写入凭据存储文件
+ * @param data 凭据存储
  */
 function writeVault(data: Vault) {
   const dir = path.dirname(vaultPath())
@@ -52,6 +62,8 @@ function writeVault(data: Vault) {
 
 /**
  * 加密字段
+ * @param plain 明文
+ * @returns 加密后的字段
  */
 function encryptField(plain: string) {
   const buf = safeStorage.encryptString(plain)
@@ -60,6 +72,8 @@ function encryptField(plain: string) {
 
 /**
  * 解密字段
+ * @param b64 加密后的字段
+ * @returns 明文
  */
 function decryptField(b64: string) {
   if (!b64 || typeof b64 !== 'string') return ''
@@ -69,14 +83,15 @@ function decryptField(b64: string) {
 
 /**
  * 注册凭据 IPC：使用 safeStorage 将敏感字段加密后写入 userData 下的 vault 文件
+ * @param ipcMain IPC 主进程
  */
 function setupCredentialHandlers(ipcMain: IpcMain) {
-  ipcMain.handle('credentials:isAvailable', (event: IpcMainInvokeEvent) => {
+  ipcMain.handle('credentials:isAvailable', (event: IpcMainInvokeEvent) => {  // 处理是否可用请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     return ipcOk({ available: safeStorage.isEncryptionAvailable() })
   })
 
-  ipcMain.handle('credentials:get', async (event: IpcMainInvokeEvent, savedId: string) => {
+  ipcMain.handle('credentials:get', async (event: IpcMainInvokeEvent, savedId: string) => {  // 处理获取凭据请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (!savedId || typeof savedId !== 'string') {
       return ipcOk({ found: false, reason: 'invalidSavedId' } satisfies VaultGetContent)
@@ -101,7 +116,7 @@ function setupCredentialHandlers(ipcMain: IpcMain) {
     }
   })
 
-  ipcMain.handle('credentials:sync', async (event: IpcMainInvokeEvent, savedId: string, partial: VaultSecretPartial) => {
+  ipcMain.handle('credentials:sync', async (event: IpcMainInvokeEvent, savedId: string, partial: VaultSecretPartial) => {  // 处理同步凭据请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (!savedId || typeof savedId !== 'string') return ipcFail('credentials.invalidSavedId', true)
     if (!safeStorage.isEncryptionAvailable()) {
@@ -126,7 +141,7 @@ function setupCredentialHandlers(ipcMain: IpcMain) {
     return ipcOk()
   })
 
-  ipcMain.handle('credentials:remove', async (event: IpcMainInvokeEvent, savedId: string) => {
+  ipcMain.handle('credentials:remove', async (event: IpcMainInvokeEvent, savedId: string) => {  // 处理删除凭据请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (!savedId) return ipcOk()
     const vault = readVault()
@@ -137,7 +152,7 @@ function setupCredentialHandlers(ipcMain: IpcMain) {
     return ipcOk()
   })
 
-  ipcMain.handle('credentials:duplicate', async (event: IpcMainInvokeEvent, fromId: string, toId: string) => {
+  ipcMain.handle('credentials:duplicate', async (event: IpcMainInvokeEvent, fromId: string, toId: string) => {  // 处理复制凭据请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (!fromId || !toId) {
       return ipcFail('credentials.invalidSavedId', true)
@@ -150,7 +165,7 @@ function setupCredentialHandlers(ipcMain: IpcMain) {
     return ipcOk()
   })
 
-  ipcMain.handle('credentials:clearAll', async (event: IpcMainInvokeEvent) => {
+  ipcMain.handle('credentials:clearAll', async (event: IpcMainInvokeEvent) => {  // 处理清空所有凭据请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     try {
       if (fs.existsSync(vaultPath())) fs.unlinkSync(vaultPath())

@@ -3,18 +3,13 @@
  * SSH / Telnet / Serial 仅通过本模块处理字节与编码，勿在各 handler 内重复实现。
  */
 import iconv from 'iconv-lite'
-import {
-  DEFAULT_TERMINAL_ENCODING,
-  normalizeTerminalEncoding,
-} from '../../shared/terminalEncoding.js'
-
-export { DEFAULT_TERMINAL_ENCODING, normalizeTerminalEncoding }
+import { DEFAULT_TERMINAL_ENCODING, normalizeTerminalEncoding } from '../../shared/terminalEncoding.js'
 
 /**
  * Unicode 用户输入 → 按会话编码写入远端/设备的字节
- * @param {string} str
- * @param {string} [encoding]
- * @returns {Buffer}
+ * @param str 用户输入
+ * @param encoding 编码
+ * @returns 按会话编码写入远端/设备的字节
  */
 export function encodeUnicodeToTerminalBytes(str: string, encoding?: string) {
   const enc = normalizeTerminalEncoding(encoding)
@@ -29,8 +24,8 @@ export function encodeUnicodeToTerminalBytes(str: string, encoding?: string) {
 
 /**
  * Node Buffer → 发往渲染进程的 binary 线字符串（与 ssh/telnet/serial 输出一致）
- * @param {Buffer|Uint8Array|string} data
- * @returns {string}
+ * @param data 数据
+ * @returns 发往渲染进程的 binary 线字符串
  */
 export function bufferToBinaryWire(data: Buffer | Uint8Array | string) {
   if (typeof data === 'string') return data
@@ -40,9 +35,9 @@ export function bufferToBinaryWire(data: Buffer | Uint8Array | string) {
 
 /**
  * 渲染进程 IPC 上行：xterm 字符串或 Buffer → 写入通道的 Buffer
- * @param {string|Buffer|Uint8Array|unknown} data
- * @param {string} [encoding]
- * @returns {Buffer}
+ * @param data 数据
+ * @param encoding 编码
+ * @returns 写入通道的 Buffer
  */
 export function encodeOutgoingTerminalData(data: string | Buffer | Uint8Array | unknown, encoding?: string) {
   if (typeof data === 'string') return encodeUnicodeToTerminalBytes(data, encoding)

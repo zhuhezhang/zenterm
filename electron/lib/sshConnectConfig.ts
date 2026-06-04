@@ -5,15 +5,6 @@ import type { SshConnectConfig } from '../../shared/zterm-api.js'
 /**
  * 构建连接配置，用于 SSH 连接
  * @param cfg 配置
- * @param cfg.host 主机名
- * @param cfg.port 端口
- * @param cfg.username 用户名
- * @param cfg.algorithms 算法
- * @param cfg.algorithms.kex 密钥交换算法
- * @param cfg.algorithms.serverHostKey 服务器主机密钥算法
- * @param cfg.algorithms.cipher 加密算法
- * @param cfg.algorithms.hmac 消息认证码算法
- * @param cfg.algorithms.compress 压缩算法
  * @param hostVerifier 主机公钥校验器
  * @returns 连接配置
  */

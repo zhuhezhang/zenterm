@@ -30,9 +30,9 @@ export function setStoredUiLanguage(value: 'zh' | 'en') {
 
 /**
  * 翻译主进程文案
- * @param {string} path 路径(如"zh.titlebar.close")
- * @param {Record<string, string|number>} [params] 参数（如{name: '张三'}）
- * @returns {string} 翻译后的文案
+ * @param path 路径(如"zh.titlebar.close")
+ * @param params 参数（如{name: '张三'}）
+ * @returns 翻译后的文案
  */
 export function translateMain(path: string, params: Record<string, string | number> = {}) {
   const L = storedUiLanguage === 'en' ? 'en' : 'zh'

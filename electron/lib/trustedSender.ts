@@ -8,6 +8,7 @@ let trustedWebContentsId: number | null = null
 
 /** 
  * 设置当前主窗口 webContents.id
+ * @param webContents 窗口 webContents
  */
 export function setTrustedRendererWebContents(webContents: WebContents | null | undefined) {
   trustedWebContentsId = webContents && typeof webContents.id === 'number' ? webContents.id : null
@@ -20,6 +21,8 @@ export function clearTrustedRendererWebContents() {
 
 /** 
  * 检查是否为可信的渲染进程
+ * @param sender 发送者
+ * @returns 是否为可信的渲染进程
  */
 export function isTrustedIpcSender(sender: WebContents) {
   if (trustedWebContentsId == null || !sender || typeof sender.id !== 'number') return false

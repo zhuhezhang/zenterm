@@ -21,10 +21,14 @@ const TELNET_SE = 240
 
 /** 未完成的 Telnet 序列与跨 TCP 分片拼接；socket 销毁后由 WeakMap 与 close 清理 */
 const telnetInboundPending = new WeakMap<net.Socket, Buffer>()
+/** Telnet 最大未完成序列长度 */
 const TELNET_MAX_PENDING = 65536
 
 /**
  * 从下行流中去掉 Telnet 命令，保留终端数据；支持跨 chunk、IAC IAC 字面 0xFF、SB…IAC SE
+ * @param socket 套接字
+ * @param chunk 数据块
+ * @returns 处理后的数据
  */
 function stripTelnetStream(socket: net.Socket, chunk: Buffer) {
   let pending = telnetInboundPending.get(socket)
@@ -91,26 +95,34 @@ function stripTelnetStream(socket: net.Socket, chunk: Buffer) {
   return Buffer.from(output)
 }
 
+/**
+ * 清除 Telnet 解析器状态
+ * @param socket 套接字
+ */
 function clearTelnetParserState(socket: net.Socket) {
   telnetInboundPending.delete(socket)
 }
 
 /**
  * 设置 Telnet 相关的 IPC 处理函数
+ * @param ipcMain IPC 主进程
+ * @param getMainWindow 获取主窗口
  */
 function setupTelnetHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
-  ipcMain.handle('telnet:connect', async (event: IpcMainInvokeEvent, id: string, config: TelnetConnectConfig) => {
+  ipcMain.handle('telnet:connect', async (event: IpcMainInvokeEvent, id: string, config: TelnetConnectConfig) => {  // 处理来自渲染进程的连接请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
 
-    return new Promise((resolve) => {
+    return new Promise((resolve) => {  // 创建一个 Promise 对象，用于处理连接请求
       const socket = new net.Socket()
       let connected = false
       let settled = false
+      /** 处理连接结果 */
       const resolveOnce = (payload: ReturnType<typeof ipcOk> | ReturnType<typeof ipcFail>) => {
         if (settled) return
         settled = true
         resolve(payload)
       }
+      /** 创建一个定时器，用于处理连接超时 */
       const timeout = setTimeout(() => {
         socket.destroy()
         resolveOnce(ipcFail('telnet.connectionTimeout', true))
@@ -123,20 +135,20 @@ function setupTelnetHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) 
         resolveOnce(ipcOk())
       })
 
-      socket.on('data', (data: Buffer) => {
+      socket.on('data', (data: Buffer) => {  // 处理来自套接字的数据
         const processed = stripTelnetStream(socket, data)
         if (processed.length > 0) {
           sendToRenderer(getMainWindow, 'telnet:output', id, bufferToBinaryWire(processed))
         }
       })
 
-      socket.on('close', () => {
+      socket.on('close', () => {  // 处理来自套接字的关闭事件
         clearTelnetParserState(socket)
         telnetSessions.delete(id)
         sendToRenderer(getMainWindow, 'telnet:closed', id)
       })
 
-      socket.on('error', (err: Error) => {
+      socket.on('error', (err: Error) => {  // 处理来自套接字的错误事件
         clearTimeout(timeout)
         clearTelnetParserState(socket)
         telnetSessions.delete(id)
@@ -147,7 +159,7 @@ function setupTelnetHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) 
     })
   })
 
-  ipcMain.on('telnet:data', (event: IpcMainEvent, id: string, data: string, encoding?: string) => {
+  ipcMain.on('telnet:data', (event: IpcMainEvent, id: string, data: string, encoding?: string) => {  // 处理来自渲染进程的数据请求
     if (!isTrustedIpcSender(event.sender)) return
     const socket = telnetSessions.get(id)
     if (socket) {
@@ -155,7 +167,7 @@ function setupTelnetHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) 
     }
   })
 
-  ipcMain.handle('telnet:disconnect', async (event: IpcMainInvokeEvent, id: string) => {
+  ipcMain.handle('telnet:disconnect', async (event: IpcMainInvokeEvent, id: string) => {  // 处理来自渲染进程的断开连接请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     const socket = telnetSessions.get(id)
     if (socket) {

@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, useMemo, lazy, Suspense, memo, type Dispatch, type SetStateAction } from 'react'
+import { useState, useCallback, useEffect, useMemo, lazy, Suspense, memo } from 'react'
+import type { AppMainProps } from './types/app'
 import type { AppSettings, AppTheme } from './types/settings'
 import type { ActiveSession, TerminalClearFn, TerminalTextGetter } from './types/session'
 import { I18nProvider } from '@/context/I18nContext'
@@ -10,7 +11,7 @@ import TerminalPanel from '@/components/TerminalPanel'
 import WelcomeScreen from '@/components/app/WelcomeScreen'
 import CredentialDialog from '@/components/app/CredentialDialog'
 
-const ConnectDialog = lazy(() => import('@/components/ConnectDialog'))
+const ConnectDialog = lazy(() => import('@/components/ConnectDialog'))  // 懒加载（code splitting） 写法，目的是让 ConnectDialog 不要打进首屏主包，只在用户真正打开连接对话框时才去加载
 const SettingsDialog = lazy(() => import('@/components/SettingsDialog'))
 import { useSyncedAppTheme } from '@/hooks/useSyncedAppTheme'
 import { useSidebarResize } from '@/hooks/useSidebarResize'
@@ -21,6 +22,10 @@ import { resolveEffectiveUiLanguage, syncUiLanguageToMain } from './lib/resolveU
 import { reapplyVaultPoliciesForAllSessions } from './store/credentialsBridge'
 import './styles/app.css'
 
+/**
+ * TerminalPanelSlot 组件：负责渲染终端面板的插槽，用于在 TabBar 中显示终端面板。
+ * 使用 memo 包裹，避免不必要的重新渲染，只有当 session.id 发生变化时，才会重新渲染。
+ */
 const TerminalPanelSlot = memo(function TerminalPanelSlot({
   session,
   active,
@@ -30,14 +35,22 @@ const TerminalPanelSlot = memo(function TerminalPanelSlot({
   onRegisterExport,
   onRegisterClearScreen,
 }: {
+  /** 会话对象，包含连接信息和状态 */
   session: ActiveSession
+  /** 是否为当前活跃标签页 */
   active: boolean
+  /** 终端设置对象，包含用户偏好设置 */
   terminalSettings: AppSettings
+  /** 应用亮暗（与界面 CSS 变量一致），用于 xterm 配色 */
   appThemeEffective: 'dark' | 'light'
+  /** 更新会话状态的回调函数 */
   updateSession: (id: string, upd: Partial<ActiveSession>) => void
+  /** 注册导出终端输出函数的回调函数，参数为 (sessionId, getter|null) */
   onRegisterExport: (sessionId: string, getter: TerminalTextGetter | null) => void
+  /** 注册清屏函数的回调函数，参数为 (sessionId, fn|null) */
   onRegisterClearScreen: (sessionId: string, fn: TerminalClearFn | null) => void
 }) {
+  /** 更新会话状态的回调函数，用于在 TerminalPanel 中更新会话状态 */
   const onUpdate = useCallback(
     (upd: Partial<ActiveSession>) => updateSession(session.id, upd),
     [session.id, updateSession],
@@ -55,20 +68,8 @@ const TerminalPanelSlot = memo(function TerminalPanelSlot({
   )
 })
 
-/**
- * 主界面（在 I18nProvider 内，可使用 useI18n）
- * @param {{ settings: object, setSettings: function }} props
- * @param {Object} props.settings 设置
- * @param {Function} props.setSettings 设置回调函数
- * @returns {React.ReactNode} 应用主组件
- */
-function AppMain({
-  settings,
-  setSettings,
-}: {
-  settings: AppSettings
-  setSettings: Dispatch<SetStateAction<AppSettings>>
-}) {
+/** 主界面（在 I18nProvider 内，可使用 useI18n） */
+function AppMain({ settings, setSettings }: AppMainProps) {
   const {
     sessions,
     activeId,
@@ -105,6 +106,7 @@ function AppMain({
 
   const [appThemePreview, setAppThemePreview] = useState<AppTheme | null>(null)
   const appThemeEffective = useSyncedAppTheme(appThemePreview ?? settings.appTheme)  // ??表示如果 appThemePreview 为 null，则使用 settings.appTheme
+  /** 终端设置对象，包含用户偏好设置。当 settings 发生变化时，重新计算终端设置 */
   const terminalSettings = useMemo(() => ({
     loggingMode: settings.loggingMode,
     logPath: settings.logPath,
@@ -123,7 +125,7 @@ function AppMain({
     settings.algorithmPreferences,
   ])
 
-  useEffect(() => {
+  useEffect(() => {  // 监听 UI 语言变化，更新 document.documentElement.lang
     const eff = resolveEffectiveUiLanguage(settings.uiLanguage)
     document.documentElement.lang = eff === 'en' ? 'en' : 'zh-CN'
     syncUiLanguageToMain(settings.uiLanguage)
@@ -135,17 +137,14 @@ function AppMain({
   )  // 侧边栏宽度（与 settings.sidebarWidth 同步；拖拽结束后写回 localStorage）
   const [showSettings, setShowSettings] = useState(false)
 
-  useEffect(() => {
+  useEffect(() => {  // 监听 settings.sidebarWidth 变化，更新 sidebarWidth
     setSidebarWidth((cur) => {
       const w = clampSidebarWidthPx(settings.sidebarWidth, window.innerWidth)
       return w === cur ? cur : w
     })
   }, [settings.sidebarWidth])
 
-  /**
-   * 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听器
-   * @param {MouseEvent} e 鼠标事件对象，包含鼠标位置等信息
-   */
+  /** 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听 */
   const handleDividerMouseDown = useSidebarResize(sidebarWidth, setSidebarWidth, setSettings)
 
   return (
@@ -277,14 +276,15 @@ function AppMain({
   )
 }
 
+/** 应用主组件 */
 export default function App() {
-  const [settings, setSettings] = useState<AppSettings>(() => {
+  const [settings, setSettings] = useState<AppSettings>(() => {  // 加载设置，并同步 UI 语言到主进程
     const s = loadSettings()
     syncUiLanguageToMain(s.uiLanguage)
     return s
   })
 
-  useEffect(() => {
+  useEffect(() => {  // 监听下载路径变化，更新 logPath
     void refreshDownloadsPathCache().then(() => {
       const def = getDefaultLogPath()
       if (!def) return

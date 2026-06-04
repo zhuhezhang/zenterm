@@ -18,15 +18,18 @@ const workerEntry = fileURLToPath(new URL('../workers/sshSessionWorker.js', impo
 
 /**
  * 设置 SSH 相关的 IPC 处理函数
+ * @param ipcMain IPC 主进程
+ * @param getMainWindow 获取主窗口
  */
 function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
-  ipcMain.handle('ssh:connect', async (event: IpcMainInvokeEvent, id: string, config: SshConnectConfig) => {
+  ipcMain.handle('ssh:connect', async (event: IpcMainInvokeEvent, id: string, config: SshConnectConfig) => {  // 处理来自渲染进程的连接请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
 
-    return new Promise((resolve) => {
+    return new Promise((resolve) => {  // 创建一个 Promise 对象，用于处理连接请求
       let settled = false
       let worker: Worker
 
+      /** 处理连接失败 */
       const finishFail = (
         error: string,
         errorParams?: Record<string, string | number>,
@@ -43,6 +46,7 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
         )
       }
 
+      /** 处理连接成功 */
       const finishOk = () => {
         if (settled) return
         settled = true
@@ -59,8 +63,10 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
         return
       }
 
+      /** 创建一个 SshSessionState 对象，用于存储会话状态 */
       const session: SshSessionState = { worker, isClosed: false }
 
+      /** 关闭会话 */
       const closeSessionOnce = () => {
         if (session.isClosed) return
         session.isClosed = true
@@ -71,30 +77,30 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
         } catch {}
       }
 
-      worker.on('message', async (msg: SshWorkerOutboundMessage) => {
-        if (msg.type === 'HOST_VERIFY') {
+      worker.on('message', async (msg: SshWorkerOutboundMessage) => {  // 处理来自子进程的消息
+        if (msg.type === 'HOST_VERIFY') {  // 处理来自子进程的 HOST_VERIFY 消息
           await handleHostVerifyMessage(getMainWindow, worker, msg)
           return
         }
-        if (msg.type === 'OUTPUT') {
+        if (msg.type === 'OUTPUT') {  // 处理来自子进程的 OUTPUT 消息
           sendToRenderer(getMainWindow, 'ssh:output', id, msg.data)
           return
         }
-        if (msg.type === 'READY') {
+        if (msg.type === 'READY') {  // 处理来自子进程的 READY 消息
           sshSessions.set(id, session)
           finishOk()
           return
         }
-        if (msg.type === 'CONNECT_FAILED') {
+        if (msg.type === 'CONNECT_FAILED') {  // 处理来自子进程的 CONNECT_FAILED 消息
           finishFail(String(msg.error ?? 'ssh.connectionFailed'))
           return
         }
-        if (msg.type === 'CLOSED') {
+        if (msg.type === 'CLOSED') {  // 处理来自子进程的 CLOSED 消息
           closeSessionOnce()
         }
       })
-      worker.on('error', (err: Error) => finishFail(err.message, undefined, false))
-      worker.on('exit', (code) => {
+      worker.on('error', (err: Error) => finishFail(err.message, undefined, false))  // 处理来自子进程的错误消息
+      worker.on('exit', (code) => {  // 处理来自子进程的退出消息
         if (!settled) {
           finishFail('ssh.workerExitUnexpected', { code })
         } else if (sshSessions.has(id) && !session.isClosed) {
@@ -104,7 +110,7 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     })
   })
 
-  ipcMain.on('ssh:data', (event: IpcMainEvent, id: string, data: string, encoding?: string) => {
+  ipcMain.on('ssh:data', (event: IpcMainEvent, id: string, data: string, encoding?: string) => {  // 处理来自渲染进程的数据请求
     if (!isTrustedIpcSender(event.sender)) return
     const session = sshSessions.get(id)
     if (session?.worker) {
@@ -117,7 +123,7 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     }
   })
 
-  ipcMain.on('ssh:resize', (event: IpcMainEvent, id: string, cols: number, rows: number) => {
+  ipcMain.on('ssh:resize', (event: IpcMainEvent, id: string, cols: number, rows: number) => {  // 处理来自渲染进程的调整窗口大小请求
     if (!isTrustedIpcSender(event.sender)) return
     const session = sshSessions.get(id)
     if (session?.worker) {
@@ -127,7 +133,7 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
     }
   })
 
-  ipcMain.handle('ssh:disconnect', async (event: IpcMainInvokeEvent, id: string) => {
+  ipcMain.handle('ssh:disconnect', async (event: IpcMainInvokeEvent, id: string) => {  // 处理来自渲染进程的断开连接请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     const session = sshSessions.get(id)
     if (session?.worker) {
@@ -136,7 +142,7 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
         session.worker.postMessage({ type: 'DISCONNECT' })
       } catch {}
       const workerRef = session.worker
-      setTimeout(() => {
+      setTimeout(() => {  // 延迟终止子进程
         try {
           workerRef.terminate()
         } catch {}

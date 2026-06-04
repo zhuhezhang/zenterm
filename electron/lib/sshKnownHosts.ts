@@ -18,22 +18,28 @@ const ssh2utils = ssh2.utils
  * mac 示例：/Users/zhuhezhang/Library/Application Support/zterm/zterm-known-hosts.json
  * windows 示例：C:\Users\zhuhezhang\AppData\Roaming\zterm\zterm-known-hosts.json
  * linux 示例：/home/zhuhezhang/.config/zterm/zterm-known-hosts.json
- * @returns {string} 存储路径
+ * @returns 存储路径
  */
 function storePath() {
   return path.join(app.getPath('userData'), 'zterm-known-hosts.json')
 }
 
+/** 已知主机公钥条目 */
 interface KnownHostEntry {
+  /** SHA256 指纹 */
   sha256: string
+  /** 密钥类型 */
   keyType: string
+  /** 更新时间 */
   updatedAt: number
 }
 
+/** 已知主机公钥存储 */
 type KnownHostStore = Record<string, KnownHostEntry>
 
 /**
  * 加载存储数据
+ * @returns 存储数据
  */
 function loadStore(): KnownHostStore {
   try {
@@ -47,7 +53,7 @@ function loadStore(): KnownHostStore {
 
 /**
  * 保存存储数据到文件
- * @param {Object} data 存储数据
+ * @param data 存储数据
  */
 function saveStore(data: KnownHostStore) {
   const p = storePath()
@@ -59,8 +65,8 @@ function saveStore(data: KnownHostStore) {
 
 /**
  * 解析主机公钥类型
- * @param {Buffer|string} rawKey 主机公钥二进制
- * @returns {string} 主机公钥类型
+ * @param rawKey 主机公钥二进制
+ * @returns 主机公钥类型
  */
 function parseHostKeyType(rawKey: Buffer | string) {
   try {
@@ -74,12 +80,12 @@ function parseHostKeyType(rawKey: Buffer | string) {
 }
 
 /**
- * 校验/提示是否信任 SSH 主机公钥（与 known_hosts 一致）；供主线程与 Worker 桥接共用。
- * @param {Electron.BrowserWindow|null|undefined} mainWindow 主窗口实例
- * @param {string} host 主机名或 IP
- * @param {number} port 端口
- * @param {Buffer} rawKey 主机公钥二进制
- * @returns {Promise<boolean>} 是否允许继续握手
+ * 校验/提示是否信任 SSH 主机公钥（与 known_hosts 一致），供主线程与 Worker 桥接共用
+ * @param mainWindow 主窗口实例
+ * @param host 主机名或 IP
+ * @param port 端口
+ * @param rawKey 主机公钥二进制
+ * @returns 是否允许继续握手
  */
 export async function verifySshHostKeyTrust(
   mainWindow: BrowserWindow | null | undefined,
@@ -164,10 +170,10 @@ export async function verifySshHostKeyTrust(
 
 /**
  * 创建 SSH 主机公钥校验器：供 ssh2 connect({ hostVerifier }) 使用；须异步调用 callback(boolean)。
- * @param {Electron.BrowserWindow|null} mainWindow 主窗口实例
- * @param {string} host 主机名或 IP
- * @param {number} port 端口
- * @returns {Function} 主机公钥校验器
+ * @param mainWindow 主窗口实例
+ * @param host 主机名或 IP
+ * @param port 端口
+ * @returns 主机公钥校验器
  */
 export function createSshHostVerifier(
   mainWindow: BrowserWindow | null | undefined,

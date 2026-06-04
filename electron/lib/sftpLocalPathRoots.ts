@@ -1,13 +1,13 @@
 import path from 'path'
 import { createIpcError } from './ipcResponse.js'
 import { INVALID_LABEL_CHARS } from '../../shared/others.js'
-import { isPathWithinResolvedRoots } from './localPathRoots.js'
+import { isPathWithinResolvedRoots } from './localPathPolicy.js'
 
 /**
  * 校验 SFTP 本地文件路径是否在允许根目录内
- * @param {string} localPath 本地文件路径
- * @param {string[]} roots 允许根目录
- * @param {string} kind 操作类型（download/upload 等，用于错误文案）
+ * @param localPath 本地文件路径
+ * @param roots 允许根目录
+ * @param kind 操作类型（download/upload 等，用于错误文案）
  */
 export function assertSftpLocalFilePathAllowedForRoots(localPath: string, roots: string[], kind: string) {
   const resolved = path.resolve(String(localPath))
@@ -22,9 +22,9 @@ export function assertSftpLocalFilePathAllowedForRoots(localPath: string, roots:
 
 /**
  * 校验 SFTP 本地目录是否在允许根目录内
- * @param {string} localDir 本地目录路径
- * @param {string[]} roots 允许根目录
- * @param {string} kind 操作类型
+ * @param localDir 本地目录路径
+ * @param roots 允许根目录
+ * @param kind 操作类型
  */
 export function assertSftpLocalDirAllowedForRoots(localDir: string, roots: string[], kind: string) {
   const resolved = path.resolve(String(localDir))
@@ -35,11 +35,11 @@ export function assertSftpLocalDirAllowedForRoots(localDir: string, roots: strin
 
 /**
  * 在下载目录下安全拼接文件名，防止路径逃逸
- * @param {string} localDir 本地目录
- * @param {string} name 远程条目名
- * @param {string[]} roots 允许根目录
- * @param {string} kind 操作类型
- * @returns {string} 拼接后的绝对路径
+ * @param localDir 本地目录
+ * @param name 远程条目名
+ * @param roots 允许根目录
+ * @param kind 操作类型
+ * @returns 拼接后的绝对路径
  */
 export function safeJoinLocalDownloadPathForRoots(localDir: string, name: string, roots: string[], kind: string) {
   const base = String(name ?? '')
