@@ -1,4 +1,4 @@
-import { TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX } from './defaults'
+import { TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX, SSH_KEEPALIVE_INTERVAL_MIN, SSH_KEEPALIVE_INTERVAL_MAX } from './defaults'
 
 /** 设置对话框三个标签页（labelKey 对应 settings.tabs.*） */
 export const SETTINGS_TABS = [
@@ -10,7 +10,7 @@ export const SETTINGS_TABS = [
 /** 各标签内区块顺序（与 SETTINGS_SCHEMA 中 section 字段对应） */
 export const SETTINGS_TAB_SECTION_IDS = {
   'general': ['confirm', 'terminal', 'logging', 'appearance'],
-  'ssh-terminal': ['algorithm', 'highlight'],
+  'ssh-terminal': ['ssh', 'algorithm', 'highlight'],
   'data-security': ['credentials', 'sessions', 'settingsMgmt'],
 }
 
@@ -72,6 +72,18 @@ export const SETTINGS_SCHEMA = [
           { value: 'zh', labelKey: 'settings.options.langZh' },
           { value: 'en', labelKey: 'settings.options.langEn' },
         ],
+      },
+    ],
+  },
+  {
+    section: 'ssh',
+    items: [
+      {
+        key: 'sshKeepaliveInterval',
+        type: 'number',
+        min: SSH_KEEPALIVE_INTERVAL_MIN,
+        max: SSH_KEEPALIVE_INTERVAL_MAX,
+        step: 5,
       },
     ],
   },

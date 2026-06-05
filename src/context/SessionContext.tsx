@@ -5,6 +5,7 @@ import {
 import type { AppSettings } from '@/types/settings'
 import type {
   ActiveSession,
+  BackspaceMode,
   CredentialDialogState,
   SavedSession,
   SessionConfig,
@@ -19,6 +20,7 @@ import { alertIpcFailure } from '@/lib/ipc/formatIpcError'
 import { fileTimestamp } from '@/lib/util/fileTimestamp'
 import { safeFileToken } from '@/lib/safeFileName'
 import { prepareSavedSessionUpdate } from '@/lib/session/persistSavedSession'
+import { normalizeBackspaceMode } from '@/lib/session/utils'
 import {
   loadSavedSessions, removeSavedSession, duplicateSavedSession, saveSessions, getGroups,
   loadGroupPlaceholders, saveGroupPlaceholders, addGroupPlaceholder, prunePlaceholdersForOccupiedGroups,
@@ -71,6 +73,7 @@ export interface SessionContextValue {
   registerTerminalClearScreen: (sessionId: string, fn: TerminalClearFn | null) => void
   handleClearTabScreen: (sessionId: string) => void
   handleSaveTabOutput: (sessionId: string) => Promise<void>
+  handleSetBackspaceMode: (sessionId: string, mode: BackspaceMode) => void
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null)
@@ -209,6 +212,31 @@ export function SessionProvider({
       }))
     }
   }, [sessions, t])
+
+  /**
+   * 右键标签切换退格键模式：实时更新活跃会话；若来自已保存会话则同步写入 localStorage
+   * @param sessionId 会话 ID
+   * @param mode 退格键模式
+   */
+  const handleSetBackspaceMode = useCallback((sessionId: string, mode: BackspaceMode) => {
+    const normalized = normalizeBackspaceMode(mode) ?? 'auto'
+    let savedId: string | undefined
+
+    setSessions(prev => {
+      const target = prev.find(s => s.id === sessionId)
+      if (!target) return prev
+      savedId = target.savedId
+      return prev.map(s => s.id === sessionId ? { ...s, backspaceMode: normalized } : s)
+    })
+
+    if (savedId) {
+      setSavedSessions(prev => {
+        const next = prev.map(s => s.savedId === savedId ? { ...s, backspaceMode: normalized } : s)
+        saveSessions(next)
+        return next
+      })
+    }
+  }, [])
 
   /**
    * 更新会话属性
@@ -420,6 +448,7 @@ export function SessionProvider({
     registerTerminalClearScreen,
     handleClearTabScreen,
     handleSaveTabOutput,
+    handleSetBackspaceMode,
   }
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>

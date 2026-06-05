@@ -30,6 +30,8 @@ export interface AppSettings {
   logPath: string
   highlightRules: HighlightRule[]
   algorithmPreferences: AlgorithmPreferences
+  /** SSH keepalive 间隔（秒，0 = 关闭） */
+  sshKeepaliveInterval: number
   saveSecretsToVault: boolean
   sidebarWidth: number
 }

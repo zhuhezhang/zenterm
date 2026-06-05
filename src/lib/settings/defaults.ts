@@ -1,4 +1,4 @@
-import { DEFAULT_ALGORITHM_PREFERENCES } from '../../../shared/sshAlgorithmDefaults'
+import { DEFAULT_ALGORITHM_SELECTION } from '../../../shared/sshAlgorithmDefaults'
 import type { AppSettings } from '../../types/settings'
 
 /** 主界面左侧会话栏默认宽度（px），与 App 分割条逻辑一致 */
@@ -10,6 +10,13 @@ export const TERMINAL_SCROLLBACK_DEFAULT = 20_000
 export const TERMINAL_SCROLLBACK_MIN = 0
 /** xterm 滚动缓冲区行数最大值 */
 export const TERMINAL_SCROLLBACK_MAX = 500_000
+
+/** SSH keepalive 间隔默认值（秒，0 = 关闭） */
+export const SSH_KEEPALIVE_INTERVAL_DEFAULT = 0
+/** SSH keepalive 间隔最小值（秒） */
+export const SSH_KEEPALIVE_INTERVAL_MIN = 0
+/** SSH keepalive 间隔最大值（秒） */
+export const SSH_KEEPALIVE_INTERVAL_MAX = 600
 
 /** SSH 算法子类别（与 settings.algo.* i18n 及 algorithmPreferences 键对应） */
 export const SSH_ALGORITHM_SECTION_KEYS = ['kex', 'serverHostKey', 'cipher', 'hmac', 'compress']
@@ -33,7 +40,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
     { id: 'default3_warning', name: 'default3_warning', enabled: true, useRegex: true, caseSensitive: false, pattern: '(\\bwarning\\b)|(\\bnotice\\b)|(\\binfo\\b)|(\\bdebug\\b)|(\\bdisabled\\b)', color: '#f1c40f' },
     { id: 'default4_ip', name: 'default4_ip', enabled: true, useRegex: true, caseSensitive: false, pattern: '\\b(?:(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\b', color: '#c717d3' },
   ],
-  algorithmPreferences: DEFAULT_ALGORITHM_PREFERENCES,
+  algorithmPreferences: DEFAULT_ALGORITHM_SELECTION,
+  /** SSH 层 keepalive 间隔（秒，0 = 关闭；新连接生效） */
+  sshKeepaliveInterval: SSH_KEEPALIVE_INTERVAL_DEFAULT,
   saveSecretsToVault: false,
   sidebarWidth: DEFAULT_SIDEBAR_WIDTH,
 }

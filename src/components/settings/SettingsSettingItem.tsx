@@ -1,8 +1,6 @@
 import type { ChangeEvent, RefObject } from 'react'
 import { IMPORT_JSON_ACCEPT } from '@/lib/import/constants'
-import {
-  clampTerminalScrollback, normalizeLoggingMode,
-} from '@/lib/settings/normalize'
+import { normalizeLoggingMode, clampSettingsNumberField } from '@/lib/settings/normalize'
 import { getDefaultLogPath } from '@/store/settingsStore'
 import type { AppSettings } from '@/types/settings'
 import type { SettingsActionKey, SettingsSchemaItem } from '@/types/settingsUi'
@@ -168,9 +166,9 @@ export default function SettingsSettingItem({
             }
             const n = Number(v)
             if (!Number.isFinite(n)) return
-            set(settingKey, n as AppSettings[typeof settingKey])
+            set(settingKey, clampSettingsNumberField(settingKey, n) as AppSettings[typeof settingKey])
           }}
-          onBlur={() => set(settingKey, clampTerminalScrollback(form[settingKey]) as AppSettings[typeof settingKey])}
+          onBlur={() => set(settingKey, clampSettingsNumberField(settingKey, form[settingKey]) as AppSettings[typeof settingKey])}
           title=""
         />
       )}

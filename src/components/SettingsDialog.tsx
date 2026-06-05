@@ -9,7 +9,7 @@ import { createHighlightRuleId } from '@/lib/settings/highlightRules'
 import { buildSettingsFromForm } from '@/lib/settings/buildSettingsFromForm'
 import { clearAllVaultEntries } from '@/store/credentialsBridge'
 import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS } from '@/lib/settings/defaults'
-import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults'
+import { DEFAULT_ALGORITHM_SELECTION, type AlgorithmCategory } from '../../shared/sshAlgorithmDefaults'
 import {
   SETTINGS_SCHEMA, SETTINGS_TABS, SETTINGS_TAB_SECTION_IDS,
 } from '@/lib/settings/schema'
@@ -19,7 +19,6 @@ import {
 import { useSessionsImport } from '@/hooks/useSessionsImport'
 import { useSettingsHoverTip } from '@/hooks/useSettingsHoverTip'
 import SettingsGenericSection from './settings/SettingsGenericSection'
-import type { AlgorithmCategory } from '@/lib/settings/algorithmCategory'
 import type { SettingsDialogProps } from '@/types/components'
 import type { AppSettings, AppTheme, HighlightRule } from '@/types/settings'
 import type { SettingsActionKey, SettingsGenericSectionDef, SettingsTabKey } from '@/types/settingsUi'
@@ -202,11 +201,11 @@ function SettingsDialogContent({
   }
 
   /** 重置算法偏好设置，将表单中的算法偏好设置恢复为默认值 */
-  const resetAlgorithmPreferences = () => set('algorithmPreferences', DEFAULT_ALGORITHM_PREFERENCES)
+  const resetAlgorithmPreferences = () => set('algorithmPreferences', DEFAULT_ALGORITHM_SELECTION)
 
   /** 仅将某一算法类别恢复为内置默认顺序与勾选集合 */
   const resetAlgorithmSection = (type: AlgorithmCategory) => {
-    const defaults = DEFAULT_ALGORITHM_PREFERENCES[type]
+    const defaults = DEFAULT_ALGORITHM_SELECTION[type]
     if (!defaults) return
     setForm(prev => ({
       ...prev,
@@ -443,7 +442,7 @@ export default function SettingsDialog(props: SettingsDialogProps) {
   const [form, setForm] = useState<AppSettings>({
     ...props.settings,
     highlightRules: props.settings.highlightRules ? [...props.settings.highlightRules] : [],
-    algorithmPreferences: props.settings.algorithmPreferences || DEFAULT_ALGORITHM_PREFERENCES,
+    algorithmPreferences: props.settings.algorithmPreferences || DEFAULT_ALGORITHM_SELECTION,
   })
 
   return (

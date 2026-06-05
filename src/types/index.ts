@@ -4,7 +4,7 @@
  * 跨进程契约请直接引用 shared/：
  * - IPC 响应：shared/ipc.ts
  * - window.zterm API：shared/zterm-api.d.ts
- * - SSH 算法默认值：shared/sshAlgorithmDefaults.ts（类别键见 src/lib/settings/algorithmCategory.ts）
+ * - SSH 算法默认值：shared/sshAlgorithmDefaults.ts
  *
  * 全局环境扩展（无需 import）：global.d.ts、vite-env.d.ts、zterm.ts
  */

@@ -2,7 +2,7 @@ import type { ChangeEvent, RefObject } from 'react'
 import SettingsSettingItem from './SettingsSettingItem'
 import SettingsAlgorithmSection from './SettingsAlgorithmSection'
 import SettingsHighlightSection from './SettingsHighlightSection'
-import type { AlgorithmCategory } from '@/lib/settings/algorithmCategory'
+import type { AlgorithmCategory } from '../../../shared/sshAlgorithmDefaults'
 import type { AppSettings, HighlightRule } from '@/types/settings'
 import type {
   SettingsActionKey,

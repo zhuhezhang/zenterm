@@ -1,15 +1,18 @@
-import type { AlgorithmCategory } from './algorithmCategory'
-import type { AlgorithmPreferences } from '../../../shared/sshAlgorithmDefaults'
+import {
+  DEFAULT_ALGORITHM_SELECTION,
+  SSH_ALGORITHM_OPTION_POOL,
+  type AlgorithmCategory,
+  type AlgorithmPreferences,
+} from '../../../shared/sshAlgorithmDefaults'
 import type { SettingsImportWarning } from '../../types/import'
 import type { AppSettings, HighlightRule } from '../../types/settings'
-import { DEFAULT_ALGORITHM_PREFERENCES } from '../../../shared/sshAlgorithmDefaults'
-import { SSH_ALGORITHM_OPTION_POOL } from './sshAlgorithmOptions'
 import { resolveEffectiveUiLanguage } from '../resolveUiLanguage'
-import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS, TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX } from './defaults'
+import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS, TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX, SSH_KEEPALIVE_INTERVAL_MIN, SSH_KEEPALIVE_INTERVAL_MAX } from './defaults'
 import { resolveHighlightRuleId, resolveHighlightRuleName } from './highlightRules'
 import { pushSettingsImportWarning } from './importWarnings'
 import {
   clampSidebarWidthPx, clampTerminalScrollback, normalizeImportedLogPath, normalizeLoggingMode,
+  clampSshKeepaliveInterval,
 } from './normalize'
 
 /**
@@ -34,7 +37,7 @@ function cloneCurrentSettings(current: Partial<AppSettings>): AppSettings {
       ? base.highlightRules.map((r) => ({ ...r }))
       : DEFAULT_SETTINGS.highlightRules.map((r) => ({ ...r })),
     algorithmPreferences: {
-      ...DEFAULT_ALGORITHM_PREFERENCES,
+      ...DEFAULT_ALGORITHM_SELECTION,
       ...(isPlainObject(base.algorithmPreferences) ? base.algorithmPreferences : {}),
     },
   }
@@ -198,7 +201,7 @@ function normalizeAlgorithmPreferences(
   warnings: SettingsImportWarning[],
 ): AlgorithmPreferences {
   const base = {
-    ...DEFAULT_ALGORITHM_PREFERENCES,
+    ...DEFAULT_ALGORITHM_SELECTION,
     ...(isPlainObject(current) ? current : {}),
   }
   if (!isPlainObject(raw)) return base
@@ -301,6 +304,19 @@ export async function sanitizeImportedSettings(
       })
     }
   }
+  if ('sshKeepaliveInterval' in stripped) {
+    const rawVal = stripped.sshKeepaliveInterval
+    const next = clampSshKeepaliveInterval(rawVal, current.sshKeepaliveInterval)
+    out.sshKeepaliveInterval = next
+    const n = Math.floor(Number(rawVal))
+    if (!Number.isFinite(n) || n < SSH_KEEPALIVE_INTERVAL_MIN || n > SSH_KEEPALIVE_INTERVAL_MAX) {
+      pushSettingsImportWarning(warnings, 'valueClamped', {
+        field: 'sshKeepaliveInterval',
+        value: String(rawVal),
+        result: next,
+      })
+    }
+  }
   if ('loggingMode' in stripped) {
     const v = String(stripped.loggingMode ?? '').trim().toLowerCase()
     if (!LOGGING_MODE_SET.has(v)) {
@@ -362,7 +378,7 @@ export async function sanitizeImportedSettings(
   if ('algorithmPreferences' in stripped) {
     if (!isPlainObject(stripped.algorithmPreferences)) {
       out.algorithmPreferences = {
-        ...DEFAULT_ALGORITHM_PREFERENCES,
+        ...DEFAULT_ALGORITHM_SELECTION,
         ...(isPlainObject(current.algorithmPreferences) ? current.algorithmPreferences : {}),
       }
       pushSettingsImportWarning(warnings, 'algorithmPreferencesNotObject')

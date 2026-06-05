@@ -59,6 +59,8 @@ export interface SshConnectConfig {
   backspaceMode?: string
   /** 算法 */
   algorithms?: Partial<AlgorithmPreferences>
+  /** SSH keepalive 间隔（秒，0 = 关闭） */
+  sshKeepaliveInterval?: number
 }
 
 /** Telnet 连接配置 */

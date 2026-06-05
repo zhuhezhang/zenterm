@@ -47,7 +47,9 @@ function TerminalPanel({
     stem: null,
   })
   const disconnectedRef = useRef(false)
+  const sessionRef = useRef(session)
   const settingsRef = useRef<AppSettings>(settings)
+  useEffect(() => { sessionRef.current = session }, [session])
   useEffect(() => { settingsRef.current = settings }, [settings])
 
   useEffect(() => {  // 组件初次挂载时：创建终端实例、连接会话，并设置相关事件监听器；组件卸载时：调用 cleanupRef 中的函数进行清理
@@ -61,7 +63,7 @@ function TerminalPanel({
     fitAddonRef.current = fitAddon
 
     let cancelled = false
-    connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, () => cancelled, logFileRef, settingsRef)
+    connectSession(term, fitAddon, session, sessionRef, onUpdate, cleanupRef, disconnectedRef, () => cancelled, logFileRef, settingsRef)
 
     const logOnResize = term.onResize(() => {
       if (normalizeLoggingMode(settingsRef.current?.loggingMode) === 'buffer') {
@@ -158,7 +160,7 @@ function TerminalPanel({
         setupLogging(session, settingsRef.current, logFileRef, logFileStemStateRef, settingsRef)  // 重连：复用本标签页首次连接时的日志文件
         logFileRef.current?.setTerminal?.(term)
         writelnWithLog(term, logFileRef, `\r\x1b[33m${translateRender(resolveEffectiveUiLanguage(settings?.uiLanguage), 'terminal.reconnecting')}\x1b[0m`)
-        connectSession(term, fitAddon, session, onUpdate, cleanupRef, disconnectedRef, () => false, logFileRef, settingsRef)
+        connectSession(term, fitAddon, sessionRef.current, sessionRef, onUpdate, cleanupRef, disconnectedRef, () => false, logFileRef, settingsRef)
       }
     })
     return () => d.dispose()

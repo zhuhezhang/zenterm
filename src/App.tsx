@@ -102,6 +102,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
     registerTerminalClearScreen,
     handleClearTabScreen,
     handleSaveTabOutput,
+    handleSetBackspaceMode,
   } = useSession()
 
   const [appThemePreview, setAppThemePreview] = useState<AppTheme | null>(null)
@@ -115,6 +116,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
     highlightRules: settings.highlightRules,
     uiLanguage: settings.uiLanguage,
     algorithmPreferences: settings.algorithmPreferences,
+    sshKeepaliveInterval: settings.sshKeepaliveInterval,
   }), [
     settings.loggingMode,
     settings.logPath,
@@ -123,6 +125,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
     settings.highlightRules,
     settings.uiLanguage,
     settings.algorithmPreferences,
+    settings.sshKeepaliveInterval,
   ])
 
   useEffect(() => {  // 监听 UI 语言变化，更新 document.documentElement.lang
@@ -182,6 +185,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
             onReorder={handleTabReorder}
             onSaveOutput={handleSaveTabOutput}
             onClearScreen={handleClearTabScreen}
+            onSetBackspaceMode={handleSetBackspaceMode}
           />
           <div className="content-area">
             <div className="terminal-area">

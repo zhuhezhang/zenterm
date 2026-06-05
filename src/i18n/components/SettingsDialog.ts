@@ -15,6 +15,7 @@ export const SETTINGS = {
       "confirm": "操作确认",
       "terminal": "终端行为",
       "logging": "日志",
+      "ssh": "SSH 连接",
       "algorithm": "SSH/SFTP 算法",
       "highlight": "终端输出高亮",
       "credentials": "凭据存储",
@@ -49,6 +50,10 @@ export const SETTINGS = {
       "terminalScrollback": {
         "label": "视口外滚动历史（行）",
         "desc": "限制「已滚出屏幕上方」仍保留的行数，不包含当前窗口里可见的那些行（可见行数由窗口高度决定）。向上滚动能浏览的总行数约为「本数值 + 终端高度行数」。越大越占内存。保存后生效"
+      },
+      "sshKeepaliveInterval": {
+        "label": "SSH keepalive 间隔（秒）",
+        "desc": "0 表示关闭（默认，与 PuTTY/OpenSSH 一致）。定期发送 SSH 层探测包，可减轻 NAT/防火墙因 TCP 空闲而断线。华三等部分老旧设备可能无法正确处理 keepalive，会出现约间隔秒数后断连，此类设备请保持 0。保存后对新建立的 SSH/SFTP 连接生效"
       },
       "loggingMode": {
         "label": "终端 I/O 日志",
@@ -228,6 +233,7 @@ export const SETTINGS = {
       "confirm": "Confirmations",
       "terminal": "Terminal behavior",
       "logging": "Logging",
+      "ssh": "SSH connection",
       "algorithm": "SSH/SFTP algorithms",
       "highlight": "Terminal highlighting",
       "credentials": "Credential storage",
@@ -262,6 +268,10 @@ export const SETTINGS = {
       "terminalScrollback": {
         "label": "Scrollback (lines above viewport)",
         "desc": "Rows kept after they scroll off the top—not the on-screen rows (those depend on window height). Total lines you can scroll through is about this value plus the terminal row count. Higher uses more RAM. Takes effect after you save"
+      },
+      "sshKeepaliveInterval": {
+        "label": "SSH keepalive interval (seconds)",
+        "desc": "0 = off (default, same as PuTTY/OpenSSH). Sends periodic SSH-level probes to reduce NAT/firewall idle TCP drops. Some legacy gear (e.g. old H3C) mishandle keepalive and may disconnect after about this interval—leave at 0 for those devices. Applies to new SSH/SFTP connections after you save"
       },
       "loggingMode": {
         "label": "Terminal I/O logging",

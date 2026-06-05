@@ -1,4 +1,4 @@
-import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults'
+import { DEFAULT_ALGORITHM_SELECTION } from '../../shared/sshAlgorithmDefaults'
 import type { AppSettings } from '../types/settings'
 import type { TranslateFn } from '../types/i18n'
 import type { SettingsImportWarning } from '../types/import'
@@ -9,7 +9,7 @@ import {
  DEFAULT_SETTINGS,
 } from '../lib/settings/defaults'
 import {
-  clampSidebarWidthPx, clampTerminalScrollback, normalizeLoggingMode,
+  clampSidebarWidthPx, clampTerminalScrollback, normalizeLoggingMode, clampSshKeepaliveInterval,
 } from '../lib/settings/normalize'
 import { ipcPathFromResponse } from '../lib/ipc/ipcResponse'
 
@@ -85,12 +85,13 @@ export function loadSettings(): AppSettings {
     const saved = raw ? JSON.parse(raw) : {}
     if (saved.algorithmPreferences && typeof saved.algorithmPreferences === 'object') {
       saved.algorithmPreferences = {
-        ...DEFAULT_ALGORITHM_PREFERENCES,
+        ...DEFAULT_ALGORITHM_SELECTION,
         ...saved.algorithmPreferences,
       }
     }
     let merged = { ...DEFAULT_SETTINGS, ...saved }
     merged.terminalScrollback = clampTerminalScrollback(merged.terminalScrollback)
+    merged.sshKeepaliveInterval = clampSshKeepaliveInterval(merged.sshKeepaliveInterval)
     merged.loggingMode = normalizeLoggingMode(merged.loggingMode)
     if (!('logPath' in saved)) {
       const def = getDefaultLogPath()

@@ -1,7 +1,8 @@
+import type { AppSettings, LoggingMode } from '../../types/settings'
 import { isIpcFailure } from '../ipc/ipcResponse'
-import type { LoggingMode } from '../../types/settings'
 import {
   DEFAULT_SIDEBAR_WIDTH, TERMINAL_SCROLLBACK_DEFAULT, TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX,
+  SSH_KEEPALIVE_INTERVAL_DEFAULT, SSH_KEEPALIVE_INTERVAL_MIN, SSH_KEEPALIVE_INTERVAL_MAX,
 } from './defaults'
 
 /**
@@ -37,6 +38,29 @@ export function clampTerminalScrollback(
   if (n < TERMINAL_SCROLLBACK_MIN) return TERMINAL_SCROLLBACK_MIN
   if (n > TERMINAL_SCROLLBACK_MAX) return TERMINAL_SCROLLBACK_MAX
   return n
+}
+
+/**
+ * SSH keepalive 间隔（秒）：0 表示关闭；非法值回退 fallback
+ * @param raw 用户输入的间隔秒数
+ */
+export function clampSshKeepaliveInterval(
+  raw: unknown,
+  fallback: number = SSH_KEEPALIVE_INTERVAL_DEFAULT,
+) {
+  const n = Math.floor(Number(raw))
+  if (!Number.isFinite(n)) return fallback
+  if (n < SSH_KEEPALIVE_INTERVAL_MIN) return SSH_KEEPALIVE_INTERVAL_MIN
+  if (n > SSH_KEEPALIVE_INTERVAL_MAX) return SSH_KEEPALIVE_INTERVAL_MAX
+  return n
+}
+
+/** 设置界面数字项：按字段选用对应 clamp（避免全部误用 terminalScrollback 上限） */
+export function clampSettingsNumberField(key: keyof AppSettings, raw: unknown): number {
+  if (key === 'terminalScrollback') return clampTerminalScrollback(raw)
+  if (key === 'sshKeepaliveInterval') return clampSshKeepaliveInterval(raw)
+  const n = Math.floor(Number(raw))
+  return Number.isFinite(n) ? n : 0
 }
 
 /**

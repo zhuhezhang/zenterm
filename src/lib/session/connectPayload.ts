@@ -4,12 +4,13 @@ import type {
   SshConnectConfig,
   TelnetConnectConfig,
 } from '../../../shared/zterm-api'
+import type { AppSettings } from '../../types/settings'
 import type { ActiveSshSession, ActiveTelnetSession, ActiveSerialSession } from '../../types/session'
 
 /** 提取 SSH / SFTP 连接所需字段 */
 export function pickSshConnectConfig(
   session: ActiveSshSession,
-  algorithms?: Partial<AlgorithmPreferences>,
+  sshSettings?: Pick<AppSettings, 'algorithmPreferences' | 'sshKeepaliveInterval'>,
 ): SshConnectConfig {
   return {
     host: session.host,
@@ -22,7 +23,8 @@ export function pickSshConnectConfig(
     enableSftp: session.enableSftp,
     encoding: session.encoding,
     backspaceMode: session.backspaceMode,
-    algorithms,
+    algorithms: sshSettings?.algorithmPreferences,
+    sshKeepaliveInterval: sshSettings?.sshKeepaliveInterval,
   }
 }
 

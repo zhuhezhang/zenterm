@@ -2,7 +2,7 @@ import type { CSSProperties, DragEvent, MouseEvent, RefObject } from 'react'
 import type { AppTheme, AppSettings } from './settings'
 import type {
   ActiveSession, SavedSession, SessionConfig, SessionTreeNode as TreeNode, 
-  SessionType, TerminalClearFn, TerminalTextGetter
+  SessionType, TerminalClearFn, TerminalTextGetter, BackspaceMode,
 } from './session'
 
 /** 连接对话框的属性 */
@@ -41,6 +41,8 @@ export interface TabBarProps {
   onSaveOutput: (sessionId: string) => void | Promise<void>
   /** 清屏的回调函数，参数为标签页 ID */
   onClearScreen?: (sessionId: string) => void
+  /** 切换退格键模式的回调函数，参数为标签页 ID 与模式 */
+  onSetBackspaceMode?: (sessionId: string, mode: BackspaceMode) => void
 }
 
 /** 终端面板的属性 */

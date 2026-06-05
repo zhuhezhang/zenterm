@@ -1,6 +1,9 @@
 import { useState } from 'react'
-import { SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm } from '@/lib/settings/sshAlgorithmOptions'
-import type { AlgorithmCategory } from '@/lib/settings/algorithmCategory'
+import {
+  SSH_ALGORITHM_OPTION_POOL,
+  isWeakSshAlgorithm,
+  type AlgorithmCategory,
+} from '../../../shared/sshAlgorithmDefaults'
 import type { AppSettings } from '@/types/settings'
 import type { SettingsAlgorithmSectionDef } from '@/types/settingsUi'
 import type { TranslateFn } from '@/types/i18n'

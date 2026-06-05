@@ -1,4 +1,4 @@
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
@@ -32,7 +32,7 @@ import type { SessionLogHandle } from '../../types/terminal'
  */
 export function writelnWithLog(
   term: Terminal,
-  logRef: MutableRefObject<SessionLogHandle | null>,
+  logRef: RefObject<SessionLogHandle | null>,
   lineForWriteln: string,
 ): void {
   term.writeln(lineForWriteln)
@@ -86,7 +86,7 @@ export function createTerminal(themeMode: 'dark' | 'light', scrollback: number):
  */
 export function applyTerminalSettings(
   term: Terminal,
-  settingsRef: MutableRefObject<AppSettings>,
+  settingsRef: RefObject<AppSettings>,
 ): () => void {
   const selDispose = term.onSelectionChange(() => {  // 监听选中时复制：通过 settingsRef 实时读取，保证设置变化后立即生效
     const interact = settingsRef.current?.terminalInteract ?? true  // ?? 是空值合并运算符，表示如果 terminalInteract 不为 null 或 undefined 则使用它，否则默认 true
@@ -143,12 +143,13 @@ export async function connectSession(
   term: Terminal,
   fitAddon: FitAddon,
   session: ActiveSession,
+  sessionRef: RefObject<ActiveSession>,
   onUpdate: (updates: Partial<ActiveSession>) => void,
-  cleanupRef: MutableRefObject<Array<() => void>>,
-  disconnectedRef: MutableRefObject<boolean>,
+  cleanupRef: RefObject<Array<() => void>>,
+  disconnectedRef: RefObject<boolean>,
   isCancelled: () => boolean,
-  logFileRef: MutableRefObject<SessionLogHandle | null>,
-  settingsRef: MutableRefObject<AppSettings>,
+  logFileRef: RefObject<SessionLogHandle | null>,
+  settingsRef: RefObject<AppSettings>,
 ): Promise<void> {
   const { id, type } = session
   const terminalEncoding = sessionTerminalEncoding(session)
@@ -234,7 +235,7 @@ export async function connectSession(
     writeInfo(translateRender(L(), 'terminal.sshConnecting', { host: session.host ?? '', port: session.port ?? 22 }))
     try {
       const zterm = getZterm()
-      const connectPayload = pickSshConnectConfig(session, settingsRef.current?.algorithmPreferences)
+      const connectPayload = pickSshConnectConfig(session, settingsRef.current)
       const res = await zterm.ssh.connect(id, connectPayload)
       if (isCancelled?.()) return
       assertIpcSuccess(res)
@@ -246,7 +247,7 @@ export async function connectSession(
       const r1 = zterm.ssh.onData(id, recv)
       const r2 = zterm.ssh.onClose(id, () => onDisconnect('terminal.closed'))
       const d1 = term.onData((data) => {
-        zterm.ssh.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
+        zterm.ssh.sendData(id, normalizeInputData(type, data, sessionRef.current), terminalEncoding)
       })
       const d2 = term.onResize(({ cols, rows }) => zterm.ssh.resize(id, cols, rows))
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => d2.dispose(), () => zterm.ssh.disconnect(id))
@@ -254,7 +255,7 @@ export async function connectSession(
       // SFTP 与 SSH 并行：失败只提示，不阻断 shell
       if (session.enableSftp) {
         try {
-          const sftpPayload = pickSshConnectConfig(session, settingsRef.current?.algorithmPreferences)
+          const sftpPayload = pickSshConnectConfig(session, settingsRef.current)
           const sr = await zterm.sftp.connect(id + '-sftp', sftpPayload)
           if (isCancelled?.()) return
           if (sr.success) {
@@ -286,7 +287,7 @@ export async function connectSession(
       const r1 = zterm.telnet.onData(id, recv)
       const r2 = zterm.telnet.onClose(id, () => onDisconnect('terminal.closed'))
       const d1 = term.onData((data) => {
-        zterm.telnet.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
+        zterm.telnet.sendData(id, normalizeInputData(type, data, sessionRef.current), terminalEncoding)
       })
       cleanupRef.current.push(r1, r2, () => d1.dispose(), () => zterm.telnet.disconnect(id))
     } catch (e) {
@@ -306,7 +307,7 @@ export async function connectSession(
       const r1 = zterm.serial.onData(id, recv)
       const r2 = zterm.serial.onClose(id, () => onDisconnect('terminal.portClosed'))
       const d1 = term.onData((data) => {
-        zterm.serial.sendData(id, normalizeInputData(type, data, session), terminalEncoding)
+        zterm.serial.sendData(id, normalizeInputData(type, data, sessionRef.current), terminalEncoding)
       })
       cleanupRef.current.push(() => {  // 断开前刷掉串口高亮缓冲
         if (serialHighlightIdleTimer != null) {
@@ -333,7 +334,7 @@ export async function connectSession(
 export function mountTerminal(
   container: HTMLDivElement,
   appThemeEffective: 'dark' | 'light',
-  settingsRef: MutableRefObject<AppSettings>,
+  settingsRef: RefObject<AppSettings>,
 ): { term: Terminal; fitAddon: FitAddon; disposeSettings: () => void } {
   const term = createTerminal(appThemeEffective, clampTerminalScrollback(settingsRef.current?.terminalScrollback))
   const fitAddon = new FitAddon()

@@ -5,6 +5,8 @@ import ConnectionTypeIcon from './common'
 import type { TabBarProps } from '../types/components'
 import { sessionEndpoint } from '../types/session'
 import type { TabContextMenu } from '../types/tabBar'
+import type { BackspaceMode } from '../types/session'
+import { normalizeBackspaceMode } from '../lib/session/utils'
 import '../styles/tabbar.css'
 
 /** 状态点图标映射 */
@@ -35,6 +37,7 @@ export default memo(function TabBar({
   onReorder,
   onSaveOutput,
   onClearScreen,
+  onSetBackspaceMode,
 }: TabBarProps) {
   const { t } = useI18n()
   const [ctxMenu, setCtxMenu] = useState<TabContextMenu | null>(null)
@@ -89,6 +92,21 @@ export default memo(function TabBar({
   const closeRight = (idx: number) => { sessions.slice(idx + 1).forEach(s => onClose(s.id)); closeCtx() }
   /** 关闭全部标签页 */
   const closeAll    = () => { sessions.forEach(s => onClose(s.id)); closeCtx() }
+
+  const BACKSPACE_MODES: BackspaceMode[] = ['auto', 'del', 'bs']
+  const backspaceModeLabels: Record<BackspaceMode, string> = {
+    auto: t('settings.options.backspaceAuto'),
+    del: t('settings.options.backspaceDel'),
+    bs: t('settings.options.backspaceBs'),
+  }
+
+  const setBackspaceMode = (sessionId: string, mode: BackspaceMode) => {
+    onSetBackspaceMode?.(sessionId, mode)
+    closeCtx()
+  }
+
+  const ctxSession = ctxMenu ? sessions.find(s => s.id === ctxMenu.id) : null
+  const ctxBackspaceMode = normalizeBackspaceMode(ctxSession?.backspaceMode) ?? 'auto'
 
   /**
    * 拖拽事件处理函数：开始拖拽
@@ -176,6 +194,22 @@ export default memo(function TabBar({
           <div className="tab-ctx-divider" />
           <button onClick={() => { onSaveOutput?.(ctxMenu.id); closeCtx() }}>{t('tabbar.saveOutput')}</button>
           <button onClick={() => { onClearScreen?.(ctxMenu.id); closeCtx() }}>{t('tabbar.clearScreen')}</button>
+          {onSetBackspaceMode && (
+            <>
+              <div className="tab-ctx-divider" />
+              <div className="tab-ctx-label">{t('connect.backspaceMode')}</div>
+              {BACKSPACE_MODES.map(mode => (
+                <button
+                  key={mode}
+                  className={mode === ctxBackspaceMode ? 'checked' : ''}
+                  onClick={() => setBackspaceMode(ctxMenu.id, mode)}
+                >
+                  <span className="tab-ctx-check">{mode === ctxBackspaceMode ? '✓' : ''}</span>
+                  {backspaceModeLabels[mode]}
+                </button>
+              ))}
+            </>
+          )}
           <div className="tab-ctx-divider" />
           <button className="danger" onClick={closeAll}>{t('tabbar.closeAll')}</button>
         </div>

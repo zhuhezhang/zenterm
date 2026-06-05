@@ -1,6 +1,12 @@
 import type { AlgorithmPreferences } from '../../shared/sshAlgorithmDefaults.js'
-import { DEFAULT_ALGORITHM_PREFERENCES } from '../../shared/sshAlgorithmDefaults.js'
+import { DEFAULT_ALGORITHM_PREFERENCES, DEFAULT_ALGORITHM_SELECTION } from '../../shared/sshAlgorithmDefaults.js'
 import type { SshConnectConfig } from '../../shared/zterm-api.js'
+
+function resolveKeepaliveIntervalMs(raw: unknown): number {
+  const sec = Math.floor(Number(raw))
+  if (!Number.isFinite(sec) || sec <= 0) return 0
+  return sec * 1000
+}
 
 /**
  * 构建连接配置，用于 SSH 连接
@@ -17,7 +23,7 @@ export function buildSshConnectConfig(
     port: cfg.port || 22,
     username: cfg.username,
     readyTimeout: 60000,
-    keepaliveInterval: 10000,
+    keepaliveInterval: resolveKeepaliveIntervalMs(cfg.sshKeepaliveInterval),
     hostVerifier,
   }
 
@@ -35,7 +41,7 @@ export function buildSshConnectConfig(
     }
   }
   if (!connectConfig.algorithms) {
-    connectConfig.algorithms = DEFAULT_ALGORITHM_PREFERENCES
+    connectConfig.algorithms = DEFAULT_ALGORITHM_SELECTION
   }
 
   if (cfg.authType === 'password') {
