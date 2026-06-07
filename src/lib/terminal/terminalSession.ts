@@ -2,10 +2,8 @@ import type { RefObject } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import {
-  decodeIncomingTerminalWire,
-  sessionTerminalEncoding,
-} from '../terminalEncodingService'
+import { decodeIncomingTerminalWire } from '../terminalEncodingService'
+import { normalizeTerminalEncoding } from '../../../shared/terminalEncoding'
 import { clampTerminalScrollback } from '../settings/normalize'
 import { translateRender } from '../../i18n/translateRender'
 import { resolveEffectiveUiLanguage } from '../resolveUiLanguage'
@@ -13,16 +11,12 @@ import { assertIpcSuccess } from '../ipc/ipcError'
 import { getZterm } from '@/lib/ipc/getZterm'
 import { formatThrownIpcError } from '@/lib/ipc/formatIpcError'
 import { getXtermTheme } from '../../theme/appTheme'
-import {
-  pickSerialConnectConfig,
-  pickSshConnectConfig,
-  pickTelnetConnectConfig,
-} from '../session/connectPayload'
+import { pickSerialConnectConfig, pickSshConnectConfig, pickTelnetConnectConfig } from '../session/connectPayload'
 import { applyHighlightRules, nextLineBreakEndIndex } from './terminalHighlight'
 import { exportTerminalBuffer, setupLogging } from './terminalLogging'
 import type { ActiveSession, SessionType } from '../../types/session'
 import type { AppSettings } from '../../types/settings'
-import type { SessionLogHandle } from '../../types/terminal'
+import type { SessionLogHandle } from '../../types/session'
 
 /**
  * 写入一行终端内容并按当前日志模式记入会话日志
@@ -128,6 +122,50 @@ export function applyTerminalSettings(
 }
 
 /**
+ * 断开主进程侧会话 transport（SSH/Telnet/Serial，及可选 SFTP）。
+ * 标签页关闭或连接中途取消时调用；重复 disconnect 安全
+ * @param session 会话对象，包含会话 ID、类型和可选 SFTP 配置
+ * @param options 可选参数，包含是否包含 SFTP 配置
+ */
+export function teardownSessionTransport(
+  session: { id: string; type: string; enableSftp?: boolean },
+  options?: { includeSftp?: boolean },
+): void {
+  const zterm = getZterm()
+  const { id, type } = session
+  const includeSftp = options?.includeSftp ?? !!session.enableSftp
+  try {
+    if (type === 'ssh') {
+      if (includeSftp) void zterm.sftp.disconnect(`${id}-sftp`)
+      void zterm.ssh.disconnect(id)
+    } else if (type === 'telnet') {
+      void zterm.telnet.disconnect(id)
+    } else if (type === 'serial') {
+      void zterm.serial.disconnect(id)
+    }
+  } catch {
+    /* 主进程会话可能尚未建立或已断开 */
+  }
+}
+
+/**
+ * 连接已取消：断开可能已建立的 transport 并跳过后续 UI/监听注册
+ * @param session 会话对象，包含会话 ID、类型和可选 SFTP 配置
+ * @param isCancelled 取消函数，组件卸载时返回 true，连接过程中定期调用以判断是否应放弃后续操作
+ * @param options 可选参数，包含是否包含 SFTP 配置
+ * @returns 是否已取消，如果已取消则断开 transport 并返回 true
+ */
+function abortIfCancelled(
+  session: ActiveSession,
+  isCancelled: () => boolean,
+  options?: { includeSftp?: boolean },
+): boolean {
+  if (!isCancelled()) return false
+  teardownSessionTransport(session, options)
+  return true
+}
+
+/**
  * 连接会话：根据会话类型（SSH/Telnet/Serial）调用对应的连接函数，设置数据接收和连接关闭的处理函数，并将清理函数添加到 cleanupRef 以便组件卸载时调用
  * @param term xterm 终端实例
  * @param fitAddon FitAddon 实例，用于调整终端尺寸
@@ -152,7 +190,7 @@ export async function connectSession(
   settingsRef: RefObject<AppSettings>,
 ): Promise<void> {
   const { id, type } = session
-  const terminalEncoding = sessionTerminalEncoding(session)
+  const terminalEncoding = normalizeTerminalEncoding(session?.encoding)
   const L = () => resolveEffectiveUiLanguage(settingsRef.current?.uiLanguage)
   const writeInfo = (m: string) => writelnWithLog(term, logFileRef, `\r\x1b[33m${m}\x1b[0m`)
   const writeError = (m: string) => writelnWithLog(term, logFileRef, `\r\x1b[31m${m}\x1b[0m`)
@@ -237,7 +275,7 @@ export async function connectSession(
       const zterm = getZterm()
       const connectPayload = pickSshConnectConfig(session, settingsRef.current)
       const res = await zterm.ssh.connect(id, connectPayload)
-      if (isCancelled?.()) return
+      if (abortIfCancelled(session, isCancelled, { includeSftp: false })) return
       assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
@@ -257,7 +295,7 @@ export async function connectSession(
         try {
           const sftpPayload = pickSshConnectConfig(session, settingsRef.current)
           const sr = await zterm.sftp.connect(id + '-sftp', sftpPayload)
-          if (isCancelled?.()) return
+          if (abortIfCancelled(session, isCancelled, { includeSftp: true })) return
           if (sr.success) {
             onUpdate({ status: 'connected', sftpReady: true })
             cleanupRef.current.push(() => zterm.sftp.disconnect(id + '-sftp'))
@@ -274,13 +312,17 @@ export async function connectSession(
       if (isCancelled?.()) return
       writeError(terminalErr(e))
       onUpdate({ status: 'error' })
+    } finally {
+      try {
+        await getZterm().others.clearSessionHostKeyCache()
+      } catch { /* 清理临时指纹缓存，失败不影响连接结果 */ }
     }
   } else if (session.type === 'telnet') {
     writeInfo(translateRender(L(), 'terminal.telnetConnecting', { host: session.host ?? '', port: session.port ?? 23 }))
     try {
       const zterm = getZterm()
       const res = await zterm.telnet.connect(id, pickTelnetConnectConfig(session))
-      if (isCancelled?.()) return
+      if (abortIfCancelled(session, isCancelled)) return
       assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
@@ -300,7 +342,7 @@ export async function connectSession(
     try {
       const zterm = getZterm()
       const res = await zterm.serial.connect(id, pickSerialConnectConfig(session))
-      if (isCancelled?.()) return
+      if (abortIfCancelled(session, isCancelled)) return
       assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.serialOpened'))
       onUpdate({ status: 'connected' })

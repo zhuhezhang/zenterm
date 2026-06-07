@@ -10,8 +10,8 @@ export const SETTINGS_TABS = [
 /** 各标签内区块顺序（与 SETTINGS_SCHEMA 中 section 字段对应） */
 export const SETTINGS_TAB_SECTION_IDS = {
   'general': ['confirm', 'terminal', 'logging', 'appearance'],
-  'ssh-terminal': ['ssh', 'algorithm', 'highlight'],
-  'data-security': ['credentials', 'sessions', 'settingsMgmt'],
+  'ssh-terminal': ['algorithm', 'ssh', 'highlight'],
+  'data-security': ['sessions', 'settingsMgmt', 'credentials'],
 }
 
 /** 设置界面区块与表单项定义（文案由 i18n 解析） */
@@ -76,6 +76,15 @@ export const SETTINGS_SCHEMA = [
     ],
   },
   {
+    section: 'algorithm',
+    kind: 'algorithm',
+    header: {
+      labelKey: 'settings.algoTitle',
+      descKey: 'settings.algoIntro',
+      actions: [{ action: 'resetAlgorithmPreferences', buttonKey: 'settings.resetDefault' }],
+    },
+  },
+  {
     section: 'ssh',
     items: [
       {
@@ -88,15 +97,6 @@ export const SETTINGS_SCHEMA = [
     ],
   },
   {
-    section: 'algorithm',
-    kind: 'algorithm',
-    header: {
-      labelKey: 'settings.algoTitle',
-      descKey: 'settings.algoIntro',
-      actions: [{ action: 'resetAlgorithmPreferences', buttonKey: 'settings.resetDefault' }],
-    },
-  },
-  {
     section: 'highlight',
     kind: 'highlight',
     header: {
@@ -107,20 +107,6 @@ export const SETTINGS_SCHEMA = [
         { action: 'addHighlightRule', buttonKey: 'settings.addRule' },
       ],
     },
-  },
-  {
-    section: 'credentials',
-    items: [
-      { key: 'saveSecretsToVault', type: 'boolean' },
-      {
-        type: 'action',
-        action: 'clearVault',
-        labelKey: 'settings.clearSecrets',
-        descKey: 'settings.clearSecretsDesc',
-        buttonKey: 'settings.clear',
-        danger: true,
-      },
-    ],
   },
   {
     section: 'sessions',
@@ -174,6 +160,28 @@ export const SETTINGS_SCHEMA = [
         labelKey: 'settings.restoreDefaults',
         descKey: 'settings.restoreDefaultsDesc',
         buttonKey: 'settings.restoreDefaultBtn',
+        danger: true,
+      },
+    ],
+  },
+  {
+    section: 'credentials',
+    items: [
+      { key: 'saveSecretsToVault', type: 'boolean' },
+      {
+        type: 'action',
+        action: 'clearVault',
+        labelKey: 'settings.clearSecrets',
+        descKey: 'settings.clearSecretsDesc',
+        buttonKey: 'settings.clear',
+        danger: true,
+      },
+      {
+        type: 'action',
+        action: 'clearKnownHosts',
+        labelKey: 'settings.clearKnownHosts',
+        descKey: 'settings.clearKnownHostsDesc',
+        buttonKey: 'settings.clear',
         danger: true,
       },
     ],

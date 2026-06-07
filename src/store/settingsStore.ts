@@ -1,17 +1,15 @@
 import { DEFAULT_ALGORITHM_SELECTION } from '../../shared/sshAlgorithmDefaults'
 import type { AppSettings } from '../types/settings'
-import type { TranslateFn } from '../types/i18n'
-import type { SettingsImportWarning } from '../types/import'
+import type { TranslateFn } from '../types/common'
+import type { SettingsImportWarning } from '../types/common'
 import { syncUiLanguageToMain } from '../lib/resolveUiLanguage'
 import { downloadJsonExport } from '../lib/import/downloadJsonExport'
 import { validateAndParseSettingsImport } from '../lib/import/parseSettingsImport'
-import {
- DEFAULT_SETTINGS,
-} from '../lib/settings/defaults'
+import { DEFAULT_SETTINGS } from '../lib/settings/defaults'
+import { ipcPathFromResponse } from '../lib/ipc/ipcResponse'
 import {
   clampSidebarWidthPx, clampTerminalScrollback, normalizeLoggingMode, clampSshKeepaliveInterval,
 } from '../lib/settings/normalize'
-import { ipcPathFromResponse } from '../lib/ipc/ipcResponse'
 
 /** 本地存储设置的键名 */
 const SETTINGS_KEY = 'zterm_settings'
@@ -23,7 +21,7 @@ let cachedDownloadsPath = ''
 
 /**
  * 拉取并缓存系统下载目录（app:getDownloadsPath）
- * @returns {Promise<string>}
+ * @returns 系统下载目录
  */
 export async function refreshDownloadsPathCache() {
   try {
@@ -35,15 +33,18 @@ export async function refreshDownloadsPathCache() {
   return cachedDownloadsPath
 }
 
-/** @returns {string} 已缓存的系统下载目录 */
+/**
+ * 获取已缓存的系统下载目录
+ * @returns 已缓存的系统下载目录
+ */
 export function getDownloadsPathCached() {
   return cachedDownloadsPath
 }
 
 /**
  * 将下载根目录拼成默认日志子目录路径
- * @param {string} base 系统下载目录
- * @returns {string}
+ * @param base 系统下载目录
+ * @returns 默认日志子目录路径
  */
 function buildDefaultLogPathFromBase(base: string) {
   if (!base || typeof base !== 'string') return ''
@@ -54,7 +55,7 @@ function buildDefaultLogPathFromBase(base: string) {
 
 /**
  * 默认日志目录：系统下载目录下的 zterm-session-log（需先 refreshDownloadsPathCache）
- * @returns {string} 默认日志目录
+ * @returns 默认日志目录
  */
 export function getDefaultLogPath() {
   return buildDefaultLogPathFromBase(cachedDownloadsPath)
@@ -62,8 +63,8 @@ export function getDefaultLogPath() {
 
 /**
  * 解析实际用于写入日志的目录：自定义路径优先，否则为默认子目录，再否则退回下载根目录
- * @param {{ logPath?: string }} [settings] 当前应用设置
- * @returns {string} 实际用于写入日志的目录
+ * @param [settings] 当前应用设置
+ * @returns 实际用于写入日志的目录
  */
 export function resolveLoggingDirectory(settings?: Pick<AppSettings, 'logPath'>) {
   try {
@@ -77,7 +78,7 @@ export function resolveLoggingDirectory(settings?: Pick<AppSettings, 'logPath'>)
 
 /**
  * 加载设置项，从 localStorage 获取并解析 JSON，如果失败则返回默认设置
- * @returns {Object} 设置项对象
+ * @returns 设置项对象
  */
 export function loadSettings(): AppSettings {
   try {
@@ -108,7 +109,7 @@ export function loadSettings(): AppSettings {
 
 /**
  * 保存设置项，将设置对象序列化为 JSON 存储到 localStorage 中
- * @param {Object} settings 要保存的设置项对象
+ * @param settings 要保存的设置项对象
  */
 export function saveSettings(settings: AppSettings): void {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)) } catch {}
@@ -117,7 +118,8 @@ export function saveSettings(settings: AppSettings): void {
 
 /**
  * 导设置项为 JSON 文件，文件名包含当前日期
- * @param {Object} settings 要导出的设置对象
+ * @param settings 要导出的设置对象
+ * @param t 翻译函数
  */
 export async function exportSettings(settings: AppSettings, t: TranslateFn): Promise<void> {
   await downloadJsonExport('settings', settings, t)
@@ -125,9 +127,9 @@ export async function exportSettings(settings: AppSettings, t: TranslateFn): Pro
 
 /**
  * 从 JSON 文件中导入设置项（校验 envelope，未知键静默剥离；非法字段保留 currentSettings）
- * @param {File} file 用户选择的 JSON 文件对象
- * @param {Object} currentSettings 导入前的当前设置
- * @returns {Promise<{ settings: Object, warnings: import('../lib/settings/importWarnings').SettingsImportWarning[] }>}
+ * @param file 用户选择的 JSON 文件对象
+ * @param currentSettings 导入前的当前设置
+ * @returns 导入后的设置对象和警告列表
  */
 export function importSettings(
   file: File,

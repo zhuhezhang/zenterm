@@ -1,5 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
-import type { MutableRefObject } from 'react'
+import type { RefObject } from 'react'
 import { safeFileToken } from '../../lib/safeFileName'
 import { fileTimestamp } from '../util/fileTimestamp'
 import { resolveLoggingDirectory } from '../../store/settingsStore'
@@ -7,9 +7,13 @@ import { normalizeLoggingMode } from '../settings/normalize'
 import type { ActiveSession } from '../../types/session'
 import { sessionEndpoint } from '../../types/session'
 import type { AppSettings } from '../../types/settings'
-import type { SessionLogHandle } from '../../types/terminal'
+import type { SessionLogHandle } from '../../types/session'
 
-/** 导出当前终端缓冲为纯文本（用于复制/保存） */
+/** 
+ * 导出当前终端缓冲为纯文本（用于复制/保存）
+ * @param term 终端实例
+ * @returns 终端缓冲为纯文本
+ */
 export function exportTerminalBuffer(term: Terminal | null): string {
   if (!term) return ''
   const buf = term.buffer.active
@@ -24,6 +28,8 @@ export function exportTerminalBuffer(term: Terminal | null): string {
 
 /**
  * 去掉已完整的 ANSI/OSC 等转义序列（CSI 如 [33m、[42D；OSC 至 BEL 或 ST 等）
+ * @param s 文本
+ * @returns 去掉已完整的 ANSI/OSC 等转义序列后的文本
  */
 function stripCompleteAnsiEscapes(s: string): string {
   if (!s) return ''
@@ -38,6 +44,8 @@ function stripCompleteAnsiEscapes(s: string): string {
 
 /**
  * 从串尾拆出可能未闭合的转义前缀，避免分包时把 \x1b 与 [33m 拆开误当成可见字符
+ * @param s 文本
+ * @returns 从串尾拆出可能未闭合的转义前缀后的文本
  */
 function peelIncompleteAnsiSuffix(s: string): { body: string; carry: string } {
   if (!s) return { body: '', carry: '' }
@@ -53,13 +61,20 @@ function peelIncompleteAnsiSuffix(s: string): { body: string; carry: string } {
   return { body: s, carry: '' }
 }
 
-/** 去掉其余 C0 控制符（保留 \t \n \r） */
+/**
+ * 去掉其余 C0 控制符（保留 \t \n \r）
+ * @param s 文本
+ * @returns 去掉其余 C0 控制符（保留 \t \n \r）后的文本
+ */
 function stripOtherC0Controls(s: string): string {
   return s.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
 }
 
 /**
  * 将一段终端输出转为适合写入 .log 的纯文本（可见字符 + 换行制表）
+ * @param carry 转义前缀
+ * @param chunk 终端输出
+ * @returns 将一段终端输出转为适合写入 .log 的纯文本（可见字符 + 换行制表）后的文本
  */
 function stripAnsiForLogChunk(carry: string, chunk: string): { text: string; carry: string } {
   const raw = carry + chunk
@@ -70,14 +85,18 @@ function stripAnsiForLogChunk(carry: string, chunk: string): { text: string; car
 
 /**
  * 设置会话日志：buffer = xterm 缓冲快照整文件覆盖；stream = 下行流去 ANSI 后追加。
+ * @param session 会话对象
+ * @param settings 设置
+ * @param logFileRef 日志文件引用
+ * @param logFileStemStateRef 日志文件名状态引用
  * @param _settingsRef 预留与调用方签名一致（本函数内以创建时的 logKind 为准）
  */
 export function setupLogging(
   session: ActiveSession,
   settings: AppSettings,
-  logFileRef: MutableRefObject<SessionLogHandle | null>,
-  logFileStemStateRef: MutableRefObject<{ sessionId: string | null; stem: string | null }>,
-  _settingsRef: MutableRefObject<AppSettings>,
+  logFileRef: RefObject<SessionLogHandle | null>,
+  logFileStemStateRef: RefObject<{ sessionId: string | null; stem: string | null }>,
+  _settingsRef: RefObject<AppSettings>,
 ): void {
   if (normalizeLoggingMode(settings?.loggingMode) === 'none') return
   const logDir = resolveLoggingDirectory(settings)

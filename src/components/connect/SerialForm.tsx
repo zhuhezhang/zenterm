@@ -1,14 +1,14 @@
 import type { KeyboardEvent } from 'react'
 import { useI18n } from '@/context/I18nContext'
 import { BAUD_RATES, PARITIES } from '@/lib/session/defaults'
-import type { SerialFormProps } from '@/types/connectDialog'
+import type { SerialFormProps } from '@/types/components'
 import FormRow from './FormRow'
 
-/** Serial 表单组件；visible 为 false 时不渲染。 */
+/** Serial 表单组件；visible 为 false 时不渲染 */
 export default function SerialForm({ form, set, ports, visible, onRefreshPorts, onEnter }: SerialFormProps) {
   const { t } = useI18n()
   const handleEnter = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') onEnter?.()
+    if (e.key === 'Enter') onEnter?.()  // 输入框回车时触发保存并连接
   }
   if (!visible) return null
   return (

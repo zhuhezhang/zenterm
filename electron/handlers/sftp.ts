@@ -8,6 +8,7 @@ import { sendToRenderer } from '../lib/mainWindowSend.js'
 import { ipcFail, ipcFailFromThrown, ipcOk } from '../lib/ipcResponse.js'
 import { ipcFailAsWorkerCmdResult, ipcFromWorkerCmdResult } from '../lib/workerCmdResult.js'
 import { collectResolvedRoots } from '../lib/localPathPolicy.js'
+import { prepareSshConnectConfig } from '../lib/prepareSshConnectConfig.js'
 import { assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots } from '../lib/sftpLocalPathRoots.js'
 import type { MainWindowGetter, SftpSessionState } from '../types/handlers.js'
 import type { SshConnectConfig } from '../../shared/zterm-api.js'
@@ -142,11 +143,19 @@ function setupSFTPHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
         }
       }
 
+      let workerConfig: SshConnectConfig
+      try {
+        workerConfig = prepareSshConnectConfig(config)
+      } catch (e) {
+        resolve(ipcFailFromThrown(e))
+        return
+      }
+
       try {
         worker = new Worker(workerEntry, {  // 创建子线程 Worker
           type: 'module',
           workerData: {
-            config,
+            config: workerConfig,
             allowedRoots: collectResolvedRoots(),
           },
         } as import('node:worker_threads').WorkerOptions)

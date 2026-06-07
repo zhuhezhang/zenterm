@@ -11,13 +11,13 @@ export function useDismissOnOutsideClick(
   onClose: () => void,
   menuSelector: string,
 ) {
-  useEffect(() => {
+  useEffect(() => {  // useEffect 监听菜单是否打开，如果未打开，则返回
     if (!open) return
-    const onDocMouseDown = (e: globalThis.MouseEvent) => {
+    const onDocMouseDown = (e: globalThis.MouseEvent) => {  // 监听 document 点击事件，如果点击的是菜单根元素内部，则返回
       if ((e.target as Element | null)?.closest?.(menuSelector)) return
       onClose()
     }
-    document.addEventListener('mousedown', onDocMouseDown)
-    return () => document.removeEventListener('mousedown', onDocMouseDown)
+    document.addEventListener('mousedown', onDocMouseDown)  // 监听 document 点击事件，如果点击的是菜单根元素内部，则返回
+    return () => document.removeEventListener('mousedown', onDocMouseDown)  // 卸载监听器
   }, [open, onClose, menuSelector])
 }

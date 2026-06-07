@@ -1,42 +1,28 @@
 import { useState, useRef, useEffect, Fragment, type ChangeEvent, type Dispatch, type SetStateAction } from 'react'
 import { I18nProvider, useI18n } from '@/context/I18nContext'
 import { alertIpcFailure } from '@/lib/ipc/formatIpcError'
+import { getZterm } from '@/lib/ipc/getZterm'
 import { isIpcSuccess } from '@/lib/ipc/ipcResponse'
 import { exportSessions, saveSessions } from '@/store/sessionStore'
-import { reportSettingsImportResult } from '@/lib/import/reportSettingsImport'
+import { formatSettingsImportWarnings } from '@/lib/settings/importWarnings'
 import { reportImportError } from '@/lib/import/handleImportErrors'
 import { createHighlightRuleId } from '@/lib/settings/highlightRules'
 import { buildSettingsFromForm } from '@/lib/settings/buildSettingsFromForm'
 import { clearAllVaultEntries } from '@/store/credentialsBridge'
 import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS } from '@/lib/settings/defaults'
 import { DEFAULT_ALGORITHM_SELECTION, type AlgorithmCategory } from '../../shared/sshAlgorithmDefaults'
-import {
-  SETTINGS_SCHEMA, SETTINGS_TABS, SETTINGS_TAB_SECTION_IDS,
-} from '@/lib/settings/schema'
-import {
-  saveSettings, exportSettings, importSettings,
-} from '@/store/settingsStore'
+import { SETTINGS_SCHEMA, SETTINGS_TABS, SETTINGS_TAB_SECTION_IDS } from '@/lib/settings/schema'
+import { saveSettings, exportSettings, importSettings } from '@/store/settingsStore'
 import { useSessionsImport } from '@/hooks/useSessionsImport'
 import { useSettingsHoverTip } from '@/hooks/useSettingsHoverTip'
 import SettingsGenericSection from './settings/SettingsGenericSection'
 import type { SettingsDialogProps } from '@/types/components'
 import type { AppSettings, AppTheme, HighlightRule } from '@/types/settings'
-import type { SettingsActionKey, SettingsGenericSectionDef, SettingsTabKey } from '@/types/settingsUi'
+import type { SettingsActionKey, SettingsGenericSectionDef, SettingsTabKey } from '@/types/settings'
 import '../styles/dialog.css'
 import '../styles/settings.css'
 
-/**
- * 设置对话框组件
- * 提供应用设置的界面，包括日志路径配置和会话管理功能
- * @param {Object} props 组件属性
- * @param {Object} props.settings 当前的设置对象
- * @param {Array} props.savedSessions 已保存的会话列表
- * @param {Function} props.onUpdateSessions 更新会话列表的回调函数
- * @param {Function} props.onUpdatePlaceholders 更新分组占位符的回调函数（可选）
- * @param {Function} props.onClose 关闭对话框的回调函数
- * @param {Function} props.onSave 保存设置的回调函数，参数为新的设置对象
- * @param {Function} [props.onAppThemePreview] 应用主题预览（不写 localStorage），参数为 dark | light | auto
- */
+/** 设置对话框组件。用于提供应用设置的界面，包括日志路径配置和会话管理功能 */
 function SettingsDialogContent({
   form,
   setForm,
@@ -92,8 +78,8 @@ function SettingsDialogContent({
 
   /** 
    * 更新高亮规则，根据规则 ID 和要更新的属性值修改表单中的高亮规则列表
-   * @param {string} id 要更新的规则 ID
-   * @param {Object} changes 要更新的属性和值，例如 { enabled: false } 表示禁用该规则
+   * @param id 要更新的规则 ID
+   * @param changes 要更新的属性和值，例如 { enabled: false } 表示禁用该规则
    */
   const updateHighlightRule = (id: string, changes: Partial<HighlightRule>) => {
     setForm(prev => ({
@@ -104,10 +90,7 @@ function SettingsDialogContent({
     }))
   }
 
-  /**
-   * 添加新的高亮规则，在表单的高亮规则列表中追加一个新的规则对象
-   * 新规则会被自动赋予一个唯一的 ID，默认启用，使用正则表达式，匹配模式为空，颜色为黄色
-   */
+  /** 添加新的高亮规则，在表单的高亮规则列表中追加一个新的规则对象。新规则会被自动赋予一个唯一的 ID，默认启用，使用正则表达式，匹配模式为空，颜色为黄色 */
   const addHighlightRule = () => {
     setForm(prev => ({
       ...prev,
@@ -117,7 +100,7 @@ function SettingsDialogContent({
 
   /**
    * 删除高亮规则，根据规则 ID 从表单的高亮规则列表中过滤掉对应的规则对象
-   * @param {string} id 要删除的规则 ID
+   * @param id 要删除的规则 ID
    */
   const removeHighlightRule = (id: string) => {
     setForm(prev => ({
@@ -135,8 +118,8 @@ function SettingsDialogContent({
 
   /**
    * 更新设置
-   * @param {string} key 设置项的键
-   * @param {any} value 设置项的新值
+   * @param key 设置项的键
+   * @param value 设置项的新值
    */
   const previewAppTheme = (theme: AppTheme) => {
     if (typeof onAppThemePreview === 'function' && ['dark', 'light', 'auto'].includes(theme)) {
@@ -146,8 +129,8 @@ function SettingsDialogContent({
 
   /**
    * 更新设置，同时预览应用主题
-   * @param {string} key 设置项的键
-   * @param {any} value 设置项的新值
+   * @param key 设置项的键
+   * @param value 设置项的新值
    */
   const set = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -158,13 +141,12 @@ function SettingsDialogContent({
   const algorithmSections = SSH_ALGORITHM_SECTION_KEYS.map((key) => ({
     key: key as AlgorithmCategory,
     label: t(`settings.algo.${key}`),
-    desc: t(`settings.algo.${key}Desc`),
   }))
 
   /**
    * 切换算法选项，根据算法类别和选项值更新表单中的算法偏好设置
-   * @param {string} type 算法类别，例如 'kex'、'serverHostKey'、'cipher'、'hmac'、'compress'
-   * @param {string} value 要切换的算法选项值，例如 'curve25519-sha256'、'ssh-ed25519'、'aes128-gcm'、'hmac-sha2-256'、'zlib'
+   * @param type 算法类别，例如 'kex'、'serverHostKey'、'cipher'、'hmac'、'compress'
+   * @param value 要切换的算法选项值，例如 'curve25519-sha256'、'ssh-ed25519'、'aes128-gcm'、'hmac-sha2-256'、'zlib'
    */
   const toggleAlgorithmOption = (type: AlgorithmCategory, value: string) => {
     setForm(prev => {
@@ -180,9 +162,9 @@ function SettingsDialogContent({
 
   /**
    * 移动算法选项，根据算法类别和选项值更新表单中的算法偏好设置
-   * @param {string} type 算法类别，例如 'kex'、'serverHostKey'、'cipher'、'hmac'、'compress'
-   * @param {string} value 要移动的算法选项值，例如 'curve25519-sha256'、'ssh-ed25519'、'aes128-gcm'、'hmac-sha2-256'、'zlib'
-   * @param {number} direction 移动方向，-1 表示向上移动，1 表示向下移动
+   * @param type 算法类别，例如 'kex'、'serverHostKey'、'cipher'、'hmac'、'compress'
+   * @param value 要移动的算法选项值，例如 'curve25519-sha256'、'ssh-ed25519'、'aes128-gcm'、'hmac-sha2-256'、'zlib'
+   * @param direction 移动方向，-1 表示向上移动，1 表示向下移动
    */
   const moveAlgorithmOption = (type: AlgorithmCategory, value: string, direction: number) => {
     setForm(prev => {
@@ -221,6 +203,7 @@ function SettingsDialogContent({
     onSave(next)
   }
 
+  /** 处理保存并关闭设置的操作，将当前表单数据保存到设置中，并调用 onSave 和 onClose 回调函数 */
   const handleSaveAndClose = () => {
     const next = buildSettingsFromForm(form, previewLanguage)
     setForm(next)
@@ -258,7 +241,11 @@ function SettingsDialogContent({
         algorithmPreferences: { ...importedSettings.algorithmPreferences },
       })
       previewAppTheme(importedSettings.appTheme)
-      reportSettingsImportResult(t, warnings)
+      if (warnings.length) {
+        alert(t('settings.importSettingsPartial', { details: formatSettingsImportWarnings(t, warnings) }))
+      } else {
+        alert(t('settings.importSettingsOk'))
+      }
     } catch (err) {
       reportImportError(t, err)
     }
@@ -279,8 +266,7 @@ function SettingsDialogContent({
 
   /** 
    * 选择目录后主进程校验路径（与 log:write 一致）；不允许则提示且不写入表单
-   * @param {string} rawPath 原始路径
-   * @returns {Promise<void>}
+   * @param rawPath 原始路径
    */
   const applyChosenLogPath = async (rawPath: string) => {
     const p = String(rawPath ?? '').trim()
@@ -349,12 +335,25 @@ function SettingsDialogContent({
     }
   }
 
+  /** 清空已保存的 SSH 已知主机公钥存储 */
+  const handleClearKnownHosts = async () => {
+    if (!confirm(t('settings.confirmClearKnownHosts'))) return
+    try {
+      const res = await getZterm().others.clearKnownHosts()
+      if (alertIpcFailure(t, res)) return
+      alert(t('settings.clearedKnownHosts'))
+    } catch (e) {
+      alert(t('settings.clearKnownHostsFail', { msg: e instanceof Error ? e.message : String(e) }))
+    }
+  }
+
   /** 设置操作按钮回调函数 */
   const settingsActions: Record<SettingsActionKey, () => void | Promise<void>> = {
     resetAlgorithmPreferences,  // 重置算法偏好设置
     resetHighlightRules: handleResetHighlightRules,  // 重置高亮规则
     addHighlightRule,  // 添加高亮规则
     clearVault: handleClearAllVaultSecrets,  // 清除加密库中的全部敏感凭据
+    clearKnownHosts: handleClearKnownHosts,  // 清除 SSH 已知主机公钥存储
     exportSessions: handleExport,  // 导出会话
     importSessions: () => importSessionsRef.current?.click(),  // 导入会话
     clearAllSessions: handleClearAll,  // 清除所有会话
@@ -363,25 +362,45 @@ function SettingsDialogContent({
     restoreDefaultSettings: handleRestoreDefaultSettings,  // 恢复默认设置
   }
 
+  /** 设置区块组件属性，传递给 SettingsGenericSection 组件 */
   const sectionProps = {
+    /** 表单数据 */
     form,
+    /** 国际化翻译函数 */
     t,
+    /** 加密存储可用性 */
     vaultEncryptionAvailable,
+    /** 算法类别列表 */
     algorithmSections,
+    /** 设置操作 */
     set,
+    /** 设置操作 */
     settingsActions,
+    /** 导入会话引用 */
     importSessionsRef,
+    /** 导入设置引用 */
     importSettingsRef,
+    /** 导入会话回调 */
     onImportSessions: handleImportSessions,
+    /** 导入设置回调 */
     onImportSettings: handleImportSettings,
+    /** 选择日志路径回调 */
     onChooseLogPath: handleChooseLogPath,
+    /** 重置日志路径回调 */
     onResetLogPath: handleResetLogPath,
+    /** 切换算法选项回调 */
     toggleAlgorithmOption,
+    /** 移动算法选项回调 */
     moveAlgorithmOption,
+    /** 重置算法类别回调 */
     resetAlgorithmSection,
+    /** 更新高亮规则回调 */
     updateHighlightRule,
+    /** 删除高亮规则回调 */
     removeHighlightRule,
+    /** 显示设置悬停提示回调 */
     showSettingsHoverTip,
+    /** 隐藏设置悬停提示回调 */
     hideSettingsHoverTip,
   }
 

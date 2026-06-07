@@ -2,6 +2,14 @@ import { useRef, useState, useCallback, type DragEvent } from 'react'
 import { uniqueLabelInGroup, vacatedNamedGroupIfEmpty } from '@/store/sessionStore'
 import type { SavedSession } from '@/types/session'
 
+/**
+ * 使用侧边栏拖拽
+ * @param savedSessions 保存的会话
+ * @param groupPlaceholders 分组占位符
+ * @param onUpdateSessions 更新会话回调
+ * @param onUpdatePlaceholders 更新分组占位符回调
+ * @returns 拖拽状态、开始拖拽、拖拽经过、拖拽离开、拖拽结束、是否在某个ID和拖拽区域、拖拽到分组、拖拽到会话、拖拽到无分组（根分组）区域
+ */
 export function useSidebarDragDrop(
   savedSessions: SavedSession[],
   groupPlaceholders: string[],

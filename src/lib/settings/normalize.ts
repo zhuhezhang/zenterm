@@ -7,9 +7,9 @@ import {
 
 /**
  * 将侧边栏宽度限制在窗口可用范围内（与主界面分割条 min/max 一致）
- * @param {unknown} width 侧边栏宽度
- * @param {number} [innerWidth] 窗口可用宽度
- * @returns {number} 限制后的侧边栏宽度
+ * @param width 侧边栏宽度
+ * @param [innerWidth] 窗口可用宽度
+ * @returns 限制后的侧边栏宽度
  */
 export function clampSidebarWidthPx(
   width: unknown,
@@ -26,8 +26,8 @@ export function clampSidebarWidthPx(
 
 /**
  * 将用户输入规范为合法滚动行数；无法解析时用内置默认
- * @param {unknown} raw 用户输入的滚动行数
- * @returns {number} 规范后的滚动行数
+ * @param raw 用户输入的滚动行数
+ * @returns 规范后的滚动行数
  */
 export function clampTerminalScrollback(
   raw: unknown,
@@ -43,6 +43,8 @@ export function clampTerminalScrollback(
 /**
  * SSH keepalive 间隔（秒）：0 表示关闭；非法值回退 fallback
  * @param raw 用户输入的间隔秒数
+ * @param fallback 非法时回退的值
+ * @returns 规范后的间隔秒数
  */
 export function clampSshKeepaliveInterval(
   raw: unknown,
@@ -55,7 +57,12 @@ export function clampSshKeepaliveInterval(
   return n
 }
 
-/** 设置界面数字项：按字段选用对应 clamp（避免全部误用 terminalScrollback 上限） */
+/** 
+ * 设置界面数字项：按字段选用对应 clamp（避免全部误用 terminalScrollback 上限）
+ * @param key 字段键
+ * @param raw 用户输入的值
+ * @returns 规范后的值
+ */
 export function clampSettingsNumberField(key: keyof AppSettings, raw: unknown): number {
   if (key === 'terminalScrollback') return clampTerminalScrollback(raw)
   if (key === 'sshKeepaliveInterval') return clampSshKeepaliveInterval(raw)
@@ -65,8 +72,8 @@ export function clampSettingsNumberField(key: keyof AppSettings, raw: unknown): 
 
 /**
  * 会话日志：none = 关闭；buffer = 与 xterm 屏幕缓冲一致；stream = 下行原始流去 ANSI 后追加
- * @param {unknown} m 用户输入的日志模式
- * @returns {'none'|'stream'|'buffer'} 规范后的日志模式
+ * @param m 用户输入的日志模式
+ * @returns 规范后的日志模式
  */
 export function normalizeLoggingMode(m: unknown): LoggingMode {
   const v = String(m ?? '').trim().toLowerCase()
@@ -77,8 +84,8 @@ export function normalizeLoggingMode(m: unknown): LoggingMode {
 
 /**
  * 判断路径是否像绝对路径（与设置界面选择目录后的校验条件一致）
- * @param {string} p 路径
- * @returns {boolean}
+ * @param p 路径
+ * @returns 是否像绝对路径
  */
 export function isLikelyAbsoluteLogPath(p: unknown) {
   const s = String(p ?? '').trim()
@@ -88,9 +95,9 @@ export function isLikelyAbsoluteLogPath(p: unknown) {
 
 /**
  * 导入设置时规范 logPath：非字符串用 fallback；空白为 ''；绝对路径校验失败则 fallback
- * @param {unknown} raw 导入的 logPath
- * @param {string} [fallback] 非法时回退路径（通常为当前设置）
- * @returns {Promise<string>}
+ * @param raw 导入的 logPath
+ * @param fallback 非法时回退路径（通常为当前设置）
+ * @returns 规范后的 logPath
  */
 export async function normalizeImportedLogPath(raw: unknown, fallback: string = '') {
   const fb = typeof fallback === 'string' ? fallback : ''

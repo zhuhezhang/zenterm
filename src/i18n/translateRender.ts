@@ -9,7 +9,7 @@ import { TITLEBAR } from './components/TitleBar'
 import { WELCOME } from './components/app/WelcomeScreen'
 import { SIDEBAR } from './components/sidebar/Sidebar'
 import { SSH, TELNET, SERIAL } from './ipcErrors'
-import type { TranslateParams, UiLanguage } from '../types/i18n'
+import type { TranslateParams, UiLanguage } from '../types/common'
 
 /** 聚合各模块文案；键路径如 settings.title */
 const RENDER_MESSAGES = {
@@ -49,10 +49,10 @@ const RENDER_MESSAGES = {
 
 /**
  * 翻译文案，根据语言和路径获取翻译后的文案
- * @param {'zh'|'en'} lang 语言
- * @param {string} path 路径(如"zh.titlebar.close")
- * @param {Record<string, string|number>} [params] 参数（如{name: '张三'}）
- * @returns {string} 翻译后的文案
+ * @param lang 语言
+ * @param path 路径(如"zh.titlebar.close")
+ * @param params 参数（如{name: '张三'}）
+ * @returns 翻译后的文案
  */
 export function translateRender(
   lang: UiLanguage | string,

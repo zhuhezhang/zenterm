@@ -2,10 +2,10 @@ import type { KeyboardEvent } from 'react'
 import { useI18n } from '@/context/I18nContext'
 import { PORT_MIN, PORT_MAX } from '@/lib/session/defaults'
 import { clampPortFieldString } from '@/lib/session/utils'
-import type { SessionFormFieldsProps } from '@/types/connectDialog'
+import type { SessionFormFieldsProps } from '@/types/components'
 import FormRow from './FormRow'
 
-/** Telnet 表单组件；visible 为 false 时不渲染。 */
+/** Telnet 表单组件；visible 为 false 时不渲染 */
 export default function TelnetForm({ form, set, visible, onEnter }: SessionFormFieldsProps) {
   const { t } = useI18n()
   const handleEnter = (e: KeyboardEvent<HTMLInputElement>) => {

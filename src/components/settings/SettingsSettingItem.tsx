@@ -3,31 +3,42 @@ import { IMPORT_JSON_ACCEPT } from '@/lib/import/constants'
 import { normalizeLoggingMode, clampSettingsNumberField } from '@/lib/settings/normalize'
 import { getDefaultLogPath } from '@/store/settingsStore'
 import type { AppSettings } from '@/types/settings'
-import type { SettingsActionKey, SettingsSchemaItem } from '@/types/settingsUi'
-import type { TranslateFn } from '@/types/i18n'
+import type { SettingsActionKey, SettingsSchemaItem } from '@/types/settings'
+import type { TranslateFn } from '@/types/common'
 
+/** 设置项组件属性 */
 export interface SettingsSettingItemProps {
+  /** 设置项定义 */
   item: SettingsSchemaItem
+  /** 表单数据 */
   form: AppSettings
+  /** 国际化翻译函数 */
   t: TranslateFn
+  /** 加密存储可用性 */
   vaultEncryptionAvailable: boolean | null
+  /** 设置操作 */
   set: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
+  /** 导入会话引用 */
   settingsActions: Record<SettingsActionKey, () => void | Promise<void>>
+  /** 导入会话引用 */
   importSessionsRef: RefObject<HTMLInputElement | null>
+  /** 导入设置引用 */
   importSettingsRef: RefObject<HTMLInputElement | null>
+  /** 导入会话回调 */
   onImportSessions: (e: ChangeEvent<HTMLInputElement>) => void
+  /** 导入设置回调 */
   onImportSettings: (e: ChangeEvent<HTMLInputElement>) => void
+  /** 选择日志路径回调 */
   onChooseLogPath: () => void
+  /** 重置日志路径回调 */
   onResetLogPath: () => void
+  /** 显示设置悬停提示回调 */
   showSettingsHoverTip: (e: React.MouseEvent | React.FocusEvent, text: string) => void
+  /** 隐藏设置悬停提示回调 */
   hideSettingsHoverTip: () => void
 }
 
-/** 
- * 渲染设置项
- * @param {Object} item 设置项对象
- * @returns {React.ReactNode} 渲染后的设置项 
- */
+/** 设置项组件 */
 export default function SettingsSettingItem({
   item,
   form,

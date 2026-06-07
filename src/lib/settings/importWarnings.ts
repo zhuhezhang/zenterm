@@ -1,26 +1,25 @@
-import type { TranslateFn } from '../../types/i18n'
-import type { SettingsImportWarning } from '../../types/import'
-import { pushImportWarning } from '../import/pushImportWarning'
+import type { TranslateFn } from '../../types/common'
+import type { SettingsImportWarning } from '../../types/common'
 
 /**
  * 添加导入警告
- * @param {SettingsImportWarning[]} warnings 导入警告列表
- * @param {string} code 警告代码
- * @param {Record<string, string|number>} [params] 警告参数
+ * @param warnings 导入警告列表
+ * @param code 警告代码
+ * @param params 警告参数
  */
 export function pushSettingsImportWarning(
   warnings: { code: string; params?: Record<string, string | number> }[],
   code: string,
   params?: Record<string, string | number>,
 ) {
-  pushImportWarning(warnings, code, params)
+  warnings.push({ code, ...(params ? { params } : {}) })
 }
 
 /**
  * 解析字段标签
- * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {string} fieldKey 字段键
- * @returns {string} 字段标签
+ * @param t 翻译函数
+ * @param fieldKey 字段键
+ * @returns 字段标签
  */
 function resolveFieldLabel(t: TranslateFn, fieldKey: string): string {
   const labelKey = `settings.fields.${fieldKey}.label`
@@ -30,9 +29,9 @@ function resolveFieldLabel(t: TranslateFn, fieldKey: string): string {
 
 /**
  * 解析算法段标签
- * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {string} sectionKey 算法段键
- * @returns {string} 算法段标签
+ * @param t 翻译函数
+ * @param sectionKey 算法段键
+ * @returns 算法段标签
  */
 function resolveAlgoSectionLabel(t: TranslateFn, sectionKey: string): string {
   const labelKey = `settings.algo.${sectionKey}`
@@ -42,10 +41,10 @@ function resolveAlgoSectionLabel(t: TranslateFn, sectionKey: string): string {
 
 /**
  * 格式化高亮规则原因
- * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {string} reason 原因
- * @param {Record<string, string|number>} [params] 原因参数
- * @returns {string} 格式化后的原因
+ * @param t 翻译函数
+ * @param reason 原因
+ * @param params 原因参数
+ * @returns 格式化后的原因
  */
 function formatHighlightRuleReason(
   t: TranslateFn,
@@ -59,9 +58,9 @@ function formatHighlightRuleReason(
 
 /**
  * 格式化导入警告
- * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {SettingsImportWarning} warning 导入警告
- * @returns {string} 格式化后的导入警告
+ * @param t 翻译函数
+ * @param warning 导入警告
+ * @returns 格式化后的导入警告
  */
 export function formatSettingsImportWarning(t: TranslateFn, warning: SettingsImportWarning): string {
   const params: Record<string, unknown> = { ...(warning.params || {}) }
@@ -84,9 +83,9 @@ export function formatSettingsImportWarning(t: TranslateFn, warning: SettingsImp
 
 /**
  * 格式化导入警告列表
- * @param {(key: string, params?: Record<string, string|number>) => string} t 翻译函数
- * @param {SettingsImportWarning[]} warnings 导入警告列表
- * @returns {string} 格式化后的导入警告列表
+ * @param t 翻译函数
+ * @param warnings 导入警告列表
+ * @returns 格式化后的导入警告列表
  */
 export function formatSettingsImportWarnings(
   t: TranslateFn,

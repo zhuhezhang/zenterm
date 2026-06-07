@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect, memo, type DragEvent, type MouseEvent } from 'react'
 import { useI18n } from '../context/I18nContext'
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick'
-import ConnectionTypeIcon from './common'
+import { ConnectionTypeIcon } from './common'
 import type { TabBarProps } from '../types/components'
 import { sessionEndpoint } from '../types/session'
-import type { TabContextMenu } from '../types/tabBar'
+import type { TabContextMenu } from '../types/components'
 import type { BackspaceMode } from '../types/session'
 import { normalizeBackspaceMode } from '../lib/session/utils'
 import '../styles/tabbar.css'
@@ -18,15 +18,6 @@ const STATUS_CLS = { connecting: 'connecting', connected: 'connected', disconnec
  * 标签栏组件，显示当前会话列表和控制按钮。
  * 通过 useState 管理右键菜单状态，useRef 管理拖拽状态和 DOM 引用。
  * 支持标签页选择、关闭、新建、右键菜单操作和拖拽排序
- * @param {Object} props - 组件属性
- * @param {Object[]} props.sessions 当前会话列表，每个会话包含 id、type、label、status 等属性
- * @param {string} props.activeId 当前活跃会话 ID
- * @param {function} props.onSelect 选择标签页的回调函数，参数为会话 ID
- * @param {function} props.onClose 关闭标签页的回调函数，参数为会话 ID
- * @param {function} props.onNew 新建标签页的回调函数，无参数
- * @param {function} props.onReorder 拖拽排序后的回调函数，参数为 fromId 和 toId
- * @param {function} props.onSaveOutput 保存标签页终端输出的回调函数，参数为会话 ID
- * @param {function} [props.onClearScreen] 清屏回调，参数为会话 ID（对应标签页的 xterm.clear）
  */
 export default memo(function TabBar({
   sessions,
@@ -57,9 +48,9 @@ export default memo(function TabBar({
   /** 
    * 右键菜单操作函数，分别用于关闭当前标签页、关闭其他标签页、关闭左侧标签页、关闭右侧标签页和关闭全部标签页。
    * 每个函数调用对应的 onClose 回调来关闭指定的标签页，并调用 closeCtx 来关闭右键菜单
-   * @param {Event} e 右键点击事件对象
-   * @param {string} id 要关闭的标签页 ID
-   * @param {number} idx 要关闭的标签页索引
+   * @param e 右键点击事件对象
+   * @param id 要关闭的标签页 ID
+   * @param idx 要关闭的标签页索引
    */
   const openCtx = (e: MouseEvent, id: string, idx: number) => {
     e.preventDefault()
@@ -72,47 +63,52 @@ export default memo(function TabBar({
   useDismissOnOutsideClick(!!ctxMenu, closeCtx, '.tab-context-menu')
   /**
    * 关闭标签页
-   * @param {string} id 要关闭的标签页 ID
+   * @param id 要关闭的标签页 ID
    */
   const closeTab = (id: string) => { onClose(id); closeCtx() }
   /**
    * 关闭其他标签页
-   * @param {string} id 要保留的标签页 ID
+   * @param id 要保留的标签页 ID
    */
   const closeOthers = (id: string) => { sessions.filter(s => s.id !== id).forEach(s => onClose(s.id)); closeCtx() }
   /**
    * 关闭左侧标签页
-   * @param {number} idx 要关闭的标签页索引
+   * @param idx 要关闭的标签页索引
    */
   const closeLeft = (idx: number) => { sessions.slice(0, idx).forEach(s => onClose(s.id)); closeCtx() }
   /**
    * 关闭右侧标签页
-   * @param {number} idx 要关闭的标签页索引
+   * @param idx 要关闭的标签页索引
    */
   const closeRight = (idx: number) => { sessions.slice(idx + 1).forEach(s => onClose(s.id)); closeCtx() }
   /** 关闭全部标签页 */
   const closeAll    = () => { sessions.forEach(s => onClose(s.id)); closeCtx() }
 
+  /** 退格键模式列表 */
   const BACKSPACE_MODES: BackspaceMode[] = ['auto', 'del', 'bs']
+  /** 退格键模式标签 */
   const backspaceModeLabels: Record<BackspaceMode, string> = {
     auto: t('settings.options.backspaceAuto'),
     del: t('settings.options.backspaceDel'),
     bs: t('settings.options.backspaceBs'),
   }
 
+  /** 设置退格键模式 */
   const setBackspaceMode = (sessionId: string, mode: BackspaceMode) => {
     onSetBackspaceMode?.(sessionId, mode)
     closeCtx()
   }
 
+  /** 当前右键菜单的会话 */
   const ctxSession = ctxMenu ? sessions.find(s => s.id === ctxMenu.id) : null
+  /** 当前右键菜单的会话的退格键模式 */
   const ctxBackspaceMode = normalizeBackspaceMode(ctxSession?.backspaceMode) ?? 'auto'
 
   /**
    * 拖拽事件处理函数：开始拖拽
    * onDragStart 设置 dragRef.current 为当前拖拽的标签 ID，并添加 dragging 类以改变样式。
-   * @param {Event} e 拖拽事件对象
-   * @param {string} id 当前拖拽的标签页 ID
+   * @param e 拖拽事件对象
+   * @param id 当前拖拽的标签页 ID
    */
   const onDragStart = (e: DragEvent<HTMLDivElement>, id: string) => {
     dragRef.current = id
@@ -124,7 +120,7 @@ export default memo(function TabBar({
   /** 
    * 拖拽事件处理函数：拖拽经过
    * onDragOver 调用 e.preventDefault() 以允许 drop，并设置拖拽效果为 move。
-   * @param {Event} e 拖拽事件对象
+   * @param e 拖拽事件对象
    */
   const onDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -134,8 +130,8 @@ export default memo(function TabBar({
   /** 
    * 拖拽事件处理函数：放下
    * onDrop 获取拖拽来源的标签 ID（fromId）和目标标签 ID（toId），如果有效且不同，则调用 onReorder 回调来更新标签顺序，并重置 dragRef.current。
-   * @param {Event} e 拖拽事件对象
-   * @param {string} toId 放下目标的标签页 ID
+   * @param e 拖拽事件对象
+   * @param toId 放下目标的标签页 ID
    */
   const onDrop = (e: DragEvent<HTMLDivElement>, toId: string) => {
     e.preventDefault()
@@ -148,7 +144,7 @@ export default memo(function TabBar({
   /** 
    * 拖拽事件处理函数：结束拖拽
    * onDragEnd 将 dragRef.current 重置为 null，并移除 dragging 类。
-   * @param {Event} e 拖拽事件对象
+   * @param e 拖拽事件对象
    */
   const onDragEnd = (e: DragEvent<HTMLDivElement>) => {
     e.currentTarget.classList.remove('dragging')

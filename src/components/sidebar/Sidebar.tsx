@@ -20,25 +20,7 @@ import type { SidebarContextMenuState, SidebarProps } from '@/types/components'
 import type { SessionTreeNode as TreeNode } from '@/types/session'
 import '@/styles/sidebar.css'
 
-/**
- * 侧边栏组件
- * @param {object} props 组件属性
- * @param {boolean} props.open 侧边栏是否展开
- * @param {function} props.onToggle 切换侧边栏展开/收起的回调函数
- * @param {array} props.savedSessions 已保存的会话列表
- * @param {function} props.onNewSession 新建会话的回调函数
- * @param {function} props.onConnectSaved 连接会话的回调函数
- * @param {function} props.onDeleteSaved 删除会话的回调函数
- * @param {function} props.onUpdateSessions 更新会话的回调函数
- * @param {function} props.onDuplicateSaved 复制已保存会话（含主进程加密凭据）的回调，参数为 savedId
- * @param {object|null} props.activeSession 当前活动会话对象（用于 SFTP 面板）
- * @param {object} props.settings 设置
- * @param {function} props.onOpenSettings 打开设置界面的回调函数
- * @param {object} props.style 侧边栏样式
- * @param {array} props.groupPlaceholders 分组占位符列表
- * @param {function} props.onUpdatePlaceholders 更新分组占位符的回调函数
- * @returns {JSX.Element} 侧边栏组件
- */
+/** 侧边栏组件（使用 memo 记忆化渲染） */
 export default memo(function Sidebar(props: SidebarProps) {
   const {
     open, onToggle, savedSessions, onNewSession, onConnectSaved, onDeleteSaved, onUpdateSessions,
@@ -77,8 +59,8 @@ export default memo(function Sidebar(props: SidebarProps) {
 
   /**
    * 是否展开
-   * @param {string} path 分组路径
-   * @returns {boolean} 是否展开
+   * @param path 分组路径
+   * @returns 是否展开
    */
   const isExp = (path: string) => expanded[path] === true
   const togExp = (path: string) => setExpanded((p) => ({ ...p, [path]: !isExp(path) }))
@@ -87,7 +69,7 @@ export default memo(function Sidebar(props: SidebarProps) {
 
   /**
    * 更新会话搜索词；进入搜索时快照分组展开状态，结束搜索时恢复
-   * @param {string} next 新的搜索框内容
+   * @param next 新的搜索框内容
    */
   const updateSessionSearchQuery = useCallback((next: string) => {
     const nextTrim = String(next).trim()
@@ -104,9 +86,9 @@ export default memo(function Sidebar(props: SidebarProps) {
   }, [sessionSearchQuery])
   /**
    * 打开上下文菜单
-   * @param {Event} e 事件
-   * @param {string} type 类型
-   * @param {any} data 数据
+   * @param e 事件
+   * @param type 类型
+   * @param data 数据
    */
   const openCtx = (e: MouseEvent, type: SidebarContextMenuState['type'], data: SidebarContextMenuState['data']) => {
     e.preventDefault()
@@ -136,7 +118,7 @@ export default memo(function Sidebar(props: SidebarProps) {
 
   /** 
    * 展开该分组所有子项
-   * @param {string} groupPath 分组路径
+   * @param groupPath 分组路径
    */
   const expandGroupAll = (groupPath: string) => {
     const all: Record<string, boolean> = {}
@@ -161,7 +143,7 @@ export default memo(function Sidebar(props: SidebarProps) {
 
   /** 
    * 收起该分组所有子项
-   * @param {string} groupPath 分组路径
+   * @param groupPath 分组路径
    */
   const collapseGroupAll = (groupPath: string) => {
     setExpanded(prev => {
@@ -175,8 +157,8 @@ export default memo(function Sidebar(props: SidebarProps) {
 
   /** 
    * 重命名分组
-   * @param {string} oldPath 旧路径
-   * @param {string} newName 新名称
+   * @param oldPath 旧路径
+   * @param newName 新名称
    */
   const renameGroup = (oldPath: string, newName: string) => {
     const trimmed = newName.trim()
@@ -233,7 +215,7 @@ export default memo(function Sidebar(props: SidebarProps) {
 
   /** 
    * 删除分组
-   * @param {string} path 分组路径
+   * @param path 分组路径
    */
   const deleteGroup = (path: string) => {
     const w = settings?.deleteGroupWithSessions  // 是否删除分组时连带删除其下的所有会话
@@ -249,8 +231,8 @@ export default memo(function Sidebar(props: SidebarProps) {
 
   /** 
    * 删除会话
-   * @param {string} id 会话 ID
-   * @param {string} label 会话名称
+   * @param id 会话 ID
+   * @param label 会话名称
    */
   const deleteSession = (id: string, label: string) => {
     if (settings?.confirmDeleteSession !== false && !confirm(t('sidebar.deleteSession', { label }))) return  // 如果配置了不确认删除，则不删除
@@ -259,14 +241,14 @@ export default memo(function Sidebar(props: SidebarProps) {
 
   /** 
    * 复制会话
-   * @param {string} id 要复制的会话 ID
+   * @param id 要复制的会话 ID
    */
   const dupSession = (id: string) => onDuplicateSaved(id)
 
   /** 
    * 重命名会话
-   * @param {string} 要重命名的会话的savedId 会话 ID
-   * @param {string} newLabel 新名称
+   * @param savedId 要重命名的会话的savedId 会话 ID
+   * @param newLabel 新名称
    */
   const renameSession = (savedId: string, newLabel: string) => {
     const trimmed = newLabel.trim()

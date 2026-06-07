@@ -5,18 +5,29 @@ import { EXPORT_ENVELOPE_VERSION, IMPORT_MAX_BYTES } from './constants'
 
 /** zterm 导出 envelope */
 export interface ExportEnvelope<T> {
+  /** 导出类型 */
   ztermExport: 'sessions' | 'settings'
+  /** 导出版本 */
   version: number
+  /** 导出时间 */
   exportedAt?: string
+  /** 导出数据 */
   data: T
 }
 
+/**
+ * 判断是否为导出 envelope
+ * @param parsed 解析后的数据
+ * @returns 是否为导出 envelope
+ */
 function isExportEnvelope(parsed: unknown): parsed is ExportEnvelope<unknown> {
   return parsed != null && typeof parsed === 'object' && !Array.isArray(parsed)
 }
 
 /**
  * 读取并解析导入用 JSON 文件
+ * @param file 导入的 JSON 文件对象
+ * @returns 解析后的数据
  */
 export function readImportJson(file: File): Promise<unknown> {
   return new Promise((resolve, reject) => {
@@ -43,6 +54,9 @@ export function readImportJson(file: File): Promise<unknown> {
 
 /**
  * 解包 zterm 导出 envelope（仅支持 version 1）
+ * @param parsed 解析后的数据
+ * @param expectedKind 期望的导出类型
+ * @returns 解包后的数据
  */
 export function unwrapExportPayload(parsed: unknown, expectedKind: 'sessions'): unknown[]
 export function unwrapExportPayload(parsed: unknown, expectedKind: 'settings'): Partial<AppSettings>
@@ -72,9 +86,10 @@ export function unwrapExportPayload(
 
 /**
  * 构造导出 envelope
+ * @param kind 导出类型
+ * @param data 导出数据
+ * @returns 导出 envelope
  */
-export function buildExportEnvelope(kind: 'sessions', data: SavedSession[]): ExportEnvelope<SavedSession[]>
-export function buildExportEnvelope(kind: 'settings', data: AppSettings): ExportEnvelope<AppSettings>
 export function buildExportEnvelope(
   kind: 'sessions' | 'settings',
   data: SavedSession[] | AppSettings,

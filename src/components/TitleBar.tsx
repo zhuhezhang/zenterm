@@ -3,6 +3,7 @@ import { useI18n } from '../context/I18nContext'
 import { isIpcSuccess } from '@/lib/ipc/ipcResponse'
 import '../styles/titlebar.css'
 
+/** 是否为 MacOS */
 const IS_MAC = navigator.userAgent.includes('Mac OS X') &&
   !navigator.userAgent.includes('Windows') &&
   !navigator.userAgent.includes('Linux')

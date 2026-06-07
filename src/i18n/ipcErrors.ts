@@ -3,10 +3,14 @@ export const SSH = {
   zh: {
     connectionFailed: 'SSH 连接失败',
     workerExitUnexpected: 'SSH 工作线程意外退出 ({code})',
+    privateKeyInvalid: '私钥格式无效或文件不是支持的私钥',
+    privateKeyReadFailed: '无法读取私钥文件：{path}',
   },
   en: {
     connectionFailed: 'SSH connection failed',
     workerExitUnexpected: 'SSH worker exited unexpectedly ({code})',
+    privateKeyInvalid: 'Invalid private key format or unsupported key file',
+    privateKeyReadFailed: 'Cannot read private key file: {path}',
   },
 }
 

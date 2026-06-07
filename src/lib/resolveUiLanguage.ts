@@ -2,8 +2,8 @@
 
 /** 
  * 从语言标签列表解析 zh / en
- * @param {string[]} tags 语言标签列表
- * @returns {'zh'|'en'} 解析后的语言
+ * @param tags 语言标签列表
+ * @returns 解析后的语言
  */
 export function detectLangFromLocaleTags(tags: string[]) {
   for (const tag of tags) {
@@ -16,7 +16,7 @@ export function detectLangFromLocaleTags(tags: string[]) {
 
 /**
  * 检测系统语言，优先使用 navigator.languages，然后使用 navigator.language
- * @returns {'zh'|'en'} 检测到的语言
+ * @returns 检测到的语言
  */
 function detectSystemUiLang() {
   const candidates = []
@@ -26,16 +26,15 @@ function detectSystemUiLang() {
     } else if (typeof navigator !== 'undefined' && navigator.language) {
       candidates.push(navigator.language)
     }
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   return detectLangFromLocaleTags(candidates)
 }
 
 /**
  * 将设置中的 uiLanguage 解析为实际用于文案的 zh / en
- * @param {string|undefined} stored `auto` | `zh` | `en`
- * @param {'zh'|'en'} [systemLang] `auto` 时使用的系统语言
+ * @param stored `auto` | `zh` | `en`
+ * @param systemLang `auto` 时使用的系统语言
+ * @returns 解析后的语言
  */
 export function resolveEffectiveUiLanguage(
   stored?: string,
@@ -49,7 +48,7 @@ export function resolveEffectiveUiLanguage(
 
 /** 
  * 同步界面语言至主进程 (仅传 zh/en, 不传 auto) 
- * @param {string|undefined} stored `auto` | `zh` | `en`
+ * @param stored `auto` | `zh` | `en`
  */
 export function syncUiLanguageToMain(stored?: string) {
   try {

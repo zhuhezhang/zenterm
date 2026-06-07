@@ -6,6 +6,7 @@ import { handleHostVerifyMessage } from '../lib/hostVerifyMessage.js'
 import { sendToRenderer } from '../lib/mainWindowSend.js'
 import { ipcFailFromThrown, ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import { encodeOutgoingTerminalData } from '../lib/terminalEncodingService.js'
+import { prepareSshConnectConfig } from '../lib/prepareSshConnectConfig.js'
 import type { MainWindowGetter, SshSessionState } from '../types/handlers.js'
 import type { SshConnectConfig } from '../../shared/zterm-api.js'
 import type { SshWorkerOutboundMessage } from '../types/workerMessages.js'
@@ -53,10 +54,18 @@ function setupSSHHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGetter) {
         resolve(ipcOk())
       }
 
+      let workerConfig: SshConnectConfig
+      try {
+        workerConfig = prepareSshConnectConfig(config)
+      } catch (e) {
+        resolve(ipcFailFromThrown(e))
+        return
+      }
+
       try {
         worker = new Worker(workerEntry, {
           type: 'module',
-          workerData: { config },
+          workerData: { config: workerConfig },
         } as import('node:worker_threads').WorkerOptions)
       } catch (e) {
         resolve(ipcFailFromThrown(e))

@@ -5,29 +5,16 @@ import { translateRender } from '../i18n/translateRender'
 import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage'
 import { getXtermTheme } from '../theme/appTheme'
 import {
-  connectSession,
-  exportTerminalBuffer,
-  mountTerminal,
-  setupLogging,
-  writelnWithLog,
+  connectSession, exportTerminalBuffer, mountTerminal, setupLogging,
+  teardownSessionTransport, writelnWithLog,
 } from '../lib/terminal/terminalSession'
 import '@xterm/xterm/css/xterm.css'
 import type { TerminalPanelProps } from '../types/components'
 import type { AppSettings } from '../types/settings'
-import type { SessionLogHandle } from '../types/terminal'
+import type { SessionLogHandle } from '../types/session'
 import '../styles/terminal.css'
 
-/**
- * TerminalPanel 组件：负责渲染终端界面、管理终端实例和连接会话
- * @param {Object} props 组件属性
- * @param {Object} props.session 会话对象，包含连接信息和状态
- * @param {Boolean} props.active 是否为当前活跃标签页
- * @param {Function} props.onUpdate 会话状态更新回调函数
- * @param {Object} props.settings 全局设置对象，包含用户偏好设置
- * @param {'dark'|'light'} props.appThemeEffective 应用亮暗（与界面 CSS 变量一致），用于 xterm 配色
- * @param {Function} props.onRegisterExport 注册导出终端输出函数的回调，参数为 (sessionId, getter|null)
- * @param {Function} [props.onRegisterClearScreen] 注册清屏函数的回调，参数为 (sessionId, fn|null)
- */
+/** TerminalPanel 组件：负责渲染终端界面、管理终端实例和连接会话 */
 function TerminalPanel({
   session,
   active,
@@ -80,14 +67,15 @@ function TerminalPanel({
       cancelled = true
       cleanupRef.current.forEach(fn => { try { fn() } catch {} })
       cleanupRef.current = []
+      // 连接尚未完成时 cleanupRef 可能尚无 disconnect，强制断开主进程 transport
+      teardownSessionTransport(session)
       try { logFileRef.current?.flushNow?.() } catch {}
       logFileRef.current = null
       term.dispose()
     }
   }, [session.id])
 
-  /** 日志：写入方式或目录变化时重建控制器并绑定当前终端 */
-  useEffect(() => {
+  useEffect(() => {  // 日志：写入方式或目录变化时重建控制器并绑定当前终端
     const term = termRef.current
     if (normalizeLoggingMode(settings.loggingMode) === 'none') {
       try { logFileRef.current?.flushNow?.() } catch {}

@@ -1,14 +1,14 @@
-import type { TranslateFn } from '../../types/i18n'
-import type { IpcThrownError } from '../../types/errors'
+import type { TranslateFn } from '../../types/common'
+import type { IpcThrownError } from '../../types/common'
 import type { IpcResult } from '../../../shared/ipc'
 import { ipcErrorFields, isIpcFailure } from './ipcResponse'
 
 /**
  * 将 IPC 错误码译为界面文案（仅 errorKnown 为 true 时调用）
- * @param {(path: string, params?: Record<string, string|number>) => string} t translateRender / useI18n().t
- * @param {unknown} code 错误码（如 sftp.pathErrors.localDirDenied）
- * @param {Record<string, string|number>} [params] 错误参数（如{name: '张三'}）
- * @returns {string} 展示文案
+ * @param t translateRender / useI18n().t
+ * @param code 错误码（如 sftp.pathErrors.localDirDenied）
+ * @param params 错误参数（如{name: '张三'}）
+ * @returns 展示文案
  */
 export function formatIpcError(
   t: TranslateFn,
@@ -28,10 +28,10 @@ export function formatIpcError(
 
 /**
  * 失败则 alert 并返回 true；成功或未失败返回 false
- * @param {(path: string, params?: Record<string, string|number>) => string} t
- * @param {{ success?: boolean, errorKnown?: boolean, content?: Record<string, unknown> } | null | undefined} res
- * @param {string} [fallbackKey] i18n 键
- * @returns {boolean} 是否已 alert
+ * @param t 翻译函数
+ * @param res 错误响应对象
+ * @param fallbackKey i18n 键
+ * @returns 是否已 alert
  */
 export function alertIpcFailure(
   t: TranslateFn,
@@ -61,7 +61,7 @@ export function formatIpcResponseError(
 
 /**
  * 终端: ipcErrorFromResponse 抛出的 Error -> 展示文案
- * @param {(path: string, params?: Record<string, string|number>) => string} t 翻译函数
+ * @param t 翻译函数
  * @param {unknown} err 错误对象
  * @returns {string} 展示文案
  */

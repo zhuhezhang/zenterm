@@ -1,9 +1,29 @@
-import type { CSSProperties, DragEvent, MouseEvent, RefObject } from 'react'
+import type { CSSProperties, Dispatch, DragEvent, MouseEvent, ReactNode, RefObject, SetStateAction } from 'react'
 import type { AppTheme, AppSettings } from './settings'
 import type {
-  ActiveSession, SavedSession, SessionConfig, SessionTreeNode as TreeNode, 
+  ActiveSession, SavedSession, SessionConfig, SessionFormValues, SessionTreeNode as TreeNode,
   SessionType, TerminalClearFn, TerminalTextGetter, BackspaceMode,
 } from './session'
+
+/** 应用主组件的属性 */
+export interface AppMainProps {
+  /** 设置 */
+  settings: AppSettings
+  /** 设置回调函数 */
+  setSettings: Dispatch<SetStateAction<AppSettings>>
+}
+
+/** 错误边界组件的属性 */
+export interface ErrorBoundaryProps {
+  /** 子组件 */
+  children: ReactNode
+}
+
+/** 错误边界组件的状态 */
+export interface ErrorBoundaryState {
+  /** 错误 */
+  error: Error | null
+}
 
 /** 连接对话框的属性 */
 export interface ConnectDialogProps {
@@ -21,6 +41,46 @@ export interface ConnectDialogProps {
   onSaveOnly: (config: SessionConfig) => void | Promise<void>
   /** 关闭对话框的回调函数 */
   onClose: () => void
+}
+
+/** ConnectDialog 内嵌凭据补全弹层状态 */
+export interface ConnectCredDialogState {
+  /** 用户名 */
+  username: string
+  /** 密码 */
+  password: string
+  /** 私钥 */
+  privateKey: string
+  /** 密码短语 */
+  passphrase: string
+  /** 回调函数，参数为 SessionConfig 类型 */
+  callback: (config: SessionConfig) => void
+}
+
+/** 设置表单数据 */
+export type SessionFormSetter = <K extends keyof SessionFormValues>(
+  k: K,
+  v: SessionFormValues[K],
+) => void
+
+/** SSH / Telnet 等协议共用的连接表单 props */
+export interface SessionFormFieldsProps {
+  /** 表单数据 */
+  form: SessionFormValues
+  /** 设置表单数据 */
+  set: SessionFormSetter
+  /** 为 false 时不渲染表单区块 */
+  visible: boolean
+  /** 输入框回车时触发（如保存并连接） */
+  onEnter?: () => void
+}
+
+/** Serial 连接表单 props（路径须与枚举列表一致方可连接） */
+export interface SerialFormProps extends SessionFormFieldsProps {
+  /** 可用串口列表，用于 datalist 自动补全 */
+  ports: { path?: string; manufacturer?: string }[]
+  /** 重新枚举串口 */
+  onRefreshPorts: () => void
 }
 
 /** 标签栏的属性 */
@@ -43,6 +103,18 @@ export interface TabBarProps {
   onClearScreen?: (sessionId: string) => void
   /** 切换退格键模式的回调函数，参数为标签页 ID 与模式 */
   onSetBackspaceMode?: (sessionId: string, mode: BackspaceMode) => void
+}
+
+/** 标签栏右键菜单状态 */
+export interface TabContextMenu {
+  /** 菜单位置 x */
+  x: number
+  /** 菜单位置 y */
+  y: number
+  /** 会话 ID */
+  id: string
+  /** 会话索引 */
+  idx: number
 }
 
 /** 终端面板的属性 */
@@ -135,6 +207,16 @@ export interface SftpRemoteItem {
   mtime?: number
   /** 权限 */
   rights?: { user?: string; group?: string; other?: string }
+}
+
+/** SFTP 面板文件行右键菜单 */
+export interface SftpFileContextMenu {
+  /** 菜单位置 x */
+  x: number
+  /** 菜单位置 y */
+  y: number
+  /** 菜单项 */
+  item: SftpRemoteItem
 }
 
 /** 侧边栏顶部的属性 */

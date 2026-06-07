@@ -1,8 +1,18 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect, memo, type KeyboardEvent } from 'react'
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, memo, type KeyboardEvent, type RefObject } from 'react'
 import { useI18n } from '../context/I18nContext'
 import { ipcPortsFromResponse } from '@/lib/ipc/ipcResponse'
 import { fetchSessionSecrets } from '../store/credentialsBridge'
-import { DEFAULT_TERMINAL_ENCODING, TERMINAL_ENCODING_OPTIONS } from '../lib/terminalEncodingService'
+import { DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncoding'
+import { TERMINAL_ENCODING_OPTIONS } from '../lib/terminalEncodingService'
+import FormRow from './connect/FormRow'
+import { PrivateKeyField } from './connect/PrivateKeyField'
+import SshForm from './connect/SshForm'
+import TelnetForm from './connect/TelnetForm'
+import SerialForm from './connect/SerialForm'
+import { isSerialPathInEnumeratedList } from '../../shared/isSerialPathInEnumeratedList'
+import type { ConnectDialogProps } from '../types/components'
+import type { ConnectCredDialogState } from '../types/components'
+import type { SessionConfig, SessionFormValues, SessionType } from '../types/session'
 import {
   SESSION_GROUP_LABEL_ERROR_KEYS,
   SSH_SESSION_DEFAULT, TELNET_SESSION_DEFAULT, SERIAL_SESSION_DEFAULT,
@@ -11,27 +21,9 @@ import {
   mergeSessionFormDefaults, normalizeBackspaceMode, clampPortFieldString, parseSessionPort,
   buildSessionLabel, validateSessionGroupLabel,
 } from '../lib/session/utils'
-import FormRow from './connect/FormRow'
-import SshForm from './connect/SshForm'
-import TelnetForm from './connect/TelnetForm'
-import SerialForm from './connect/SerialForm'
-import { isSerialPathInEnumeratedList } from '../../shared/isSerialPathInEnumeratedList'
-import type { ConnectDialogProps } from '../types/components'
-import type { ConnectCredDialogState } from '../types/connectDialog'
-import type { SessionConfig, SessionFormValues, SessionType } from '../types/session'
 import '../styles/dialog.css'
 
-/**
- * 连接对话框组件：提供 SSH、Telnet、Serial 三种连接方式的配置界面，支持保存会话和直接连接
- * @param {Object} props 组件属性
- * @param {string} props.type 初始协议类型（ssh/telnet/serial）
- * @param {Object} props.initialData 初始配置数据，用于编辑已保存会话时预填充表单
- * @param {Array} props.savedGroups 已保存的分组列表，用于分组输入的自动补全
- * @param {Function} props.onConnect 直接连接的回调函数，参数为配置对象
- * @param {Function} props.onSaveAndConnect 保存并连接的回调函数，参数为配置对象
- * @param {Function} props.onSaveOnly 仅保存的回调函数，参数为配置对象
- * @param {Function} props.onClose 关闭对话框的回调函数
- */
+/** 连接对话框组件：提供 SSH、Telnet、Serial 三种连接方式的配置界面，支持保存会话和直接连接 */
 function ConnectDialog({
   type,
   initialData,
@@ -51,7 +43,7 @@ function ConnectDialog({
   const [credDialog, setCredDialog] = useState<ConnectCredDialogState | null>(null)
 
   const credUserInputRef = useRef<HTMLInputElement | null>(null)
-  const credPkeyInputRef = useRef<HTMLInputElement | null>(null)
+  const credPkeyInputRef = useRef<HTMLTextAreaElement | null>(null)
   const credPassInputRef = useRef<HTMLInputElement | null>(null)
   const credFocusAppliedRef = useRef(false)
   const portByTabRef = useRef<{ ssh: string; telnet: string }>({ ssh: '', telnet: '' })
@@ -72,7 +64,7 @@ function ConnectDialog({
   /**
    * 切换协议类型时更新表单数据。保留已有参数，补齐当前协议缺省字段，重置错误信息。
    * SSH 与 Telnet 互切时端口不跟随对方，恢复该协议上次使用的端口（首次为 22 / 23）。
-   * @param {string} next 新的协议类型
+   * @param next 新的协议类型
    */
   const switchTab = (next: SessionType) => {
     if (next === tab) return
@@ -136,15 +128,13 @@ function ConnectDialog({
 
   /** 
    * 更新表单数据的通用函数。接收一个键和值，使用 setForm 更新对应的表单字段，同时保留其他字段不变
-   * @param {string} key 设置项的键
-   * @param {string} value 设置项的值
+   * @param key 设置项的键
+   * @param value 设置项的值
    */
   const set = <K extends keyof SessionFormValues>(k: K, v: SessionFormValues[K]) =>
     setForm((prev) => ({ ...prev, [k]: v }))
 
-  /**
-   * 表单验证。保存会话时可跳过串口是否在枚举列表中的校验（设备未插入时也可保存配置）。
-   */
+  /** 表单验证。保存会话时可跳过串口是否在枚举列表中的校验（设备未插入时也可保存配置） */
   const validate = (forSave = false) => {
     if (tab === 'ssh' && !form.host?.trim()) return t('connect.errHost')
     if (tab === 'telnet' && !form.host?.trim()) return t('connect.errHost')
@@ -161,7 +151,7 @@ function ConnectDialog({
 
   /**
    * 构建配置对象，准备连接或保存。根据当前协议类型和表单数据生成一个完整的配置对象，进行必要的类型转换和默认值处理，同时生成标签名称（如果未指定标签则根据协议和主机信息生成）。该配置对象将作为连接或保存的参数传递给回调函数
-   * @returns {Object} 配置对象
+   * @returns 配置对象
    */
   const buildConfig = (): SessionConfig => ({
     ...form,
@@ -205,8 +195,8 @@ function ConnectDialog({
 
   /**
    * 检查是否需要输入凭证（用户名或密码为空）
-   * @param {Object} config 配置对象
-   * @returns {boolean} 是否需要输入凭证
+   * @param config 配置对象
+   * @returns 是否需要输入凭证
    */
   const needsCredentials = (config: SessionConfig) => {
     if (config.type === 'telnet') return false
@@ -248,7 +238,7 @@ function ConnectDialog({
     /**
      * 应用凭证函数。根据当前协议类型和表单数据生成一个完整的配置对象，进行必要的类型转换和默认值处理，
      * 同时生成标签名称（如果未指定标签则根据协议和主机信息生成）。该配置对象将作为连接或保存的参数传递给回调函数，然后关闭凭证输入对话框
-     * @returns {Object} 配置对象
+     * @returns 配置对象
      */
     const applyCred = () => {
       const config = keyAuth
@@ -263,7 +253,7 @@ function ConnectDialog({
      * @param field 输入框类型
      */
     const handleCredEnter = (field: 'user' | 'pkey' | 'pass' | 'passphrase') => {
-      const required: { id: 'user' | 'pkey' | 'pass'; ref: typeof credUserInputRef; value: string }[] = keyAuth
+    const required: { id: 'user' | 'pkey' | 'pass'; ref: RefObject<HTMLInputElement | HTMLTextAreaElement | null>; value: string }[] = keyAuth
         ? [
             { id: 'user', ref: credUserInputRef, value: username },
             { id: 'pkey', ref: credPkeyInputRef, value: privateKey },
@@ -308,13 +298,13 @@ function ConnectDialog({
             </FormRow>
             {keyAuth ? (
               <>
-                <FormRow label={t('connect.privateKey')}>
-                  <input
+                <FormRow label={t('connect.privateKey')} topAlign>
+                  <PrivateKeyField
                     ref={credPkeyInputRef}
-                    placeholder="/path/to/id_rsa"
+                    placeholder={t('connect.privateKeyPh')}
                     value={privateKey}
-                    onChange={e => setCredDialog(prev => prev ? { ...prev, privateKey: e.target.value } : null)}
-                    onKeyDown={e => e.key === 'Enter' && handleCredEnter('pkey')}
+                    onChange={value => setCredDialog(prev => prev ? { ...prev, privateKey: value } : null)}
+                    onSubmit={() => handleCredEnter('pkey')}
                   />
                 </FormRow>
                 <FormRow label={t('connect.passphrase')}>

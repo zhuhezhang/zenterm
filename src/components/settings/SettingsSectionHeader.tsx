@@ -1,18 +1,17 @@
-import type { SettingsActionKey, SettingsSectionHeaderDef } from '@/types/settingsUi'
-import type { TranslateFn } from '@/types/i18n'
+import type { SettingsActionKey, SettingsSectionHeaderDef } from '@/types/settings'
+import type { TranslateFn } from '@/types/common'
 
-/** 
- * 渲染区块标题
- * @param {Object} header 区块标题对象
- * @returns {React.ReactNode} 渲染后的区块标题 
- */
+/** 区块标题组件 */
 export default function SettingsSectionHeader({
   header,
   t,
   settingsActions,
 }: {
+  /** 区块标题定义 */
   header: SettingsSectionHeaderDef
+  /** 国际化翻译函数 */
   t: TranslateFn
+  /** 设置操作 */
   settingsActions: Record<SettingsActionKey, () => void | Promise<void>>
 }) {
   if (!header) return null

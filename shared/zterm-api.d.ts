@@ -390,6 +390,11 @@ export interface ZTermPathsApi {
    */
   chooseDirectory: () => Promise<IpcResult<{ path?: string; canceled?: boolean }>>
   /** 
+   * 选择私钥文件并读取 PEM 内容
+   * @returns 选择结果
+   */
+  choosePrivateKeyFile: () => Promise<IpcResult<{ path?: string; content?: string; canceled?: boolean }>>
+  /** 
    * 验证日志目录
    * @param dir 目录
    * @returns 验证结果
@@ -453,6 +458,10 @@ export interface ZTermOthersApi {
    * @param uiLanguage 语言
    */
   setUiLanguage: (uiLanguage: 'zh' | 'en') => void
+  /** 清空已保存的 SSH 已知主机公钥 */
+  clearKnownHosts: () => Promise<IpcResult>
+  /** 清空本会话「仅信任一次」的临时主机公钥缓存 */
+  clearSessionHostKeyCache: () => Promise<IpcResult>
 }
 
 /** 主 API */

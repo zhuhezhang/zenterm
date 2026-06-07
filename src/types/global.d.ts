@@ -2,6 +2,7 @@
 
 /** 文件对象类型扩展 */
 interface File {
+  /** 文件路径 */
   readonly path?: string
 }
 

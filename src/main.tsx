@@ -1,7 +1,7 @@
 import { Component, type ErrorInfo } from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import type { ErrorBoundaryProps, ErrorBoundaryState } from './types/app'
+import type { ErrorBoundaryProps, ErrorBoundaryState } from './types/components'
 import './styles/global.css'
 
 /**  React 错误边界组件，用于捕获子组件渲染过程中发生的错误，并显示友好的错误信息界面 */

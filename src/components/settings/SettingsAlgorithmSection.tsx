@@ -1,33 +1,35 @@
 import { useState } from 'react'
-import {
-  SSH_ALGORITHM_OPTION_POOL,
-  isWeakSshAlgorithm,
-  type AlgorithmCategory,
-} from '../../../shared/sshAlgorithmDefaults'
+import { SSH_ALGORITHM_OPTION_POOL, isWeakSshAlgorithm, type AlgorithmCategory } from '../../../shared/sshAlgorithmDefaults'
 import type { AppSettings } from '@/types/settings'
-import type { SettingsAlgorithmSectionDef } from '@/types/settingsUi'
-import type { TranslateFn } from '@/types/i18n'
-import SettingsSectionHeader from './SettingsSectionHeader'
-import type { SettingsActionKey } from '@/types/settingsUi'
+import type { SettingsAlgorithmSectionDef } from '@/types/settings'
+import type { TranslateFn } from '@/types/common'
+import type { SettingsActionKey } from '@/types/settings'
 
+/** 算法区块组件属性 */
 export interface SettingsAlgorithmSectionProps {
+  /** 区块定义 */
   sectionDef: SettingsAlgorithmSectionDef
+  /** 表单数据 */
   form: AppSettings
+  /** 国际化翻译函数 */
   t: TranslateFn
-  algorithmSections: { key: AlgorithmCategory; label: string; desc: string }[]
+  /** 算法类别列表（下拉选项） */
+  algorithmSections: { key: AlgorithmCategory; label: string }[]
+  /** 设置操作 */
   settingsActions: Record<SettingsActionKey, () => void | Promise<void>>
+  /** 切换算法选项 */
   toggleAlgorithmOption: (type: AlgorithmCategory, value: string) => void
+  /** 移动算法选项 */
   moveAlgorithmOption: (type: AlgorithmCategory, value: string, direction: number) => void
+  /** 重置算法类别 */
   resetAlgorithmSection: (type: AlgorithmCategory) => void
+  /** 显示设置悬停提示 */
   showSettingsHoverTip: (e: React.MouseEvent | React.FocusEvent, text: string) => void
+  /** 隐藏设置悬停提示 */
   hideSettingsHoverTip: () => void
 }
 
-/** 
- * 渲染算法区块
- * @param {Object} sectionDef 算法区块定义对象
- * @returns {React.ReactNode} 渲染后的算法区块 
- */
+/** 算法区块组件 */
 export default function SettingsAlgorithmSection({
   sectionDef,
   form,
@@ -41,38 +43,46 @@ export default function SettingsAlgorithmSection({
   hideSettingsHoverTip,
 }: SettingsAlgorithmSectionProps) {
   const [activeAlgoSection, setActiveAlgoSection] = useState('kex')  // 默认选中密钥交换算法类别
-  const algoCategory = algorithmSections.find((item) => item.key === activeAlgoSection) || algorithmSections[0]
-  const algoKey = algoCategory.key as AlgorithmCategory
-  const selected = form.algorithmPreferences?.[algoKey] || []
-  const options = SSH_ALGORITHM_OPTION_POOL[algoKey] || []
+  const algoCategory = algorithmSections.find((item) => item.key === activeAlgoSection) || algorithmSections[0]  // 获取当前选中的算法类别
+  const algoKey = algoCategory.key as AlgorithmCategory  // 获取当前选中的算法类别对应的算法键
+  const selected = form.algorithmPreferences?.[algoKey] || []  // 获取当前选中的算法选项
+  const options = SSH_ALGORITHM_OPTION_POOL[algoKey] || []  // 获取当前选中的算法类别对应的算法选项
 
   return (
     <div className="settings-section">
       <div className="settings-section-title">{t(`settings.sections.${sectionDef.section}`)}</div>
       <div className="settings-items">
         {sectionDef.header ? (
-          <SettingsSectionHeader header={sectionDef.header} t={t} settingsActions={settingsActions} />
-        ) : null}
-        <div className="settings-item">
-          <div className="settings-item-info">
-            <span className="settings-item-label">{t('settings.algoCategory')}</span>
-            <span className="settings-item-desc">{t('settings.algoCategoryDesc')}</span>
-          </div>
-          <select className="settings-select" value={activeAlgoSection} onChange={(e) => setActiveAlgoSection(e.target.value)}>
-            {algorithmSections.map((item) => (
-              <option key={item.key} value={item.key}>{item.label}</option>
-            ))}
-          </select>
-        </div>
-        <div className="settings-algo-block">
-          <div className="settings-algo-desc">
+          <div className="settings-item">
             <div className="settings-item-info">
-              <span className="settings-item-desc">{algoCategory.desc}</span>
+              <span className="settings-item-label">{t(sectionDef.header.labelKey)}</span>
+              {sectionDef.header.descKey ? (
+                <span className="settings-item-desc">{t(sectionDef.header.descKey)}</span>
+              ) : null}
             </div>
-            <button type="button" className="settings-action-btn" onClick={() => resetAlgorithmSection(algoCategory.key)}>
-              {t('settings.resetSection')}
-            </button>
+            <div className="settings-item-actions">
+              {sectionDef.header.actions?.map((act) => (
+                <button
+                  key={act.action}
+                  type="button"
+                  className="settings-action-btn"
+                  onClick={() => settingsActions[act.action]?.()}
+                >
+                  {t(act.buttonKey)}
+                </button>
+              ))}
+              <button type="button" className="settings-action-btn" onClick={() => resetAlgorithmSection(algoCategory.key)}>
+                {t('settings.resetSection')}
+              </button>
+              <select className="settings-select" value={activeAlgoSection} onChange={(e) => setActiveAlgoSection(e.target.value)}>
+                {algorithmSections.map((item) => (
+                  <option key={item.key} value={item.key}>{item.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
+        ) : null}
+        <div className="settings-algo-block">
           {selected.map((value, index) => (
             <div key={value} className="settings-algo-row">
               <label className="settings-algo-label">

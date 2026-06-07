@@ -3,8 +3,8 @@ import type { ITheme } from '@xterm/xterm'
 
 /**
  * 根据设置解析当前应使用的亮/暗主题（auto 时读取系统 prefers-color-scheme）
- * @param {AppThemeSetting} appTheme 主题名称
- * @returns {AppThemeResolved} 当前实际主题名称
+ * @param appTheme 主题名称
+ * @returns 当前实际主题名称
  */
 export function resolveEffectiveAppTheme(appTheme: AppTheme): 'dark' | 'light' {
   if (appTheme === 'light') return 'light'
@@ -18,8 +18,8 @@ export function resolveEffectiveAppTheme(appTheme: AppTheme): 'dark' | 'light' {
 
 /**
  * 获取 xterm 内置主题
- * @param {AppThemeResolved} mode 主题名称
- * @returns {Record<string, string>} xterm 内置主题对象
+ * @param mode 主题名称
+ * @returns xterm 内置主题
  */
 export function getXtermTheme(mode: 'dark' | 'light'): ITheme {
   if (mode === 'light') {

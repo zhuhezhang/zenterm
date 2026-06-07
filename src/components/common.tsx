@@ -1,8 +1,6 @@
 /** 连接类型图标 */
-const ConnectionTypeIcon = {
+export const ConnectionTypeIcon = {
   ssh: '⌨',
   telnet: '🔌',
   serial: '⚡',
 }
-
-export default ConnectionTypeIcon

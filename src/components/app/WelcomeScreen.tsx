@@ -1,8 +1,9 @@
 import { useI18n } from '@/context/I18nContext'
 import type { WelcomeScreenProps } from '@/types/components'
 import type { SessionType } from '@/types/session'
-import ConnectionTypeIcon from '../common'
+import { ConnectionTypeIcon } from '../common'
 
+/** 欢迎屏幕组件 */
 export default function WelcomeScreen({ onNewSession }: WelcomeScreenProps) {
   const { t } = useI18n()
   return (

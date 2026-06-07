@@ -7,8 +7,6 @@ import {
   normalizeTerminalEncoding,
 } from '../../shared/terminalEncoding'
 
-export { DEFAULT_TERMINAL_ENCODING, normalizeTerminalEncoding }
-
 /** 连接对话框编码下拉 */
 export const TERMINAL_ENCODING_OPTIONS = [
   { value: DEFAULT_TERMINAL_ENCODING, label: 'UTF-8' },
@@ -20,11 +18,13 @@ export const TERMINAL_ENCODING_OPTIONS = [
   { value: 'latin1', label: 'Latin-1 (ISO-8859-1)' },
 ]
 
+/** 解码器缓存 */
 const decoderCache = new Map<string, TextDecoder>()
 
 /**
- * @param {string} encoding
- * @returns {TextDecoder}
+ * 获取解码器
+ * @param encoding 编码
+ * @returns 解码器
  */
 function getTextDecoder(encoding: string) {
   const key = normalizeTerminalEncoding(encoding)
@@ -41,9 +41,9 @@ function getTextDecoder(encoding: string) {
 
 /**
  * 主进程经 binary 线传来的字节流 → Unicode（供 xterm.write）
- * @param {string} binary
- * @param {string} [encoding]
- * @returns {string}
+ * @param binary 字节流
+ * @param encoding 编码
+ * @returns Unicode
  */
 export function decodeIncomingTerminalWire(binary: string, encoding?: string) {
   if (binary == null || binary === '') return ''
@@ -54,13 +54,4 @@ export function decodeIncomingTerminalWire(binary: string, encoding?: string) {
   } catch {
     return new TextDecoder(DEFAULT_TERMINAL_ENCODING, { fatal: false }).decode(bytes)
   }
-}
-
-/**
- * 会话对象上的 encoding 字段 → 规范名
- * @param {{ encoding?: string } | null | undefined} session
- * @returns {string}
- */
-export function sessionTerminalEncoding(session: { encoding?: string } | null | undefined) {
-  return normalizeTerminalEncoding(session?.encoding)
 }

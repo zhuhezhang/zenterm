@@ -1,12 +1,18 @@
-import type { TranslateFn } from '../../types/i18n'
+import type { TranslateFn } from '../../types/common'
 import type { AppSettings } from '../../types/settings'
 import type { SavedSession } from '../../types/session'
 import { buildExportEnvelope } from './parseImportFile'
 import { EXPORT_FILENAME_PREFIX } from './constants'
 import { alertIpcFailure } from '../ipc/formatIpcError'
 
+/** 导出类型 */
 type ExportKind = keyof typeof EXPORT_FILENAME_PREFIX
 
+/**
+ * 构建导出文件名
+ * @param kind 导出类型
+ * @returns 导出文件名
+ */
 export function buildExportFilename(kind: ExportKind): string {
   const now = new Date()
   const date = now.toISOString().slice(0, 10).replace(/-/g, '')
@@ -16,16 +22,13 @@ export function buildExportFilename(kind: ExportKind): string {
   return `${EXPORT_FILENAME_PREFIX[kind]}-${date}-${hh}${mm}${ss}.json`
 }
 
-export async function downloadJsonExport(
-  kind: 'sessions',
-  data: SavedSession[],
-  t: TranslateFn,
-): Promise<void>
-export async function downloadJsonExport(
-  kind: 'settings',
-  data: AppSettings,
-  t: TranslateFn,
-): Promise<void>
+/**
+ * 下载 JSON 导出
+ * @param kind 导出类型
+ * @param data 导出数据
+ * @param t 翻译函数
+ * @returns 导出结果
+ */
 export async function downloadJsonExport(
   kind: ExportKind,
   data: SavedSession[] | AppSettings,

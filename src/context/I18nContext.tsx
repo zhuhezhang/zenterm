@@ -9,15 +9,23 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { translateRender } from '../i18n/translateRender'
 import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage'
-import type { I18nContextValue } from '../types/i18n'
+import type { I18nContextValue } from '../types/common'
 
+/** 默认语言 */
 const defaultLang = resolveEffectiveUiLanguage('zh')
 
+/** I18n 上下文 */
 const I18nContext = createContext<I18nContextValue>({
   lang: defaultLang,
   t: (path, params) => translateRender(defaultLang, path, params),
 })
 
+/**
+ * I18n 提供者组件
+ * @param language 语言
+ * @param children 子组件
+ * @returns I18n 提供者组件
+ */
 export function I18nProvider({
   language,
   children,
@@ -25,7 +33,7 @@ export function I18nProvider({
   language?: string
   children: ReactNode
 }) {
-  const lang = resolveEffectiveUiLanguage(language)
+  const lang = resolveEffectiveUiLanguage(language)  // 解析语言
   const value = useMemo<I18nContextValue>(
     () => ({
       lang,
@@ -36,6 +44,10 @@ export function I18nProvider({
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }
 
+/**
+ * 使用 I18n
+ * @returns I18n 使用者组件
+ */
 export function useI18n(): I18nContextValue {
   return useContext(I18nContext)
 }

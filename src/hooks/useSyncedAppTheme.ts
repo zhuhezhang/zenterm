@@ -4,13 +4,13 @@ import { resolveEffectiveAppTheme } from '@/theme/appTheme'
 
 /**
  * 同步应用主题到 document、原生窗口底色，并在 auto 时监听系统主题变化
- * @param {'dark'|'light'|'auto'} appTheme
- * @returns {'dark'|'light'} 当前实际亮暗
+ * @param appTheme 应用主题
+ * @returns 当前实际亮/暗主题
  */
 export function useSyncedAppTheme(appTheme: AppTheme): 'dark' | 'light' {
   const [effective, setEffective] = useState<'dark' | 'light'>(() => resolveEffectiveAppTheme(appTheme))
 
-  useLayoutEffect(() => {
+  useLayoutEffect(() => {  // useLayoutEffect 监听应用主题变化
     const apply = () => {
       const eff = resolveEffectiveAppTheme(appTheme)
       setEffective(eff)

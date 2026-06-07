@@ -61,11 +61,11 @@ export const SETTINGS = {
       },
       "logPath": {
         "label": "日志保存目录",
-        "desc": "留空则保存至系统下载目录下的「zterm-session-log」文件夹。须选主目录/文稿/下载/桌面等用户目录下路径，否则写入会被主进程拒绝。Windows 上还可使用系统盘（通常为 C 盘）以外的整盘路径"
+        "desc": "留空则保存至系统下载目录下的「zterm-session-log」文件夹。须位于主目录、文稿、下载、桌面、音乐、图片、视频等用户目录下；Windows 还可选系统盘（通常为 C 盘）以外的整盘路径，Linux / macOS 还可选根分区以外的独立挂载点或外置卷（如 /mnt、/media、/Volumes 下路径），否则写入会被主进程拒绝"
       },
       "saveSecretsToVault": {
         "label": "保存敏感凭据到加密存储",
-        "desc": "开启后，保存 SSH 会话时会把密码、私钥路径或 PEM、私钥 passphrase 等一并写入系统加密存储。\n关闭并保存设置后，会按会话从加密库中移除这些字段；若系统不支持加密，保存会话时会提示且不会把明文写入磁盘"
+        "desc": "开启后，保存 SSH 会话时会把密码、私钥路径或 PEM、私钥 passphrase 等一并写入系统加密存储。\n关闭后不再写入新凭据，但已保存的敏感信息会保留；若系统不支持加密，保存会话时会提示且不会把明文写入磁盘"
       }
     },
     "options": {
@@ -93,11 +93,10 @@ export const SETTINGS = {
     "logPathValidateFail": "校验日志目录失败：{msg}",
     "choose": "选择",
     "algoTitle": "SSH/SFTP 算法",
-    "algoIntro": "默认仅启用现代算法；若须连接老旧设备，可在下方勾选标记为「不安全」的算法（会降低协商强度）",
-    "resetDefault": "重置默认",
+    "algoIntro": "除非连接老旧设备，否则慎用标记为「不安全」的算法，会降低协商强度",
+    "resetDefault": "重置全部算法",
     "algoCategory": "算法类别",
-    "algoCategoryDesc": "先从下拉列表中选择要配置的算法类别",
-    "resetSection": "重置本类默认",
+    "resetSection": "重置当前算法",
     "weakBadge": "不安全",
     "weakTip": "遗留或较弱的算法，可能存在安全风险，仅在为兼容老旧 SSH 服务端时启用",
     "highlightRules": "高亮规则",
@@ -122,6 +121,8 @@ export const SETTINGS = {
     "regexTipOff": "纯文本匹配（点击改为正则）",
     "clearSecrets": "清空全部已保存的敏感信息",
     "clearSecretsDesc": "立即删除加密库中所有凭据；不影响会话列表与本地设置",
+    "clearKnownHosts": "清除已知主机公钥",
+    "clearKnownHostsDesc": "删除已信任的 SSH 主机公钥指纹，下次连接将重新确认",
     "clear": "清空",
     "exportSessions": "导出会话",
     "exportSessionsDesc": "将所有保存的会话导出为 JSON 文件",
@@ -137,7 +138,7 @@ export const SETTINGS = {
     "importSettings": "导入设置",
     "importSettingsDesc": "从 JSON 文件导入设置。高亮规则与现有的合并，重复 id 和 name 的规则会被忽略；其他设置将覆盖当前设置",
     "restoreDefaults": "恢复默认设置",
-    "restoreDefaultsDesc": "将本地保存的全部选项重置为应用内置默认值（会同时清除保存的密钥等敏感信息，但不影响已保存的会话列表）",
+    "restoreDefaultsDesc": "将本地保存的全部选项重置为应用内置默认值（不影响已保存的会话列表与加密库中的敏感信息）",
     "restoreDefaultBtn": "恢复默认",
     "confirmResetHighlight": "确定将高亮规则重置为内置默认列表吗？\n当前列表中的规则会被全部替换；重置后请点击「保存」或「保存并关闭」写入本地",
     "importSessionsOk": "已导入 {n} 个新会话",
@@ -197,11 +198,14 @@ export const SETTINGS = {
       "algorithmSectionAllInvalid": "算法类别「{sectionLabel}」：所列算法均无效，已保留当前该类配置",
       "algorithmSectionPartialInvalid": "算法类别「{sectionLabel}」：已忽略 {skipped} 个无效算法"
     },
-    "confirmRestore": "确定将所有本地设置恢复为默认值吗？\n终端高亮规则、SSH 算法偏好、日志路径、确认选项、凭据存储开关与存储的密钥等都会重置，此操作不可撤销",
+    "confirmRestore": "确定将所有本地设置恢复为默认值吗？\n终端高亮规则、SSH 算法偏好、日志路径、确认选项与凭据存储开关等都会重置；已保存的会话与加密库中的敏感信息不会删除，此操作不可撤销",
     "confirmRestore2": "再次确认：将立即把默认设置写入本机存储并生效，是否继续？",
     "restored": "已恢复为默认设置",
     "confirmClearVault": "确定清空全部已加密保存的敏感信息？\n已保存的会话列表仍会保留，但 SSH 的密码、私钥与 passphrase 需重新输入或重新保存",
     "confirmClearVault2": "再次确认：此操作不可恢复",
+    "confirmClearKnownHosts": "确定清除全部已保存的 SSH 已知主机公钥？下次连接这些主机时将再次弹出指纹确认",
+    "clearedKnownHosts": "已清除全部已知主机公钥",
+    "clearKnownHostsFail": "清除失败：{msg}",
     "clearedVault": "已清空全部敏感信息",
     "clearVaultFail": "清空失败：{msg}",
     "unnamedRule": "未命名规则{n}",
@@ -279,11 +283,11 @@ export const SETTINGS = {
       },
       "logPath": {
         "label": "Log directory",
-        "desc": "Empty = Downloads/zterm-session-log. Must be under a user-writable folder or the main process will reject writes. Windows can use any drive letter other than the system drive (usually C:)"
+        "desc": "Empty = Downloads/zterm-session-log. Must be under user Home, Documents, Downloads, Desktop, Music, Pictures, Videos paths. On Windows you may also use a whole drive other than the system drive (usually C:). On Linux and macOS you may use separate mount points or external volumes outside the root filesystem (e.g. under /mnt, /media, or /Volumes). Other paths are rejected by the main process"
       },
       "saveSecretsToVault": {
         "label": "Save secrets to encrypted storage",
-        "desc": "When on, saving SSH sessions stores password, private key / PEM, and passphrase in OS secure storage.\nWhen off and saved, those fields are removed from the vault; if encryption is unavailable, saving will warn and avoid writing plaintext"
+        "desc": "When on, saving SSH sessions stores password, private key / PEM, and passphrase in OS secure storage.\nWhen off, new secrets are not written, but existing vault entries stay; if encryption is unavailable, saving will warn and avoid writing plaintext"
       }
     },
     "options": {
@@ -311,11 +315,10 @@ export const SETTINGS = {
     "logPathValidateFail": "Could not validate log folder: {msg}",
     "choose": "Browse",
     "algoTitle": "SSH/SFTP algorithms",
-    "algoIntro": "Modern algorithms only by default; enable items marked “weak” for old devices (weakens negotiation)",
-    "resetDefault": "Reset defaults",
+    "algoIntro": "Unless connecting to old devices, use items marked “weak” with caution (weakens negotiation)",
+    "resetDefault": "Reset all algorithms",
     "algoCategory": "Category",
-    "algoCategoryDesc": "Pick a category to configure",
-    "resetSection": "Reset category defaults",
+    "resetSection": "Reset current algorithm",
     "weakBadge": "Weak",
     "weakTip": "Legacy or weak algorithm; security risk—enable only for old SSH servers",
     "highlightRules": "Highlight rules",
@@ -340,6 +343,8 @@ export const SETTINGS = {
     "regexTipOff": "Plain text (click for regex)",
     "clearSecrets": "Clear all stored secrets",
     "clearSecretsDesc": "Remove every credential from the vault; sessions and settings stay",
+    "clearKnownHosts": "Clear known SSH host keys",
+    "clearKnownHostsDesc": "Remove trusted SSH host key fingerprints, you will be prompted again on next connect",
     "clear": "Clear",
     "exportSessions": "Export sessions",
     "exportSessionsDesc": "Export all saved sessions to JSON",
@@ -355,7 +360,7 @@ export const SETTINGS = {
     "importSettings": "Import settings",
     "importSettingsDesc": "Import settings from JSON. Highlight rules are merged, rules with duplicate id and name are ignored; other settings overwrite current settings",
     "restoreDefaults": "Restore defaults",
-    "restoreDefaultsDesc": "Reset all local options to app defaults (also clears stored keys; saved session list is kept)",
+    "restoreDefaultsDesc": "Reset all local options to app defaults (saved sessions and vault secrets are kept)",
     "restoreDefaultBtn": "Restore defaults",
     "confirmResetHighlight": "Reset highlight rules to built-in defaults?\nCurrent rules will be replaced; click Save or Save & close to persist",
     "importSessionsOk": "Imported {n} new session(s)",
@@ -415,11 +420,14 @@ export const SETTINGS = {
       "algorithmSectionAllInvalid": "Algorithm category “{sectionLabel}”: all listed algorithms are invalid; kept current list",
       "algorithmSectionPartialInvalid": "Algorithm category “{sectionLabel}”: ignored {skipped} invalid algorithm(s)"
     },
-    "confirmRestore": "Restore all local settings to defaults?\nHighlight rules, SSH algorithms, log path, confirmations, vault toggle and stored keys will reset. Cannot undo",
+    "confirmRestore": "Restore all local settings to defaults?\nHighlight rules, SSH algorithms, log path, confirmations, and vault toggle will reset. Saved sessions and vault secrets are kept. Cannot undo",
     "confirmRestore2": "Confirm again: defaults will be written immediately. Continue?",
     "restored": "Restored default settings",
     "confirmClearVault": "Clear all encrypted secrets?\nSaved sessions remain, but SSH passwords, keys, and passphrases must be re-entered",
     "confirmClearVault2": "This cannot be undone. Continue?",
+    "confirmClearKnownHosts": "Clear all saved SSH known host keys? You will be asked to verify host keys again on next connect",
+    "clearedKnownHosts": "Known host keys cleared",
+    "clearKnownHostsFail": "Clear failed: {msg}",
     "clearedVault": "All secrets cleared",
     "clearVaultFail": "Clear failed: {msg}",
     "unnamedRule": "Unnamed rule {n}",

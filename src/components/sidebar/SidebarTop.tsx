@@ -1,13 +1,6 @@
-/**
- * 侧边栏顶部：包含展开/收起按钮和设置按钮
- * @param {object} props 组件属性
- * @param {boolean} props.open 侧边栏是否展开
- * @param {function} props.onToggle 切换侧边栏展开/收起的回调函数
- * @param {function} props.onOpenSettings 打开设置界面的回调函数
- * @returns {JSX.Element} 侧边栏顶部组件
- */
 import type { SidebarTopProps } from '@/types/components'
 
+/** 侧边栏顶部：包含展开/收起按钮和设置按钮 */
 export default function SidebarTop({ open, onToggle, onOpenSettings, t }: SidebarTopProps) {
   return (
     <div className="sidebar-top">

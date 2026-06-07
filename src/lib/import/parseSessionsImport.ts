@@ -2,14 +2,14 @@ import { createImportError } from './handleImportErrors'
 import { assertImportFilePathAllowed } from './validateImportFilePath'
 import { readImportJson, unwrapExportPayload } from './parseImportFile'
 import { normalizeImportedSession } from '../session/normalizeSession'
-import type { SessionImportWarning } from '../../types/import'
+import type { SessionImportWarning } from '../../types/common'
 import type { SavedSession } from '../../types/session'
 import { IMPORT_MAX_SESSION_COUNT } from './constants'
 
 /**
  * 验证并解析会话导入文件
- * @param {File} file 导入的 JSON 文件对象
- * @returns {Promise<{ sessions: Record<string, unknown>[], stats: { total: number, accepted: number, skipped: number }, warnings: import('../session/importWarnings').SessionImportWarning[] }>} 解析后的会话列表、统计信息和导入警告列表
+ * @param file 导入的 JSON 文件对象
+ * @returns 解析后的会话列表、统计信息和导入警告列表
  */
 export async function validateAndParseSessionsImport(file: File) {
   await assertImportFilePathAllowed(file)

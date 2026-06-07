@@ -90,6 +90,14 @@
   gap: 12px;
 }
 
+.form-row-top-align {
+  align-items: flex-start;
+}
+
+.form-row-top-align .form-label {
+  padding-top: 6px;
+}
+
 .form-label {
   width: 80px;
   font-size: 12px;
@@ -256,9 +264,52 @@
   box-sizing: border-box;
 }
 .dialog-body input:focus,
-.dialog-body select:focus {
+.dialog-body select:focus,
+.dialog-body textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(88,166,255,0.15);
+}
+
+.dialog-private-key-input {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  resize: vertical;
+  min-height: 88px;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.dialog-private-key-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.dialog-private-key-row .dialog-private-key-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dialog-private-key-browse {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dialog-private-key-browse:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 .dialog-body select {
   appearance: none;

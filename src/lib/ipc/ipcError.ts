@@ -1,9 +1,11 @@
-import type { IpcThrownError } from '../../types/errors'
+import type { IpcThrownError } from '../../types/common'
 import type { IpcContent, IpcResult } from '../../../shared/ipc'
 import { ipcContent, ipcErrorFields, isIpcSuccess } from './ipcResponse'
 
 /**
  * 将 IPC 响应转为 Error (保留 errorParams / errorKnown 供 formatThrownIpcError)
+ * @param res 错误响应对象
+ * @returns IpcThrownError
  */
 export function ipcErrorFromResponse(res: IpcResult | null | undefined): IpcThrownError {
   const { error, errorParams, errorKnown } = ipcErrorFields(res)
@@ -15,8 +17,8 @@ export function ipcErrorFromResponse(res: IpcResult | null | undefined): IpcThro
 
 /**
  * 非 success 时抛出 ipcErrorFromResponse；用于 await invoke 后的统一校验
- * @param {{ success?: boolean, errorKnown?: boolean, content?: Record<string, unknown> } | null | undefined} res
- * @returns {NonNullable<typeof res>}
+ * @param res 错误响应对象
+ * @returns 返回响应对象
  */
 export function assertIpcSuccess<T extends IpcContent = IpcContent>(
   res: IpcResult<T> | null | undefined,
@@ -31,8 +33,8 @@ export function assertIpcSuccess<T extends IpcContent = IpcContent>(
 
 /**
  * assertIpcSuccess + 返回 content
- * @param {{ success?: boolean, content?: Record<string, unknown> } | null | undefined} res
- * @returns {Record<string, unknown>}
+ * @param res 错误响应对象
+ * @returns 返回业务载荷
  */
 export function unwrapIpcOk<T extends IpcContent = IpcContent>(
   res: IpcResult<T> | null | undefined,

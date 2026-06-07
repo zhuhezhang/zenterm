@@ -1,11 +1,5 @@
 import type { SessionFormValues, SessionType } from '../../types/session'
-import { DEFAULT_TERMINAL_ENCODING } from '../terminalEncodingService'
-import {
-  INVALID_LABEL_CHARS,
-  INVALID_GROUP_CHARS,
-  hasInvalidLabelChars,
-  hasInvalidGroupChars,
-} from '../safeFileName'
+import { DEFAULT_TERMINAL_ENCODING } from '../../../shared/terminalEncoding'
 
 /** 端口最小值 */
 export const PORT_MIN = 0
@@ -35,13 +29,6 @@ export const SESSION_TYPE_FIELDS = {
   telnet: ['host', 'port', 'encoding', 'backspaceMode'],
   serial: ['path', 'baudRate', 'dataBits', 'stopBits', 'parity', 'encoding', 'backspaceMode'],
 }
-
-/** @deprecated 使用 lib/safeFileName 的 INVALID_LABEL_CHARS */
-export const LABEL_ILLEGAL_CHARS_RE = INVALID_LABEL_CHARS
-/** @deprecated 使用 lib/safeFileName 的 INVALID_GROUP_CHARS */
-export const GROUP_ILLEGAL_CHARS_RE = INVALID_GROUP_CHARS
-
-export { hasInvalidLabelChars, hasInvalidGroupChars }
 
 /** 验证会话分组和标签返回码 → connect.* i18n 键 */
 export const SESSION_GROUP_LABEL_ERROR_KEYS = {
@@ -90,13 +77,19 @@ export const SERIAL_SESSION_DEFAULT = {
   backspaceMode: 'auto',
 }
 
+/** SSH 会话保存/导入时的数值型默认值 */
 export type SshStorageDefaults = typeof SSH_SESSION_DEFAULT
+/** Telnet 会话保存/导入时的数值型默认值 */
 export type TelnetStorageDefaults = typeof TELNET_SESSION_DEFAULT
+/** Serial 会话保存/导入时的数值型默认值 */
 export type SerialStorageDefaults = typeof SERIAL_SESSION_DEFAULT
+/** 会话保存/导入时的数值型默认值 */
 export type SessionStorageDefaults = SshStorageDefaults | TelnetStorageDefaults | SerialStorageDefaults
 
 /**
  * 获取会话保存/导入时的数值型默认值
+ * @param type 会话类型
+ * @returns 返回会话保存/导入时的数值型默认值
  */
 export function getSessionStorageDefaults(type: SessionType): SessionStorageDefaults {
   if (type === 'ssh') return { ...SSH_SESSION_DEFAULT }
@@ -106,6 +99,8 @@ export function getSessionStorageDefaults(type: SessionType): SessionStorageDefa
 
 /**
  * 获取会话连接对话框表单默认值（端口等为字符串，便于输入框绑定）
+ * @param type 会话类型
+ * @returns 返回会话连接对话框表单默认值
  */
 export function getSessionFormDefaults(type: SessionType): SessionFormValues {
   /** 表单输入框绑定时需为字符串的数值字段，与 SESSION_TYPE_FIELDS 对应 */

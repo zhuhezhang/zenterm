@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, lazy, Suspense, memo } from 'react'
-import type { AppMainProps } from './types/app'
+import type { AppMainProps } from './types/components'
 import type { AppSettings, AppTheme } from './types/settings'
 import type { ActiveSession, TerminalClearFn, TerminalTextGetter } from './types/session'
 import { I18nProvider } from '@/context/I18nContext'

@@ -6,6 +6,8 @@ import { translateMain, setStoredUiLanguage } from '../i18n/translateMain.js'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { ipcFail, ipcFailFromThrown, ipcOk } from '../lib/ipcResponse.js'
 import { validateLogWriteDirectory, validateLocalFilePath, assertLocalFilePathAllowed } from '../lib/localPathPolicy.js'
+import { isPrivateKeyPemContent } from '../../shared/privateKeyMaterial.js'
+import { clearKnownHostsStore, clearSessionHostKeyCache } from '../lib/sshKnownHosts.js'
 import type { MainWindowGetter, SaveFilePolicyOptions } from '../types/handlers.js'
 import type { BrowserWindow } from 'electron'
 
@@ -70,6 +72,35 @@ export function setupAppHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGett
     return ipcOk({ path: result.filePaths[0] })
   })
 
+  ipcMain.handle('app:choosePrivateKeyFile', async (event: IpcMainInvokeEvent) => {  // 选择并读取私钥文件
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
+    const mainWindow = getMainWindow()
+    const openOptions = {
+      properties: ['openFile'] as ('openFile')[],
+      title: translateMain('app.choosePrivateKeyFileTitle'),
+      filters: [
+        { name: 'Private Key', extensions: ['pem', 'key', 'ppk'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    }
+    const result = mainWindow
+      ? await dialog.showOpenDialog(mainWindow, openOptions)
+      : await dialog.showOpenDialog(openOptions)
+    if (result.canceled || !result.filePaths?.[0]) return ipcOk({ canceled: true })
+
+    const filePath = result.filePaths[0]
+    try {
+      assertLocalFilePathAllowed(filePath, 'read')
+      const stat = fs.statSync(filePath)
+      if (!stat.isFile()) return ipcFail('ssh.privateKeyInvalid', true)
+      const content = fs.readFileSync(filePath, 'utf8').trim()
+      if (!isPrivateKeyPemContent(content)) return ipcFail('ssh.privateKeyInvalid', true)
+      return ipcOk({ path: filePath, content })
+    } catch (e) {
+      return ipcFailFromThrown(e)
+    }
+  })
+
   ipcMain.handle('app:validateLogDirectory', (event: IpcMainInvokeEvent, dir: unknown) => {  // 处理验证日志目录请求
     if (!isTrustedIpcSender(event.sender)) {
       return ipcFail('app.invalidRequest', true)
@@ -112,5 +143,21 @@ export function setupAppHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGett
       content: String(jsonText ?? ''),
       kind: 'export',
     })
+  })
+
+  ipcMain.handle('app:clearKnownHosts', (event: IpcMainInvokeEvent) => {  // 清空 SSH 已知主机公钥存储
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
+    try {
+      clearKnownHostsStore()
+      return ipcOk()
+    } catch (e) {
+      return ipcFailFromThrown(e)
+    }
+  })
+
+  ipcMain.handle('app:clearSessionHostKeyCache', (event: IpcMainInvokeEvent) => {  // 清空本会话临时主机公钥缓存
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
+    clearSessionHostKeyCache()
+    return ipcOk()
   })
 }

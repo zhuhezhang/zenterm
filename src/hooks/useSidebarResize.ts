@@ -3,6 +3,13 @@ import { clampSidebarWidthPx } from '@/lib/settings/normalize'
 import type { AppSettings } from '@/types/settings'
 import { saveSettings } from '@/store/settingsStore'
 
+/**
+ * 使用侧边栏拖拽
+ * @param sidebarWidth 侧边栏宽度
+ * @param setSidebarWidth 设置侧边栏宽度回调
+ * @param setSettings 设置设置回调
+ * @returns 侧边栏拖拽
+ */
 export function useSidebarResize(
   sidebarWidth: number,
   setSidebarWidth: Dispatch<SetStateAction<number>>,

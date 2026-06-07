@@ -1,9 +1,12 @@
 import { formatIpcResponseError } from '../ipc/formatIpcError'
-import type { TranslateFn } from '../../types/i18n'
-import type { ImportError } from '../../types/errors'
+import type { TranslateFn } from '../../types/common'
+import type { ImportError } from '../../types/common'
 
 /**
  * 创建导入错误，用于在导入过程中抛出错误
+ * @param code 错误代码
+ * @param params 错误参数
+ * @returns 导入错误
  */
 export function createImportError(
   code: string,
@@ -15,11 +18,21 @@ export function createImportError(
   return err
 }
 
+/**
+ * 判断是否为导入路径拒绝错误
+ * @param err 错误
+ * @returns 是否为导入路径拒绝错误
+ */
 export function isImportPathDeniedError(err: unknown): err is ImportError {
   return !!err && typeof err === 'object' && 'code' in err && (err as ImportError).code === 'pathDenied'
 }
 
-/** 路径不在允许范围内（IPC 文案已含「导入失败」前缀，勿再用 settings.importFail 包裹） */
+/**
+ * 格式化导入路径拒绝消息
+ * @param t 翻译函数
+ * @param err 错误
+ * @returns 导入路径拒绝消息
+ */
 export function formatImportPathDeniedMessage(t: TranslateFn, err: unknown): string {
   const importErr = err as ImportError
   const ipcMsg = importErr.ipc ? formatIpcResponseError(t, importErr.ipc) : ''
@@ -27,7 +40,12 @@ export function formatImportPathDeniedMessage(t: TranslateFn, err: unknown): str
   return t('settings.importPathDenied', { hint: t('sftp.pathErrors.allowedRootsHint') })
 }
 
-/** 将非路径策略类的导入错误转为用户可见文案 */
+/**
+ * 格式化导入错误
+ * @param t 翻译函数
+ * @param err 错误
+ * @returns 导入错误
+ */
 export function formatImportError(t: TranslateFn, err: unknown): string {
   const importErr = err as ImportError
   const code = err && typeof err === 'object' && 'code' in err ? importErr.code : null
@@ -45,7 +63,12 @@ export function formatImportError(t: TranslateFn, err: unknown): string {
   return String(err ?? '')
 }
 
-/** 导入会话/设置失败：路径策略与其它错误分开展示，避免「导入失败」重复 */
+/**
+ * 报告导入错误
+ * @param t 翻译函数
+ * @param err 错误
+ * @returns 导入错误
+ */
 export function reportImportError(t: TranslateFn, err: unknown): void {
   if (isImportPathDeniedError(err)) {
     alert(formatImportPathDeniedMessage(t, err))

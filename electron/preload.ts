@@ -89,6 +89,7 @@ const ztermApi = {
   paths: {
     getDownloadsPath: () => ipcRenderer.invoke('app:getDownloadsPath'),
     chooseDirectory: () => ipcRenderer.invoke('app:chooseDirectory'),
+    choosePrivateKeyFile: () => ipcRenderer.invoke('app:choosePrivateKeyFile'),
     validateLogDirectory: (dir: string) => ipcRenderer.invoke('app:validateLogDirectory', dir),
     validateLocalFilePath: (filePath: string, kind?: string) => ipcRenderer.invoke('app:validateLocalFilePath', filePath, kind),
     getPathForFile: (file: File) => {
@@ -113,6 +114,8 @@ const ztermApi = {
 
   others: {
     setUiLanguage: (uiLanguage: 'zh' | 'en') => ipcRenderer.send('app:setUiLanguage', uiLanguage),
+    clearKnownHosts: () => ipcRenderer.invoke('app:clearKnownHosts'),
+    clearSessionHostKeyCache: () => ipcRenderer.invoke('app:clearSessionHostKeyCache'),
   },
 } satisfies ZTermApi  // satisfies 在这里是类型断言，将 ztermApi 断言为 ZTermApi 类型
 

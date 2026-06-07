@@ -1,3 +1,5 @@
+import type { FolderIconProps } from '@/types/components'
+
 /** 连接类型颜色映射 */
 export const TYPE_COLORS = { ssh: '#58a6ff', telnet: '#3fb950', serial: '#ffa657' }
 
@@ -10,14 +12,7 @@ export function Chevron() {
   )
 }
 
-/**
- * 文件夹图标组件，根据是否展开显示不同的图标
- * @param {object} props 组件属性
- * @param {boolean} props.open 是否展开
- * @returns {JSX.Element} 文件夹图标组件
- */
-import type { FolderIconProps } from '@/types/components'
-
+/** 文件夹图标组件，根据是否展开显示不同的图标 */
 export function FolderIcon({ open }: FolderIconProps) {
   return (
     <svg width="18" height="23" viewBox="0 0 16 16" fill="currentColor" opacity="0.85">

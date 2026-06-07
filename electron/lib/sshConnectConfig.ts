@@ -9,7 +9,7 @@ function resolveKeepaliveIntervalMs(raw: unknown): number {
 }
 
 /**
- * 构建连接配置，用于 SSH 连接
+ * 构建 ssh2 连接配置（在 Worker 内调用；privateKey 须已由 prepareSshConnectConfig 解析）
  * @param cfg 配置
  * @param hostVerifier 主机公钥校验器
  * @returns 连接配置

@@ -1,5 +1,5 @@
 .settings-dialog {
-  width: 500px;
+  width: 750px;
 }
 
 .settings-path-row {
@@ -112,7 +112,20 @@
   gap: 8px;
   align-items: center;
   padding: 10px 24px;
-  border-bottom: 1px solid var(--border-subtle);
+  position: relative;
+  transition: background 0.1s;
+}
+.settings-rule-item:hover {
+  background: var(--bg-tertiary);
+}
+.settings-rule-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 0;
+  height: 1px;
+  background: var(--border-subtle);
 }
 
 .settings-rule-top,
@@ -336,10 +349,18 @@
   justify-content: space-between;
   gap: 16px;
   padding: 12px 24px;
-  border-bottom: 1px solid var(--border-subtle);
+  position: relative;
   transition: background 0.1s;
 }
-.settings-item:last-child { border-bottom: none; }
+.settings-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 0;
+  height: 1px;
+  background: var(--border-subtle);
+}
 .settings-item:hover { background: var(--bg-tertiary); }
 
 .settings-item-actions {
@@ -350,19 +371,8 @@
   flex-shrink: 0;
 }
 
-.settings-algo-desc {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-subtle);
-  transition: background 0.1s;
-}
-
 .settings-algo-block {
-  padding: 0 24px 12px;
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 0;
 }
 
 .settings-algo-row {
@@ -370,11 +380,21 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px 24px;
+  position: relative;
+  transition: background 0.1s;
 }
-.settings-algo-row:last-child {
-  border-bottom: none;
+.settings-algo-row:hover {
+  background: var(--bg-tertiary);
+}
+.settings-algo-row:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 0;
+  height: 1px;
+  background: var(--border-subtle);
 }
 
 .settings-algo-label {

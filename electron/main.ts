@@ -52,8 +52,8 @@ function registerIpcHandlersOnce() {
 function createWindow() {
   const icon = resolveAppIcon()
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
+    width: 1500,
+    height: 950,
     minWidth: 800,
     minHeight: 600,
     ...(icon ? { icon } : {}),

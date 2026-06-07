@@ -5,30 +5,7 @@ import { addGroupPlaceholder, exportSessions } from '@/store/sessionStore'
 import { hasInvalidLabelChars } from '@/lib/safeFileName'
 import type { SidebarContextMenuProps } from '@/types/components'
 
-/**
- * 上下文菜单组件：显示会话、分组、子分组、新分组等操作的上下文菜单
- * @param {object} props 组件属性
- * @param {object} props.ctx 上下文菜单数据：包含 x、y 坐标、类型和数据
- * @param {function} props.closeCtx 关闭上下文菜单的回调函数
- * @param {function} props.onConnectSaved 连接会话的回调函数：点击连接会话时调用，参数是会话对象
- * @param {function} props.onNewSession 新建会话的回调函数：点击新建会话时调用，参数是会话类型和会话对象
- * @param {function} props.dupSession 复制会话的回调函数：点击复制会话时调用，参数是会话 ID
- * @param {function} props.deleteSession 删除会话的回调函数：点击删除会话时调用，参数是会话 ID 和会话名称
- * @param {function} props.deleteGroup 删除分组的回调函数：点击删除分组时调用，参数是分组路径
- * @param {function} props.setRenaming 设置重命名状态的回调函数：点击重命名时调用，参数是路径和新的名称
- * @param {function} props.setRenameVal 设置重命名值的回调函数：点击重命名时调用，参数是新的名称
- * @param {array} props.groupPlaceholders 占位分组列表：包含分组路径
- * @param {function} props.onUpdatePlaceholders 更新占位分组的回调函数：点击更新占位分组时调用，参数是分组路径
- * @param {function} props.expandAll 展开所有分组的回调函数：点击展开所有时调用
- * @param {function} props.collapseAll 收起所有分组的回调函数：点击收起所有时调用
- * @param {function} props.expandGroupAll 展开该分组所有子项的回调函数：点击展开该分组所有子项时调用，参数是分组路径
- * @param {function} props.collapseGroupAll 收起该分组所有子项的回调函数：点击收起该分组所有子项时调用，参数是分组路径
- * @param {function} props.setRenamingSession 设置重命名会话状态的回调函数：点击重命名会话时调用，参数是会话 ID 和新的名称
- * @param {function} props.setRenameSessionVal 设置重命名会话值的回调函数：点击重命名会话时调用，参数是新的名称
- * @param {array} props.savedSessions 已保存会话（用于导出）
- * @param {import('react').MutableRefObject<HTMLInputElement|null>} props.importSessionsFileRef 隐藏的文件选择 input
- * @returns {JSX.Element} 上下文菜单组件
- */
+/** 上下文菜单组件：显示会话、分组、子分组、新分组等操作的上下文菜单 */
 export default function SidebarContextMenu({
   ctx, closeCtx, onConnectSaved, onNewSession, dupSession, deleteSession, deleteGroup,
   setRenaming, setRenameVal, groupPlaceholders, onUpdatePlaceholders,

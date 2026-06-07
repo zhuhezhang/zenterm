@@ -1,42 +1,10 @@
 import type { SessionType } from '@/types/session'
 import { sessionEndpoint, sessionHasSftp } from '@/types/session'
 import type { SessionTreeNodeComponentProps } from '@/types/components'
-import ConnectionTypeIcon from '../common'
+import { ConnectionTypeIcon } from '../common'
 import { Chevron, FolderIcon, TYPE_COLORS } from './icons'
 
-/**
- * 树节点组件：显示分组或会话的树节点，支持重命名、拖拽、上下文菜单等操作
- * @param {object} props 组件属性
- * @param {object} props.node 节点对象：包含 id、type、name、path 和 children 属性
- * @param {number} props.depth 节点深度：节点所在的层级
- * @param {function} props.isExp 是否展开的回调函数：点击展开时调用，参数是路径
- * @param {function} props.togExp 切换展开状态的回调函数：点击展开时调用，参数是路径
- * @param {function} props.openCtx 打开上下文菜单的回调函数：点击上下文菜单时调用，参数是事件和路径
- * @param {function} props.onConnectSaved 连接会话的回调函数：点击连接会话时调用，参数是会话对象
- * @param {function} props.renaming 重命名状态：包含路径和新的名称
- * @param {function} props.renameVal 重命名值：新的名称
- * @param {function} props.setRenameVal 设置重命名值的回调函数：点击重命名时调用，参数是新的名称
- * @param {function} props.setRenaming 设置重命名状态的回调函数：点击重命名时调用，参数是路径和新的名称
- * @param {function} props.renameGroup 重命名分组的回调函数：点击重命名时调用，参数是路径和新的名称
- * @param {function} props.renameGroupInputRef 重命名分组输入引用
- * @param {function} props.ignoreRenameGroupBlurRef 重命名分组忽略 blur 引用（blur 事件也就是失去焦点事件）
- * @param {function} props.renamingSession 重命名会话状态：包含 savedId 和新的名称
- * @param {function} props.renameSessionVal 重命名会话值：新的名称
- * @param {function} props.setRenamingSession 设置重命名会话状态的回调函数：点击重命名会话时调用，参数是会话 ID 和新的名称
- * @param {function} props.setRenameSessionVal 设置重命名会话值的回调函数：点击重命名会话时调用，参数是新的名称
- * @param {function} props.renameSession 重命名会话的回调函数：点击重命名会话时调用，参数是会话 ID 和新的名称
- * @param {function} props.renameSessionInputRef 重命名会话输入引用
- * @param {function} props.ignoreRenameSessionBlurRef 重命名会话忽略 blur 引用（blur 事件也就是失去焦点事件）
- * @param {function} props.dStart 拖拽开始事件处理函数：点击拖拽时调用，参数是事件和路径
- * @param {function} props.dEnd 拖拽结束事件处理函数：点击拖拽时调用，参数是事件和路径
- * @param {function} props.dOver 拖拽覆盖事件处理函数：点击拖拽时调用，参数是事件和路径
- * @param {function} props.dLeave 拖拽离开事件处理函数：点击拖拽时调用，参数是事件和路径
- * @param {function} props.dropOnGroup 拖拽到分组的回调函数：点击拖拽时调用，参数是事件和路径
- * @param {function} props.dropOnSession 拖拽到会话的回调函数：点击拖拽时调用，参数是事件和路径
- * @param {function} props.isDO 是否是拖拽目标的回调函数：点击拖拽时调用，参数是路径和类型
- * @param {string|null} props.keyboardFocusId 搜索框键盘导航当前高亮的节点 id
- * @returns {JSX.Element} 树节点组件
- */
+/** 会话树节点组件：显示分组或会话的树节点，支持重命名、拖拽、上下文菜单等操作 */
 export default function SessionTreeNode({
   node, depth, keyboardFocusId, isExp, togExp, openCtx, onConnectSaved,
   renaming, renameVal, setRenameVal, setRenaming, renameGroup,

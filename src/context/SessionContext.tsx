@@ -1,18 +1,5 @@
-import {
-  createContext, useContext, useState, useCallback, useRef,
-  type ReactNode,
-} from 'react'
+import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react'
 import type { AppSettings } from '@/types/settings'
-import type {
-  ActiveSession,
-  BackspaceMode,
-  CredentialDialogState,
-  SavedSession,
-  SessionConfig,
-  SessionType,
-  TerminalClearFn,
-  TerminalTextGetter,
-} from '@/types/session'
 import { sessionEndpoint } from '@/types/session'
 import type { IpcResult } from '../../shared/ipc'
 import { useI18n } from '@/context/I18nContext'
@@ -30,7 +17,22 @@ import {
   syncSessionSecretsToVault, resolveAffectedSavedId, mergeSessionWithVaultSecrets,
   removeVaultEntry, duplicateVaultEntry,
 } from '@/store/credentialsBridge'
+import type {
+  ActiveSession,
+  BackspaceMode,
+  CredentialDialogState,
+  SavedSession,
+  SessionConfig,
+  SessionType,
+  TerminalClearFn,
+  TerminalTextGetter,
+} from '@/types/session'
 
+/**
+ * 打开凭据对话框
+ * @param merged 合并的会话配置
+ * @returns 凭据对话框状态
+ */
 function openCredentialDialog(merged: SessionConfig): CredentialDialogState {
   return {
     session: merged,
@@ -41,48 +43,90 @@ function openCredentialDialog(merged: SessionConfig): CredentialDialogState {
   }
 }
 
+/** Session 上下文值 */
 export interface SessionContextValue {
+  /** 会话列表 */
   sessions: ActiveSession[]
+  /** 当前活跃会话 ID */
   activeId: string | null
+  /** 设置当前活跃会话 ID */
   setActiveId: (id: string | null) => void
+  /** 已保存会话列表 */
   savedSessions: SavedSession[]
+  /** 分组占位符列表 */
   groupPlaceholders: string[]
+  /** 已保存分组列表 */
   savedGroups: string[]
+  /** 当前活跃会话对象 */
   activeSession: ActiveSession | null
+  /** 是否显示对话框 */
   showDialog: boolean
+  /** 对话框类型 */
   dialogType: SessionType
+  /** 对话框初始数据 */
   dialogInitial: SessionConfig | null
+  /** 凭据对话框状态 */
   credDialogState: CredentialDialogState | null
+  /** 设置凭据对话框状态 */
   setCredDialogState: (state: CredentialDialogState | null) => void
+  /** 打开对话框 */
   openDialog: (type?: SessionType, initial?: SessionConfig | null) => void
+  /** 设置是否显示对话框 */
   setShowDialog: (show: boolean) => void
+  /** 启动会话 */
   launchSession: (config: SessionConfig | SavedSession) => string
+  /** 删除会话 */
   removeSession: (id: string) => void
+  /** 更新会话属性 */
   updateSession: (id: string, updates: Partial<ActiveSession>) => void
+  /** 更新已保存会话列表 */
   updateSaved: (next: SavedSession[], options?: { placeholderForVacatedGroup?: string }) => void
+  /** 更新分组占位符列表 */
   updatePlaceholders: (next: string[]) => void
+  /** 仅保存会话 */
   handleSaveOnly: (c: SessionConfig) => Promise<void>
+  /** 保存并连接 */
   handleSaveAndConn: (c: SessionConfig) => Promise<void>
+  /** 直接连接 */
   handleConnect: (c: SessionConfig) => void
+  /** 连接已保存会话 */
   handleConnSaved: (s: SavedSession) => void
+  /** 删除已保存会话 */
   handleDelSaved: (id: string) => void
+  /** 复制已保存会话 */
   handleDuplicateSaved: (savedId: string) => Promise<void>
+  /** 处理标签页重新排序 */
   handleTabReorder: (fromId: string, toId: string) => void
+  /** 凭证对话框「保存并连接」 */
   handleCredentialSaveAndConnect: (config: SessionConfig) => Promise<void>
+  /** 注册终端导出函数 */
   registerTerminalExporter: (sessionId: string, getter: TerminalTextGetter | null) => void
+  /** 注册终端清屏函数 */
   registerTerminalClearScreen: (sessionId: string, fn: TerminalClearFn | null) => void
+  /** 清屏 */
   handleClearTabScreen: (sessionId: string) => void
+  /** 保存标签页输出 */
   handleSaveTabOutput: (sessionId: string) => Promise<void>
+  /** 设置退格键模式 */
   handleSetBackspaceMode: (sessionId: string, mode: BackspaceMode) => void
 }
 
+/** Session 上下文 */
 const SessionContext = createContext<SessionContextValue | null>(null)
 
+/**
+ * Session 提供者组件
+ * @param settings 设置
+ * @param children 子组件
+ * @returns Session 提供者组件
+ */
 export function SessionProvider({
   settings,
   children,
 }: {
+  /** 设置 */
   settings: AppSettings
+  /** 子组件 */
   children: ReactNode
 }) {
   const { t } = useI18n()
@@ -111,8 +155,8 @@ export function SessionProvider({
   /**
    * 打开连接对话框，设置类型和初始数据（这里使用 useCallback，主要是为了“把这函数做成稳定的、可重用的函数引用”，
    * 让它在组件重渲染时不会不断变动。这种模式在 Hook 里很常见，尤其当这些函数会被传到其他组件或作为依赖使用时）
-   * @param {string} type 连接类型，可选值为 'ssh'、'telnet' 或 'serial'
-   * @param {Object|null} initial 初始数据，编辑已保存会话时传入
+   * @param type 连接类型，可选值为 'ssh'、'telnet' 或 'serial'
+   * @param initial 初始数据，编辑已保存会话时传入
    */
   const openDialog = useCallback((type: SessionType = 'ssh', initial: SessionConfig | null = null) => {
     setDialogType(type)
@@ -122,8 +166,8 @@ export function SessionProvider({
 
   /**
    * 启动新会话：生成 ID，添加到会话列表，设置为活跃状态，返回 ID
-   * @param {Object} config 会话配置对象
-   * @returns {string} 生成的会话 ID
+   * @param config 会话配置对象
+   * @returns 生成的会话 ID
    */
   const launchSession = useCallback((config: SessionConfig | SavedSession): string => {
     const id = `sess-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`  // 生成唯一会话ID(格式为 sess-时间戳-4位随机字符串)
@@ -137,7 +181,7 @@ export function SessionProvider({
 
   /**
    * 删除会话：从会话列表中移除，更新活跃会话 ID（如果被删除的会话是当前活跃的，则切换到新的最后一个会话，否则保持不变），清除对应的 SFTP 状态
-   * @param {string} id 要删除的会话 ID
+   * @param id 要删除的会话 ID
    */
   const removeSession = useCallback((id: string) => {
     setSessions(prev => {
@@ -151,8 +195,8 @@ export function SessionProvider({
 
   /**
    * 注册/卸载某个会话的终端导出函数
-   * @param {string} sessionId 会话 ID
-   * @param {Function|null} getter 导出函数，传 null 表示卸载
+   * @param sessionId 会话 ID
+   * @param getter 导出函数，传 null 表示卸载
    */
   const registerTerminalExporter = useCallback((sessionId: string, getter: TerminalTextGetter | null) => {
     if (!getter) {
@@ -164,8 +208,8 @@ export function SessionProvider({
 
   /**
    * 注册/卸载某个会话标签页的清屏函数（调用 xterm Terminal.clear）
-   * @param {string} sessionId 会话 ID
-   * @param {Function|null} fn 清屏函数，传 null 表示卸载
+   * @param sessionId 会话 ID
+   * @param fn 清屏函数，传 null 表示卸载
    */
   const registerTerminalClearScreen = useCallback((sessionId: string, fn: TerminalClearFn | null) => {
     if (!fn) {
@@ -177,7 +221,7 @@ export function SessionProvider({
 
   /**
    * 右键标签「清屏」：清当前标签对应 xterm 视口（含滚动缓冲由 xterm 行为决定）
-   * @param {string} sessionId 会话 ID
+   * @param sessionId 会话 ID
    */
   const handleClearTabScreen = useCallback((sessionId: string) => {
     terminalClearScreenRef.current[sessionId]?.()
@@ -185,7 +229,7 @@ export function SessionProvider({
 
   /**
    * 保存某个标签页的终端输出到文本文件
-   * @param {string} sessionId 会话 ID
+   * @param sessionId 会话 ID
    */
   const handleSaveTabOutput = useCallback(async (sessionId: string) => {
     const getter = terminalExportersRef.current[sessionId]
@@ -240,8 +284,8 @@ export function SessionProvider({
 
   /**
    * 更新会话属性
-   * @param {string} id 会话 ID
-   * @param {Object} updates 要更新的属性
+   * @param id 会话 ID
+   * @param updates 要更新的属性
    */
   const updateSession = useCallback((id: string, updates: Partial<ActiveSession>) => {
     setSessions(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
@@ -249,8 +293,8 @@ export function SessionProvider({
 
   /**
    * 更新已保存会话列表和分组占位符列表变量，并保存到本地localStorage
-   * @param {Array} next 新的会话列表
-   * @param {{ placeholderForVacatedGroup?: string }} [options] 编辑会话导致原分组被腾空时，传入原分组路径以写入占位符
+   * @param next 新的会话列表
+   * @param [options] 编辑会话导致原分组被腾空时，传入原分组路径以写入占位符
    */
   const updateSaved = useCallback((next: SavedSession[], options?: { placeholderForVacatedGroup?: string }) => {
     setSavedSessions(next)
@@ -270,7 +314,7 @@ export function SessionProvider({
 
   /**
    * 更新分组占位符列表变量，并保存到localStorage
-   * @param {Array} next 新的占位符列表
+   * @param next 新的占位符列表
    */
   const updatePlaceholders = useCallback((next: string[]) => {
     setGroupPlaceholders(next)
@@ -279,7 +323,7 @@ export function SessionProvider({
 
   /**
    * 仅保存会话（编辑/新建）：若 initialData 有 savedId，则编辑该会话；否则新建。同时检查是否需要添加占位分组
-   * @param {Object} c 会话配置对象
+   * @param c 会话配置对象
    */
   const handleSaveOnly = useCallback(async (c: SessionConfig) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
@@ -298,7 +342,7 @@ export function SessionProvider({
 
   /**
    * 保存并连接：先保存会话配置（编辑/新建），然后启动会话。同时检查是否需要添加占位分组
-   * @param {Object} c 会话配置对象
+   * @param c 会话配置对象
    */
   const handleSaveAndConn = useCallback(async (c: SessionConfig) => {
     const config = dialogInitial?.savedId ? { ...c, savedId: dialogInitial.savedId } : c
@@ -318,7 +362,7 @@ export function SessionProvider({
 
   /**
    * 直接连接：不保存会话配置，直接启动会话
-   * @param {Object} c 会话配置对象
+   * @param c 会话配置对象
    */
   const handleConnect = useCallback((c: SessionConfig) => {
     launchSession(c)
@@ -326,8 +370,8 @@ export function SessionProvider({
   }, [launchSession])
 
   /**
-   * 凭证对话框「保存并连接」：更新已保存会话；仅当 saveSecretsToVault 为 true 时把密码/私钥等写入加密库
-   * @param {Object} config 含 savedId 的完整连接配置
+   * 凭证对话框「保存并连接」：更新已保存会话；仅当 saveSecretsToVault 为 true 时把密码/私钥等写入加密库（关闭时保留库内已有凭据）
+   * @param config 含 savedId 的完整连接配置
    */
   const handleCredentialSaveAndConnect = useCallback(async (config: SessionConfig) => {
     if (!config?.savedId) {
@@ -337,7 +381,7 @@ export function SessionProvider({
     const before = savedSessions.find((s) => s.savedId === config.savedId)
     const { next, vacated } = prepareSavedSessionUpdate(savedSessions, config, before)
     updateSaved(next, vacated ? { placeholderForVacatedGroup: vacated } : undefined)
-    // 与「保存会话」一致：始终按当前设置同步 vault；仅 saveSecretsToVault 为 true 时才会把本次敏感字段写入加密库，否则写入 null 并清除该会话在库中的旧凭据
+    // 与「保存会话」一致：仅 saveSecretsToVault 为 true 时同步 vault；关闭时不写入也不清除库内已有凭据
     const r = await syncSessionSecretsToVault(config.savedId, config, settings)
     alertVaultSyncError(r)
     launchSession(config)
@@ -345,7 +389,7 @@ export function SessionProvider({
 
   /**
    * 连接已保存会话：SSH 缺凭据时弹出凭证对话框；Telnet/Serial 直接启动
-   * @param {Object} s 会话配置对象
+   * @param s 会话配置对象
    */
   const handleConnSaved = useCallback((s: SavedSession) => {
     void (async () => {
@@ -375,7 +419,7 @@ export function SessionProvider({
 
   /**
    * 删除已保存会话：从 savedSessions 变量中移除会话、考虑是否需要添加占位分组，然后保存到本地 localStorage
-   * @param {string} id 会话 ID
+   * @param id 会话 ID
    */
   const handleDelSaved = useCallback((id: string) => {
     const deleted = savedSessions.find(s => s.savedId === id)
@@ -389,8 +433,8 @@ export function SessionProvider({
 
   /**
    * 处理标签页重新排序：接收拖动的会话 ID 和目标位置的会话 ID，更新 sessions 顺序
-   * @param {string} fromId 被拖动的会话 ID
-   * @param {string} toId 目标位置的会话 ID
+   * @param fromId 被拖动的会话 ID
+   * @param toId 目标位置的会话 ID
    */
   const handleDuplicateSaved = useCallback(async (savedId: string) => {
     const next = duplicateSavedSession(savedSessions, savedId)
@@ -401,8 +445,8 @@ export function SessionProvider({
 
   /**
    * 处理标签页重新排序：接收拖动的会话 ID 和目标位置的会话 ID，更新 sessions 顺序
-   * @param {string} fromId 被拖动的会话 ID
-   * @param {string} toId 目标位置的会话 ID
+   * @param fromId 被拖动的会话 ID
+   * @param toId 目标位置的会话 ID
    */
   const handleTabReorder = useCallback((fromId: string, toId: string) => {
     setSessions(prev => {
@@ -454,6 +498,10 @@ export function SessionProvider({
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
 
+/**
+ * 使用 Session 上下文
+ * @returns Session 上下文值
+ */
 export function useSession(): SessionContextValue {
   const ctx = useContext(SessionContext)
   if (!ctx) throw new Error('useSession must be used within SessionProvider')

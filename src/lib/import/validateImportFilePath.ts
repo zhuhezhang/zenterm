@@ -4,9 +4,10 @@ import { createImportError } from './handleImportErrors'
 
 /**
  * 校验导入 JSON 文件路径是否符合 localPathPolicy
- * @param {File} file 用户选择的文件
+ * @param file 用户选择的文件
+ * @returns 是否允许导入
  */
-export async function assertImportFilePathAllowed(file: File) {
+export async function assertImportFilePathAllowed(file: File): Promise<void> {
   if (!file) {
     throw createImportError('readFailed')
   }

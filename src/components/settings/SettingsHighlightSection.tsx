@@ -1,26 +1,31 @@
 import { HighlightRegexIcon, HighlightCaseIcon } from './HighlightRuleIcons'
 import type { AppSettings, HighlightRule } from '@/types/settings'
-import type { SettingsGenericSectionDef } from '@/types/settingsUi'
-import type { TranslateFn } from '@/types/i18n'
+import type { SettingsGenericSectionDef } from '@/types/settings'
+import type { TranslateFn } from '@/types/common'
 import SettingsSectionHeader from './SettingsSectionHeader'
-import type { SettingsActionKey } from '@/types/settingsUi'
+import type { SettingsActionKey } from '@/types/settings'
 
+/** 高亮区块组件属性 */
 export interface SettingsHighlightSectionProps {
+  /** 区块定义 */
   sectionDef: SettingsGenericSectionDef
+  /** 表单数据 */
   form: AppSettings
+  /** 国际化翻译函数 */
   t: TranslateFn
+  /** 设置操作 */
   settingsActions: Record<SettingsActionKey, () => void | Promise<void>>
+  /** 更新高亮规则回调 */
   updateHighlightRule: (id: string, changes: Partial<HighlightRule>) => void
+  /** 删除高亮规则回调 */
   removeHighlightRule: (id: string) => void
+  /** 显示设置悬停提示回调 */
   showSettingsHoverTip: (e: React.MouseEvent | React.FocusEvent, text: string) => void
+  /** 隐藏设置悬停提示回调 */
   hideSettingsHoverTip: () => void
 }
 
-/** 
- * 渲染高亮区块
- * @param {Object} sectionDef 高亮区块定义对象
- * @returns {React.ReactNode} 渲染后的高亮区块 
- */
+/** 高亮区块组件 */
 export default function SettingsHighlightSection({
   sectionDef,
   form,

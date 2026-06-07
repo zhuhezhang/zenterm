@@ -2,23 +2,39 @@ import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 
 import type { SftpRemoteItem } from '@/types/components'
 import { formatSftpSize, formatSftpDate } from '@/lib/sftp/format'
 
+/** SFTP 文件列表组件属性 */
 export interface SftpFileListProps {
+  /** 当前路径 */
   path: string
+  /** 文件列表 */
   items: SftpRemoteItem[]
+  /** 是否加载中 */
   loading: boolean
+  /** 选中文件 */
   selected: SftpRemoteItem | null
+  /** 重命名文件 */
   renaming: SftpRemoteItem | null
+  /** 重命名值 */
   renameValue: string
+  /** 翻译函数 */
   t: (path: string, params?: Record<string, string | number>) => string
+  /** 上移到父目录 */
   onGoUp: () => void
+  /** 点击文件 */
   onItemClick: (item: SftpRemoteItem) => void
+  /** 右键点击文件 */
   onItemContextMenu: (e: ReactMouseEvent, item: SftpRemoteItem) => void
+  /** 重命名值变化 */
   onRenameValueChange: (value: string) => void
+  /** 提交重命名 */
   onCommitRename: () => void
+  /** 取消重命名 */
   onCancelRename: () => void
+  /** 拖拽上传 */
   onDropUpload: (e: ReactDragEvent<HTMLDivElement>) => void
 }
 
+/** SFTP 文件列表组件 */
 export default function SftpFileList({
   path,
   items,

@@ -2,10 +2,11 @@ import type { KeyboardEvent } from 'react'
 import { useI18n } from '@/context/I18nContext'
 import { PORT_MIN, PORT_MAX } from '@/lib/session/defaults'
 import { clampPortFieldString } from '@/lib/session/utils'
-import type { SessionFormFieldsProps } from '@/types/connectDialog'
+import type { SessionFormFieldsProps } from '@/types/components'
 import FormRow from './FormRow'
+import { PrivateKeyField } from './PrivateKeyField'
 
-/** SSH 表单组件；支持密码与私钥认证，visible 为 false 时不渲染。 */
+/** SSH 表单组件；支持密码与私钥认证，visible 为 false 时不渲染 */
 export default function SshForm({ form, set, visible, onEnter }: SessionFormFieldsProps) {
   const { t } = useI18n()
   const handleEnter = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -35,8 +36,13 @@ export default function SshForm({ form, set, visible, onEnter }: SessionFormFiel
         </FormRow>
       ) : (
         <>
-          <FormRow label={t('connect.privateKey')}>
-            <input placeholder={t('connect.privateKeyPath')} value={form.privateKey} onChange={e => set('privateKey', e.target.value)} onKeyDown={handleEnter} />
+          <FormRow label={t('connect.privateKey')} topAlign>
+            <PrivateKeyField
+              value={form.privateKey || ''}
+              placeholder={t('connect.privateKeyPh')}
+              onChange={value => set('privateKey', value)}
+              onSubmit={() => onEnter?.()}
+            />
           </FormRow>
           <FormRow label={t('connect.passphrase')}>
             <input type="password" placeholder={t('connect.passphrasePh')} value={form.passphrase} onChange={e => set('passphrase', e.target.value)} onKeyDown={handleEnter} />
