@@ -18,3 +18,6 @@ export interface SftpEntry {
   /** 修改时间 */
   mtime?: number
 }
+
+/** 导入会话/设置 JSON 文件大小上限（8 MB，会话与设置共用） */
+export const IMPORT_MAX_BYTES = 8 * 1024 * 1024

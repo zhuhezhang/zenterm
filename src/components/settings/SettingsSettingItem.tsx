@@ -1,5 +1,3 @@
-import type { ChangeEvent, RefObject } from 'react'
-import { IMPORT_JSON_ACCEPT } from '@/lib/import/constants'
 import { normalizeLoggingMode, clampSettingsNumberField } from '@/lib/settings/normalize'
 import { getDefaultLogPath } from '@/store/settingsStore'
 import type { AppSettings } from '@/types/settings'
@@ -18,16 +16,8 @@ export interface SettingsSettingItemProps {
   vaultEncryptionAvailable: boolean | null
   /** 设置操作 */
   set: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
-  /** 导入会话引用 */
+  /** 设置操作 */
   settingsActions: Record<SettingsActionKey, () => void | Promise<void>>
-  /** 导入会话引用 */
-  importSessionsRef: RefObject<HTMLInputElement | null>
-  /** 导入设置引用 */
-  importSettingsRef: RefObject<HTMLInputElement | null>
-  /** 导入会话回调 */
-  onImportSessions: (e: ChangeEvent<HTMLInputElement>) => void
-  /** 导入设置回调 */
-  onImportSettings: (e: ChangeEvent<HTMLInputElement>) => void
   /** 选择日志路径回调 */
   onChooseLogPath: () => void
   /** 重置日志路径回调 */
@@ -46,10 +36,6 @@ export default function SettingsSettingItem({
   vaultEncryptionAvailable,
   set,
   settingsActions,
-  importSessionsRef,
-  importSettingsRef,
-  onImportSessions,
-  onImportSettings,
   onChooseLogPath,
   onResetLogPath,
   showSettingsHoverTip,
@@ -99,21 +85,13 @@ export default function SettingsSettingItem({
         </button>
       )}
       {item.type === 'action' && item.action && (
-        <>
-          <button
-            type="button"
-            className={`settings-action-btn${item.danger ? ' danger' : ''}`}
-            onClick={() => settingsActions[item.action!]?.()}
-          >
-            {t(item.buttonKey ?? '')}
-          </button>
-          {item.fileInput === 'importSessions' && (
-            <input ref={importSessionsRef} type="file" accept={IMPORT_JSON_ACCEPT} style={{ display: 'none' }} onChange={onImportSessions} />
-          )}
-          {item.fileInput === 'importSettings' && (
-            <input ref={importSettingsRef} type="file" accept={IMPORT_JSON_ACCEPT} style={{ display: 'none' }} onChange={onImportSettings} />
-          )}
-        </>
+        <button
+          type="button"
+          className={`settings-action-btn${item.danger ? ' danger' : ''}`}
+          onClick={() => settingsActions[item.action!]?.()}
+        >
+          {t(item.buttonKey ?? '')}
+        </button>
       )}
       {item.type === 'path' && (
         <div

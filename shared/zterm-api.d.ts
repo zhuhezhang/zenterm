@@ -1,6 +1,6 @@
 /** Preload / 主进程 / 渲染进程共用的 window.zterm API 契约（实现见 electron/preload.ts） */
 import type { AlgorithmPreferences } from './sshAlgorithmDefaults.js'
-import type { IpcResult } from './ipc.js'
+import type { IpcContent, IpcResult } from './ipc.js'
 import type { SftpEntry } from './others.js'
 
 /** 进度信息，用于 SFTP 上传 / 下载进度提示 */
@@ -377,6 +377,33 @@ export interface ZTermCredentialsApi {
   clearAll: () => Promise<IpcResult>
 }
 
+/** 打开文件/目录对话框场景 */
+export type ChooseOpenKind =
+  | 'logSave'
+  | 'sftpDownload'
+  | 'sftpUploadFiles'
+  | 'sftpUploadFolder'
+  | 'importSessions'
+  | 'importSettings'
+  | 'privateKey'
+
+/** 另存为对话框场景 */
+export type SaveFileKind = 'terminalOutput' | 'sessions' | 'settings'
+
+/** 打开文件/目录对话框结果 */
+export type ChooseOpenResult = IpcContent & {
+  /** 用户取消 */
+  canceled?: boolean
+  /** 单目录路径（logSave / sftpDownload） */
+  path?: string
+  /** 多文件路径（sftpUploadFiles） */
+  paths?: string[]
+  /** 目录内文件列表（sftpUploadFolder） */
+  entries?: { path: string; relativePath: string }[]
+  /** 单文件文本（importSessions / importSettings / privateKey） */
+  content?: string
+}
+
 /** 本地路径 API */
 export interface ZTermPathsApi {
   /** 
@@ -384,17 +411,12 @@ export interface ZTermPathsApi {
    * @returns 下载路径
    */
   getDownloadsPath: () => Promise<IpcResult<{ path: string }>>
-  /** 
-   * 选择目录
-   * @param kind 目录类型（用于识别标题文字）
+  /**
+   * 打开文件/目录对话框
+   * @param kind 场景类型
    * @returns 选择结果
    */
-  chooseDirectory: (kind: string) => Promise<IpcResult<{ path?: string; canceled?: boolean }>>
-  /** 
-   * 选择私钥文件并读取 PEM 内容
-   * @returns 选择结果
-   */
-  choosePrivateKeyFile: () => Promise<IpcResult<{ path?: string; content?: string; canceled?: boolean }>>
+  chooseOpen: (kind: ChooseOpenKind) => Promise<IpcResult<ChooseOpenResult>>
   /** 
    * 验证日志目录
    * @param dir 目录
@@ -418,21 +440,14 @@ export interface ZTermPathsApi {
 
 /** 保存 API */
 export interface ZTermSaveApi {
-  /** 
-   * 保存终端输出
-   * @param defaultName 默认名称
-   * @param text 文本
+  /**
+   * 另存为对话框并写入文件
+   * @param kind 场景类型（terminalOutput / sessions / settings）
+   * @param defaultName 默认文件名
+   * @param content 文件内容
    * @returns 保存结果
    */
-  terminalOutput: (defaultName: string, text: string) => Promise<IpcResult<{ canceled?: boolean }>>
-  /** 
-   * 保存 JSON（保存会话或设置到本地）
-   * @param kind 导出类型（sessions/settings，用于识别标题文字）
-   * @param defaultName 默认名称
-   * @param jsonText JSON 文本
-   * @returns 保存结果
-   */
-  jsonExport: (kind: string, defaultName: string, jsonText: string) => Promise<IpcResult<{ canceled?: boolean }>>
+  saveFile: (kind: SaveFileKind, defaultName: string, content: string) => Promise<IpcResult<{ canceled?: boolean }>>
 }
 
 /** 日志 API */

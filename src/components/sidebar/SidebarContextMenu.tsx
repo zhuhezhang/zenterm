@@ -10,7 +10,7 @@ export default function SidebarContextMenu({
   ctx, closeCtx, onConnectSaved, onNewSession, dupSession, deleteSession, deleteGroup,
   setRenaming, setRenameVal, groupPlaceholders, onUpdatePlaceholders,
   expandAll, collapseAll, expandGroupAll, collapseGroupAll,
-  setRenamingSession, setRenameSessionVal, savedSessions, importSessionsFileRef,
+  setRenamingSession, setRenameSessionVal, savedSessions, onImportSessions,
 }: SidebarContextMenuProps) {
   const { t } = useI18n()
   const [subInput, setSubInput] = useState<string | null>(null)
@@ -108,7 +108,7 @@ export default function SidebarContextMenu({
         <button type="button" onClick={() => { void exportSessions(savedSessions, t); closeCtx() }}>{t('settings.exportSessions')}</button>
         <button type="button" onClick={() => {
           closeCtx()
-          queueMicrotask(() => importSessionsFileRef.current?.click())
+          queueMicrotask(() => onImportSessions())
         }}>{t('settings.importSessions')}</button>
       </>)}
       {ctx.type === 'session' && (<>

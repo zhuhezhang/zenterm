@@ -9,7 +9,7 @@ import type { TranslateFn } from '@/types/common'
  * @returns 私钥 PEM 内容或 null
  */
 export async function choosePrivateKeyFile(t: TranslateFn): Promise<string | null> {
-  const res = await getZterm().paths.choosePrivateKeyFile()
+  const res = await getZterm().paths.chooseOpen('privateKey')
   if (isIpcSuccess(res)) {
     if (res.content.canceled) return null
     const content = res.content.content

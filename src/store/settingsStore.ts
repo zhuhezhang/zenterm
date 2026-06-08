@@ -4,7 +4,7 @@ import type { TranslateFn } from '../types/common'
 import type { SettingsImportWarning } from '../types/common'
 import { syncUiLanguageToMain } from '../lib/resolveUiLanguage'
 import { downloadJsonExport } from '../lib/import/downloadJsonExport'
-import { validateAndParseSettingsImport } from '../lib/import/parseSettingsImport'
+import { validateAndParseSettingsImportContent } from '../lib/import/parseSettingsImport'
 import { DEFAULT_SETTINGS } from '../lib/settings/defaults'
 import { ipcPathFromResponse } from '../lib/ipc/ipcResponse'
 import {
@@ -123,17 +123,4 @@ export function saveSettings(settings: AppSettings): void {
  */
 export async function exportSettings(settings: AppSettings, t: TranslateFn): Promise<void> {
   await downloadJsonExport('settings', settings, t)
-}
-
-/**
- * 从 JSON 文件中导入设置项（校验 envelope，未知键静默剥离；非法字段保留 currentSettings）
- * @param file 用户选择的 JSON 文件对象
- * @param currentSettings 导入前的当前设置
- * @returns 导入后的设置对象和警告列表
- */
-export function importSettings(
-  file: File,
-  currentSettings: AppSettings,
-): Promise<{ settings: AppSettings; warnings: SettingsImportWarning[] }> {
-  return validateAndParseSettingsImport(file, currentSettings)
 }

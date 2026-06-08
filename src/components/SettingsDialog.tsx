@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, Fragment, type ChangeEvent, type Dispatch, type SetStateAction } from 'react'
+import { useState, useEffect, Fragment, type Dispatch, type SetStateAction } from 'react'
 import { I18nProvider, useI18n } from '@/context/I18nContext'
 import { alertIpcFailure } from '@/lib/ipc/formatIpcError'
 import { getZterm } from '@/lib/ipc/getZterm'
@@ -12,7 +12,8 @@ import { clearAllVaultEntries } from '@/store/credentialsBridge'
 import { DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS } from '@/lib/settings/defaults'
 import { DEFAULT_ALGORITHM_SELECTION, type AlgorithmCategory } from '../../shared/sshAlgorithmDefaults'
 import { SETTINGS_SCHEMA, SETTINGS_TABS, SETTINGS_TAB_SECTION_IDS } from '@/lib/settings/schema'
-import { saveSettings, exportSettings, importSettings } from '@/store/settingsStore'
+import { saveSettings, exportSettings } from '@/store/settingsStore'
+import { validateAndParseSettingsImportContent } from '@/lib/import/parseSettingsImport'
 import { useSessionsImport } from '@/hooks/useSessionsImport'
 import { useSettingsHoverTip } from '@/hooks/useSettingsHoverTip'
 import SettingsGenericSection from './settings/SettingsGenericSection'
@@ -33,15 +34,13 @@ function SettingsDialogContent({
 }) {
   const { savedSessions, onUpdateSessions, onUpdatePlaceholders, onClose, onSave, onAppThemePreview } = props
   const { t, lang: previewLanguage } = useI18n()
-  /** 导入设置的文件输入引用。 useRef和useState类似，但它返回一个可变的ref对象，其.current属性被初始化为传入的参数（initialValue）。返回的ref对象在组件的整个生命周期内保持不变，因此它不会触发重新渲染*/
-  const importSettingsRef = useRef<HTMLInputElement | null>(null)
   /** 设置标签页列表 */
   const tabs = SETTINGS_TABS.map((tab) => ({ key: tab.key, label: t(tab.labelKey) }))
   const [activeTab, setActiveTab] = useState('general')  // 当前选中的标签页
   /** null=检测中；true/false=系统 safeStorage 是否可用于凭据加密 */
   const [vaultEncryptionAvailable, setVaultEncryptionAvailable] = useState<boolean | null>(null)
   const { settingsHoverTip, showSettingsHoverTip, hideSettingsHoverTip } = useSettingsHoverTip()  // 设置弹窗内浮动说明（原生 title 在 Electron 内不可靠，用 fixed 层统一展示）
-  const { fileRef: importSessionsRef, handleFileChange: handleImportSessions } = useSessionsImport(
+  const { triggerImport: triggerImportSessions } = useSessionsImport(
     savedSessions,
     onUpdateSessions,
   )
@@ -230,11 +229,18 @@ function SettingsDialogContent({
   const handleExportSettings = () => { void exportSettings(form, t) }
 
   /** 处理导入设置的操作，从 JSON 文件导入设置并更新表单 */
-  const handleImportSettings = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handleImportSettings = async () => {
     try {
-      const { settings: importedSettings, warnings } = await importSettings(file, form)
+      const picked = await getZterm().paths.chooseOpen('importSettings')
+      if (!picked?.success) {
+        alertIpcFailure(t, picked, 'settings.importFail')
+        return
+      }
+      if (picked.content.canceled) return
+      const content = picked.content.content
+      if (typeof content !== 'string') return
+
+      const { settings: importedSettings, warnings } = await validateAndParseSettingsImportContent(content, form)
       setForm({
         ...importedSettings,
         highlightRules: [...importedSettings.highlightRules],
@@ -249,7 +255,6 @@ function SettingsDialogContent({
     } catch (err) {
       reportImportError(t, err)
     }
-    e.target.value = ''
   }
 
   /** 将所有设置恢复为内置默认值；二次确认后立即写入本地并同步到应用 */
@@ -289,8 +294,8 @@ function SettingsDialogContent({
   /** 处理选择日志路径的操作，兼容使用不同的 API 弹出目录选择对话框，选择后更新日志路径设置 */
   const handleChooseLogPath = async () => {
     try {
-      if (window.zterm?.paths?.chooseDirectory) {
-        const picked = await window.zterm.paths.chooseDirectory('logSave')
+      if (window.zterm?.paths?.chooseOpen) {
+        const picked = await window.zterm.paths.chooseOpen('logSave')
         if (isIpcSuccess(picked) && !picked?.content?.canceled) {
           const logPath = picked.content.path
           if (typeof logPath === 'string' && logPath) {
@@ -355,10 +360,10 @@ function SettingsDialogContent({
     clearVault: handleClearAllVaultSecrets,  // 清除加密库中的全部敏感凭据
     clearKnownHosts: handleClearKnownHosts,  // 清除 SSH 已知主机公钥存储
     exportSessions: handleExport,  // 导出会话
-    importSessions: () => importSessionsRef.current?.click(),  // 导入会话
+    importSessions: () => { void triggerImportSessions() },
     clearAllSessions: handleClearAll,  // 清除所有会话
     exportSettings: handleExportSettings,  // 导出设置
-    importSettings: () => importSettingsRef.current?.click(),  // 导入设置
+    importSettings: () => { void handleImportSettings() },
     restoreDefaultSettings: handleRestoreDefaultSettings,  // 恢复默认设置
   }
 
@@ -376,14 +381,6 @@ function SettingsDialogContent({
     set,
     /** 设置操作 */
     settingsActions,
-    /** 导入会话引用 */
-    importSessionsRef,
-    /** 导入设置引用 */
-    importSettingsRef,
-    /** 导入会话回调 */
-    onImportSessions: handleImportSessions,
-    /** 导入设置回调 */
-    onImportSettings: handleImportSettings,
     /** 选择日志路径回调 */
     onChooseLogPath: handleChooseLogPath,
     /** 重置日志路径回调 */

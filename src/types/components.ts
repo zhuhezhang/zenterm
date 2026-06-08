@@ -382,6 +382,6 @@ export interface SidebarContextMenuProps {
   setRenameSessionVal: (v: string) => void
   /** 已保存会话列表 */
   savedSessions: SavedSession[]
-  /** 导入会话文件引用，隐藏的文件选择 input */
-  importSessionsFileRef: RefObject<HTMLInputElement | null>
+  /** 导入会话 */
+  onImportSessions: () => void
 }

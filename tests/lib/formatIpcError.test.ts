@@ -15,6 +15,11 @@ describe('formatIpcError', () => {
     expect(msg).toContain('下载')
     expect(msg).toContain('路径须位于')
   })
+
+  it('translates read/upload path kind labels', () => {
+    expect(formatIpcError(t, 'sftp.pathErrors.localDirDenied', { kind: 'read' })).toContain('读取')
+    expect(formatIpcError(t, 'sftp.pathErrors.localDirDenied', { kind: 'upload' })).toContain('上传')
+  })
 })
 
 describe('formatIpcResponseError', () => {

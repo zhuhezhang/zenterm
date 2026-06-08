@@ -1,19 +1,17 @@
 import { createImportError } from './handleImportErrors'
-import { assertImportFilePathAllowed } from './validateImportFilePath'
-import { readImportJson, unwrapExportPayload } from './parseImportFile'
+import { parseImportJsonText, unwrapExportPayload } from './parseImportFile'
 import { normalizeImportedSession } from '../session/normalizeSession'
 import type { SessionImportWarning } from '../../types/common'
 import type { SavedSession } from '../../types/session'
 import { IMPORT_MAX_SESSION_COUNT } from './constants'
 
 /**
- * 验证并解析会话导入文件
- * @param file 导入的 JSON 文件对象
+ * 验证并解析会话导入 JSON 文本
+ * @param content 导入的 JSON 文本
  * @returns 解析后的会话列表、统计信息和导入警告列表
  */
-export async function validateAndParseSessionsImport(file: File) {
-  await assertImportFilePathAllowed(file)
-  const parsed = await readImportJson(file)
+export async function validateAndParseSessionsImportContent(content: string) {
+  const parsed = parseImportJsonText(content)
   const rows = unwrapExportPayload(parsed, 'sessions')
   if (rows.length > IMPORT_MAX_SESSION_COUNT) {
     throw createImportError('tooManySessions', { max: IMPORT_MAX_SESSION_COUNT })

@@ -1,24 +1,24 @@
 import type { TranslateFn } from '../../types/common'
 import type { SessionImportWarning } from '../../types/common'
 import type { SavedSession } from '../../types/session'
-import { validateAndParseSessionsImport } from './parseSessionsImport'
+import { validateAndParseSessionsImportContent } from './parseSessionsImport'
 import { mergeImportedSessions } from './mergeImportedSessions'
 import { formatSessionImportWarning } from '../session/importWarnings'
 
 /**
  * 应用会话导入
- * @param file 用户选择的 JSON 文件对象
+ * @param content 导入的 JSON 文本
  * @param savedSessions 保存的会话
  * @param absorbSecrets 吸收明文凭据
  * @returns 应用后的会话、添加的会话数量和警告列表
  */
-export async function applySessionsImport(
-  file: File,
+export async function applySessionsImportFromContent(
+  content: string,
   savedSessions: SavedSession[],
   absorbSecrets: (sessions: SavedSession[]) => Promise<SavedSession[]>,
 ): Promise<{ sessions: SavedSession[]; addedCount: number; warnings: SessionImportWarning[] }> {
   const beforeCount = savedSessions.length
-  const { sessions: imported, warnings: parseWarnings } = await validateAndParseSessionsImport(file)
+  const { sessions: imported, warnings: parseWarnings } = await validateAndParseSessionsImportContent(content)
   const mergeWarnings: SessionImportWarning[] = []
   const merged = mergeImportedSessions(savedSessions, imported, mergeWarnings)
   const sessions = await absorbSecrets(merged)

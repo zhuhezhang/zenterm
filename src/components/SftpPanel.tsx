@@ -32,8 +32,6 @@ function SftpPanel({ session }: SftpPanelProps) {
   const [creatingDir, setCreatingDir] = useState(false)
   const [createDirName, setCreateDirName] = useState('')
   const [progress, setProgress] = useState<ZTermProgress | null>(null)
-  const fileUploadInputRef = useRef<HTMLInputElement | null>(null)
-  const folderUploadInputRef = useRef<HTMLInputElement | null>(null)
   const uploadDetailsRef = useRef<HTMLDetailsElement | null>(null)
   const [uploadMenuOpen, setUploadMenuOpen] = useState(false)
   const [fileCtx, setFileCtx] = useState<SftpFileContextMenu | null>(null)
@@ -217,7 +215,7 @@ function SftpPanel({ session }: SftpPanelProps) {
    */
   const handleDownload = async (item: SftpRemoteItem) => {
     if (!sftpSessionId) return
-    const pick = await getZterm().paths.chooseDirectory('sftpDownload')
+    const pick = await getZterm().paths.chooseOpen('sftpDownload')
     const dir = pick?.content?.path
     if (!pick?.success || pick?.content?.canceled || !dir) return
     const localBase = dir.endsWith('/') ? dir.slice(0, -1) : dir
@@ -283,18 +281,17 @@ function SftpPanel({ session }: SftpPanelProps) {
 
 
   /** 
-   * 通过选择框上传多个顶层文件（无目录结构） 
-   * @param fileList 文件列表
-   * @returns 是否成功
+   * 通过对话框上传多个顶层文件（无目录结构）
+   * @param paths 本地文件路径列表
    */
-  const handlePickFilesUpload = async (fileList: FileList | null) => {
-    if (!sftpSessionId) return
+  const handlePickFilesUpload = async (paths: string[]) => {
+    if (!sftpSessionId || !paths.length) return
     try {
-      const files = Array.from(fileList || []).filter((f: File) => getLocalFilePath(f))
-      if (!files.length) return
-      for (const f of files) {
-        const remotePath = (path === '/' ? '' : path) + '/' + f.name
-        const res = await getZterm().sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
+      for (const localPath of paths) {
+        const name = localPath.split(/[/\\]/).pop()
+        if (!name) continue
+        const remotePath = (path === '/' ? '' : path) + '/' + name
+        const res = await getZterm().sftp.upload(sftpSessionId, localPath, remotePath)
         assertIpcSuccess(res)
       }
       loadDir(path)
@@ -304,21 +301,16 @@ function SftpPanel({ session }: SftpPanelProps) {
   }
 
   /** 
-   * 通过选择框上传文件夹（保留 webkitRelativePath 目录结构）
-   * @param fileList 文件列表
-   * @returns 是否成功
+   * 通过对话框上传文件夹（保留相对目录结构）
+   * @param entries 本地文件及相对路径
    */
-  const handlePickFolderUpload = async (fileList: FileList | null) => {
-    if (!sftpSessionId) return
+  const handlePickFolderUpload = async (entries: { path: string; relativePath: string }[]) => {
+    if (!sftpSessionId || !entries.length) return
     try {
-      const files = Array.from(fileList || []).filter(
-        (f: File) => getLocalFilePath(f) && f.webkitRelativePath,
-      )
-      if (!files.length) return
       const cache = new Set<string>()
       const dirsToCreate = new Set<string>()
-      for (const f of files) {
-        const segments = f.webkitRelativePath.split('/')
+      for (const entry of entries) {
+        const segments = entry.relativePath.split('/')
         for (let i = 1; i < segments.length; i++) {
           dirsToCreate.add(segments.slice(0, i).join('/'))
         }
@@ -327,17 +319,47 @@ function SftpPanel({ session }: SftpPanelProps) {
       for (const relDir of [...dirsToCreate].sort((a, b) => a.length - b.length)) {
         await ensureRemoteDir(remoteBase + relDir, cache)
       }
-      for (const f of files) {
-        const remotePath = remoteBase + f.webkitRelativePath
+      for (const entry of entries) {
+        const remotePath = remoteBase + entry.relativePath
         const remoteDir = remotePath.split('/').slice(0, -1).join('/') || '/'
         await ensureRemoteDir(remoteDir, cache)
-        const res = await getZterm().sftp.upload(sftpSessionId, getLocalFilePath(f), remotePath)
+        const res = await getZterm().sftp.upload(sftpSessionId, entry.path, remotePath)
         assertIpcSuccess(res)
       }
       loadDir(path)
     } catch (err) {
       showErr(err)
     }
+  }
+
+  /** 打开主进程文件选择对话框并上传所选文件 */
+  const pickFilesForUpload = async () => {
+    uploadDetailsRef.current?.removeAttribute('open')
+    setUploadMenuOpen(false)
+    const pick = await getZterm().paths.chooseOpen('sftpUploadFiles')
+    if (!pick?.success) {
+      if (pick) alert(ipcErr(pick, 'sftp.unknownError'))
+      return
+    }
+    if (pick.content.canceled) return
+    const paths = pick.content.paths
+    if (!Array.isArray(paths) || !paths.length) return
+    await handlePickFilesUpload(paths)
+  }
+
+  /** 打开主进程目录选择对话框并上传所选文件夹 */
+  const pickFolderForUpload = async () => {
+    uploadDetailsRef.current?.removeAttribute('open')
+    setUploadMenuOpen(false)
+    const pick = await getZterm().paths.chooseOpen('sftpUploadFolder')
+    if (!pick?.success) {
+      if (pick) alert(ipcErr(pick, 'sftp.unknownError'))
+      return
+    }
+    if (pick.content.canceled) return
+    const entries = pick.content.entries
+    if (!Array.isArray(entries) || !entries.length) return
+    await handlePickFolderUpload(entries)
   }
 
   /** 
@@ -425,47 +447,19 @@ function SftpPanel({ session }: SftpPanelProps) {
               <button
                 type="button"
                 className="sftp-upload-menu-item"
-                onClick={() => {
-                  uploadDetailsRef.current?.removeAttribute('open')
-                  fileUploadInputRef.current?.click()
-                }}
+                onClick={() => { void pickFilesForUpload() }}
               >
                 {t('sftp.pickFiles')}
               </button>
               <button
                 type="button"
                 className="sftp-upload-menu-item"
-                onClick={() => {
-                  uploadDetailsRef.current?.removeAttribute('open')
-                  folderUploadInputRef.current?.click()
-                }}
+                onClick={() => { void pickFolderForUpload() }}
               >
                 {t('sftp.pickFolder')}
               </button>
             </div>
           </details>
-          <input
-            ref={fileUploadInputRef}
-            type="file"
-            multiple
-            className="sftp-hidden-input"
-            onChange={(e) => {
-              handlePickFilesUpload(e.target.files)
-              e.target.value = ''
-            }}
-          />
-          <input
-            ref={folderUploadInputRef}
-            type="file"
-            className="sftp-hidden-input"
-            webkitdirectory=""
-            directory=""
-            multiple
-            onChange={(e) => {
-              handlePickFolderUpload(e.target.files)
-              e.target.value = ''
-            }}
-          />
           <button type="button" className="sftp-btn" onClick={startCreateDir} title={t('sftp.newFolderTitle')}>{t('sftp.newFolder')}</button>
           <button type="button" className="sftp-btn" onClick={() => { loadDir(path); setProgress(null) }} title={t('sftp.refreshTitle')}>{t('sftp.refresh')}</button>
         </div>

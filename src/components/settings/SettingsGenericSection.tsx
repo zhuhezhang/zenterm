@@ -1,4 +1,3 @@
-import type { ChangeEvent, RefObject } from 'react'
 import SettingsSettingItem from './SettingsSettingItem'
 import SettingsAlgorithmSection from './SettingsAlgorithmSection'
 import SettingsHighlightSection from './SettingsHighlightSection'
@@ -22,14 +21,6 @@ export interface SettingsGenericSectionProps {
   set: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void
   /** 设置操作 */
   settingsActions: Record<SettingsActionKey, () => void | Promise<void>>
-  /** 导入会话引用 */
-  importSessionsRef: RefObject<HTMLInputElement | null>
-  /** 导入设置引用 */
-  importSettingsRef: RefObject<HTMLInputElement | null>
-  /** 导入会话回调 */
-  onImportSessions: (e: ChangeEvent<HTMLInputElement>) => void
-  /** 导入设置回调 */
-  onImportSettings: (e: ChangeEvent<HTMLInputElement>) => void
   /** 选择日志路径回调 */
   onChooseLogPath: () => void
   /** 重置日志路径回调 */
@@ -99,10 +90,6 @@ export default function SettingsGenericSection(props: SettingsGenericSectionProp
             vaultEncryptionAvailable={props.vaultEncryptionAvailable}
             set={props.set}
             settingsActions={props.settingsActions}
-            importSessionsRef={props.importSessionsRef}
-            importSettingsRef={props.importSettingsRef}
-            onImportSessions={props.onImportSessions}
-            onImportSettings={props.onImportSettings}
             onChooseLogPath={props.onChooseLogPath}
             onResetLogPath={props.onResetLogPath}
             showSettingsHoverTip={props.showSettingsHoverTip}

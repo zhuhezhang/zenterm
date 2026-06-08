@@ -42,7 +42,7 @@ export default memo(function Sidebar(props: SidebarProps) {
   const {
     dStart, dOver, dLeave, dEnd, isDO, dropOnGroup, dropOnSession, dropUngroup,
   } = useSidebarDragDrop(savedSessions, groupPlaceholders, onUpdateSessions, onUpdatePlaceholders)
-  const { fileRef: importSessionsFileRef, handleFileChange: handleImportSessionsFile, accept: importAccept, triggerImport } = useSessionsImport(
+  const { triggerImport } = useSessionsImport(
     savedSessions,
     onUpdateSessions,
   )
@@ -365,7 +365,6 @@ export default memo(function Sidebar(props: SidebarProps) {
 
   return (
     <div className={`sidebar ${open ? 'open' : 'closed'}`} style={open ? style : undefined} onClick={closeCtx}>
-      <input ref={importSessionsFileRef} type="file" accept={importAccept} style={{ display: 'none' }} onChange={handleImportSessionsFile} aria-hidden />
       <SidebarTop open={open} onToggle={onToggle} onOpenSettings={onOpenSettings} t={t} />
       {open && (
         <div className="sidebar-content">
@@ -465,7 +464,7 @@ export default memo(function Sidebar(props: SidebarProps) {
           expandGroupAll={expandGroupAll} collapseGroupAll={collapseGroupAll}
           setRenamingSession={setRenamingSession} setRenameSessionVal={setRenameSessionVal}
           savedSessions={savedSessions}
-          importSessionsFileRef={importSessionsFileRef}
+          onImportSessions={() => { void triggerImport() }}
         />
       )}
     </div>

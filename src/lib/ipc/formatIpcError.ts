@@ -18,7 +18,11 @@ export function formatIpcError(
   const c = String(code ?? '').trim()
   if (!c) return ''
   const p = { ...(params || {}) }
-  if (p.kind && !p.kindLabel) p.kindLabel = t(`sftp.pathKind.${p.kind}`)
+  if (p.kind && !p.kindLabel) {
+    const kindKey = `sftp.pathKind.${p.kind}`
+    const kindLabel = t(kindKey)
+    p.kindLabel = kindLabel !== kindKey ? kindLabel : String(p.kind)
+  }
   if (c.startsWith('sftp.pathErrors.') && !p.hint) {
     p.hint = t('sftp.pathErrors.allowedRootsHint')
   }

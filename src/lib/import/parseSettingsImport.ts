@@ -1,7 +1,6 @@
 import { createImportError } from './handleImportErrors'
-import { readImportJson, unwrapExportPayload } from './parseImportFile'
+import { parseImportJsonText, unwrapExportPayload } from './parseImportFile'
 import { sanitizeImportedSettings } from '../settings/sanitizeImport'
-import { assertImportFilePathAllowed } from './validateImportFilePath'
 import type { AppSettings } from '../../types/settings'
 import type { SettingsImportWarning } from '../../types/common'
 
@@ -15,17 +14,16 @@ function isPlainObject(raw: unknown): raw is Partial<AppSettings> {
 }
 
 /**
- * 验证并解析设置导入文件
- * @param file 导入的 JSON 文件对象
+ * 验证并解析设置导入 JSON 文本
+ * @param content 导入的 JSON 文本
  * @param currentSettings 导入前的当前设置
  * @returns 解析后的设置对象和导入警告列表
  */
-export async function validateAndParseSettingsImport(
-  file: File,
+export async function validateAndParseSettingsImportContent(
+  content: string,
   currentSettings: AppSettings,
 ): Promise<{ settings: AppSettings; warnings: SettingsImportWarning[] }> {
-  await assertImportFilePathAllowed(file)
-  const parsed = await readImportJson(file)
+  const parsed = parseImportJsonText(content)
   const data = unwrapExportPayload(parsed, 'settings')
   if (!isPlainObject(data)) {
     throw createImportError('invalidPayload')

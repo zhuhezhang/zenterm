@@ -1,7 +1,8 @@
 import type { AppSettings } from '../../types/settings'
 import type { SavedSession } from '../../types/session'
 import { createImportError } from './handleImportErrors'
-import { EXPORT_ENVELOPE_VERSION, IMPORT_MAX_BYTES } from './constants'
+import { EXPORT_ENVELOPE_VERSION } from './constants'
+import { IMPORT_MAX_BYTES } from '../../../shared/others'
 
 /** zterm 导出 envelope */
 export interface ExportEnvelope<T> {
@@ -25,31 +26,20 @@ function isExportEnvelope(parsed: unknown): parsed is ExportEnvelope<unknown> {
 }
 
 /**
- * 读取并解析导入用 JSON 文件
- * @param file 导入的 JSON 文件对象
+ * 解析导入用 JSON 文本
+ * @param text JSON 文本
  * @returns 解析后的数据
  */
-export function readImportJson(file: File): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    if (!file || !(file.size >= 0)) {
-      reject(createImportError('readFailed'))
-      return
-    }
-    if (file.size > IMPORT_MAX_BYTES) {
-      reject(createImportError('fileTooLarge', { max: IMPORT_MAX_BYTES / 1024 / 1024 }))
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      try {
-        resolve(JSON.parse(String(e.target?.result ?? '')))
-      } catch {
-        reject(createImportError('invalidJson'))
-      }
-    }
-    reader.onerror = () => reject(createImportError('readFailed'))
-    reader.readAsText(file)
-  })
+export function parseImportJsonText(text: string): unknown {
+  const byteLength = new TextEncoder().encode(text).length
+  if (byteLength > IMPORT_MAX_BYTES) {
+    throw createImportError('fileTooLarge', { max: IMPORT_MAX_BYTES / 1024 / 1024 })
+  }
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw createImportError('invalidJson')
+  }
 }
 
 /**

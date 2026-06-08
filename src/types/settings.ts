@@ -100,8 +100,6 @@ export interface SettingsSchemaItem {
   buttonKey?: string
   /** 表单项危险操作 */
   danger?: boolean
-  /** 表单项文件输入 */
-  fileInput?: string
   /** 表单项最小值 */
   min?: number
   /** 表单项最大值 */

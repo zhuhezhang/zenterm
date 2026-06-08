@@ -32,6 +32,7 @@ export const SFTP = {
     workerExitUnexpected: 'SFTP 工作线程意外退出 ({code})',
     unknownCmd: '未知命令: {cmd}',
     pathKind: {
+      read: '读取',
       download: '下载',
       upload: '上传',
       sftp: 'SFTP',
@@ -80,6 +81,7 @@ export const SFTP = {
     workerExitUnexpected: 'SFTP worker exited unexpectedly ({code})',
     unknownCmd: 'Unknown command: {cmd}',
     pathKind: {
+      read: 'Read',
       download: 'Download',
       upload: 'Upload',
       sftp: 'SFTP',

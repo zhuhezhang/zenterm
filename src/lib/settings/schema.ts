@@ -124,7 +124,6 @@ export const SETTINGS_SCHEMA = [
         labelKey: 'settings.importSessions',
         descKey: 'settings.importSessionsDesc',
         buttonKey: 'settings.import',
-        fileInput: 'importSessions',
       },
       {
         type: 'action',
@@ -152,7 +151,6 @@ export const SETTINGS_SCHEMA = [
         labelKey: 'settings.importSettings',
         descKey: 'settings.importSettingsDesc',
         buttonKey: 'settings.import',
-        fileInput: 'importSettings',
       },
       {
         type: 'action',
