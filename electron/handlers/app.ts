@@ -58,12 +58,24 @@ export function setupAppHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGett
     return ipcOk({ path: app.getPath('downloads') })
   })
 
-  ipcMain.handle('app:chooseDirectory', async (event: IpcMainInvokeEvent) => {  // 处理选择目录请求
+  ipcMain.handle('app:chooseDirectory', async (event: IpcMainInvokeEvent, kind: unknown) => {  // 处理选择目录请求
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     const mainWindow = getMainWindow()
+    let title = ''
+    switch (kind) {
+      case 'logSave':
+        title = translateMain('app.chooseLogDirectoryTitle')
+        break
+      case 'sftpDownload':
+        title = translateMain('app.chooseSftpDownloadTitle')
+        break
+      default:
+        title = translateMain('app.chooseDirectoryTitle')
+        break
+    }
     const openOptions = {
       properties: ['openDirectory', 'createDirectory'] as ('openDirectory' | 'createDirectory')[],
-      title: translateMain('app.chooseLogDirectoryTitle'),
+      title: title,
     }
     const result = mainWindow
       ? await dialog.showOpenDialog(mainWindow, openOptions)
@@ -132,12 +144,24 @@ export function setupAppHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGett
     })
   })
 
-  ipcMain.handle('app:saveJsonExport', async (event: IpcMainInvokeEvent, defaultName: unknown, jsonText: unknown) => {  // 处理保存 JSON 导出请求
+  ipcMain.handle('app:saveJsonExport', async (event: IpcMainInvokeEvent, kind: unknown, defaultName: unknown, jsonText: unknown) => {  // 处理保存 JSON 导出请求
     if (!isTrustedIpcSender(event.sender)) {
       return ipcFail('app.unauthorized', true)
     }
+    let title = ''
+    switch (kind) {
+      case 'sessions':
+        title = translateMain('app.saveSessionJsonExportTitle')
+        break
+      case 'settings':
+        title = translateMain('app.saveSettingsJsonExportTitle')
+        break
+      default:
+        title = translateMain('app.saveJsonExportTitle')
+        break
+    }
     return saveFileWithPolicyDialog(getMainWindow() ?? undefined, {
-      title: translateMain('app.saveJsonExportTitle'),
+      title: title,
       defaultName: String(defaultName ?? 'export.json'),
       filters: [{ name: 'JSON', extensions: ['json'] }],
       content: String(jsonText ?? ''),

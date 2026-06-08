@@ -1,4 +1,5 @@
 /** 在独立 Worker 线程中运行 ssh2 客户端，避免 SSH 握手（DH 等）阻塞 Electron 主进程事件循环导致界面卡死 */
+import '../lib/legacyModp2Polyfill.js'
 import { parentPort, workerData } from 'worker_threads'
 import { Client } from 'ssh2'
 import type { Duplex } from 'node:stream'

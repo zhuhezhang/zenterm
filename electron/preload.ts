@@ -88,7 +88,7 @@ const ztermApi = {
 
   paths: {
     getDownloadsPath: () => ipcRenderer.invoke('app:getDownloadsPath'),
-    chooseDirectory: () => ipcRenderer.invoke('app:chooseDirectory'),
+    chooseDirectory: (kind: string) => ipcRenderer.invoke('app:chooseDirectory', kind),
     choosePrivateKeyFile: () => ipcRenderer.invoke('app:choosePrivateKeyFile'),
     validateLogDirectory: (dir: string) => ipcRenderer.invoke('app:validateLogDirectory', dir),
     validateLocalFilePath: (filePath: string, kind?: string) => ipcRenderer.invoke('app:validateLocalFilePath', filePath, kind),
@@ -104,7 +104,7 @@ const ztermApi = {
 
   save: {
     terminalOutput: (defaultName: string, text: string) => ipcRenderer.invoke('app:saveTerminalOutput', defaultName, text),
-    jsonExport: (defaultName: string, jsonText: string) => ipcRenderer.invoke('app:saveJsonExport', defaultName, jsonText),
+    jsonExport: (kind: string, defaultName: string, jsonText: string) => ipcRenderer.invoke('app:saveJsonExport', kind, defaultName, jsonText),
   },
 
   log: {

@@ -23,7 +23,7 @@ export function buildExportFilename(kind: ExportKind): string {
 }
 
 /**
- * 下载 JSON 导出
+ * 下载 JSON 导出（保存会话或设置到本地）
  * @param kind 导出类型
  * @param data 导出数据
  * @param t 翻译函数
@@ -41,7 +41,7 @@ export async function downloadJsonExport(
   const jsonText = JSON.stringify(payload, null, 2)
   const filename = buildExportFilename(kind)
   try {
-    const res = await window.zterm?.save?.jsonExport(filename, jsonText)
+    const res = await window.zterm?.save?.jsonExport(kind, filename, jsonText)
     if (res?.content?.canceled) return
     alertIpcFailure(t, res, 'settings.exportFail')
   } catch (err: unknown) {

@@ -6,6 +6,4 @@
 
 更新readme文件
 
-兼容diffie-hellman-group1-sha1
-
 后端代码热更新

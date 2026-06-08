@@ -290,7 +290,7 @@ function SettingsDialogContent({
   const handleChooseLogPath = async () => {
     try {
       if (window.zterm?.paths?.chooseDirectory) {
-        const picked = await window.zterm.paths.chooseDirectory()
+        const picked = await window.zterm.paths.chooseDirectory('logSave')
         if (isIpcSuccess(picked) && !picked?.content?.canceled) {
           const logPath = picked.content.path
           if (typeof logPath === 'string' && logPath) {

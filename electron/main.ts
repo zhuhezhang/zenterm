@@ -52,10 +52,11 @@ function registerIpcHandlersOnce() {
 function createWindow() {
   const icon = resolveAppIcon()
   mainWindow = new BrowserWindow({
-    width: 1500,
-    height: 950,
+    width: 1440,
+    height: 850,
     minWidth: 800,
     minHeight: 600,
+    center: true,
     ...(icon ? { icon } : {}),
     frame: false,  // 无系统边框，自定义标题栏
     titleBarStyle: 'hidden',

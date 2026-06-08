@@ -386,9 +386,10 @@ export interface ZTermPathsApi {
   getDownloadsPath: () => Promise<IpcResult<{ path: string }>>
   /** 
    * 选择目录
+   * @param kind 目录类型（用于识别标题文字）
    * @returns 选择结果
    */
-  chooseDirectory: () => Promise<IpcResult<{ path?: string; canceled?: boolean }>>
+  chooseDirectory: (kind: string) => Promise<IpcResult<{ path?: string; canceled?: boolean }>>
   /** 
    * 选择私钥文件并读取 PEM 内容
    * @returns 选择结果
@@ -425,12 +426,13 @@ export interface ZTermSaveApi {
    */
   terminalOutput: (defaultName: string, text: string) => Promise<IpcResult<{ canceled?: boolean }>>
   /** 
-   * 保存 JSON 导出
+   * 保存 JSON（保存会话或设置到本地）
+   * @param kind 导出类型（sessions/settings，用于识别标题文字）
    * @param defaultName 默认名称
    * @param jsonText JSON 文本
    * @returns 保存结果
    */
-  jsonExport: (defaultName: string, jsonText: string) => Promise<IpcResult<{ canceled?: boolean }>>
+  jsonExport: (kind: string, defaultName: string, jsonText: string) => Promise<IpcResult<{ canceled?: boolean }>>
 }
 
 /** 日志 API */

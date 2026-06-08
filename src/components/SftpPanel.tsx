@@ -217,7 +217,7 @@ function SftpPanel({ session }: SftpPanelProps) {
    */
   const handleDownload = async (item: SftpRemoteItem) => {
     if (!sftpSessionId) return
-    const pick = await getZterm().paths.chooseDirectory()
+    const pick = await getZterm().paths.chooseDirectory('sftpDownload')
     const dir = pick?.content?.path
     if (!pick?.success || pick?.content?.canceled || !dir) return
     const localBase = dir.endsWith('/') ? dir.slice(0, -1) : dir
