@@ -43,7 +43,12 @@ export async function downloadJsonExport(
   try {
     const res = await window.zterm?.save?.saveFile(kind, filename, jsonText)
     if (res?.content?.canceled) return
-    alertIpcFailure(t, res, 'settings.exportFail')
+    if (alertIpcFailure(t, res, 'settings.exportFail')) return
+    if (kind === 'sessions') {
+      alert(t('settings.exportSessionsOk', { n: (data as SavedSession[]).length }))
+    } else {
+      alert(t('settings.exportSettingsOk'))
+    }
   } catch (err: unknown) {
     alert(t('settings.exportFail', {
       msg: err instanceof Error ? err.message : String(err),

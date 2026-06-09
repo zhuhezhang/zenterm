@@ -5,6 +5,21 @@ import { validateAndParseSessionsImportContent } from './parseSessionsImport'
 import { mergeImportedSessions } from './mergeImportedSessions'
 import { formatSessionImportWarning } from '../session/importWarnings'
 
+/** 重复会话警告代码集合 */
+const DUPLICATE_SESSION_WARNING_CODES = new Set([
+  'mergeDuplicateSavedId',
+  'mergeDuplicateLabel',
+])
+
+/** 
+ * 判断是否为重复会话警告
+ * @param warning 警告
+ * @returns 是否为重复会话警告
+ */
+function isDuplicateSessionWarning(warning: SessionImportWarning): boolean {
+  return DUPLICATE_SESSION_WARNING_CODES.has(warning.code)
+}
+
 /**
  * 应用会话导入
  * @param content 导入的 JSON 文本
@@ -39,12 +54,17 @@ export function reportSessionsImportResult(
   t: TranslateFn,
   { addedCount, warnings }: { addedCount: number; warnings: SessionImportWarning[] },
 ): void {
-  if (warnings.length) {
+  const hasDuplicateWarnings = warnings.some(isDuplicateSessionWarning)
+  const duplicateNote = hasDuplicateWarnings ? t('settings.importSessionsDuplicatesNote') : ''
+  const otherWarnings = warnings.filter((w) => !isDuplicateSessionWarning(w))
+
+  if (otherWarnings.length) {
     alert(t('settings.importSessionsPartial', {
       n: addedCount,
-      details: warnings.map((w) => formatSessionImportWarning(t, w)).join('\n'),
+      duplicateNote,
+      details: otherWarnings.map((w) => formatSessionImportWarning(t, w)).join('\n'),
     }))
   } else {
-    alert(t('settings.importSessionsOk', { n: addedCount }))
+    alert(t('settings.importSessionsOk', { n: addedCount, duplicateNote }))
   }
 }

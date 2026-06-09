@@ -141,8 +141,9 @@ export const SETTINGS = {
     "restoreDefaultsDesc": "将本地保存的全部选项重置为应用内置默认值（不影响已保存的会话列表与加密库中的敏感信息）",
     "restoreDefaultBtn": "恢复默认",
     "confirmResetHighlight": "确定将高亮规则重置为内置默认列表吗？\n当前列表中的规则会被全部替换；重置后请点击「保存」或「保存并关闭」写入本地",
-    "importSessionsOk": "已导入 {n} 个新会话",
-    "importSessionsPartial": "已导入 {n} 个新会话\n\n以下项未按文件原样生效：\n{details}",
+    "importSessionsOk": "已导入 {n} 个新会话{duplicateNote}",
+    "importSessionsDuplicatesNote": "（重复会话已忽略）",
+    "importSessionsPartial": "已导入 {n} 个新会话{duplicateNote}\n\n以下项未按文件原样生效：\n{details}",
     "importSessionWarnings": {
       "ungrouped": "未分组",
       "sessionSkipped": "会话第 {index} 条已跳过：{reasonText}",
@@ -159,6 +160,8 @@ export const SETTINGS = {
     "importFail": "导入失败：{msg}",
     "importPathDenied": "所选文件路径不在允许范围内。\n\n{hint}",
     "exportFail": "导出失败：{msg}",
+    "exportSessionsOk": "已导出 {n} 个会话",
+    "exportSettingsOk": "设置已导出",
     "importFileKind": {
       "sessions": "会话",
       "settings": "设置"
@@ -363,8 +366,9 @@ export const SETTINGS = {
     "restoreDefaultsDesc": "Reset all local options to app defaults (saved sessions and vault secrets are kept)",
     "restoreDefaultBtn": "Restore defaults",
     "confirmResetHighlight": "Reset highlight rules to built-in defaults?\nCurrent rules will be replaced; click Save or Save & close to persist",
-    "importSessionsOk": "Imported {n} new session(s)",
-    "importSessionsPartial": "Imported {n} new session(s)\n\nThe following were not applied as in the file:\n{details}",
+    "importSessionsOk": "Imported {n} new session(s){duplicateNote}",
+    "importSessionsDuplicatesNote": " (duplicate sessions ignored)",
+    "importSessionsPartial": "Imported {n} new session(s){duplicateNote}\n\nThe following were not applied as in the file:\n{details}",
     "importSessionWarnings": {
       "ungrouped": "Ungrouped",
       "sessionSkipped": "Session #{index} skipped: {reasonText}",
@@ -381,6 +385,8 @@ export const SETTINGS = {
     "importFail": "Import failed: {msg}",
     "importPathDenied": "The selected file path is not allowed.\n\n{hint}",
     "exportFail": "Export failed: {msg}",
+    "exportSessionsOk": "Exported {n} session(s)",
+    "exportSettingsOk": "Settings exported",
     "importFileKind": {
       "sessions": "sessions",
       "settings": "settings"
