@@ -4,9 +4,9 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "lib": ["ES2022", "DOM"],
-    "outDir": "dist-electron",
-    "rootDir": ".",
+    "outDir": "../dist-electron",
+    "rootDir": "..",
     "types": ["node"]
   },
-  "include": ["electron/preload.ts"]
+  "include": ["../electron/preload.ts"]
 }

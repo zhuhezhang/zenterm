@@ -65,7 +65,7 @@ function saveStore(data: KnownHostStore) {
   const p = storePath()
   fs.mkdirSync(path.dirname(p), { recursive: true })
   const tmp = `${p}.tmp`
-  fs.writeFileSync(tmp, JSON.stringify(data), 'utf8')
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8')  // 用 .tmp + rename 做原子替换，避免写一半损坏原文件
   fs.renameSync(tmp, p)
 }
 

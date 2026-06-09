@@ -27,6 +27,11 @@ export function setupAppHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGett
     return ipcOk({ path: app.getPath('downloads') })
   })
 
+  ipcMain.handle('app:getVersion', (event: IpcMainInvokeEvent) => {
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
+    return ipcOk({ version: app.getVersion() })
+  })
+
   ipcMain.handle('app:chooseOpen', async (event: IpcMainInvokeEvent, kind: unknown) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     if (typeof kind !== 'string') return ipcFail('app.invalidRequest', true)

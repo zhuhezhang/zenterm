@@ -21,6 +21,7 @@ describe('isPathWithinResolvedRoots', () => {
     expect(isPathWithinResolvedRoots(path.resolve('/home/user/../etc/passwd'), roots)).toBe(false)
   })
 
+  // 跳过非 Windows 平台的测试
   it.skipIf(process.platform !== 'win32')('accepts nested path on alternate drive root', () => {
     expect(isPathWithinResolvedRoots(path.resolve('D:\\data\\out.txt'), roots)).toBe(true)
   })

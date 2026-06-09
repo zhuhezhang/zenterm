@@ -26,5 +26,5 @@ function run(cmd: string, args: string[]): void {
   if (r.status !== 0) process.exit(r.status ?? 1)
 }
 
-run('npx', ['tsc', '-p', 'tsconfig.main.json'])
+run('npx', ['tsc', '-p', 'tsconfig/tsconfig.main.json'])
 run('npx', ['esbuild', ...preloadEsbuildArgs])

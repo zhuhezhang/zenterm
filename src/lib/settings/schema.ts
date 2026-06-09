@@ -45,8 +45,8 @@ export const SETTINGS_SCHEMA = [
         type: 'select',
         options: [
           { value: 'none', labelKey: 'settings.options.loggingModeNone' },
-          { value: 'buffer', labelKey: 'settings.options.loggingModeBuffer' },
           { value: 'stream', labelKey: 'settings.options.loggingModeStream' },
+          { value: 'buffer', labelKey: 'settings.options.loggingModeBuffer' },
         ],
       },
       { key: 'logPath', type: 'path' },

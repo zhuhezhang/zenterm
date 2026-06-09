@@ -1,6 +1,6 @@
 # ZTerm
 
-**[简体中文](README.zh-CN.md)** · English · v1.2.3
+**[简体中文](README.zh-CN.md)** · English · v3.2.1
 
 ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
 
@@ -14,6 +14,8 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 - [Project Structure](#project-structure)
 - [Requirements](#requirements)
 - [Quick Start](#quick-start)
+- [Development & Quality](#development--quality)
+- [Build & Release](#build--release)
 - [Import / Export Format](#import--export-format)
 - [Security Model](#security-model)
 - [Data & Storage Locations](#data--storage-locations)
@@ -76,9 +78,11 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 ## Screenshots
 
-ZTerm main
-ZTerm setting
-ZTerm connection
+![ZTerm main window](docs/images/main.png)
+
+![ZTerm settings](docs/images/setting.png)
+
+![ZTerm connect dialog](docs/images/connection.png)
 
 ---
 
@@ -88,11 +92,13 @@ ZTerm connection
 | Layer         | Technology                                 |
 | ------------- | ------------------------------------------ |
 | Desktop shell | Electron 42                                |
-| UI            | React 18, Vite 8                           |
+| Language      | TypeScript                                 |
+| UI            | React 19, Vite 8                           |
 | Terminal      | @xterm/xterm 5, Fit addon, Web Links addon |
 | SSH / SFTP    | ssh2                                       |
 | Serial        | serialport 12                              |
 | Encoding      | iconv-lite                                 |
+| Testing       | Vitest 3                                   |
 | Packaging     | electron-builder                           |
 
 
@@ -100,128 +106,68 @@ ZTerm connection
 
 ## Project Structure
 
+Source code is organized as **frontend / backend / shared**:
+
+| Directory | Role | Description |
+|-----------|------|-------------|
+| **`src/`** | Frontend | React renderer: UI, xterm, localStorage, consumes `window.zterm` |
+| **`electron/`** | Backend | Main process + workers: IPC, files/dialogs, credentials, ssh2/SFTP, serial |
+| **`shared/`** | Shared | IPC types, API contract, algorithm defaults, UI-agnostic utilities |
+
 ```
 zterm/
-├── electron/                            # Main process (Node.js + Electron APIs)
-│   ├── main.js                          # App entry: frameless window, IPC routing, session log I/O, UI language sync
-│   ├── preload.cjs                      # contextBridge → window.zterm (SSH/SFTP/Telnet/Serial/credentials/window/log)
-│   ├── handlers/                        # IPC handlers registered from main.js
-│   │   ├── ssh.js                       # SSH connect/disconnect, PTY I/O, resize; delegates to worker
-│   │   ├── sftp.js                      # SFTP list/upload/download/mkdir/rename/delete; delegates to worker
-│   │   ├── telnet.js                    # Telnet TCP socket connect and byte stream I/O
-│   │   ├── serial.js                    # Serial port enumerate/open/write; path whitelist vs listPorts
-│   │   └── credentials.js               # safeStorage vault: get/sync/remove/duplicate/clearAll
-│   ├── workers/                         # Worker threads (isolate blocking ssh2 I/O from main loop)
-│   │   ├── sshSessionWorker.js          # Per-session SSH shell in a worker
-│   │   └── sftpSessionWorker.js         # Per-session SFTP client in a worker (local path checks via shared roots)
-│   ├── i18n/
-│   │   └── knownHosts.js                # Bilingual strings for SSH host-key confirmation dialogs (main process)
-│   └── lib/                             # Shared main-process utilities
-│       ├── trustedSender.js             # Allow IPC only from the registered main BrowserWindow
-│       ├── localPathPolicy.js           # Resolve allowed roots; validate logs/SFTP paths; structured SFTP errors
-│       ├── sftpLocalPathRoots.js        # Pure path containment checks (re-exported; used by main + workers)
-│       ├── sshKnownHosts.js             # Persist and verify SSH host keys (zterm-known-hosts.json)
-│       ├── uiLanguageState.js           # Cache settings.uiLanguage for main-process dialogs (known hosts, …)
-│       └── encodeTerminalWrite.js       # Encode outgoing terminal keystrokes (iconv-lite)
+├── src/                                 # Frontend (renderer)
+│   ├── main.tsx, App.tsx
+│   ├── components/                      # Title bar, sidebar, terminal, SFTP, connect/settings dialogs
+│   ├── store/                           # sessionStore, settingsStore, credentialsBridge
+│   ├── lib/                             # Import/export, IPC helpers, session/terminal/settings logic
+│   ├── hooks/, context/, i18n/, theme/, styles/, types/
 │
-├── src/                                 # Renderer (React 18 + Vite)
-│   ├── main.jsx                         # React root, ErrorBoundary, mounts App
-│   ├── App.jsx                          # Shell layout: title bar, sidebar, tabs, terminal, dialogs
-│   ├── components/
-│   │   ├── TitleBar.jsx                 # Custom window controls (min/max/close)
-│   │   ├── Sidebar.jsx                  # Saved sessions tree, groups, search, import; hosts SftpPanel
-│   │   ├── TabBar.jsx                   # Session tabs, reorder, context menu actions
-│   │   ├── TerminalPanel.jsx            # xterm.js instance, encoding, logging, highlights, backspace
-│   │   ├── SftpPanel.jsx                # Remote file tree, upload/download, drag-and-drop, transfer progress
-│   │   ├── ConnectDialog.jsx            # SSH / Telnet / Serial form, credentials sub-dialog
-│   │   ├── SettingsDialog.jsx           # Tabbed settings, algorithms, import/export, theme preview
-│   │   └── common.jsx                   # Shared UI bits (e.g. connection type icons)
-│   ├── store/                           # Client-side persistence and IPC bridges
-│   │   ├── sessionStore.js              # localStorage sessions, groups, export via downloadJsonExport
-│   │   ├── settingsStore.js             # localStorage settings, SETTINGS_SCHEMA, export/import
-│   │   └── credentialsBridge.js         # Vault sync: resolve/merge secrets for saved sessions
-│   ├── lib/                             # Pure logic (no React); split by domain + import/export
-│   │   ├── import/                      # Cross-cutting import/export (sessions & settings)
-│   │   │   ├── constants.js             # File size/count limits, envelope version, export filenames
-│   │   │   ├── parseImportFile.js       # readImportJson, unwrap/build export envelope (v1)
-│   │   │   ├── handleImportErrors.js    # Import error codes → i18n messages
-│   │   │   ├── parseSessionsImport.js   # Validate & normalize session rows from JSON
-│   │   │   ├── parseSettingsImport.js   # Settings import pipeline entry
-│   │   │   ├── mergeImportedSessions.js # Merge imported sessions; dedupe by savedId / label+group
-│   │   │   ├── downloadJsonExport.js    # Trigger browser download of export envelope
-│   │   │   ├── pushImportWarning.js     # Append warning entries (shared by session/settings)
-│   │   │   ├── applySessionsImport.js   # Parse → merge → vault absorb; UI result helpers
-│   │   │   └── reportSettingsImport.js  # Settings import success/error alerts
-│   │   ├── session/                     # Session domain
-│   │   │   ├── defaults.js              # Protocol defaults, validation constants, form defaults
-│   │   │   ├── utils.js                 # Label/group/port/backspace helpers, pick storage fields
-│   │   │   ├── normalizeSession.js      # Normalize a single imported session object
-│   │   │   └── importWarnings.js        # Format session import warnings for display
-│   │   ├── settings/                    # Settings domain
-│   │   │   ├── defaults.js              # DEFAULT_SETTINGS, scrollback bounds, default highlight rules
-│   │   │   ├── normalize.js             # Clamp scrollback, sidebar width, logging mode migration
-│   │   │   ├── highlightRules.js        # Highlight rule IDs and save-time normalization
-│   │   │   ├── sanitizeImport.js        # Strip unknown keys; merge imported settings safely
-│   │   │   └── importWarnings.js        # Format settings import warnings for display
-│   │   └── sftp/                        # SFTP UI helpers (renderer only)
-│   │       └── formatSftpPathError.js   # Map shared SFTP path error codes → i18n user messages
-│   ├── context/
-│   │   └── I18nContext.jsx              # React context + useI18n(); uses shared resolveUiLanguage
-│   ├── i18n/
-│   │   └── translations.js              # zh / en string tables (incl. SFTP path error messages)
-│   ├── theme/
-│   │   └── appTheme.js                  # Resolve dark / light / auto effective theme
-│   └── styles/                          # CSS split by surface
-│       ├── global.css                   # Base reset and typography
-│       ├── app.css                      # Main layout
-│       ├── titlebar.css
-│       ├── sidebar.css
-│       ├── tabbar.css
-│       ├── terminal.css
-│       ├── sftp.css
-│       ├── dialog.css
-│       └── settings.css
+├── electron/                            # Backend (main process + workers)
+│   ├── main.ts                          # App entry, registers handlers
+│   ├── preload.ts                       # contextBridge → window.zterm (built as preload.cjs)
+│   ├── handlers/                        # ssh / sftp / telnet / serial / credentials / app / window / log
+│   ├── workers/                         # sshSessionWorker, sftpSessionWorker
+│   ├── lib/                             # IPC responses, path policy, known_hosts, SSH config, file dialogs, …
+│   ├── i18n/                            # Main-process native dialog strings
+│   └── types/
 │
-├── shared/                              # Imported by main, workers, and renderer (no Electron in module graph)
-│   ├── terminalEncodings.js             # Encoding list, decode helpers for xterm binary strings
-│   ├── sshAlgorithmDefaults.js          # Default KEX/cipher/MAC pools and weak-algorithm flags
-│   ├── resolveUiLanguage.js             # detectLangFromLocaleTags, resolve auto → zh / en
-│   └── sftpErrorCodes.js                # SFTP/log path error codes, SFTP_PATH_KIND, IPC error payloads
+├── shared/                              # Shared (types, contract, pure functions)
+│   ├── ipc.ts, zterm-api.d.ts
+│   ├── sshAlgorithmDefaults.ts, terminalEncoding.ts, privateKeyMaterial.ts, …
 │
-├── docs/
-│   └── images/                          # README screenshots (main, settings, connection)
-│
-├── build/                               # App icons for electron-builder
-│
-├── index.html                           # Vite HTML entry (CSP injected by vite plugin)
-├── vite.config.js                       # React (oxc) plugin, dev server, inline Electron CSP plugin
-├── tsconfig.json                        # TypeScript / IDE (src, electron, shared, tests)
-├── package.json                         # Scripts, dependencies, electron-builder config
-├── package-lock.json
-├── README.md                            # English documentation
-├── README.zh-CN.md                      # 简体中文文档
-└── LICENSE                              # MIT License
+├── tests/                               # Vitest unit tests (tests/**/*.test.ts)
+├── tsconfig/                            # TypeScript configs (see tsconfig/README.md)
+├── scripts/                             # build-electron.ts, after-pack.cjs
+├── .github/workflows/                   # ci.yml (auto checks), release.yml (manual packaging)
+├── docs/images/                         # README screenshots
+├── build/                               # App icons
+├── index.html, vite.config.ts, vitest.config.ts, eslint.config.ts
+├── tsconfig.json                        # IDE entry, extends tsconfig/tsconfig.json
+└── package.json
 ```
 
 **Runtime data flow (simplified):**
 
 ```
-Renderer (React / xterm)
-    │  window.zterm.*  (preload.cjs)
+Frontend src/ (React / xterm)
+    │  window.zterm.* (preload.cjs)
     ▼
-Main process (main.js + handlers)
+Backend electron/ (handlers + lib)
     │  worker threads (SSH / SFTP)
     ▼
-Remote host / local serial port / OS keychain (safeStorage)
+Remote host / local serial / OS keychain (safeStorage)
 
-shared/*  ── imported by main, workers, and renderer (encodings, algorithms, UI language, SFTP errors)
+shared/* ── used by frontend and backend (IPC types, algorithms, encodings, error codes)
 ```
+
+**Dev/build output:** backend TypeScript compiles to `dist-electron/`; frontend Vite builds to `dist/`. Electron loads `dist-electron/electron/main.js` at runtime, not `electron/*.ts` source files.
 
 ---
 
 ## Requirements
 
-- **Node.js** 18+ (LTS recommended)
+- **Node.js** 18+ (LTS recommended; CI uses Node 22)
 - **npm** 9+
 - **Platform build tools** (for native modules):
   - **macOS**: Xcode Command Line Tools
@@ -245,16 +191,47 @@ npm install
 npm run dev
 ```
 
-This starts the Vite dev server on port **5173** and launches Electron with hot reload for the `electron/` folder.
+This starts **Vite** (port **5173**) and the **Electron** dev pipeline: `electron/` is compiled by `tsc -w` into `dist-electron/`, nodemon watches the output and restarts the main process; `src/` hot-reloads via Vite.
 
-Other dev scripts:
+| Script | Description |
+| --- | --- |
+| `npm run dev:silent` | Same as `dev`, suppresses Electron security warnings |
+| `npm run dev:renderer` | Vite only |
+| `npm run dev:electron` | Electron only (expects Vite on 5173) |
+| `npm run build:main` | Compile backend only → `dist-electron/` |
 
+---
 
-| Script                 | Description                                              |
-| ---------------------- | -------------------------------------------------------- |
-| `npm run dev:silent`   | Same as `dev`, but suppresses Electron security warnings |
-| `npm run dev:renderer` | Vite only                                                |
-| `npm run dev:electron` | Electron only (expects Vite on 5173)                     |
+## Development & Quality
+
+Before merging, run locally (aligned with GitHub Actions `ci.yml`):
+
+```bash
+npm run typecheck   # four tsconfigs: frontend, backend, preload, tooling
+npm run lint
+npm run test        # Vitest, tests/**/*.test.ts
+```
+
+| Script | Description |
+| --- | --- |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run test:coverage` | Coverage for src/lib, shared, electron/lib |
+
+---
+
+## Build & Release
+
+```bash
+npm run build              # current platform → release/ (e.g. NSIS + portable + zip on Windows)
+npm run build:win:x64      # Windows x64 only
+npm run build:linux:x64    # Linux x64 only
+npm run build:mac:universal
+```
+
+**GitHub Actions** (see `.github/workflows/README.md`):
+
+- **`ci.yml`**: typecheck, lint, test on push/PR
+- **`release.yml`**: manual packaging; optional `github_release_all` builds Win+Linux+macOS and publishes a GitHub Release
 
 
 ---
@@ -275,7 +252,7 @@ Exported **sessions** and **settings** use a versioned JSON envelope (max file s
 - `ztermExport` must be `"sessions"` or `"settings"` (cross-import is rejected).
 - `version` must be `1`.
 - Unknown settings keys are stripped on import; invalid sessions are skipped with a summary alert.
-- Session imports are capped at **5000** entries per file (see `src/lib/import/constants.js`).
+- Session imports are capped at **5000** entries per file (see `src/lib/import/constants.ts`).
 
 ---
 
@@ -300,9 +277,11 @@ This app is a convenience tool, not a full security audit. Review your threat mo
 | Saved sessions (no secrets) | `localStorage` → `zterm_saved_sessions`                 |
 | Empty group placeholders    | `localStorage` → `__zterm_group_placeholders__`         |
 | App settings                | `localStorage` → `zterm_settings`                       |
-| SSH known hosts             | `{userData}/zterm-known-hosts.json`                     |
-| Encrypted credentials       | OS keychain via Electron `safeStorage` (when available) |
+| SSH known hosts             | `{userData}/zterm-known-hosts.json` (pretty JSON, full rewrite) |
+| Encrypted credentials       | `{userData}/zterm-credentials-vault.json` + OS `safeStorage` |
 | Session logs                | User-configured or `Downloads/zterm-session-log/`       |
+
+localStorage is managed by Chromium; `zterm-known-hosts.json` and `zterm-credentials-vault.json` rewrite the entire file when trust/sync actions occur.
 
 
 Typical `userData` paths:
@@ -325,6 +304,7 @@ Typical `userData` paths:
 | Serial port not listed                                                                                                                                                              | Click **Refresh**; on Linux ensure user is in `dialout` group                                                                                                                                                                                                                                                                                                         |
 | Host key prompt every time                                                                                                                                                          | Check write permissions for `userData`; do not run from read-only profiles                                                                                                                                                                                                                                                                                            |
 | Import fails / wrong file type                                                                                                                                                      | Use the correct export file (`sessions` vs `settings`); max 8 MB                                                                                                                                                                                                                                                                                                      |
+| Changes under `electron/` not applied                                                                                                                                             | Ensure `npm run dev` is running and `tsc -w` recompiled; type `rs` in nodemon; or run `npm run build:main`                                                                                                                                                                                                                                                            |
 | Windows portable `ZTerm x.x.x.exe` shows the wrong icon in File Explorer, but **Properties** shows the correct icon; `release\win-unpacked\ZTerm.exe` and `ZTerm Setup x.x.x.exe` look fine | The icon is embedded in the EXE; this is usually the Windows Shell **icon cache** (common when rebuilding the same portable file name). Copy and rename the file (e.g. `ZTerm-test.exe`) to verify. If that fixes it, restart `explorer.exe`, delete `iconcache`* and `thumbcache*` under `%LocalAppData%\Microsoft\Windows\Explorer\`, then open File Explorer again |
 
 

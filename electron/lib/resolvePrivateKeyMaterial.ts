@@ -39,11 +39,7 @@ export function resolvePrivateKeyMaterial(raw: unknown): string {
   }
 
   const filePath = path.resolve(expandHome(pathCandidate))  // 解析为绝对路径
-  try {
-    assertLocalFilePathAllowed(filePath, 'read')  // 检查路径是否允许读取
-  } catch (e) {
-    throw e
-  }
+  assertLocalFilePathAllowed(filePath, 'read')  // 检查路径是否允许读取
 
   let stat: fs.Stats
   try {

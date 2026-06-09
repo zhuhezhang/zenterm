@@ -1,0 +1,232 @@
+name: Release
+
+# 仅手动触发，不会在 push / PR 时自动打包
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: |
+          artifacts_only — 按需勾选平台，仅上传 Actions Artifacts
+          github_release_all — 一次性打包 Win(x64)+Linux(x64)+macOS(universal)，并发布到 GitHub Releases
+        type: choice
+        options:
+          - artifacts_only
+          - github_release_all
+        default: artifacts_only
+      release_tag:
+        description: GitHub Release 标签（github_release_all 模式必填，如 v3.2.1）
+        type: string
+        required: false
+      release_name:
+        description: GitHub Release 标题（留空则使用 release_tag）
+        type: string
+        required: false
+      prerelease:
+        description: 标记为预发布版本（仅 github_release_all）
+        type: boolean
+        default: false
+      build_windows:
+        description: Build Windows（仅 artifacts_only 模式生效）
+        type: boolean
+        default: true
+      build_linux:
+        description: Build Linux（仅 artifacts_only 模式生效）
+        type: boolean
+        default: true
+      build_mac:
+        description: Build macOS（仅 artifacts_only 模式生效）
+        type: boolean
+        default: true
+      win_arch:
+        description: Windows CPU architecture（仅 artifacts_only 模式生效）
+        type: choice
+        options:
+          - x64
+          - ia32
+        default: x64
+      mac_arch:
+        description: macOS CPU architecture（仅 artifacts_only 模式生效）
+        type: choice
+        options:
+          - arm64
+          - x64
+          - universal
+        default: arm64
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate github_release_all inputs
+        if: inputs.mode == 'github_release_all'
+        shell: bash
+        run: |
+          if [ -z "${{ inputs.release_tag }}" ]; then
+            echo "::error::github_release_all 模式必须填写 release_tag（例如 v3.2.1）"
+            exit 1
+          fi
+          if ! [[ "${{ inputs.release_tag }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::warning::release_tag 建议使用语义化版本，如 v3.2.1 或 v3.2.1-beta.1"
+          fi
+
+  build-windows:
+    needs: validate
+    if: inputs.mode == 'github_release_all' || inputs.build_windows
+    runs-on: windows-latest
+    env:
+      WIN_ARCH: ${{ inputs.mode == 'github_release_all' && 'x64' || inputs.win_arch }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows packages
+        run: npm run build:main && vite build && npx electron-builder --win --${{ env.WIN_ARCH }}
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p upload
+          shopt -s nullglob
+          for f in release/*; do
+            [ -f "$f" ] || continue
+            case "$f" in
+              *.blockmap|builder-*.yml|builder-*.yaml) continue ;;
+            esac
+            cp "$f" upload/
+          done
+          ls -la upload/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zterm-windows-${{ env.WIN_ARCH }}
+          path: upload/*
+          if-no-files-found: error
+
+  build-linux:
+    needs: validate
+    if: inputs.mode == 'github_release_all' || inputs.build_linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Linux build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Linux packages
+        run: npm run build:linux:x64
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p upload
+          shopt -s nullglob
+          for f in release/*; do
+            [ -f "$f" ] || continue
+            case "$f" in
+              *.blockmap|builder-*.yml|builder-*.yaml) continue ;;
+            esac
+            cp "$f" upload/
+          done
+          ls -la upload/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zterm-linux-x64
+          path: upload/*
+          if-no-files-found: error
+
+  build-mac:
+    needs: validate
+    if: inputs.mode == 'github_release_all' || inputs.build_mac
+    runs-on: macos-latest
+    env:
+      MAC_ARCH: ${{ inputs.mode == 'github_release_all' && 'universal' || inputs.mac_arch }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build macOS packages
+        run: |
+          npm run build:main && vite build
+          case "${{ env.MAC_ARCH }}" in
+            arm64) npx electron-builder --mac --arm64 ;;
+            x64) npx electron-builder --mac --x64 ;;
+            universal) npx electron-builder --mac --universal ;;
+          esac
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p upload
+          shopt -s nullglob
+          for f in release/*; do
+            [ -f "$f" ] || continue
+            case "$f" in
+              *.blockmap|builder-*.yml|builder-*.yaml) continue ;;
+            esac
+            cp "$f" upload/
+          done
+          ls -la upload/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zterm-macos-${{ env.MAC_ARCH }}
+          path: upload/*
+          if-no-files-found: error
+
+  publish-release:
+    needs: [build-windows, build-linux, build-mac]
+    if: inputs.mode == 'github_release_all'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: zterm-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: List release assets
+        run: find release-assets -type f | sort
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          name: ${{ inputs.release_name || inputs.release_tag }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ inputs.prerelease }}
+          generate_release_notes: true
+          files: release-assets/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -475,6 +475,11 @@ export interface ZTermOthersApi {
    * @param uiLanguage 语言
    */
   setUiLanguage: (uiLanguage: 'zh' | 'en') => void
+  /** 
+   * 获取应用版本号（与 package.json / 安装包一致）
+   * @returns 应用版本号
+   */
+  getVersion: () => Promise<IpcResult<{ version: string }>>
   /** 清空已保存的 SSH 已知主机公钥 */
   clearKnownHosts: () => Promise<IpcResult>
   /** 清空本会话「仅信任一次」的临时主机公钥缓存 */

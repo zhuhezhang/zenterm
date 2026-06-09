@@ -57,7 +57,7 @@ export const SETTINGS = {
       },
       "loggingMode": {
         "label": "终端 I/O 日志",
-        "desc": "选「无」关闭。否则将会话写入下方目录中的独立 .log 文件。「缓冲快照覆盖」从 xterm 缓存导出纯文本并覆盖写入，与屏幕输出一致，但超过「视口外滚动历史（行）」会丢弃更早内容且覆盖写入对磁盘不友好；「原始流追加」按下行数据去 ANSI 后追加，在 zsh 重绘等场景可能与所见不一致"
+        "desc": "选「无」关闭。否则将会话写入下方目录中的独立 .log 文件。「原始流追加」按下行数据去 ANSI 后追加，在 zsh 重绘等场景可能与所见不一致；「缓冲快照覆盖」从 xterm 缓存导出纯文本并覆盖写入，与屏幕输出一致，但超过「视口外滚动历史（行）」会丢弃更早内容且覆盖写入对磁盘不友好"
       },
       "logPath": {
         "label": "日志保存目录",
@@ -279,7 +279,7 @@ export const SETTINGS = {
       },
       "loggingMode": {
         "label": "Terminal I/O logging",
-        "desc": "Choose “None” to disable. Otherwise each session is written to its own .log file under the directory below. Buffer snapshot overwrite: export plain text from the xterm buffer and overwrite the file (matches the screen, but scrollback limits history and overwrite is heavier on disk). Raw stream append: strip ANSI and append chunks (can diverge from what you see, e.g. zsh redraws)"
+        "desc": "Choose “None” to disable. Otherwise each session is written to its own .log file under the directory below. Raw stream append: strip ANSI and append chunks (can diverge from what you see, e.g. zsh redraws). Buffer snapshot overwrite: export plain text from the xterm buffer and overwrite the file (matches the screen, but scrollback limits history and overwrite is heavier on disk)"
       },
       "logPath": {
         "label": "Log directory",

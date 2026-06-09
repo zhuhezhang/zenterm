@@ -1,3 +1,4 @@
+// 该文件是 Vite 的配置文件，用于配置开发服务器、构建等
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
@@ -47,25 +48,25 @@ function electronContentSecurityPolicyPlugin(): Plugin {
   }
 }
 
+/** Vite 配置 */
 export default defineConfig({
-  plugins: [react(), electronContentSecurityPolicyPlugin()],
-  base: './',
+  plugins: [react(), electronContentSecurityPolicyPlugin()],  // 使用 react 插件和 electronContentSecurityPolicyPlugin 插件
+  base: './',  // 基础路径
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(__dirname, './src'),  // 定义 @/ 指 src/
     },
-    // .ts 优先于 .js，避免 shared/ 残留 CJS 产物遮蔽同名 .ts（Vite 默认 .js 在前）
-    extensions: ['.ts', '.tsx', '.mts', '.mjs', '.js', '.jsx', '.json'],
+    extensions: ['.ts', '.tsx', '.mts', '.mjs', '.js', '.jsx', '.json'],  // .ts 优先于 .js，避免 shared/ 残留 CJS 产物遮蔽同名 .ts（Vite 默认 .js 在前）
   },
   build: {
-    outDir: 'dist',
-    emptyOutDir: true,
-    minify: 'esbuild',
-    cssMinify: true,
-    reportCompressedSize: false,
+    outDir: 'dist',  // 构建输出目录
+    emptyOutDir: true,  // 构建前清空输出目录
+    minify: 'esbuild',  // 使用 esbuild 压缩
+    cssMinify: true,  // 压缩 CSS
+    reportCompressedSize: false,  // 不报告压缩后的文件大小
   },
   server: {
-    port: 5173,
-    strictPort: true,
+    port: 5173,  // 开发服务器端口
+    strictPort: true,  // 严格端口（如果端口被占用，则报错）
   },
 })

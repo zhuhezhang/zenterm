@@ -1,6 +1,6 @@
 # ZTerm
 
-简体中文 · **[English](README.md)** · v1.2.3
+简体中文 · **[English](README.md)** · v3.2.1
 
 ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、层级分组、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
 
@@ -14,6 +14,8 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 - [项目结构](#项目结构)
 - [环境要求](#环境要求)
 - [快速开始](#快速开始)
+- [开发与质量](#开发与质量)
+- [构建与发布](#构建与发布)
 - [导入 / 导出格式](#导入--导出格式)
 - [安全设计](#安全设计)
 - [数据与存储位置](#数据与存储位置)
@@ -76,9 +78,11 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ## 界面预览
 
-ZTerm 主界面
-ZTerm 设置界面
-ZTerm 连接界面
+![ZTerm 主界面](docs/images/main.png)
+
+![ZTerm 设置](docs/images/setting.png)
+
+![ZTerm 连接](docs/images/connection.png)
 
 ---
 
@@ -88,11 +92,13 @@ ZTerm 连接界面
 | 层级         | 技术                                 |
 | ---------- | ---------------------------------- |
 | 桌面壳        | Electron 42                        |
-| 界面         | React 18、Vite 8                    |
+| 语言         | TypeScript                         |
+| 界面         | React 19、Vite 8                    |
 | 终端         | @xterm/xterm 5、Fit 插件、Web Links 插件 |
 | SSH / SFTP | ssh2                               |
 | 串口         | serialport 12                      |
 | 编码         | iconv-lite                         |
+| 测试         | Vitest 3                           |
 | 打包         | electron-builder                   |
 
 
@@ -100,128 +106,68 @@ ZTerm 连接界面
 
 ## 项目结构
 
+源码按 **前端 / 后端 / 共用** 三分：
+
+| 目录 | 角色 | 说明 |
+|------|------|------|
+| **`src/`** | 前端 | React 渲染进程：UI、xterm、localStorage、消费 `window.zterm` |
+| **`electron/`** | 后端 | 主进程 + Worker：IPC、文件/对话框、凭据、ssh2/SFTP、串口 |
+| **`shared/`** | 前后端共用 | IPC 类型、API 契约、算法默认值、与 UI 无关的纯工具 |
+
 ```
 zterm/
-├── electron/                            # 主进程（Node.js + Electron API）
-│   ├── main.js                          # 应用入口：无边框窗口、IPC 路由、会话日志、界面语言同步
-│   ├── preload.cjs                      # contextBridge → window.zterm（SSH/SFTP/Telnet/串口/凭据/窗口/日志）
-│   ├── handlers/                        # 由 main.js 注册的 IPC 处理程序
-│   │   ├── ssh.js                       # SSH 连接/断开、PTY 读写、resize；委托 Worker 执行
-│   │   ├── sftp.js                      # SFTP 列表/上传/下载/建目录/重命名/删除；委托 Worker 执行
-│   │   ├── telnet.js                    # Telnet TCP 连接与字节流 I/O
-│   │   ├── serial.js                    # 串口枚举/打开/写入；路径须与 listPorts 白名单一致
-│   │   └── credentials.js               # safeStorage 凭据库：get/sync/remove/duplicate/clearAll
-│   ├── workers/                         # Worker 线程（将阻塞的 ssh2 I/O 移出主循环）
-│   │   ├── sshSessionWorker.js          # 每个会话独立的 SSH Shell Worker
-│   │   └── sftpSessionWorker.js         # 每个会话独立的 SFTP Worker（本地路径校验走 shared 根目录逻辑）
-│   ├── i18n/
-│   │   └── knownHosts.js                # SSH 主机公钥确认对话框文案（主进程 dialog，中英双语）
-│   └── lib/                             # 主进程公共工具
-│       ├── trustedSender.js             # 仅允许已注册主窗口发起的 IPC
-│       ├── localPathPolicy.js           # 解析允许根目录；校验日志/SFTP 路径；结构化 SFTP 错误
-│       ├── sftpLocalPathRoots.js        # 纯路径包含性检查（主进程与 Worker 复用，由 localPathPolicy 再导出）
-│       ├── sshKnownHosts.js             # SSH 主机公钥持久化与校验（zterm-known-hosts.json）
-│       ├── uiLanguageState.js           # 缓存 settings.uiLanguage，供主进程对话框（已知主机等）取语言
-│       └── encodeTerminalWrite.js       # 终端上行按键编码（iconv-lite）
+├── src/                                 # 前端（渲染进程）
+│   ├── main.tsx, App.tsx
+│   ├── components/                      # 标题栏、侧边栏、终端、SFTP、连接/设置对话框
+│   ├── store/                           # sessionStore、settingsStore、credentialsBridge
+│   ├── lib/                             # 导入导出、IPC 辅助、会话/终端/设置逻辑
+│   ├── hooks/, context/, i18n/, theme/, styles/, types/
 │
-├── src/                                 # 渲染进程（React 18 + Vite）
-│   ├── main.jsx                         # React 入口、ErrorBoundary、挂载 App
-│   ├── App.jsx                          # 主布局：标题栏、侧边栏、标签、终端、各类对话框
-│   ├── components/
-│   │   ├── TitleBar.jsx                 # 自定义窗口控制（最小化/最大化/关闭）
-│   │   ├── Sidebar.jsx                  # 已保存会话树、分组、搜索、导入；内嵌 SftpPanel
-│   │   ├── TabBar.jsx                   # 会话标签、拖拽排序、右键菜单
-│   │   ├── TerminalPanel.jsx            # xterm 实例、编码、日志、高亮、退格键
-│   │   ├── SftpPanel.jsx                # 远程文件树、上传/下载、拖放、传输进度
-│   │   ├── ConnectDialog.jsx            # SSH / Telnet / Serial 表单、凭据子弹窗
-│   │   ├── SettingsDialog.jsx           # 分标签设置、算法、导入导出、主题预览
-│   │   └── common.jsx                   # 公共 UI（如连接类型图标）
-│   ├── store/                           # 客户端持久化与 IPC 桥接
-│   │   ├── sessionStore.js              # localStorage 会话、分组；导出走 downloadJsonExport
-│   │   ├── settingsStore.js             # localStorage 设置、SETTINGS_SCHEMA、导入导出
-│   │   └── credentialsBridge.js         # 凭据库同步：解析/合并已保存会话的密钥
-│   ├── lib/                             # 纯逻辑（无 React）；按领域 + 导入导出划分
-│   │   ├── import/                      # 跨领域导入/导出（会话与设置共用）
-│   │   │   ├── constants.js             # 文件大小/条数上限、envelope 版本、导出文件名
-│   │   │   ├── parseImportFile.js       # readImportJson、解包/构造导出 envelope（v1）
-│   │   │   ├── handleImportErrors.js    # 导入错误码 → 国际化文案
-│   │   │   ├── parseSessionsImport.js   # 校验并规范化 JSON 中的会话列表
-│   │   │   ├── parseSettingsImport.js   # 设置导入流水线入口
-│   │   │   ├── mergeImportedSessions.js # 合并导入会话；按 savedId / 名称+分组 去重
-│   │   │   ├── downloadJsonExport.js    # 触发浏览器下载导出文件
-│   │   │   ├── pushImportWarning.js     # 追加导入警告（会话/设置共用）
-│   │   │   ├── applySessionsImport.js   # 解析 → 合并 → 吸入 vault；UI 结果提示
-│   │   │   └── reportSettingsImport.js  # 设置导入成功/失败提示
-│   │   ├── session/                     # 会话领域
-│   │   │   ├── defaults.js              # 协议默认值、校验常量、表单默认值
-│   │   │   ├── utils.js                 # 标签/分组/端口/退格等工具、提取存储字段
-│   │   │   ├── normalizeSession.js      # 规范化单条导入会话
-│   │   │   └── importWarnings.js        # 格式化会话导入警告供界面显示
-│   │   ├── settings/                    # 设置领域
-│   │   │   ├── defaults.js              # DEFAULT_SETTINGS、回滚上下限、默认高亮规则
-│   │   │   ├── normalize.js             # 钳制回滚/侧栏宽度、日志模式迁移
-│   │   │   ├── highlightRules.js        # 高亮规则 ID 与保存时规范化
-│   │   │   ├── sanitizeImport.js        # 剥离未知键、安全合并导入设置
-│   │   │   └── importWarnings.js        # 格式化设置导入警告供界面显示
-│   │   └── sftp/                        # SFTP 界面辅助（仅渲染进程）
-│   │       └── formatSftpPathError.js   # 将 shared 中的 SFTP 路径错误码映射为 i18n 提示
-│   ├── context/
-│   │   └── I18nContext.jsx              # React 上下文 + useI18n()；语言解析走 shared
-│   ├── i18n/
-│   │   └── translations.js              # 中/英文字符串表（含 SFTP 路径错误文案）
-│   ├── theme/
-│   │   └── appTheme.js                  # 解析 dark / light / auto 实际主题
-│   └── styles/                          # 按界面拆分的样式
-│       ├── global.css                   # 基础重置与排版
-│       ├── app.css                      # 主布局
-│       ├── titlebar.css
-│       ├── sidebar.css
-│       ├── tabbar.css
-│       ├── terminal.css
-│       ├── sftp.css
-│       ├── dialog.css
-│       └── settings.css
+├── electron/                            # 后端（主进程 + Worker）
+│   ├── main.ts                          # 应用入口、注册 handlers
+│   ├── preload.ts                       # contextBridge → window.zterm（编译为 preload.cjs）
+│   ├── handlers/                        # ssh / sftp / telnet / serial / credentials / app / window / log
+│   ├── workers/                         # sshSessionWorker、sftpSessionWorker
+│   ├── lib/                             # IPC 响应、路径策略、known_hosts、SSH 配置、文件对话框等
+│   ├── i18n/                            # 主进程原生对话框文案
+│   └── types/
 │
-├── shared/                              # 主进程、Worker 与渲染进程共用（模块内不直接依赖 Electron）
-│   ├── terminalEncodings.js             # 编码列表、xterm 二进制串解码辅助
-│   ├── sshAlgorithmDefaults.js          # 默认 KEX/加密/MAC 池与弱算法标记
-│   ├── resolveUiLanguage.js             # detectLangFromLocaleTags、auto → zh / en
-│   └── sftpErrorCodes.js                # SFTP/日志路径错误码、SFTP_PATH_KIND、IPC 错误载荷
+├── shared/                              # 前后端共用（类型、契约、纯函数）
+│   ├── ipc.ts, zterm-api.d.ts
+│   ├── sshAlgorithmDefaults.ts, terminalEncoding.ts, privateKeyMaterial.ts, …
 │
-├── docs/
-│   └── images/                          # README 截图（主界面、设置、连接）
-│
-├── build/                               # electron-builder 应用图标
-│
-├── index.html                           # Vite HTML 入口（CSP 由 vite 插件注入）
-├── vite.config.js                       # React (oxc) 插件、开发服务器、内联 Electron CSP 插件
-├── tsconfig.json                        # TypeScript / IDE（src、electron、shared、tests）
-├── package.json                         # 脚本、依赖、electron-builder 配置
-├── package-lock.json
-├── README.md                            # 英文文档
-├── README.zh-CN.md                      # 简体中文文档
-└── LICENSE                              # MIT 许可证
+├── tests/                               # Vitest 单元测试（tests/**/*.test.ts）
+├── tsconfig/                            # TypeScript 配置（见 tsconfig/README.md）
+├── scripts/                             # build-electron.ts、after-pack.cjs
+├── .github/workflows/                   # ci.yml（自动检查）、release.yml（手动打包）
+├── docs/images/                         # README 截图
+├── build/                               # 应用图标
+├── index.html, vite.config.ts, vitest.config.ts, eslint.config.ts
+├── tsconfig.json                        # IDE 入口，extends tsconfig/tsconfig.json
+└── package.json
 ```
 
 **运行时数据流（简图）：**
 
 ```
-渲染进程（React / xterm）
-    │  window.zterm.* （preload.cjs）
+前端 src/（React / xterm）
+    │  window.zterm.*（preload.cjs）
     ▼
-主进程（main.js + handlers）
+后端 electron/（handlers + lib）
     │  Worker 线程（SSH / SFTP）
     ▼
 远程主机 / 本地串口 / 系统钥匙串（safeStorage）
 
-shared/*  ── 主进程、Worker、渲染进程共用（编码、算法、界面语言、SFTP 错误码）
+shared/* ── 前后端共用（IPC 类型、算法、编码、错误码等）
 ```
+
+**开发编译产物：** 后端 TypeScript 编译到 `dist-electron/`；前端 Vite 构建到 `dist/`。Electron 实际加载的是编译后的 `dist-electron/electron/main.js`，而非 `electron/*.ts` 源码。
 
 ---
 
 ## 环境要求
 
-- **Node.js** 18+（建议使用 LTS）
+- **Node.js** 18+（建议 LTS；CI 使用 Node 22）
 - **npm** 9+
 - **原生模块编译环境**（Serial 等依赖需要）：
   - **macOS**：Xcode Command Line Tools
@@ -245,16 +191,47 @@ npm install
 npm run dev
 ```
 
-将启动 Vite 开发服务（端口 **5173**），并以 nodemon 监听 `electron/` 目录后启动 Electron。
+将启动 **Vite**（端口 **5173**）与 **Electron** 开发链：`electron/` 经 `tsc -w` 编译到 `dist-electron/`，nodemon 监视产物并重启主进程；`src/` 由 Vite 热更新。
 
-其他开发脚本：
+| 脚本 | 说明 |
+| --- | --- |
+| `npm run dev:silent` | 同 `dev`，屏蔽 Electron 安全警告 |
+| `npm run dev:renderer` | 仅 Vite |
+| `npm run dev:electron` | 仅 Electron（需 Vite 已在 5173 运行） |
+| `npm run build:main` | 仅编译后端 → `dist-electron/` |
 
+---
 
-| 脚本                     | 说明                              |
-| ---------------------- | ------------------------------- |
-| `npm run dev:silent`   | 同 `dev`，但屏蔽 Electron 安全警告       |
-| `npm run dev:renderer` | 仅启动 Vite                        |
-| `npm run dev:electron` | 仅启动 Electron（需 Vite 已在 5173 运行） |
+## 开发与质量
+
+合并前建议本地执行（与 GitHub Actions `ci.yml` 一致）：
+
+```bash
+npm run typecheck   # 四套 tsconfig：前端、后端、preload、工具链
+npm run lint
+npm run test        # Vitest，tests/**/*.test.ts
+```
+
+| 脚本 | 说明 |
+| --- | --- |
+| `npm run test:watch` | 监听模式跑测试 |
+| `npm run test:coverage` | 覆盖率（src/lib、shared、electron/lib） |
+
+---
+
+## 构建与发布
+
+```bash
+npm run build              # 当前平台：NSIS + 便携版 + zip（Windows）等 → release/
+npm run build:win:x64      # 仅 Windows x64
+npm run build:linux:x64    # 仅 Linux x64
+npm run build:mac:universal
+```
+
+**GitHub Actions**（见 `.github/workflows/README.md`）：
+
+- **`ci.yml`**：push/PR 自动跑 typecheck、lint、test
+- **`release.yml`**：手动触发打包；可选 `github_release_all` 一次性打 Win+Linux+macOS 并发布 GitHub Release
 
 
 ---
@@ -275,7 +252,7 @@ npm run dev
 - `ztermExport` 须为 `"sessions"` 或 `"settings"`（类型不匹配会报错）。
 - `version` 须为 `1`。
 - 导入设置时会剥离未知键；无效会话条目会跳过并在完成后提示统计。
-- 单次会话导入上限 **5000** 条（见 `src/lib/import/constants.js`）。
+- 单次会话导入上限 **5000** 条（见 `src/lib/import/constants.ts`）。
 
 ---
 
@@ -300,9 +277,11 @@ npm run dev
 | 已保存会话（不含密钥） | `localStorage` → `zterm_saved_sessions`         |
 | 空分组占位符      | `localStorage` → `__zterm_group_placeholders__` |
 | 应用设置        | `localStorage` → `zterm_settings`               |
-| SSH 已知主机    | `{userData}/zterm-known-hosts.json`             |
-| 加密凭据        | 系统钥匙串（Electron `safeStorage`，可用时）               |
+| SSH 已知主机    | `{userData}/zterm-known-hosts.json`（格式化 JSON，全量写入） |
+| 加密凭据        | `{userData}/zterm-credentials-vault.json` + 系统 `safeStorage` |
 | 会话日志        | 用户配置目录或 `下载/zterm-session-log/`                 |
+
+上述 localStorage 由 Chromium 管理；`zterm-known-hosts.json` 与 `zterm-credentials-vault.json` 仅在对应操作（信任主机、同步凭据等）时重写整文件。
 
 
 典型 **userData** 路径：
@@ -325,6 +304,7 @@ npm run dev
 | 串口列表为空                                                                                                             | 点击 **刷新**；Linux 用户需加入 `dialout` 组                                                                                                                                                                      |
 | 每次连接都提示主机密钥                                                                                                        | 检查 `userData` 是否可写；避免只读配置环境运行                                                                                                                                                                          |
 | 导入失败 / 文件类型错误                                                                                                      | 确认使用正确的导出文件（会话 vs 设置）；单文件不超过 8 MB                                                                                                                                                                      |
+| 修改 `electron/` 后未生效                                                                                                 | 确认 `npm run dev` 在跑且 `tsc -w` 有重编译；或对 nodemon 输入 `rs`；或 `npm run build:main`                                                                                                                                  |
 | Windows 便携版 `ZTerm x.x.x.exe` 在资源管理器中图标异常，但右键 **属性** 里图标正常；`release\win-unpacked\ZTerm.exe` 与 `ZTerm Setup x.x.x.exe` 显示正常 | 图标已写入 exe，多为 Windows Shell **图标缓存**（反复用同名覆盖打包时常见）。将文件复制并改名为 `ZTerm-test.exe` 可快速验证；若改名后正常，结束并重启 `explorer.exe`，删除 `%LocalAppData%\Microsoft\Windows\Explorer\` 下的 `iconcache`*、`thumbcache*` 后再打开资源管理器 |
 
 
