@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron'
-import { translateMain, setStoredUiLanguage } from '../i18n/translateMain.js'
+import { setStoredUiLanguage } from '../i18n/translateMain.js'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { ipcFail, ipcFailFromThrown, ipcOk } from '../lib/ipcResponse.js'
 import { validateLogWriteDirectory, validateLocalFilePath } from '../lib/localPathPolicy.js'

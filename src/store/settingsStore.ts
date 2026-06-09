@@ -1,10 +1,8 @@
 import { DEFAULT_ALGORITHM_SELECTION } from '../../shared/sshAlgorithmDefaults'
 import type { AppSettings } from '../types/settings'
 import type { TranslateFn } from '../types/common'
-import type { SettingsImportWarning } from '../types/common'
 import { syncUiLanguageToMain } from '../lib/resolveUiLanguage'
 import { downloadJsonExport } from '../lib/import/downloadJsonExport'
-import { validateAndParseSettingsImportContent } from '../lib/import/parseSettingsImport'
 import { DEFAULT_SETTINGS } from '../lib/settings/defaults'
 import { ipcPathFromResponse } from '../lib/ipc/ipcResponse'
 import {

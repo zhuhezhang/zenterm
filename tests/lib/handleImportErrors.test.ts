@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   createImportError,
-  formatImportPathDeniedMessage,
   reportImportError,
 } from '../../src/lib/import/handleImportErrors'
 import { translateRender } from '../../src/i18n/translateRender'
