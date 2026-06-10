@@ -80,9 +80,9 @@ jobs:
     env:
       WIN_ARCH: ${{ inputs.mode == 'github_release_all' && 'x64' || inputs.win_arch }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24.x'
           cache: npm
@@ -118,9 +118,9 @@ jobs:
     if: inputs.mode == 'github_release_all' || inputs.build_linux
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24.x'
           cache: npm
@@ -157,13 +157,13 @@ jobs:
   build-mac:
     needs: validate
     if: inputs.mode == 'github_release_all' || inputs.build_mac
-    runs-on: macos-26.2
+    runs-on: macos-15
     env:
       MAC_ARCH: ${{ inputs.mode == 'github_release_all' && 'universal' || inputs.mac_arch }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '24.x'
           cache: npm
