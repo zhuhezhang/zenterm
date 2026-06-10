@@ -5,7 +5,7 @@ import { translateRender } from '../i18n/translateRender'
 import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage'
 import { getXtermTheme } from '../theme/appTheme'
 import {
-  connectSession, exportTerminalBuffer, mountTerminal, setupLogging,
+  applyTerminalSettings, connectSession, exportTerminalBuffer, mountTerminal, setupLogging,
   teardownSessionTransport, writelnWithLog,
 } from '../lib/terminal/terminalSession'
 import '@xterm/xterm/css/xterm.css'
@@ -67,8 +67,7 @@ function TerminalPanel({
       cancelled = true
       cleanupRef.current.forEach(fn => { try { fn() } catch {} })
       cleanupRef.current = []
-      // 连接尚未完成时 cleanupRef 可能尚无 disconnect，强制断开主进程 transport
-      teardownSessionTransport(session)
+      teardownSessionTransport(session)  // 连接尚未完成时 cleanupRef 可能尚无 disconnect，强制断开主进程 transport
       try { logFileRef.current?.flushNow?.() } catch {}
       logFileRef.current = null
       term.dispose()
@@ -142,12 +141,24 @@ function TerminalPanel({
         const container = containerRef.current
         const fitAddon = fitAddonRef.current
         if (!container || !fitAddon) return
-        const ro = new ResizeObserver(() => { try { fitAddonRef.current?.fit() } catch {} })  // 重连时要重新监听容器尺寸变化
+
+        const ro = new ResizeObserver(() => { try { fitAddonRef.current?.fit() } catch {} })  // 重连时要重新监听容器尺寸变化以调整终端尺寸
         ro.observe(container)
         cleanupRef.current.push(() => ro.disconnect())
+
+        const logOnResize = term.onResize(() => {  // 重连后继续监听终端尺寸变化以更新日志快照
+          if (normalizeLoggingMode(settingsRef.current?.loggingMode) === 'buffer') {
+            logFileRef.current?.scheduleSnapshot?.()
+          }
+        })
+        cleanupRef.current.push(() => { try { logOnResize.dispose() } catch {} })
+
+        const disposeSettings = applyTerminalSettings(term, settingsRef)  // 重连时重新应用当前设置，确保终端配置与用户设置保持一致
+        cleanupRef.current.push(disposeSettings)
+
         setupLogging(session, settingsRef.current, logFileRef, logFileStemStateRef, settingsRef)  // 重连：复用本标签页首次连接时的日志文件
         logFileRef.current?.setTerminal?.(term)
-        writelnWithLog(term, logFileRef, `\r\x1b[33m${translateRender(resolveEffectiveUiLanguage(settings?.uiLanguage), 'terminal.reconnecting')}\x1b[0m`)
+        writelnWithLog(term, logFileRef, `\r\x1b[33m${translateRender(resolveEffectiveUiLanguage(settingsRef.current?.uiLanguage), 'terminal.reconnecting')}\x1b[0m`)
         connectSession(term, fitAddon, sessionRef.current, sessionRef, onUpdate, cleanupRef, disconnectedRef, () => false, logFileRef, settingsRef)
       }
     })
