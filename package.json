@@ -35,9 +35,9 @@
     "dev:electron:silent": "wait-on tcp:5173 && concurrently -k \"npm:watch:main\" \"wait-on dist-electron/electron/main.js dist-electron/electron/preload.cjs && nodemon --watch dist-electron --ext js,cjs --delay 1500 --exec \\\"cross-env ELECTRON_DISABLE_SECURITY_WARNINGS=1 electron .\\\"\""
   },
   "dependencies": {
-    "iconv-lite": "^0.6.3",
     "serialport": "^12.0.0",
-    "ssh2": "^1.15.0"
+    "ssh2": "^1.15.0",
+    "iconv-lite": "^0.6.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
