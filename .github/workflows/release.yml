@@ -59,7 +59,7 @@ concurrency:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Validate github_release_all inputs
         if: inputs.mode == 'github_release_all'
@@ -76,7 +76,7 @@ jobs:
   build-windows:
     needs: validate
     if: inputs.mode == 'github_release_all' || inputs.build_windows
-    runs-on: windows-latest
+    runs-on: windows-2022
     env:
       WIN_ARCH: ${{ inputs.mode == 'github_release_all' && 'x64' || inputs.win_arch }}
     steps:
@@ -84,7 +84,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '24.x'
           cache: npm
 
       - name: Install dependencies
@@ -116,13 +116,13 @@ jobs:
   build-linux:
     needs: validate
     if: inputs.mode == 'github_release_all' || inputs.build_linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '24.x'
           cache: npm
 
       - name: Install Linux build dependencies
@@ -157,7 +157,7 @@ jobs:
   build-mac:
     needs: validate
     if: inputs.mode == 'github_release_all' || inputs.build_mac
-    runs-on: macos-latest
+    runs-on: macos-26.2
     env:
       MAC_ARCH: ${{ inputs.mode == 'github_release_all' && 'universal' || inputs.mac_arch }}
     steps:
@@ -165,7 +165,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '24.x'
           cache: npm
 
       - name: Install dependencies
