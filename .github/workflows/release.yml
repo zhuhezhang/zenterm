@@ -91,7 +91,7 @@ jobs:
         run: npm install
 
       - name: Build Windows packages
-        run: npm run build:main && vite build && npx electron-builder --win --${{ env.WIN_ARCH }}
+        run: npm run build:main && npx vite build && npx electron-builder --win --${{ env.WIN_ARCH }}
 
       - name: Collect artifacts
         shell: bash
@@ -173,7 +173,7 @@ jobs:
 
       - name: Build macOS packages
         run: |
-          npm run build:main && vite build
+          npm run build:main && npx vite build
           case "${{ env.MAC_ARCH }}" in
             arm64) npx electron-builder --mac --arm64 ;;
             x64) npx electron-builder --mac --x64 ;;
