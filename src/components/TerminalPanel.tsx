@@ -1,13 +1,14 @@
 import { useEffect, useRef, memo } from 'react'
 import { FitAddon } from '@xterm/addon-fit'
+import { fitTerminal } from '../lib/terminal/fitTerminal'
 import { clampTerminalScrollback, normalizeLoggingMode } from '../lib/settings/normalize'
 import { translateRender } from '../i18n/translateRender'
 import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage'
 import { getXtermTheme } from '../theme/appTheme'
 import {
-  applyTerminalSettings, connectSession, exportTerminalBuffer, mountTerminal, setupLogging,
-  teardownSessionTransport, writelnWithLog,
+  applyTerminalSettings, connectSession, mountTerminal, teardownSessionTransport, writelnWithLog,
 } from '../lib/terminal/terminalSession'
+import { exportTerminalBuffer, setupLogging } from '../lib/terminal/terminalLogging'
 import '@xterm/xterm/css/xterm.css'
 import type { TerminalPanelProps } from '../types/components'
 import type { AppSettings } from '../types/settings'
@@ -50,7 +51,7 @@ function TerminalPanel({
     fitAddonRef.current = fitAddon
 
     let cancelled = false
-    connectSession(term, fitAddon, session, sessionRef, onUpdate, cleanupRef, disconnectedRef, () => cancelled, logFileRef, settingsRef)
+    connectSession(term, session, sessionRef, onUpdate, cleanupRef, disconnectedRef, () => cancelled, logFileRef, settingsRef)
 
     const logOnResize = term.onResize(() => {
       if (normalizeLoggingMode(settingsRef.current?.loggingMode) === 'buffer') {
@@ -59,7 +60,7 @@ function TerminalPanel({
     })
     cleanupRef.current.push(() => { try { logOnResize.dispose() } catch {} }, disposeSettings)
 
-    const ro = new ResizeObserver(() => { try { fitAddon.fit() } catch {} })  // 监听容器尺寸变化，调整终端尺寸以适应新的容器大小
+    const ro = new ResizeObserver(() => { fitTerminal(fitAddon) })  // 监听容器尺寸变化，调整终端尺寸以适应新的容器大小
     ro.observe(containerRef.current)
     cleanupRef.current.push(() => ro.disconnect())  // 将 ResizeObserver 的断开函数添加到 cleanupRef 中，以便组件卸载时调用来停止监听尺寸变化
 
@@ -106,7 +107,7 @@ function TerminalPanel({
 
   useEffect(() => {  // 当 active 状态变化时，如果当前标签页变为活跃，则调整终端尺寸并聚焦终端，确保用户界面正确显示并且用户可以立即输入
     if (active && fitAddonRef.current) {
-      setTimeout(() => { try { fitAddonRef.current?.fit() } catch {} ; termRef.current?.focus() }, 50)
+      setTimeout(() => { if (fitAddonRef.current) fitTerminal(fitAddonRef.current); termRef.current?.focus() }, 50)
     }
   }, [active])
 
@@ -142,7 +143,7 @@ function TerminalPanel({
         const fitAddon = fitAddonRef.current
         if (!container || !fitAddon) return
 
-        const ro = new ResizeObserver(() => { try { fitAddonRef.current?.fit() } catch {} })  // 重连时要重新监听容器尺寸变化以调整终端尺寸
+        const ro = new ResizeObserver(() => { if (fitAddonRef.current) fitTerminal(fitAddonRef.current) })  // 重连时要重新监听容器尺寸变化以调整终端尺寸
         ro.observe(container)
         cleanupRef.current.push(() => ro.disconnect())
 
@@ -159,7 +160,7 @@ function TerminalPanel({
         setupLogging(session, settingsRef.current, logFileRef, logFileStemStateRef, settingsRef)  // 重连：复用本标签页首次连接时的日志文件
         logFileRef.current?.setTerminal?.(term)
         writelnWithLog(term, logFileRef, `\r\x1b[33m${translateRender(resolveEffectiveUiLanguage(settingsRef.current?.uiLanguage), 'terminal.reconnecting')}\x1b[0m`)
-        connectSession(term, fitAddon, sessionRef.current, sessionRef, onUpdate, cleanupRef, disconnectedRef, () => false, logFileRef, settingsRef)
+        connectSession(term, sessionRef.current, sessionRef, onUpdate, cleanupRef, disconnectedRef, () => false, logFileRef, settingsRef)
       }
     })
     return () => d.dispose()

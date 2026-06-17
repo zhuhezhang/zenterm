@@ -23,5 +23,5 @@
 }
 
 .terminal-container .xterm-viewport {
-  overflow-y: scroll !important;
+  overflow-y: auto !important;
 }

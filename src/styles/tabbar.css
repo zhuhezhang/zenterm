@@ -15,21 +15,6 @@
   overflow-x: auto;
   overflow-y: hidden;
   height: 100%;
-  scrollbar-width: auto;
-  scrollbar-color: var(--border) transparent;
-}
-.tabbar-tabs::-webkit-scrollbar {
-  height: 3px;
-}
-.tabbar-tabs::-webkit-scrollbar-track {
-  background: transparent;
-}
-.tabbar-tabs::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 2px;
-}
-.tabbar-tabs::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
 }
 
 .tab {

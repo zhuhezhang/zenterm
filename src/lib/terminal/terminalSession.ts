@@ -1,6 +1,7 @@
 import type { RefObject } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { fitTerminal, proposeTerminalDimensions } from './fitTerminal'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { decodeIncomingTerminalWire } from '../terminalEncodingService'
 import { normalizeTerminalEncoding } from '../../../shared/terminalEncoding'
@@ -13,7 +14,6 @@ import { formatThrownIpcError } from '@/lib/ipc/formatIpcError'
 import { getXtermTheme } from '../../theme/appTheme'
 import { pickSerialConnectConfig, pickSshConnectConfig, pickTelnetConnectConfig } from '../session/connectPayload'
 import { applyHighlightRules, nextLineBreakEndIndex } from './terminalHighlight'
-import { exportTerminalBuffer, setupLogging } from './terminalLogging'
 import type { ActiveSession, SessionType } from '../../types/session'
 import type { AppSettings } from '../../types/settings'
 import type { SessionLogHandle } from '../../types/session'
@@ -168,7 +168,6 @@ function abortIfCancelled(
 /**
  * 连接会话：根据会话类型（SSH/Telnet/Serial）调用对应的连接函数，设置数据接收和连接关闭的处理函数，并将清理函数添加到 cleanupRef 以便组件卸载时调用
  * @param term xterm 终端实例
- * @param fitAddon FitAddon 实例，用于调整终端尺寸
  * @param session 会话对象，包含连接信息和状态
  * @param onUpdate 会话状态更新回调函数
  * @param cleanupRef 清理函数引用，用于存储连接相关的清理函数
@@ -179,7 +178,6 @@ function abortIfCancelled(
  */
 export async function connectSession(
   term: Terminal,
-  fitAddon: FitAddon,
   session: ActiveSession,
   sessionRef: RefObject<ActiveSession>,
   onUpdate: (updates: Partial<ActiveSession>) => void,
@@ -279,7 +277,7 @@ export async function connectSession(
       assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
-      const dim = fitAddon.proposeDimensions() || { cols: 80, rows: 24 }
+      const dim = proposeTerminalDimensions(term) || { cols: 80, rows: 24 }
       zterm.ssh.resize(id, dim.cols, dim.rows)
 
       const r1 = zterm.ssh.onData(id, recv)
@@ -372,7 +370,13 @@ export async function connectSession(
   }
 }
 
-/** 在容器内挂载 xterm（FitAddon、WebLinks、交互设置），返回实例与清理函数 */
+/**
+ * 在容器内挂载 xterm（FitAddon、WebLinks、交互设置），返回实例与清理函数
+ * @param container 挂载容器 DOM 元素
+ * @param appThemeEffective 主题模式，用于设置 xterm 主题
+ * @param settingsRef 设置引用，用于读取终端行为设置（如 scrollback）
+ * @returns 包含 Terminal 实例、FitAddon 实例和清理函数的对象
+ */
 export function mountTerminal(
   container: HTMLDivElement,
   appThemeEffective: 'dark' | 'light',
@@ -383,9 +387,7 @@ export function mountTerminal(
   term.loadAddon(fitAddon)
   term.loadAddon(new WebLinksAddon())  // WebLinksAddon 负责将终端中的 URL 自动识别为可点击链接
   term.open(container)  // 将 xterm 实例挂载到 container 指向的 DOM 元素上
-  fitAddon.fit()  // 初始调整终端尺寸以适应容器大小
+  fitTerminal(fitAddon)  // 初始调整终端尺寸以适应容器大小
   const disposeSettings = applyTerminalSettings(term, settingsRef)
   return { term, fitAddon, disposeSettings }
 }
-
-export { exportTerminalBuffer, setupLogging }
