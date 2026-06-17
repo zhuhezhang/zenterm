@@ -252,7 +252,7 @@ npm run build:mac:universal
 - `ztermExport` 须为 `"sessions"` 或 `"settings"`（类型不匹配会报错）。
 - `version` 须为 `1`。
 - 导入设置时会剥离未知键；无效会话条目会跳过并在完成后提示统计。
-- 单次会话导入上限 **5000** 条（见 `src/lib/import/constants.ts`）。
+- 单次会话导入上限 **99999** 条（见 `src/lib/import/constants.ts`）。
 
 ---
 

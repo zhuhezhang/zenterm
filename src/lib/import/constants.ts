@@ -1,5 +1,5 @@
 /** 单次导入会话条数上限 */
-export const IMPORT_MAX_SESSION_COUNT = 8888
+export const IMPORT_MAX_SESSION_COUNT = 99999
 
 /** zterm 导出 envelope 版本号 */
 export const EXPORT_ENVELOPE_VERSION = 1

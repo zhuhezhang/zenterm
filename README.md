@@ -252,7 +252,7 @@ Exported **sessions** and **settings** use a versioned JSON envelope (max file s
 - `ztermExport` must be `"sessions"` or `"settings"` (cross-import is rejected).
 - `version` must be `1`.
 - Unknown settings keys are stripped on import; invalid sessions are skipped with a summary alert.
-- Session imports are capped at **5000** entries per file (see `src/lib/import/constants.ts`).
+- Session imports are capped at **99999** entries per file (see `src/lib/import/constants.ts`).
 
 ---
 
