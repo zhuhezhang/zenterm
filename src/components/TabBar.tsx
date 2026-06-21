@@ -9,10 +9,14 @@ import type { BackspaceMode } from '../types/session'
 import { normalizeBackspaceMode } from '../lib/session/utils'
 import '../styles/tabbar.css'
 
-/** 状态点图标映射 */
-const STATUS_DOT = { connecting: '●', connected: '●', disconnected: '○', error: '●' }
-/** 状态点类名映射 */
-const STATUS_CLS = { connecting: 'connecting', connected: 'connected', disconnected: 'disconnected', error: 'error' }
+/** 状态点类名映射（样式见 tabbar.css） */
+const STATUS_CLS = {
+  connecting: 'connecting',
+  connected: 'connected',
+  disconnected: 'disconnected',
+  reconnecting: 'reconnecting',
+  error: 'error',
+} as const
 
 /**
  * 标签栏组件，显示当前会话列表和控制按钮。
@@ -168,7 +172,10 @@ export default memo(function TabBar({
             title={s.label || `${s.type?.toUpperCase()} ${sessionEndpoint(s)}`}
           >
             <span className="tab-icon">{ConnectionTypeIcon[s.type] || '⌨'}</span>
-            <span className={`tab-status ${STATUS_CLS[s.status as keyof typeof STATUS_CLS] || ''}`}>{STATUS_DOT[s.status as keyof typeof STATUS_DOT] || '○'}</span>
+            <span
+              className={`tab-status ${STATUS_CLS[s.status as keyof typeof STATUS_CLS] || 'disconnected'}`}
+              aria-hidden="true"
+            />
             <span className="tab-label">{s.label || `${s.type?.toUpperCase()} ${sessionEndpoint(s)}`}</span>
             {s.sftpReady && <span className="tab-sftp-badge" title={t('tabbar.sftpReady')}>⇅</span>}
             <button className="tab-close" onClick={e => { e.stopPropagation(); onClose(s.id) }} title={t('tabbar.closeTab')}>×</button>
