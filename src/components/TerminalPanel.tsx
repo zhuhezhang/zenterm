@@ -167,7 +167,14 @@ function TerminalPanel({
   }, [session.id, settings.uiLanguage])
 
   return (
-    <div className={`terminal-panel ${active ? 'active' : ''}`} style={{ display: active ? 'flex' : 'none' }}>
+    <div
+      className={`terminal-panel ${active ? 'active' : ''}`}
+      style={{
+        visibility: active ? 'visible' : 'hidden',
+        opacity: active ? 1 : 0,
+        pointerEvents: active ? 'auto' : 'none',
+      }}
+    >
       <div ref={containerRef} className="terminal-container" />
     </div>
   )
