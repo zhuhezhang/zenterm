@@ -2,7 +2,7 @@ import type { CSSProperties, Dispatch, DragEvent, MouseEvent, ReactNode, RefObje
 import type { AppTheme, AppSettings } from './settings'
 import type {
   ActiveSession, SavedSession, SessionConfig, SessionFormValues, SessionTreeNode as TreeNode,
-  SessionType, TerminalClearFn, TerminalTextGetter, BackspaceMode,
+  SessionType, TerminalClearFn, TerminalOpenSearchFn, TerminalTextGetter, BackspaceMode,
 } from './session'
 
 /** 应用主组件的属性 */
@@ -103,6 +103,8 @@ export interface TabBarProps {
   onClearScreen?: (sessionId: string) => void
   /** 切换退格键模式的回调函数，参数为标签页 ID 与模式 */
   onSetBackspaceMode?: (sessionId: string, mode: BackspaceMode) => void
+  /** 搜索终端内容的回调函数，参数为标签页 ID（仅当前 active 标签可用） */
+  onSearchTerminal?: (sessionId: string) => void
 }
 
 /** 标签栏右键菜单状态 */
@@ -133,6 +135,8 @@ export interface TerminalPanelProps {
   onRegisterExport: (sessionId: string, getter: TerminalTextGetter | null) => void
   /** 注册清屏函数的回调函数，参数为 (sessionId, fn|null) */
   onRegisterClearScreen?: (sessionId: string, fn: TerminalClearFn | null) => void
+  /** 注册打开终端搜索栏的回调函数，参数为 (sessionId, fn|null) */
+  onRegisterOpenSearch?: (sessionId: string, fn: TerminalOpenSearchFn | null) => void
 }
 
 /** 凭证对话框的属性 */
@@ -245,7 +249,7 @@ export interface SftpPanelProps {
 
 /** 侧边栏的属性 */
 export interface SidebarProps {
-  /** 是否打开 */
+  /** 是否打开侧边栏 */
   open: boolean
   /** 切换打开状态的回调函数 */
   onToggle: () => void
@@ -276,6 +280,8 @@ export interface SidebarProps {
   onOpenSettings: () => void
   /** 侧边栏样式 */
   style?: CSSProperties
+  /** 递增时请求聚焦「搜索已保存会话」输入框（配合全局 Cmd/Ctrl+F） */
+  focusSessionSearchNonce?: number
 }
 
 /** 侧边栏上下文菜单的状态 */

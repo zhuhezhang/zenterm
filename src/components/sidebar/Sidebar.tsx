@@ -1,5 +1,5 @@
 import {
-  useState, useRef, useEffect, useMemo, useCallback, lazy, Suspense, memo,
+  useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback, lazy, Suspense, memo,
   type KeyboardEvent, type MouseEvent,
 } from 'react'
 import { useI18n } from '@/context/I18nContext'
@@ -10,6 +10,7 @@ import { uniqueLabelInGroup, ungroupSessionsUnderPath } from '@/store/sessionSto
 import { buildTree, flattenVisibleTree, NO_GROUP_PLACEHOLDERS } from '@/lib/session/tree'
 import { sessionEndpoint } from '@/types/session'
 import { hasInvalidLabelChars } from '@/lib/safeFileName'
+import { revealAndFocusSessionSearch } from '@/lib/sessionSearchFocus'
 
 const SftpPanel = lazy(() => import('../SftpPanel'))
 import { Chevron, FolderIcon } from './icons'
@@ -26,6 +27,7 @@ export default memo(function Sidebar(props: SidebarProps) {
     open, onToggle, savedSessions, onNewSession, onConnectSaved, onDeleteSaved, onUpdateSessions,
     onDuplicateSaved = () => {},
     activeSession, settings, onOpenSettings, style, groupPlaceholders = [], onUpdatePlaceholders,
+    focusSessionSearchNonce = 0,
   } = props
 
   const { t } = useI18n()
@@ -49,10 +51,13 @@ export default memo(function Sidebar(props: SidebarProps) {
   const renameGroupInputRef = useRef<HTMLInputElement | null>(null)
   const renameGroupAlertingRef = useRef(false)
   const ignoreRenameGroupBlurRef = useRef(false)
+  const sessionSearchInputRef = useRef<HTMLInputElement | null>(null)
   const renameSessionInputRef = useRef<HTMLInputElement | null>(null)
   const renameSessionAlertingRef = useRef(false)
   const ignoreRenameSessionBlurRef = useRef(false)
   const expandedBeforeSearchRef = useRef<Record<string, boolean> | null>(null)
+  /** 已处理过的 focusSessionSearchNonce，避免用户手动收起/展开时重复触发聚焦 */
+  const lastHandledFocusNonceRef = useRef(0)
   /** 当前分组展开状态快照，用于搜索框方向键选中树项时滚动到该树项所在位置 */
   const expandedRef = useRef(expanded)
   expandedRef.current = expanded
@@ -341,6 +346,17 @@ export default memo(function Sidebar(props: SidebarProps) {
     onNewSession('ssh', { host: searchTrim })
   }, [visibleTreeItems, keyboardFocusId, searchTrim, togExp, onConnectSaved, onNewSession])
 
+  useLayoutEffect(() => {  // 全局 Cmd/Ctrl+F：先展开「保存的会话」，再滚入可见区域并聚焦搜索框。 useLayoutEffect：在 DOM 更新完成后且参数列表变化时同步执行，确保在浏览器绘制前完成滚动和聚焦，避免视觉上的闪烁
+    if (!focusSessionSearchNonce || !open) return
+    if (focusSessionSearchNonce === lastHandledFocusNonceRef.current) return
+    if (sessionsCollapsed) {
+      setSessionsCollapsed(false)
+      return
+    }
+    lastHandledFocusNonceRef.current = focusSessionSearchNonce
+    return revealAndFocusSessionSearch(() => sessionSearchInputRef.current)
+  }, [focusSessionSearchNonce, open, sessionsCollapsed])
+
   useEffect(() => {  // 有筛选关键词时自动展开匹配会话所在分组
     if (!searchTrim) return
     const paths = new Set<string>()
@@ -398,6 +414,7 @@ export default memo(function Sidebar(props: SidebarProps) {
               <>
                 <div className="sb-session-search-wrap">
                   <input
+                    ref={sessionSearchInputRef}
                     type="search"
                     className="sb-session-search"
                     placeholder={t('sidebar.searchPh')}

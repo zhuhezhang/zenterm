@@ -25,6 +25,7 @@ import type {
   SessionConfig,
   SessionType,
   TerminalClearFn,
+  TerminalOpenSearchFn,
   TerminalTextGetter,
 } from '@/types/session'
 
@@ -103,8 +104,14 @@ export interface SessionContextValue {
   registerTerminalExporter: (sessionId: string, getter: TerminalTextGetter | null) => void
   /** 注册终端清屏函数 */
   registerTerminalClearScreen: (sessionId: string, fn: TerminalClearFn | null) => void
+  /** 注册打开终端搜索栏函数 */
+  registerTerminalOpenSearch: (sessionId: string, fn: TerminalOpenSearchFn | null) => void
   /** 清屏 */
   handleClearTabScreen: (sessionId: string) => void
+  /** 打开终端内容搜索（仅当前 active 标签可用） */
+  handleSearchTerminal: (sessionId: string) => void
+  /** 打开当前 active 标签页终端内容搜索 */
+  handleSearchActiveTerminal: () => void
   /** 保存标签页输出 */
   handleSaveTabOutput: (sessionId: string) => Promise<void>
   /** 设置退格键模式 */
@@ -146,6 +153,7 @@ export function SessionProvider({
   const [credDialogState, setCredDialogState] = useState<CredentialDialogState | null>(null)
   const terminalExportersRef = useRef<Record<string, TerminalTextGetter>>({})
   const terminalClearScreenRef = useRef<Record<string, TerminalClearFn>>({})
+  const terminalOpenSearchRef = useRef<Record<string, TerminalOpenSearchFn>>({})
 
   /** 从已保存会话和分组占位符生成分组列表 */
   const savedGroups = getGroups(savedSessions, groupPlaceholders)
@@ -191,6 +199,7 @@ export function SessionProvider({
     })
     delete terminalExportersRef.current[id]
     delete terminalClearScreenRef.current[id]
+    delete terminalOpenSearchRef.current[id]
   }, [])
 
   /**
@@ -220,12 +229,40 @@ export function SessionProvider({
   }, [])
 
   /**
+   * 注册/卸载某个会话标签页的打开搜索栏函数
+   * @param sessionId 会话 ID
+   * @param fn 打开搜索栏函数，传 null 表示卸载
+   */
+  const registerTerminalOpenSearch = useCallback((sessionId: string, fn: TerminalOpenSearchFn | null) => {
+    if (!fn) {
+      delete terminalOpenSearchRef.current[sessionId]
+      return
+    }
+    terminalOpenSearchRef.current[sessionId] = fn
+  }, [])
+
+  /**
    * 右键标签「清屏」：清当前标签对应 xterm 视口（含滚动缓冲由 xterm 行为决定）
    * @param sessionId 会话 ID
    */
   const handleClearTabScreen = useCallback((sessionId: string) => {
     terminalClearScreenRef.current[sessionId]?.()
   }, [])
+
+  /**
+   * 打开指定标签页终端内容搜索（仅当前 active 标签可用）
+   * @param sessionId 会话 ID
+   */
+  const handleSearchTerminal = useCallback((sessionId: string) => {
+    if (sessionId !== activeId) return
+    terminalOpenSearchRef.current[sessionId]?.()
+  }, [activeId])
+
+  /** 打开当前 active 标签页终端内容搜索（全局快捷键） */
+  const handleSearchActiveTerminal = useCallback(() => {
+    if (!activeId) return
+    terminalOpenSearchRef.current[activeId]?.()
+  }, [activeId])
 
   /**
    * 保存某个标签页的终端输出到文本文件
@@ -490,7 +527,10 @@ export function SessionProvider({
     handleCredentialSaveAndConnect,
     registerTerminalExporter,
     registerTerminalClearScreen,
+    registerTerminalOpenSearch,
     handleClearTabScreen,
+    handleSearchTerminal,
+    handleSearchActiveTerminal,
     handleSaveTabOutput,
     handleSetBackspaceMode,
   }

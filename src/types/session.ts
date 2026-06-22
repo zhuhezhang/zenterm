@@ -257,6 +257,8 @@ export interface CredentialDialogState {
 export type TerminalTextGetter = () => string
 /** 终端文本清除器 */
 export type TerminalClearFn = () => void
+/** 打开终端内容搜索栏 */
+export type TerminalOpenSearchFn = () => void
 
 /** 终端面板内会话日志控制器（buffer / stream 模式） */
 export interface SessionLogHandle {

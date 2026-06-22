@@ -1,6 +1,6 @@
 # ZTerm
 
-简体中文 · **[English](README.md)** · v3.2.2
+简体中文 · **[English](README.md)** · v3.2.4
 
 ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、层级分组、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
 
@@ -9,6 +9,7 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 ## 目录
 
 - [功能特性](#功能特性)
+- [键盘快捷键](#键盘快捷键)
 - [界面预览](#界面预览)
 - [技术栈](#技术栈)
 - [项目结构](#项目结构)
@@ -41,7 +42,7 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 - 保存会话：**标签名**、**分组**（层级路径）、连接参数
 - **空分组占位**：可先创建文件夹式分组，再向其中添加会话
-- **搜索**已保存会话（按名称、主机或串口路径）
+- **搜索**已保存会话（按名称、主机或串口路径；**Ctrl/Cmd+F** 聚焦搜索框）
 - **复制**、**重命名**、**编辑**、**删除**；可配置删除确认
 - **导出 / 导入**会话列表（JSON envelope，v1）；可在 **设置** 或 **侧边栏** 中导入
 - 连接对话框支持 **直接连接**、**保存并连接**、**仅保存**
@@ -49,7 +50,8 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ### 终端体验
 
-- **xterm.js**，含 Fit、Web Links 插件，可配置回滚行数（0～500,000）
+- **xterm.js**，含 Fit、Web Links、Search 插件，可配置回滚行数（0～500,000）
+- **终端内搜索**：增量查找并高亮匹配；支持 **区分大小写**、**全字匹配**、**正则表达式**；上/下跳转；可通过标签右键菜单或 **Ctrl/Cmd+Shift+F** 打开
 - **字符编码**：UTF-8、GBK、GB18030、GB2312、Big5、UTF-16 LE、Latin-1（主进程 `iconv-lite`）
 - **退格键模式**（按会话）：自动（SSH 发 DEL，Telnet/串口发 BS），或强制 DEL / BS
 - **终端交互**：选中复制、右键粘贴（可在设置中关闭）
@@ -76,6 +78,20 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ---
 
+## 键盘快捷键
+
+在 ZTerm 窗口获得焦点时生效。macOS 使用 **Cmd**；Windows / Linux 使用 **Ctrl**。
+
+
+| 快捷键 | 作用 |
+| --- | --- |
+| **Ctrl/Cmd+F** | 聚焦侧边栏 **已保存会话搜索**（若列表已收起则自动展开） |
+| **Ctrl/Cmd+Shift+F** | 打开当前标签页的 **终端内容搜索** |
+| **Enter** / **Shift+Enter** | 下一个 / 上一个匹配（终端搜索栏内） |
+| **Esc** | 关闭终端搜索栏 |
+
+---
+
 ## 界面预览
 
 ![ZTerm 主界面](docs/images/main.png)
@@ -94,7 +110,7 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 | 桌面壳        | Electron 42                        |
 | 语言         | TypeScript                         |
 | 界面         | React 19、Vite 8                    |
-| 终端         | @xterm/xterm 5、Fit 插件、Web Links 插件 |
+| 终端         | @xterm/xterm 5、Fit / Web Links / Search 插件 |
 | SSH / SFTP | ssh2                               |
 | 串口         | serialport 12                      |
 | 编码         | iconv-lite                         |

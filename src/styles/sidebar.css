@@ -61,6 +61,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 4px 0 8px;
+  margin: 0 3px;
   display: block;
 }
 

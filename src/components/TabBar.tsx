@@ -32,6 +32,7 @@ export default memo(function TabBar({
   onReorder,
   onSaveOutput,
   onClearScreen,
+  onSearchTerminal,
   onSetBackspaceMode,
 }: TabBarProps) {
   const { t } = useI18n()
@@ -196,6 +197,12 @@ export default memo(function TabBar({
           <button onClick={() => closeRight(ctxMenu.idx)} disabled={ctxMenu.idx === sessions.length - 1}>{t('tabbar.closeRight')}</button>
           <div className="tab-ctx-divider" />
           <button onClick={() => { onSaveOutput?.(ctxMenu.id); closeCtx() }}>{t('tabbar.saveOutput')}</button>
+          <button
+            onClick={() => { onSearchTerminal?.(ctxMenu.id); closeCtx() }}
+            disabled={ctxMenu.id !== activeId}
+          >
+            {t('tabbar.searchTerminal')}
+          </button>
           <button onClick={() => { onClearScreen?.(ctxMenu.id); closeCtx() }}>{t('tabbar.clearScreen')}</button>
           {onSetBackspaceMode && (
             <>

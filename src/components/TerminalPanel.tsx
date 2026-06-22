@@ -1,5 +1,6 @@
-import { useEffect, useRef, memo } from 'react'
+import { useEffect, useRef, useState, memo } from 'react'
 import { FitAddon } from '@xterm/addon-fit'
+import { SearchAddon } from '@xterm/addon-search'
 import { fitTerminal } from '../lib/terminal/fitTerminal'
 import { clampTerminalScrollback, normalizeLoggingMode } from '../lib/settings/normalize'
 import { translateRender } from '../i18n/translateRender'
@@ -9,11 +10,13 @@ import {
   applyTerminalSettings, connectSession, mountTerminal, teardownSessionTransport, writelnWithLog,
 } from '../lib/terminal/terminalSession'
 import { exportTerminalBuffer, setupLogging } from '../lib/terminal/terminalLogging'
+import { TerminalSearchBar } from './terminal/TerminalSearchBar'
 import '@xterm/xterm/css/xterm.css'
 import type { TerminalPanelProps } from '../types/components'
 import type { AppSettings } from '../types/settings'
 import type { SessionLogHandle } from '../types/session'
 import '../styles/terminal.css'
+import '../styles/terminal-search.css'
 
 /** TerminalPanel 组件：负责渲染终端界面、管理终端实例和连接会话 */
 function TerminalPanel({
@@ -24,31 +27,37 @@ function TerminalPanel({
   appThemeEffective = 'dark',
   onRegisterExport,
   onRegisterClearScreen,
+  onRegisterOpenSearch,
 }: TerminalPanelProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null)
-  const termRef = useRef<import('@xterm/xterm').Terminal | null>(null)
-  const fitAddonRef = useRef<FitAddon | null>(null)
-  const cleanupRef = useRef<Array<() => void>>([])
-  const logFileRef = useRef<SessionLogHandle | null>(null)
-  const logFileStemStateRef = useRef<{ sessionId: string | null; stem: string | null }>({
+  const containerRef = useRef<HTMLDivElement | null>(null)  // 容器引用
+  const termRef = useRef<import('@xterm/xterm').Terminal | null>(null)  // 终端引用
+  const fitAddonRef = useRef<FitAddon | null>(null)  // 适应添加器引用
+  const searchAddonRef = useRef<SearchAddon | null>(null)  // 搜索添加器引用
+  const [searchOpen, setSearchOpen] = useState(false)  // 搜索栏是否打开
+  const cleanupRef = useRef<Array<() => void>>([])  // 清理函数引用
+  const logFileRef = useRef<SessionLogHandle | null>(null)  // 日志文件引用
+  const logFileStemStateRef = useRef<{ sessionId: string | null; stem: string | null }>({  // 日志文件状态引用
     sessionId: null,
     stem: null,
   })
-  const disconnectedRef = useRef(false)
-  const sessionRef = useRef(session)
-  const settingsRef = useRef<AppSettings>(settings)
-  useEffect(() => { sessionRef.current = session }, [session])
-  useEffect(() => { settingsRef.current = settings }, [settings])
+  const disconnectedRef = useRef(false)  // 连接断开标志
+  const sessionRef = useRef(session)  // 会话引用
+  const settingsRef = useRef<AppSettings>(settings)  // 设置引用
+  useEffect(() => { sessionRef.current = session }, [session])  // 会话引用更新
+  useEffect(() => { settingsRef.current = settings }, [settings])  // 设置引用更新
 
   useEffect(() => {  // 组件初次挂载时：创建终端实例、连接会话，并设置相关事件监听器；组件卸载时：调用 cleanupRef 中的函数进行清理
     if (!containerRef.current) return
-    const { term, fitAddon, disposeSettings } = mountTerminal(
+    const { term, fitAddon, disposeSettings } = mountTerminal(  // 挂载终端实例
       containerRef.current,
       appThemeEffective,
       settingsRef,
     )
     termRef.current = term
     fitAddonRef.current = fitAddon
+    const searchAddon = new SearchAddon()
+    term.loadAddon(searchAddon)
+    searchAddonRef.current = searchAddon
 
     let cancelled = false
     connectSession(term, session, sessionRef, onUpdate, cleanupRef, disconnectedRef, () => cancelled, logFileRef, settingsRef)
@@ -71,6 +80,7 @@ function TerminalPanel({
       teardownSessionTransport(session)  // 连接尚未完成时 cleanupRef 可能尚无 disconnect，强制断开主进程 transport
       try { logFileRef.current?.flushNow?.() } catch {}
       logFileRef.current = null
+      searchAddonRef.current = null
       term.dispose()
     }
   }, [session.id])
@@ -108,6 +118,8 @@ function TerminalPanel({
   useEffect(() => {  // 当 active 状态变化时，如果当前标签页变为活跃，则调整终端尺寸并聚焦终端，确保用户界面正确显示并且用户可以立即输入
     if (active && fitAddonRef.current) {
       setTimeout(() => { if (fitAddonRef.current) fitTerminal(fitAddonRef.current); termRef.current?.focus() }, 50)
+    } else {
+      setSearchOpen(false)
     }
   }, [active])
 
@@ -129,6 +141,12 @@ function TerminalPanel({
     onRegisterClearScreen?.(session.id, clear)
     return () => onRegisterClearScreen?.(session.id, null)
   }, [session.id, onRegisterClearScreen])
+
+  useEffect(() => {  // 注册打开终端搜索栏：供标签栏右键菜单与全局快捷键调用
+    const openSearch = () => setSearchOpen(true)
+    onRegisterOpenSearch?.(session.id, openSearch)
+    return () => onRegisterOpenSearch?.(session.id, null)
+  }, [session.id, onRegisterOpenSearch])
 
   useEffect(() => {  // 监听按键事件：当连接断开时，按 R 键触发重连逻辑，重新连接会话并设置相关事件监听器
     const term = termRef.current
@@ -175,6 +193,13 @@ function TerminalPanel({
         pointerEvents: active ? 'auto' : 'none',
       }}
     >
+      {searchOpen && searchAddonRef.current && (
+        <TerminalSearchBar
+          searchAddon={searchAddonRef.current}
+          open={searchOpen}
+          onClose={() => setSearchOpen(false)}
+        />
+      )}
       <div ref={containerRef} className="terminal-container" />
     </div>
   )

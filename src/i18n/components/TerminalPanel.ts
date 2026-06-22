@@ -9,7 +9,18 @@ export const TERMINAL = {
     "telnetConnecting": "正在连接 {host}:{port}…",
     "serialOpening": "正在打开 {path} @ {baud} 波特率…",
     "connected": "已连接！",
-    "serialOpened": "串口已打开！"
+    "serialOpened": "串口已打开！",
+    "searchPh": "搜索终端内容…",
+    "searchAria": "搜索当前终端输出",
+    "searchPrev": "上一个匹配",
+    "searchNext": "下一个匹配",
+    "searchClose": "关闭搜索",
+    "searchCaseSensitive": "区分大小写",
+    "searchWholeWord": "全字匹配",
+    "searchRegex": "使用正则表达式",
+    "searchInvalidRegex": "无效的正则表达式",
+    "searchResult": "{current} / {total}",
+    "searchNoResult": "无匹配"
   },
   en: {
     "pressR": "Press R to reconnect…",
@@ -20,6 +31,17 @@ export const TERMINAL = {
     "telnetConnecting": "Connecting to {host}:{port}…",
     "serialOpening": "Opening {path} @ {baud} baud rate…",
     "connected": "Connected!",
-    "serialOpened": "Serial port opened!"
+    "serialOpened": "Serial port opened!",
+    "searchPh": "Search terminal…",
+    "searchAria": "Search current terminal output",
+    "searchPrev": "Previous match",
+    "searchNext": "Next match",
+    "searchClose": "Close search",
+    "searchCaseSensitive": "Case sensitive",
+    "searchWholeWord": "Match whole word",
+    "searchRegex": "Use regular expression",
+    "searchInvalidRegex": "Invalid regular expression",
+    "searchResult": "{current} / {total}",
+    "searchNoResult": "No matches"
   },
 }

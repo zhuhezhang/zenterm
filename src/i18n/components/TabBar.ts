@@ -9,6 +9,7 @@ export const TABBAR = {
     "closeLeft": "关闭左侧标签页",
     "closeRight": "关闭右侧标签页",
     "saveOutput": "保存终端输出",
+    "searchTerminal": "搜索终端内容",
     "clearScreen": "清屏",
     "closeAll": "关闭全部标签页"
   },
@@ -21,6 +22,7 @@ export const TABBAR = {
     "closeLeft": "Close tabs to the left",
     "closeRight": "Close tabs to the right",
     "saveOutput": "Save terminal output",
+    "searchTerminal": "Search terminal",
     "clearScreen": "Clear screen",
     "closeAll": "Close all tabs"
   },

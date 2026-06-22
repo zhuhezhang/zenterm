@@ -311,6 +311,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 8px 0;
+  margin-right: 3px;
 }
 
 /**

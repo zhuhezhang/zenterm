@@ -9,6 +9,7 @@ import { getLocalFilePath } from '@/lib/sftp/localFilePath'
 import { readAllDirEntries } from '@/lib/sftp/readDirEntries'
 import { getZterm } from '@/lib/ipc/getZterm'
 import SftpFileList from './sftp/SftpFileList'
+import { useSession } from '@/context/SessionContext'
 import type { SftpPanelProps, SftpRemoteItem } from '@/types/components'
 import { sessionEndpoint } from '@/types/session'
 import type { SftpFileContextMenu } from '@/types/components'
@@ -23,7 +24,8 @@ function SftpPanel({ session }: SftpPanelProps) {
     formatIpcResponseError(t, res) || (fallbackKey ? t(fallbackKey) : '')
   const showErr = (e: unknown) => alert(formatThrownIpcError(t, e) || String(e))
   const sftpSessionId = session?.id ? `${session.id}-sftp` : null
-  const [path, setPath] = useState('/')
+  const { updateSession } = useSession()
+  const [path, setPath] = useState<string>(() => session?.remotePath ?? '/')  // 当前远程路径，初始值优先使用会话中的路径，否则使用根目录
   const [items, setItems] = useState<SftpRemoteItem[]>([])
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<SftpRemoteItem | null>(null)
@@ -52,6 +54,7 @@ function SftpPanel({ session }: SftpPanelProps) {
       const content = unwrapIpcOk(res)
       setItems(Array.isArray(content.items) ? (content.items as SftpRemoteItem[]) : [])
       setPath(dirPath)
+      if (session?.id) updateSession(session.id, { remotePath: dirPath })
     } catch (e) {
       showErr(e)
     } finally {
@@ -59,12 +62,13 @@ function SftpPanel({ session }: SftpPanelProps) {
     }
   }, [sftpSessionId, t])
 
-  useEffect(() => {  // 监听进度变化，每次会话 ID 变化时重新加载目录
+  useEffect(() => {  // 监听进度变化，每次会话 ID 变化时重新加载目录（优先恢复上次路径）
     if (!sftpSessionId) return
-    loadDir('/')
+    const initial = session?.remotePath ?? '/'
+    void loadDir(initial)
     const unsub = getZterm().sftp.onProgress(sftpSessionId, (p) => setProgress(p))
     return unsub
-  }, [sftpSessionId, loadDir])
+  }, [sftpSessionId, loadDir, session?.remotePath])
 
   useLayoutEffect(() => {  // 根据视口边界动态修正菜单位置，避免底部/右侧被遮挡
     if (!fileCtx) return

@@ -66,6 +66,7 @@ export function createTerminal(themeMode: 'dark' | 'light', scrollback: number):
     cursorBlink: true,
     cursorStyle: 'bar',
     allowTransparency: true,
+    allowProposedApi: true, // SearchAddon 高亮匹配依赖 registerDecoration（proposed API）
     scrollback, // 由设置 terminalScrollback 控制，挂载后仍可改 options.scrollback
     windowsMode: false,
     theme: getXtermTheme(themeMode),

@@ -1,6 +1,6 @@
 # ZTerm
 
-**[简体中文](README.zh-CN.md)** · English · v3.2.2
+**[简体中文](README.zh-CN.md)** · English · v3.2.4
 
 ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
 
@@ -9,6 +9,7 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 ## Table of Contents
 
 - [Features](#features)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
 - [Screenshots](#screenshots)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
@@ -41,7 +42,7 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 - Save sessions with **label**, **group** (hierarchical paths), and connection parameters
 - **Empty group placeholders** — create folder-like groups before adding sessions
-- **Search** saved sessions by name, host, or serial path
+- **Search** saved sessions by name, host, or serial path (**Ctrl/Cmd+F**)
 - **Duplicate**, **rename**, **edit**, **delete** sessions; optional confirm dialogs
 - **Export / import** session lists (JSON envelope, v1); import from **Settings** or the **sidebar**
 - **Connect**, **Save & connect**, or **Save only** from the connection dialog
@@ -49,7 +50,8 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 ### Terminal experience
 
-- **xterm.js** with Fit addon, web links, configurable scrollback (0–500,000 lines)
+- **xterm.js** with Fit addon, Web Links addon, Search addon, configurable scrollback (0–500,000 lines)
+- **In-terminal search**: incremental find with match highlighting; **case sensitive**, **whole word**, and **regex** modes; prev/next navigation; open via tab context menu or **Ctrl/Cmd+Shift+F**
 - **Character encodings**: UTF-8, GBK, GB18030, GB2312, Big5, UTF-16 LE, Latin-1 (via `iconv-lite` in the main process)
 - **Backspace mode** (per session): Auto (DEL for SSH, BS for Telnet/Serial), or force DEL / BS
 - **Terminal interaction**: select-to-copy and right-click paste (toggle in settings)
@@ -76,6 +78,20 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 ---
 
+## Keyboard Shortcuts
+
+Global shortcuts work when ZTerm is focused. On macOS use **Cmd**; on Windows and Linux use **Ctrl**.
+
+
+| Shortcut | Action |
+| -------- | ------ |
+| **Ctrl/Cmd+F** | Focus sidebar **saved session search** (expands the session list if collapsed) |
+| **Ctrl/Cmd+Shift+F** | Open **in-terminal search** on the active tab |
+| **Enter** / **Shift+Enter** | Next / previous match (in terminal search bar) |
+| **Esc** | Close terminal search bar |
+
+---
+
 ## Screenshots
 
 ![ZTerm main window](docs/images/main.png)
@@ -94,7 +110,7 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 | Desktop shell | Electron 42                                |
 | Language      | TypeScript                                 |
 | UI            | React 19, Vite 8                           |
-| Terminal      | @xterm/xterm 5, Fit addon, Web Links addon |
+| Terminal      | @xterm/xterm 5, Fit / Web Links / Search addons |
 | SSH / SFTP    | ssh2                                       |
 | Serial        | serialport 12                              |
 | Encoding      | iconv-lite                                 |

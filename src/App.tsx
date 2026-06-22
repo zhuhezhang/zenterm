@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, lazy, Suspense, memo } from 'react'
 import type { AppMainProps } from './types/components'
 import type { AppSettings, AppTheme } from './types/settings'
-import type { ActiveSession, TerminalClearFn, TerminalTextGetter } from './types/session'
+import type { ActiveSession, TerminalClearFn, TerminalOpenSearchFn, TerminalTextGetter } from './types/session'
 import { I18nProvider } from '@/context/I18nContext'
 import { SessionProvider, useSession } from '@/context/SessionContext'
 import TitleBar from '@/components/TitleBar'
@@ -15,6 +15,7 @@ const ConnectDialog = lazy(() => import('@/components/ConnectDialog'))  // 懒�
 const SettingsDialog = lazy(() => import('@/components/SettingsDialog'))
 import { useSyncedAppTheme } from '@/hooks/useSyncedAppTheme'
 import { useSidebarResize } from '@/hooks/useSidebarResize'
+import { useFocusTerminalSearchShortcut, useFocusSavedSessionSearchShortcut } from '@/hooks/useFocusSearchShortcut'
 import { loadSettings, refreshDownloadsPathCache, getDefaultLogPath } from './store/settingsStore'
 import { DEFAULT_SIDEBAR_WIDTH } from './lib/settings/defaults'
 import { clampSidebarWidthPx } from './lib/settings/normalize'
@@ -34,6 +35,7 @@ const TerminalPanelSlot = memo(function TerminalPanelSlot({
   updateSession,
   onRegisterExport,
   onRegisterClearScreen,
+  onRegisterOpenSearch,
 }: {
   /** 会话对象，包含连接信息和状态 */
   session: ActiveSession
@@ -49,6 +51,8 @@ const TerminalPanelSlot = memo(function TerminalPanelSlot({
   onRegisterExport: (sessionId: string, getter: TerminalTextGetter | null) => void
   /** 注册清屏函数的回调函数，参数为 (sessionId, fn|null) */
   onRegisterClearScreen: (sessionId: string, fn: TerminalClearFn | null) => void
+  /** 注册打开终端搜索栏的回调函数，参数为 (sessionId, fn|null) */
+  onRegisterOpenSearch: (sessionId: string, fn: TerminalOpenSearchFn | null) => void
 }) {
   /** 更新会话状态的回调函数，用于在 TerminalPanel 中更新会话状态 */
   const onUpdate = useCallback(
@@ -63,6 +67,7 @@ const TerminalPanelSlot = memo(function TerminalPanelSlot({
       appThemeEffective={appThemeEffective}
       onRegisterExport={onRegisterExport}
       onRegisterClearScreen={onRegisterClearScreen}
+      onRegisterOpenSearch={onRegisterOpenSearch}
       onUpdate={onUpdate}
     />
   )
@@ -100,7 +105,10 @@ function AppMain({ settings, setSettings }: AppMainProps) {
     handleCredentialSaveAndConnect,
     registerTerminalExporter,
     registerTerminalClearScreen,
+    registerTerminalOpenSearch,
     handleClearTabScreen,
+    handleSearchTerminal,
+    handleSearchActiveTerminal,
     handleSaveTabOutput,
     handleSetBackspaceMode,
   } = useSession()
@@ -135,6 +143,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
   }, [settings.uiLanguage])
 
   const [sidebarOpen, setSidebarOpen] = useState(true)  // 侧边栏是否打开
+  const [focusSessionSearchNonce, setFocusSessionSearchNonce] = useState(0)  // 用于触发聚焦搜索框的 nonce，每次触发时加 1，确保 useLayoutEffect 能够正确响应
   const [sidebarWidth, setSidebarWidth] = useState(() =>
     clampSidebarWidthPx(settings.sidebarWidth ?? DEFAULT_SIDEBAR_WIDTH, window.innerWidth)
   )  // 侧边栏宽度（与 settings.sidebarWidth 同步；拖拽结束后写回 localStorage）
@@ -149,6 +158,14 @@ function AppMain({ settings, setSettings }: AppMainProps) {
 
   /** 处理侧边栏分割线的拖拽事件：记录起始位置，监听鼠标移动更新宽度，鼠标释放时移除监听 */
   const handleDividerMouseDown = useSidebarResize(sidebarWidth, setSidebarWidth, setSettings)
+
+  /** 处理聚焦搜索框的快捷键事件：打开侧边栏，并更新 focusSessionSearchNonce 以触发子组件的 useLayoutEffect */
+  const focusSavedSessionSearch = useCallback(() => {
+    setSidebarOpen(true)
+    setFocusSessionSearchNonce((n) => n + 1)
+  }, [])
+  useFocusSavedSessionSearchShortcut(focusSavedSessionSearch)
+  useFocusTerminalSearchShortcut(handleSearchActiveTerminal)
 
   return (
     <div className="app">
@@ -169,6 +186,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
           settings={settings}
           onOpenSettings={() => setShowSettings(true)}
           style={sidebarOpen ? { width: sidebarWidth } : undefined}
+          focusSessionSearchNonce={focusSessionSearchNonce}
         />
 
         {sidebarOpen && (
@@ -185,6 +203,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
             onReorder={handleTabReorder}
             onSaveOutput={handleSaveTabOutput}
             onClearScreen={handleClearTabScreen}
+            onSearchTerminal={handleSearchTerminal}
             onSetBackspaceMode={handleSetBackspaceMode}
           />
           <div className="content-area">
@@ -201,6 +220,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
                     updateSession={updateSession}
                     onRegisterExport={registerTerminalExporter}
                     onRegisterClearScreen={registerTerminalClearScreen}
+                    onRegisterOpenSearch={registerTerminalOpenSearch}
                   />
                 ))
               }

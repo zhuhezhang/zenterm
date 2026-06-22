@@ -1,7 +1,7 @@
 /** Sidebar.jsx, SidebarTop.jsx, SidebarContextMenu.jsx */
 export const SIDEBAR = {
   zh: {
-    "remoteFiles": "远程文件",
+    "remoteFiles": "远程的文件",
     "savedSessions": "保存的会话",
     "searchPh": "搜索会话名、主机或串口路径…",
     "searchAria": "按会话名、主机或串口路径搜索已保存会话",
