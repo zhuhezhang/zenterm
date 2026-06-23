@@ -158,6 +158,7 @@ zterm/
 ├── .github/workflows/                   # ci.yml (auto checks), release.yml (manual packaging)
 ├── docs/images/                         # README screenshots
 ├── build/                               # App icons
+├── .npmrc                               # npm configuration
 ├── index.html, vite.config.ts, vitest.config.ts, eslint.config.ts
 ├── tsconfig.json                        # IDE entry, extends tsconfig/tsconfig.json
 └── package.json

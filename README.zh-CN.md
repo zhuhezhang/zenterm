@@ -158,6 +158,7 @@ zterm/
 ├── .github/workflows/                   # ci.yml（自动检查）、release.yml（手动打包）
 ├── docs/images/                         # README 截图
 ├── build/                               # 应用图标
+├── .npmrc                               # npm 配置文件
 ├── index.html, vite.config.ts, vitest.config.ts, eslint.config.ts
 ├── tsconfig.json                        # IDE 入口，extends tsconfig/tsconfig.json
 └── package.json
