@@ -90,6 +90,8 @@ Global shortcuts work when ZTerm is focused. On macOS use **Cmd**; on Windows an
 | **Enter** / **Shift+Enter** | Next / previous match (in terminal search bar) |
 | **Esc** | Close terminal search bar |
 
+> **Shortcut conflict:** If **Ctrl+Shift+F** matches your input method’s simplified/traditional Chinese toggle, the IME may capture the key when focus is in the terminal, so **in-terminal search** will not open. Disable or remap that IME shortcut, or open search from the tab **context menu → Search terminal**.
+
 ---
 
 ## Screenshots
