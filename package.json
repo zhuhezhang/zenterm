@@ -54,7 +54,7 @@
     "cross-env": "^10.1.0",
     "electron": "^42.0.1",
     "electron-builder": "^26.15.2",
-    "esbuild": "^0.28.0",
+    "esbuild": "^0.28.1",
     "eslint": "^9.28.0",
     "globals": "^16.2.0",
     "nan": "^2.20.0",
@@ -70,7 +70,8 @@
   },
   "overrides": {
     "@electron/asar": "^4.2.0",
-    "@electron/get": "^5.0.0"
+    "@electron/get": "^5.0.0",
+    "esbuild": "^0.28.1"
   },
   "build": {
     "appId": "com.zterm.app",
@@ -85,6 +86,7 @@
       "en-US"
     ],
     "compression": "maximum",
+    "npmRebuild": false,
     "afterPack": "scripts/after-pack.cjs",
     "files": [
       "dist/**/*",
@@ -118,7 +120,7 @@
       "category": "Utility"
     },
     "mac": {
-      "icon": "build/icon.icns",
+      "icon": "build/icon.png",
       "target": [
         "dmg",
         "zip"
