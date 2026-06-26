@@ -13,6 +13,23 @@ import {
   validateLogWriteDirectory,
 } from '../../electron/lib/localPathPolicy'
 
+/** 各平台下明确不在 mock 用户目录、且不受 Windows 非系统盘整盘放行影响的路径 */
+function deniedLocalFilePath(): string {
+  if (process.platform === 'win32') {
+    const drive = (process.env.SystemDrive || 'C:').replace(/\\$/, '')
+    return path.resolve(`${drive}\\Windows\\System32\\config\\SAM`)
+  }
+  return '/etc/shadow'
+}
+
+function deniedLogDirectory(): string {
+  if (process.platform === 'win32') {
+    const drive = (process.env.SystemDrive || 'C:').replace(/\\$/, '')
+    return path.resolve(`${drive}\\Windows\\System32\\config`)
+  }
+  return '/var/log/zterm'
+}
+
 describe('parseProcMountsForPolicy', () => {
   it('includes block-device mounts except root', () => {
     const content = [
@@ -44,7 +61,7 @@ describe('localPathPolicy', () => {
   })
 
   it('rejects file outside allowed roots', () => {
-    const res = validateLocalFilePath('/etc/shadow', 'read')
+    const res = validateLocalFilePath(deniedLocalFilePath(), 'read')
     expect(res.success).toBe(false)
     if (res.success) return
     expect(res.content.error).toBe('sftp.pathErrors.localDirDenied')
@@ -56,7 +73,7 @@ describe('localPathPolicy', () => {
   })
 
   it('rejects log directory outside allowed roots', () => {
-    const res = validateLogWriteDirectory('/var/log/zterm')
+    const res = validateLogWriteDirectory(deniedLogDirectory())
     expect(res.success).toBe(false)
     if (res.success) return
     expect(res.content.error).toBe('sftp.pathErrors.logDirDenied')

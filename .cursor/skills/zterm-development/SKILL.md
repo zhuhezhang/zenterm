@@ -109,6 +109,14 @@ import { ipcOk } from '../lib/ipcResponse'     // ❌
 
 最小 diff；匹配现有命名与注释风格；不擅自加无关抽象或文档。
 
+**迁移 / 拆分代码时**：移动、提取、重命名文件或符号时，须**原样带走**原有 JSDoc、`//` 行内说明与块注释（含 `@param` / `@returns`）；仅当行为或签名变更时才改写注释。禁止为「精简 diff」删掉注释。
+
+### 6. 第三方模块类型（ssh2 等）
+
+- `electron/types/ssh2.d.ts`：ssh2 手写类型，`tsconfig` 中 `paths` 映射 `"ssh2"`；运行时仍用 `node_modules/ssh2`
+- `electron/types/shims.d.ts`：其余 ambient 增强（如 `worker_threads`）
+- 渲染进程 `tsconfig.json` 与主进程 `tsconfig.main.json` 均须配置 `paths`，因 `moduleResolution: bundler` 不会自动拾取 ambient `declare module`
+
 ## 开发与构建
 
 ```bash

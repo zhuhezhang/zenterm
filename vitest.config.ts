@@ -14,10 +14,10 @@ export default defineConfig({
       include: ['src/lib/**', 'shared/**', 'electron/lib/**'],  // 统计 src/lib、shared、electron/lib 的覆盖率
       exclude: ['**/*.d.ts', '**/types/**'],  // 排除 .d.ts 和 types/ 目录
       thresholds: {  // 覆盖率阈值，不达标则报错
-        lines: 30,  // 行覆盖率至少 30%
-        functions: 30,  // 函数覆盖率至少 30%
-        branches: 25,  // 分支覆盖率至少 25%
-        statements: 30,  // 语句覆盖率至少 30%
+        lines: 38,  // 行覆盖率至少 38%
+        functions: 55,  // 函数覆盖率至少 55%
+        branches: 55,  // 分支覆盖率至少 55%
+        statements: 38,  // 语句覆盖率至少 38%
       },
     },
   },

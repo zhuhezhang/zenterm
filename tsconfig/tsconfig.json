@@ -11,10 +11,11 @@
     "jsx": "react-jsx",
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["../src/*"]
+      "@/*": ["../src/*"],
+      "ssh2": ["../electron/types/ssh2.d.ts"]
     },
     "types": ["vite/client", "node"]
   },
-  "include": ["../src", "../shared", "../tests"],
+  "include": ["../src", "../shared", "../tests", "../electron/types/**/*.d.ts"],
   "exclude": ["../electron"]
 }

@@ -18,7 +18,7 @@
 
 ### 作业：`quality`
 
-在 **Ubuntu 最新版**（`ubuntu-latest`）虚拟机上执行，不构建安装包，只做静态分析与单元测试。
+在 **Ubuntu 24.04** 与 **Windows 最新版**（`windows-latest`）矩阵上各跑一遍，不构建安装包，只做静态分析与单元测试（路径策略等用例需在 Windows 上验证）。
 
 ### 执行步骤
 
