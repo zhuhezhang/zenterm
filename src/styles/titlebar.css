@@ -21,11 +21,24 @@
   padding: 0 12px;
 }
 
-.titlebar-logo {
+.titlebar-logo-btn {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 1px;
   color: var(--text-secondary);
+  padding: 4px 8px;
+  margin: -4px -8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition: color 0.15s, background 0.15s;
+}
+
+.titlebar-logo-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
 
 .titlebar-controls {

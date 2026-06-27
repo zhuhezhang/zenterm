@@ -430,7 +430,6 @@ function SftpPanel({ session }: SftpPanelProps) {
     e.stopPropagation()
     setFileMenuPos({ x: e.clientX, y: e.clientY })
     setFileCtx({ x: e.clientX, y: e.clientY, item })
-    setSelected(item)
   }
 
   /** 面包屑导航：当前路径为根目录时，只显示根目录；否则显示根目录和当前路径 */
@@ -447,17 +446,15 @@ function SftpPanel({ session }: SftpPanelProps) {
             onToggle={(e) => setUploadMenuOpen((e.currentTarget as HTMLDetailsElement).open)}
           >
             <summary className="sftp-btn sftp-upload-summary" title={t('sftp.uploadTitle')}>{t('sftp.upload')}</summary>
-            <div className="sftp-upload-menu" role="menu">
+            <div className="context-menu context-menu--dropdown" role="menu">
               <button
                 type="button"
-                className="sftp-upload-menu-item"
                 onClick={() => { void pickFilesForUpload() }}
               >
                 {t('sftp.pickFiles')}
               </button>
               <button
                 type="button"
-                className="sftp-upload-menu-item"
                 onClick={() => { void pickFolderForUpload() }}
               >
                 {t('sftp.pickFolder')}
@@ -513,6 +510,7 @@ function SftpPanel({ session }: SftpPanelProps) {
         items={items}
         loading={loading}
         selected={selected}
+        contextTargetPath={fileCtx?.item.path ?? null}
         renaming={renaming}
         renameValue={renameValue}
         t={t}

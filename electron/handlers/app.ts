@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, shell } from 'electron'
 import type { IpcMain, IpcMainEvent, IpcMainInvokeEvent } from 'electron'
 import { setStoredUiLanguage } from '../i18n/translateMain.js'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
@@ -30,6 +30,18 @@ export function setupAppHandlers(ipcMain: IpcMain, getMainWindow: MainWindowGett
   ipcMain.handle('app:getVersion', (event: IpcMainInvokeEvent) => {
     if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
     return ipcOk({ version: app.getVersion() })
+  })
+
+  ipcMain.handle('app:openExternal', async (event: IpcMainInvokeEvent, url: unknown) => {
+    if (!isTrustedIpcSender(event.sender)) return ipcFail('app.unauthorized', true)
+    const s = typeof url === 'string' ? url.trim() : ''
+    if (!/^https?:\/\//i.test(s)) return ipcFail('app.invalidRequest', true)
+    try {
+      await shell.openExternal(s)
+      return ipcOk()
+    } catch (e) {
+      return ipcFailFromThrown(e)
+    }
   })
 
   ipcMain.handle('app:chooseOpen', async (event: IpcMainInvokeEvent, kind: unknown) => {

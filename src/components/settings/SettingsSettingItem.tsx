@@ -46,7 +46,13 @@ export default function SettingsSettingItem({
   /** 设置项的标签，如 '终端滚动缓冲区'、'日志路径'、'重置算法偏好设置'、'重置高亮规则'等 */
   const label = item.labelKey ? t(item.labelKey) : t(`settings.fields.${item.key}.label`)
   /** 设置项的描述，如 '终端滚动缓冲区'、'日志路径'、'重置算法偏好设置'、'重置高亮规则'等 */
-  const desc = item.descKey ? t(item.descKey) : (item.key ? t(`settings.fields.${item.key}.desc`) : '')
+  const descParams =
+    item.type === 'number' && item.min != null && item.max != null
+      ? { min: item.min, max: item.max }
+      : undefined
+  const desc = item.descKey
+    ? t(item.descKey, descParams)
+    : (item.key ? t(`settings.fields.${item.key}.desc`, descParams) : '')
   const settingKey = item.key
   /** 日志路径的显示值，如 '~/Downloads/zterm-session-log'、'~/Downloads/zterm-session-log'、'系统下载目录（默认）'等 */
   const logDisplay = (settingKey ? form[settingKey] : '') || getDefaultLogPath() || t('settings.logDefaultDir')

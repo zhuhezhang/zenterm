@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, lazy, Suspense, memo } from 'react'
 import type { AppMainProps } from './types/components'
 import type { AppSettings, AppTheme } from './types/settings'
+import type { TerminalFontFamilyKey } from '../shared/terminalFonts'
 import type { ActiveSession, TerminalClearFn, TerminalOpenSearchFn, TerminalTextGetter } from './types/session'
 import { I18nProvider } from '@/context/I18nContext'
 import { SessionProvider, useSession } from '@/context/SessionContext'
@@ -10,6 +11,7 @@ import TabBar from '@/components/TabBar'
 import TerminalPanel from '@/components/TerminalPanel'
 import WelcomeScreen from '@/components/app/WelcomeScreen'
 import CredentialDialog from '@/components/app/CredentialDialog'
+import AboutDialog from '@/components/app/AboutDialog'
 
 const ConnectDialog = lazy(() => import('@/components/ConnectDialog'))  // 懒加载（code splitting） 写法，目的是让 ConnectDialog 不要打进首屏主包，只在用户真正打开连接对话框时才去加载
 const SettingsDialog = lazy(() => import('@/components/SettingsDialog'))
@@ -114,11 +116,14 @@ function AppMain({ settings, setSettings }: AppMainProps) {
   } = useSession()
 
   const [appThemePreview, setAppThemePreview] = useState<AppTheme | null>(null)
+  const [terminalFontFamilyPreview, setTerminalFontFamilyPreview] = useState<TerminalFontFamilyKey | null>(null)
   const appThemeEffective = useSyncedAppTheme(appThemePreview ?? settings.appTheme)  // ??表示如果 appThemePreview 为 null，则使用 settings.appTheme
+  const terminalFontFamilyEffective = terminalFontFamilyPreview ?? settings.terminalFontFamily
   /** 终端设置对象，包含用户偏好设置。当 settings 发生变化时，重新计算终端设置 */
   const terminalSettings = useMemo(() => ({
     loggingMode: settings.loggingMode,
     logPath: settings.logPath,
+    terminalFontFamily: terminalFontFamilyEffective,
     terminalScrollback: settings.terminalScrollback,
     terminalInteract: settings.terminalInteract,
     highlightRules: settings.highlightRules,
@@ -128,6 +133,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
   }), [
     settings.loggingMode,
     settings.logPath,
+    terminalFontFamilyEffective,
     settings.terminalScrollback,
     settings.terminalInteract,
     settings.highlightRules,
@@ -148,6 +154,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
     clampSidebarWidthPx(settings.sidebarWidth ?? DEFAULT_SIDEBAR_WIDTH, window.innerWidth)
   )  // 侧边栏宽度（与 settings.sidebarWidth 同步；拖拽结束后写回 localStorage）
   const [showSettings, setShowSettings] = useState(false)
+  const [showAbout, setShowAbout] = useState(false)
 
   useEffect(() => {  // 监听 settings.sidebarWidth 变化，更新 sidebarWidth
     setSidebarWidth((cur) => {
@@ -169,7 +176,7 @@ function AppMain({ settings, setSettings }: AppMainProps) {
 
   return (
     <div className="app">
-      <TitleBar />
+      <TitleBar onOpenAbout={() => setShowAbout(true)} />
       <div className="app-body">
         <Sidebar
           open={sidebarOpen}
@@ -276,6 +283,9 @@ function AppMain({ settings, setSettings }: AppMainProps) {
           onClose={() => setCredDialogState(null)}
         />
       )}
+      {showAbout && (
+        <AboutDialog onClose={() => setShowAbout(false)} />
+      )}
       {showSettings && (
         <Suspense fallback={null}>
           <SettingsDialog
@@ -284,12 +294,15 @@ function AppMain({ settings, setSettings }: AppMainProps) {
             onUpdateSessions={updateSaved}
             onUpdatePlaceholders={updatePlaceholders}
             onAppThemePreview={setAppThemePreview}
+            onTerminalFontFamilyPreview={setTerminalFontFamilyPreview}
             onClose={() => {
               setAppThemePreview(null)
+              setTerminalFontFamilyPreview(null)
               setShowSettings(false)
             }}
             onSave={(s: AppSettings) => {
               setAppThemePreview(null)
+              setTerminalFontFamilyPreview(null)
               setSettings(s)
               void reapplyVaultPoliciesForAllSessions(savedSessions, s)
             }}

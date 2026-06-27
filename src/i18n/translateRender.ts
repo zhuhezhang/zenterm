@@ -7,6 +7,7 @@ import { TABBAR } from './components/TabBar'
 import { TERMINAL } from './components/TerminalPanel'
 import { TITLEBAR } from './components/TitleBar'
 import { WELCOME } from './components/app/WelcomeScreen'
+import { ABOUT } from './components/app/AboutDialog'
 import { SIDEBAR } from './components/sidebar/Sidebar'
 import { SSH, TELNET, SERIAL } from './ipcErrors'
 import type { TranslateParams, UiLanguage } from '../types/common'
@@ -28,6 +29,7 @@ const RENDER_MESSAGES = {
     terminal: TERMINAL.zh,
     titlebar: TITLEBAR.zh,
     welcome: WELCOME.zh,
+    about: ABOUT.zh,
   },
   en: {
     app: APP.en,
@@ -44,6 +46,7 @@ const RENDER_MESSAGES = {
     terminal: TERMINAL.en,
     titlebar: TITLEBAR.en,
     welcome: WELCOME.en,
+    about: ABOUT.en,
   },
 }
 

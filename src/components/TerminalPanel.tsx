@@ -3,6 +3,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { SearchAddon } from '@xterm/addon-search'
 import { fitTerminal } from '../lib/terminal/fitTerminal'
 import { clampTerminalScrollback, normalizeLoggingMode } from '../lib/settings/normalize'
+import { resolveTerminalFontFamily } from '../../shared/terminalFonts'
 import { translateRender } from '../i18n/translateRender'
 import { resolveEffectiveUiLanguage } from '../lib/resolveUiLanguage'
 import { getXtermTheme } from '../theme/appTheme'
@@ -105,6 +106,20 @@ function TerminalPanel({
       term.options.scrollback = sb
     }
   }, [settings?.terminalScrollback])
+
+  useEffect(() => {  // 终端字体：变更后立即更新已存在终端并重新 fit
+    const term = termRef.current
+    const fitAddon = fitAddonRef.current
+    if (!term) return
+    const ff = resolveTerminalFontFamily(settings?.terminalFontFamily)
+    if (term.options.fontFamily !== ff) {
+      term.options.fontFamily = ff
+      if (fitAddon) fitTerminal(fitAddon)
+      try {
+        term.refresh(0, term.rows - 1)
+      } catch {}
+    }
+  }, [settings?.terminalFontFamily])
 
   useEffect(() => {  // 监听当应用主题变化时，更新终端主题，确保终端主题与应用主题一致
     const term = termRef.current

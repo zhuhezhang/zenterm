@@ -1,4 +1,5 @@
 import type { CSSProperties, Dispatch, DragEvent, MouseEvent, ReactNode, RefObject, SetStateAction } from 'react'
+import type { TerminalFontFamilyKey } from '../../shared/terminalFonts'
 import type { AppTheme, AppSettings } from './settings'
 import type {
   ActiveSession, SavedSession, SessionConfig, SessionFormValues, SessionTreeNode as TreeNode,
@@ -187,6 +188,8 @@ export interface SettingsDialogProps {
   onUpdatePlaceholders: (placeholders: string[]) => void
   /** 预览应用主题的回调函数，参数为主题对象或 null */
   onAppThemePreview: (theme: AppTheme | null) => void
+  /** 预览终端字体的回调函数，参数为 preset key 或 null（关闭预览） */
+  onTerminalFontFamilyPreview: (font: TerminalFontFamilyKey | null) => void
   /** 关闭对话框的回调函数 */
   onClose: () => void
   /** 保存设置的回调函数，参数为设置 */
@@ -298,6 +301,8 @@ export interface SessionTreeNodeComponentProps {
   depth: number
   /** 键盘焦点 ID */
   keyboardFocusId: string | null
+  /** 当前打开的上下文菜单（用于保持目标行高亮） */
+  contextMenu: SidebarContextMenuState | null
   /** 是否展开的回调函数，参数为路径 */
   isExp: (path: string) => boolean
   /** 切换展开状态的回调函数，参数为路径 */

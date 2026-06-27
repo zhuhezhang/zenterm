@@ -84,7 +84,7 @@
   padding: 0 6px 0 4px;
   cursor: pointer;
   user-select: none;
-  gap: 2px;
+  gap: 4px;
 }
 .sb-section-row:hover { background: var(--bg-hover); }
 .sb-section-row.sessions-header { margin-top: 2px; }
@@ -203,15 +203,30 @@
 .sb-row:hover { background: var(--bg-hover); }
 .sb-row:hover .sb-count { opacity: 1; }
 
+.sb-row.sb-context-target,
+.sb-section-row.sb-context-target {
+  background: var(--accent-dim);
+}
+.sb-row.sb-context-target .sb-count { opacity: 1; }
+
 /* 搜索框方向键导航时仅保留键盘高亮，抑制「保存的会话」标题与树行的 :hover */
 .sb-sessions-scroll.sb-keyboard-nav .sb-section-row.sessions-header:hover {
   background: transparent;
+}
+.sb-sessions-scroll.sb-keyboard-nav .sb-section-row.sessions-header.sb-context-target {
+  background: var(--accent-dim);
 }
 .sb-sessions-scroll.sb-keyboard-nav .sb-row:hover:not(.sb-keyboard-focus) {
   background: transparent;
 }
 .sb-sessions-scroll.sb-keyboard-nav .sb-row:hover:not(.sb-keyboard-focus) .sb-count {
   opacity: 0;
+}
+.sb-sessions-scroll.sb-keyboard-nav .sb-row.sb-context-target {
+  background: var(--accent-dim);
+}
+.sb-sessions-scroll.sb-keyboard-nav .sb-row.sb-context-target .sb-count {
+  opacity: 1;
 }
 
 .sb-row.sb-keyboard-focus {
@@ -311,7 +326,6 @@
 
 /* ── SFTP 文件树 ── */
 .sftp-tree { display: flex; flex-direction: column; }
-.sftp-item-icon { font-size: 14px; flex-shrink: 0; padding-right: 6px; }
 
 /* SFTP 面包屑路径 */
 .sftp-tree-breadcrumb {
@@ -411,84 +425,3 @@
 .sftp-tree-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 
 .sidebar-loading-text { padding: 8px 16px; font-size: 13px; color: var(--text-secondary); }
-
-/* ── 右键菜单 ── */
-.context-menu {
-  position: fixed;
-  z-index: 9999;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
-  min-width: 130px;
-  overflow: hidden;
-  padding: 2px;
-  animation: fadeIn 0.1s ease;
-}
-.context-menu button {
-  display: block;
-  width: 100%;
-  padding: 8px 14px;
-  text-align: left;
-  font-size: 13px;
-  color: var(--text-primary);
-  transition: background 0.1s;
-  cursor: pointer;
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-ui);
-}
-.context-menu button:hover { background: var(--bg-hover); }
-.context-menu button.danger { color: var(--red); }
-.context-menu button.danger:hover { background: rgba(248,81,73,0.1); }
-.context-menu-divider { height: 1px; background: var(--border-subtle); margin: 3px 0; }
-
-/* context-menu 内嵌输入框 */
-.context-menu-input {
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 180px;
-}
-.context-menu-input-label {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-.context-menu-input-field {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-size: 12px;
-  padding: 4px 8px;
-  outline: none;
-  width: 100%;
-  box-sizing: border-box;
-}
-.context-menu-input-field:focus { border-color: var(--accent); }
-
-.context-menu-input-actions {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
-}
-.context-menu-input-actions button {
-  font-size: 13px;
-  padding: 3px 10px;
-  text-align: center;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-.context-menu-input-actions button:hover { background: var(--bg-hover); color: var(--text-primary); }
-.context-menu-input-actions button.confirm {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border-color: var(--accent);
-}
-.context-menu-input-actions button.confirm:hover { background: var(--accent); color: #fff; }

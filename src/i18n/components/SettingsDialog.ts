@@ -47,9 +47,13 @@ export const SETTINGS = {
         "label": "选中复制 / 右键粘贴",
         "desc": "选中终端文本自动复制，右键单击粘贴剪贴板内容"
       },
+      "terminalFontFamily": {
+        "label": "字体",
+        "desc": "终端字符使用的等宽字体；选择后立即生效，关闭设置未保存则恢复原字体"
+      },
       "terminalScrollback": {
         "label": "视口外滚动历史（行）",
-        "desc": "限制「已滚出屏幕上方」仍保留的行数，不包含当前窗口里可见的那些行（可见行数由窗口高度决定）。向上滚动能浏览的总行数约为「本数值 + 终端高度行数」。越大越占内存。保存后生效"
+        "desc": "限制「已滚出屏幕上方」仍保留的行数，不包含当前窗口里可见的那些行（可见行数由窗口高度决定）。向上滚动能浏览的总行数约为「本数值 + 终端高度行数」。可设置 {min}–{max} 行，越大越占内存。保存后生效"
       },
       "sshKeepaliveInterval": {
         "label": "SSH keepalive 间隔（秒）",
@@ -80,7 +84,16 @@ export const SETTINGS = {
       "backspaceBs": "BS (0x08)",
       "loggingModeNone": "无",
       "loggingModeStream": "原始流追加",
-      "loggingModeBuffer": "缓冲快照覆盖（不推荐）"
+      "loggingModeBuffer": "缓冲快照覆盖（不推荐）",
+      "terminalFont": {
+        "cascadia": "Cascadia Code",
+        "jetbrains": "JetBrains Mono",
+        "fira": "Fira Code",
+        "menlo": "Menlo",
+        "consolas": "Consolas",
+        "source-code-pro": "Source Code Pro",
+        "courier-new": "Courier New"
+      }
     },
     "logChooseDir": "选择目录",
     "logCurrentDir": "当前日志目录：\n{path}",
@@ -272,9 +285,13 @@ export const SETTINGS = {
         "label": "Copy on select / paste on right-click",
         "desc": "Auto-copy selection; right-click pastes clipboard"
       },
+      "terminalFontFamily": {
+        "label": "Font",
+        "desc": "Monospace font for the terminal; applies immediately. If you close settings without saving, the previous font is restored"
+      },
       "terminalScrollback": {
         "label": "Scrollback (lines above viewport)",
-        "desc": "Rows kept after they scroll off the top—not the on-screen rows (those depend on window height). Total lines you can scroll through is about this value plus the terminal row count. Higher uses more RAM. Takes effect after you save"
+        "desc": "Rows kept after they scroll off the top—not the on-screen rows (those depend on window height). Total lines you can scroll through is about this value plus the terminal row count. Range {min}–{max}. Higher uses more RAM. Takes effect after you save"
       },
       "sshKeepaliveInterval": {
         "label": "SSH keepalive interval (seconds)",
@@ -306,6 +323,15 @@ export const SETTINGS = {
       "loggingModeNone": "None",
       "loggingModeStream": "Raw stream append",
       "loggingModeBuffer": "Buffer snapshot overwrite (not recommended)",
+      "terminalFont": {
+        "cascadia": "Cascadia Code",
+        "jetbrains": "JetBrains Mono",
+        "fira": "Fira Code",
+        "menlo": "Menlo",
+        "consolas": "Consolas",
+        "source-code-pro": "Source Code Pro",
+        "courier-new": "Courier New"
+      }
     },
     "logChooseDir": "Choose folder",
     "logCurrentDir": "Current log directory:\n{path}",

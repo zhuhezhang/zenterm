@@ -39,7 +39,7 @@ export default function SidebarContextMenu({
   if (subInput !== null) {
     return renderInBody(
       <div ref={menuRef} className="context-menu context-menu-input" style={{ top: menuPos.y, left: menuPos.x }} onClick={e => e.stopPropagation()}>
-        <div className="context-menu-input-label">{t('sidebar.subGroupName')}</div>
+        <div className="context-menu-input-label">{t('sidebar.newSubGroup')}</div>
         <input className="context-menu-input-field" value={subInput} autoFocus placeholder={t('sidebar.namePh')} ref={subInputRef}
           onChange={e => setSubInput(e.target.value)}
           onKeyDown={e => {
@@ -70,7 +70,7 @@ export default function SidebarContextMenu({
   if (newGroupInput !== null) {
     return renderInBody(
       <div ref={menuRef} className="context-menu context-menu-input" style={{ top: menuPos.y, left: menuPos.x }} onClick={e => e.stopPropagation()}>
-        <div className="context-menu-input-label">{t('sidebar.groupName')}</div>
+        <div className="context-menu-input-label">{t('sidebar.newGroup')}</div>
         <input className="context-menu-input-field" value={newGroupInput} autoFocus placeholder={t('sidebar.namePh')} ref={newGroupInputRef}
           onChange={e => setNewGroupInput(e.target.value)}
           onKeyDown={e => {

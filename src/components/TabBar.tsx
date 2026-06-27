@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, memo, type DragEvent, type MouseEvent } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, memo, type DragEvent, type MouseEvent } from 'react'
 import { useI18n } from '../context/I18nContext'
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick'
 import { ConnectionTypeIcon } from './common'
@@ -7,6 +7,7 @@ import { sessionEndpoint } from '../types/session'
 import type { TabContextMenu } from '../types/components'
 import type { BackspaceMode } from '../types/session'
 import { normalizeBackspaceMode } from '../lib/session/utils'
+import { terminalSearchShortcutLabel } from '../lib/keyboardShortcut'
 import '../styles/tabbar.css'
 
 /** 状态点类名映射（样式见 tabbar.css） */
@@ -37,6 +38,8 @@ export default memo(function TabBar({
 }: TabBarProps) {
   const { t } = useI18n()
   const [ctxMenu, setCtxMenu] = useState<TabContextMenu | null>(null)
+  const [backspaceSubmenuFlip, setBackspaceSubmenuFlip] = useState(false)
+  const backspaceSubmenuRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<string | null>(null)
   const tabsRef = useRef<HTMLDivElement | null>(null)
   const prevCountRef = useRef(sessions.length) // 上一次会话数量的引用，用于检测新增标签页
@@ -65,7 +68,25 @@ export default memo(function TabBar({
 
   /** 关闭右键菜单 */
   const closeCtx = () => setCtxMenu(null)
-  useDismissOnOutsideClick(!!ctxMenu, closeCtx, '.tab-context-menu')
+
+  /** 更新退格键模式子菜单的翻转状态 */
+  const updateBackspaceSubmenuFlip = () => {
+    const root = backspaceSubmenuRef.current
+    if (!root) return
+    const trigger = root.querySelector('.context-menu-submenu-trigger')
+    const panel = root.querySelector('.context-menu-submenu-panel')
+    if (!(trigger instanceof HTMLElement) || !(panel instanceof HTMLElement)) return
+    const margin = 8
+    const panelWidth = panel.offsetWidth || 123
+    setBackspaceSubmenuFlip(trigger.getBoundingClientRect().right + panelWidth + margin > window.innerWidth)
+  }
+
+  useLayoutEffect(() => {   // 监听右键菜单的打开状态和退格键模式设置回调，如果打开且有回调，则更新退格键模式子菜单的翻转状态
+    if (!ctxMenu || !onSetBackspaceMode) return
+    updateBackspaceSubmenuFlip()
+  }, [ctxMenu, onSetBackspaceMode])
+
+  useDismissOnOutsideClick(!!ctxMenu, closeCtx, '.context-menu')
   /**
    * 关闭标签页
    * @param id 要关闭的标签页 ID
@@ -187,7 +208,7 @@ export default memo(function TabBar({
 
       {ctxMenu && (
         <div
-          className="tab-context-menu"
+          className="context-menu"
           style={{ top: ctxMenu.y, left: ctxMenu.x }}
           onClick={e => e.stopPropagation()}
         >
@@ -195,32 +216,50 @@ export default memo(function TabBar({
           <button onClick={() => closeOthers(ctxMenu.id)} disabled={sessions.length <= 1}>{t('tabbar.closeOthers')}</button>
           <button onClick={() => closeLeft(ctxMenu.idx)} disabled={ctxMenu.idx === 0}>{t('tabbar.closeLeft')}</button>
           <button onClick={() => closeRight(ctxMenu.idx)} disabled={ctxMenu.idx === sessions.length - 1}>{t('tabbar.closeRight')}</button>
-          <div className="tab-ctx-divider" />
+          <div className="context-menu-divider" />
           <button onClick={() => { onSaveOutput?.(ctxMenu.id); closeCtx() }}>{t('tabbar.saveOutput')}</button>
           <button
+            type="button"
+            className="context-menu-item-split"
             onClick={() => { onSearchTerminal?.(ctxMenu.id); closeCtx() }}
             disabled={ctxMenu.id !== activeId}
           >
-            {t('tabbar.searchTerminal')}
+            <span>{t('tabbar.searchTerminal')}</span>
+            <span className="context-menu-shortcut" aria-hidden="true">{terminalSearchShortcutLabel()}</span>
           </button>
           <button onClick={() => { onClearScreen?.(ctxMenu.id); closeCtx() }}>{t('tabbar.clearScreen')}</button>
           {onSetBackspaceMode && (
             <>
-              <div className="tab-ctx-divider" />
-              <div className="tab-ctx-label">{t('connect.backspaceMode')}</div>
-              {BACKSPACE_MODES.map(mode => (
-                <button
-                  key={mode}
-                  className={mode === ctxBackspaceMode ? 'checked' : ''}
-                  onClick={() => setBackspaceMode(ctxMenu.id, mode)}
-                >
-                  <span className="tab-ctx-check">{mode === ctxBackspaceMode ? '✓' : ''}</span>
-                  {backspaceModeLabels[mode]}
+              <div className="context-menu-divider" />
+              <div
+                ref={backspaceSubmenuRef}
+                className="context-menu-submenu"
+                onMouseEnter={updateBackspaceSubmenuFlip}
+              >
+                <button type="button" className="context-menu-submenu-trigger">
+                  <span>{t('connect.backspaceMode')}</span>
+                  <span className="context-menu-submenu-arrow" aria-hidden="true">›</span>
                 </button>
-              ))}
+                <div
+                  className={`context-menu context-menu-submenu-panel${backspaceSubmenuFlip ? ' context-menu-submenu-panel--flip' : ''}`}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {BACKSPACE_MODES.map(mode => (
+                    <button
+                      key={mode}
+                      type="button"
+                      className={mode === ctxBackspaceMode ? 'checked' : ''}
+                      onClick={() => setBackspaceMode(ctxMenu.id, mode)}
+                    >
+                      <span className="context-menu-check">{mode === ctxBackspaceMode ? '✓' : ''}</span>
+                      {backspaceModeLabels[mode]}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </>
           )}
-          <div className="tab-ctx-divider" />
+          <div className="context-menu-divider" />
           <button className="danger" onClick={closeAll}>{t('tabbar.closeAll')}</button>
         </div>
       )}

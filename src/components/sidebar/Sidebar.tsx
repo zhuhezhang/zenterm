@@ -399,7 +399,7 @@ export default memo(function Sidebar(props: SidebarProps) {
             </div>
           )}
           <div className={`sb-sessions-scroll${keyboardFocusId ? ' sb-keyboard-nav' : ''}`}>
-            <div className={`sb-section-row sessions-header${isDO('__sessions_header__', 'drop') ? ' drop-target' : ''}`}
+            <div className={`sb-section-row sessions-header${isDO('__sessions_header__', 'drop') ? ' drop-target' : ''}${contextMenu?.type === 'sessions-header' ? ' sb-context-target' : ''}`}
               onMouseEnter={clearKeyboardFocus}
               onClick={() => setSessionsCollapsed(v => !v)}
               onContextMenu={e => openCtx(e, 'sessions-header', null)}
@@ -453,6 +453,7 @@ export default memo(function Sidebar(props: SidebarProps) {
                 {tree.map(node => (
                   <SessionTreeNodeView key={node.id} node={node} depth={0}
                     keyboardFocusId={keyboardFocusId}
+                    contextMenu={contextMenu}
                     isExp={isExp} togExp={togExp} openCtx={openCtx} onConnectSaved={onConnectSaved}
                     renaming={renaming} renameVal={renameVal} setRenameVal={setRenameVal}
                     setRenaming={setRenaming} renameGroup={renameGroup}

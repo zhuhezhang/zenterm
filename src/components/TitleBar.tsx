@@ -13,7 +13,7 @@ const IS_MAC = navigator.userAgent.includes('Mac OS X') &&
  * 通过 useState 管理窗口最大化状态，useEffect 订阅 Electron 窗口事件并初始化状态
  * 根据平台条件渲染窗口控制按钮（MacOS 不显示）
  */
-export default function TitleBar() {
+export default function TitleBar({ onOpenAbout }: { onOpenAbout?: () => void }) {
   const { t } = useI18n()
   const [maximized, setMaximized] = useState(false)
 
@@ -30,7 +30,14 @@ export default function TitleBar() {
   return (
     <div className={`titlebar ${IS_MAC ? 'is-mac' : 'is-not-mac'}`}>
       <div className="titlebar-drag">
-        <div className="titlebar-logo">⚡ ZTerm</div>
+        <button
+          type="button"
+          className="titlebar-logo-btn"
+          onClick={onOpenAbout}
+          title={t('titlebar.about')}
+        >
+          ⚡ ZTerm
+        </button>
       </div>
       {!IS_MAC && (
         <div className="titlebar-controls">

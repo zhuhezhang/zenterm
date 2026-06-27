@@ -1,6 +1,7 @@
 import { TERMINAL_SCROLLBACK_MIN, TERMINAL_SCROLLBACK_MAX, SSH_KEEPALIVE_INTERVAL_MIN, SSH_KEEPALIVE_INTERVAL_MAX } from './defaults'
+import { TERMINAL_FONT_FAMILY_OPTIONS } from '../../../shared/terminalFonts'
 
-/** 设置对话框三个标签页（labelKey 对应 settings.tabs.*） */
+/** 设置对话框标签页（labelKey 对应 settings.tabs.*） */
 export const SETTINGS_TABS = [
   { key: 'general', labelKey: 'settings.tabs.general' },
   { key: 'ssh-terminal', labelKey: 'settings.tabs.sshTerminal' },
@@ -28,6 +29,14 @@ export const SETTINGS_SCHEMA = [
     section: 'terminal',
     items: [
       { key: 'terminalInteract', type: 'boolean' },
+      {
+        key: 'terminalFontFamily',
+        type: 'select',
+        options: TERMINAL_FONT_FAMILY_OPTIONS.map((o) => ({
+          value: o.value,
+          labelKey: `settings.options.terminalFont.${o.value}`,
+        })),
+      },
       {
         key: 'terminalScrollback',
         type: 'number',

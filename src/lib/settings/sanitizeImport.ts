@@ -7,6 +7,7 @@ import {
   DEFAULT_SETTINGS, SSH_ALGORITHM_SECTION_KEYS, TERMINAL_SCROLLBACK_MIN, 
   TERMINAL_SCROLLBACK_MAX, SSH_KEEPALIVE_INTERVAL_MIN, SSH_KEEPALIVE_INTERVAL_MAX 
 } from './defaults'
+import { TERMINAL_FONT_FAMILY_OPTIONS } from '../../../shared/terminalFonts'
 import {
   clampSidebarWidthPx, clampTerminalScrollback, normalizeImportedLogPath, normalizeLoggingMode,
   clampSshKeepaliveInterval,
@@ -268,6 +269,8 @@ const APP_THEME_SET = new Set(['dark', 'light', 'auto'])
 const UI_LANGUAGE_SET = new Set(['auto', 'en', 'zh'])
 /** 日志模式的值集合 */
 const LOGGING_MODE_SET = new Set(['none', 'stream', 'buffer'])
+/** 终端字体 preset 的值集合 */
+const TERMINAL_FONT_FAMILY_SET = new Set<string>(TERMINAL_FONT_FAMILY_OPTIONS.map((o) => o.value))
 
 /** 布尔设置项的键 */
 const BOOLEAN_SETTING_KEYS: (keyof AppSettings)[] = [
@@ -325,6 +328,15 @@ export async function sanitizeImportedSettings(
     if (!UI_LANGUAGE_SET.has(v)) {
       out.uiLanguage = current.uiLanguage
       pushSettingsImportWarning(warnings, 'invalidEnum', { field: 'uiLanguage', value: v })
+    }
+  }
+  if ('terminalFontFamily' in stripped) {
+    const v = String(out.terminalFontFamily ?? '').trim().toLowerCase()
+    if (!TERMINAL_FONT_FAMILY_SET.has(v)) {
+      out.terminalFontFamily = current.terminalFontFamily
+      pushSettingsImportWarning(warnings, 'invalidEnum', { field: 'terminalFontFamily', value: String(stripped.terminalFontFamily ?? '') })
+    } else {
+      out.terminalFontFamily = v as AppSettings['terminalFontFamily']
     }
   }
 

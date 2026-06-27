@@ -480,6 +480,11 @@ export interface ZTermOthersApi {
    * @returns 应用版本号
    */
   getVersion: () => Promise<IpcResult<{ version: string }>>
+  /**
+   * 在系统默认浏览器中打开 http(s) 链接
+   * @param url 目标 URL
+   */
+  openExternal: (url: string) => Promise<IpcResult>
   /** 清空已保存的 SSH 已知主机公钥 */
   clearKnownHosts: () => Promise<IpcResult>
   /** 清空本会话「仅信任一次」的临时主机公钥缓存 */

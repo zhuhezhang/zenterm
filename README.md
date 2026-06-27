@@ -1,6 +1,6 @@
 # ZTerm
 
-**[简体中文](README.zh-CN.md)** · English · v3.2.4
+**[简体中文](README.zh-CN.md)** · English · v3.2.5
 
 ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
 
@@ -50,7 +50,8 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 ### Terminal experience
 
-- **xterm.js** with Fit addon, Web Links addon, Search addon, configurable scrollback (0–500,000 lines)
+- **xterm.js** with Fit addon, Web Links addon, Search addon, configurable scrollback (0–500,000 lines) and **terminal font** presets (Cascadia Code, JetBrains Mono, Fira Code, Menlo, Consolas, Source Code Pro, Courier New)
+- **Press R to reconnect** after a session disconnects or an initial connection fails
 - **In-terminal search**: incremental find with match highlighting; **case sensitive**, **whole word**, and **regex** modes; prev/next navigation; open via tab context menu or **Ctrl/Cmd+Shift+F**
 - **Character encodings**: UTF-8, GBK, GB18030, GB2312, Big5, UTF-16 LE, Latin-1 (via `iconv-lite` in the main process)
 - **Backspace mode** (per session): Auto (DEL for SSH, BS for Telnet/Serial), or force DEL / BS
@@ -61,7 +62,7 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 ### UI & i18n
 
-- Custom **frameless title bar** (minimize / maximize / close)
+- Custom **frameless title bar** (minimize / maximize / close); click the **⚡ ZTerm** logo to open **About**
 - **Dark**, **light**, or **auto** theme (follows OS); **live preview** in Settings before saving
 - **UI language**: English, 简体中文, or auto (follows system)
 - Resizable **sidebar** for saved sessions and SFTP tree
@@ -89,6 +90,7 @@ Global shortcuts work when ZTerm is focused. On macOS use **Cmd**; on Windows an
 | **Ctrl/Cmd+Shift+F** | Open **in-terminal search** on the active tab |
 | **Enter** / **Shift+Enter** | Next / previous match (in terminal search bar) |
 | **Esc** | Close terminal search bar |
+| **R** | Reconnect the active terminal session (when disconnected or after a failed connect) |
 
 ---
 

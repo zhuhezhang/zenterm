@@ -12,6 +12,8 @@ export interface SftpFileListProps {
   loading: boolean
   /** 选中文件 */
   selected: SftpRemoteItem | null
+  /** 右键菜单当前目标路径（仅菜单打开时高亮，与左键 selected 分离） */
+  contextTargetPath: string | null
   /** 重命名文件 */
   renaming: SftpRemoteItem | null
   /** 重命名值 */
@@ -40,6 +42,7 @@ export default function SftpFileList({
   items,
   loading,
   selected,
+  contextTargetPath,
   renaming,
   renameValue,
   t,
@@ -63,7 +66,7 @@ export default function SftpFileList({
       {!loading && items.map(item => (
         <div
           key={item.path}
-          className={`sftp-item ${item.isDir ? 'sftp-item-dir' : 'sftp-item-file'} ${selected?.path === item.path ? 'selected' : ''} ${renaming?.path === item.path ? 'renaming' : ''}`}
+          className={`sftp-item ${item.isDir ? 'sftp-item-dir' : 'sftp-item-file'} ${selected?.path === item.path ? 'selected' : ''}${contextTargetPath === item.path ? ' sftp-context-target' : ''} ${renaming?.path === item.path ? 'renaming' : ''}`}
           onClick={() => onItemClick(item)}
           onContextMenu={(e) => onItemContextMenu(e, item)}
         >

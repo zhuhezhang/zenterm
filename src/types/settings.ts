@@ -1,5 +1,6 @@
 /** 渲染进程应用设置（localStorage）；algorithmPreferences 类型见 shared/sshAlgorithmDefaults */
 import type { AlgorithmPreferences } from '../../shared/sshAlgorithmDefaults'
+import type { TerminalFontFamilyKey } from '../../shared/terminalFonts'
 
 /** 应用主题 */
 export type AppTheme = 'dark' | 'light' | 'auto'
@@ -39,6 +40,8 @@ export interface AppSettings {
   deleteGroupWithSessions: boolean
   /** 选中复制 / 右键粘贴 */
   terminalInteract: boolean
+  /** 终端字体 preset key */
+  terminalFontFamily: TerminalFontFamilyKey
   /** 终端滚动回退 */
   terminalScrollback: number
   /** 日志模式 */

@@ -6,7 +6,7 @@ import { Chevron, FolderIcon, TYPE_COLORS } from './icons'
 
 /** 会话树节点组件：显示分组或会话的树节点，支持重命名、拖拽、上下文菜单等操作 */
 export default function SessionTreeNode({
-  node, depth, keyboardFocusId, isExp, togExp, openCtx, onConnectSaved,
+  node, depth, keyboardFocusId, contextMenu, isExp, togExp, openCtx, onConnectSaved,
   renaming, renameVal, setRenameVal, setRenaming, renameGroup,
   renameGroupInputRef, ignoreRenameGroupBlurRef,
   renamingSession, renameSessionVal, setRenamingSession, setRenameSessionVal, renameSession, renameSessionInputRef,
@@ -18,10 +18,11 @@ export default function SessionTreeNode({
   if (node.type === 'group') {
     const open = isExp(node.path)  // 是否展开
     const isDropTarget = isDO(node.id, 'group')  // 是否是拖拽目标
+    const isCtxTarget = contextMenu?.type === 'group' && contextMenu.data === node.path
     return (
       <div className="sb-node-group">
         <div
-          className={`sb-row sb-folder-row${isDropTarget ? ' drop-target' : ''}${isKbFocused ? ' sb-keyboard-focus' : ''}`}
+          className={`sb-row sb-folder-row${isDropTarget ? ' drop-target' : ''}${isKbFocused ? ' sb-keyboard-focus' : ''}${isCtxTarget ? ' sb-context-target' : ''}`}
           data-tree-id={node.id}
           style={{ paddingLeft: indent }}
           onClick={() => togExp(node.path)}
@@ -51,6 +52,7 @@ export default function SessionTreeNode({
         {open && node.children.map((child) => (
           <SessionTreeNode key={child.id} node={child} depth={depth + 1}
             keyboardFocusId={keyboardFocusId}
+            contextMenu={contextMenu}
             isExp={isExp} togExp={togExp} openCtx={openCtx} onConnectSaved={onConnectSaved}
             renaming={renaming} renameVal={renameVal} setRenameVal={setRenameVal}
             setRenaming={setRenaming} renameGroup={renameGroup}
@@ -68,9 +70,10 @@ export default function SessionTreeNode({
   const s = node.session
   const isDropTarget = isDO(node.id, 'session')
   const isRenamingThis = renamingSession === s.savedId
+  const isCtxTarget = contextMenu?.type === 'session' && contextMenu.data.savedId === s.savedId
   return (
     <div
-      className={`sb-row sb-session-row${isDropTarget ? ' drop-target' : ''}${isKbFocused ? ' sb-keyboard-focus' : ''}`}
+      className={`sb-row sb-session-row${isDropTarget ? ' drop-target' : ''}${isKbFocused ? ' sb-keyboard-focus' : ''}${isCtxTarget ? ' sb-context-target' : ''}`}
       data-tree-id={node.id}
       style={{ paddingLeft: indent + 18 }}
       draggable={!isRenamingThis}

@@ -114,6 +114,7 @@ const ztermApi = {
   others: {
     setUiLanguage: (uiLanguage: 'zh' | 'en') => ipcRenderer.send('app:setUiLanguage', uiLanguage),
     getVersion: () => ipcRenderer.invoke('app:getVersion'),
+    openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
     clearKnownHosts: () => ipcRenderer.invoke('app:clearKnownHosts'),
     clearSessionHostKeyCache: () => ipcRenderer.invoke('app:clearSessionHostKeyCache'),
   },

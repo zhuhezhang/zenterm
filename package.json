@@ -1,6 +1,6 @@
 {
   "name": "zterm",
-  "version": "3.2.4",
+  "version": "3.2.5",
   "description": "A terminal emulator with SSH, SFTP, Telnet and Serial support",
   "type": "module",
   "main": "dist-electron/electron/main.js",
@@ -27,7 +27,6 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "lint": "eslint src electron shared tests",
-    "build:x64:linux-appimage-win-portable-nsis": "npm run build:main && vite build && electron-builder --win portable nsis --x64 --linux AppImage --x64",
     "vite": "vite",
     "electron": "electron .",
     "dev:renderer": "vite",
@@ -75,17 +74,12 @@
     "test-exclude": "^8.0.0"
   },
   "build": {
-    "appId": "com.zterm.app",
+    "appId": "per.zhuhezhang.zterm",
     "productName": "ZTerm",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "icon": "build/icon.png",
-    "directories": {
-      "output": "release",
-      "buildResources": "build"
-    },
-    "electronLanguages": [
-      "zh-CN",
-      "en-US"
-    ],
+    "directories": {"output": "release", "buildResources": "build"},
+    "electronLanguages": ["zh-CN", "en-US"],
     "compression": "maximum",
     "npmRebuild": false,
     "afterPack": "scripts/after-pack.cjs",
@@ -99,11 +93,7 @@
     ],
     "win": {
       "icon": "build/icon.ico",
-      "target": [
-        "nsis",
-        "portable",
-        "zip"
-      ]
+      "target": ["nsis", "portable", "zip"]
     },
     "nsis": {
       "oneClick": false,
@@ -113,40 +103,24 @@
     },
     "linux": {
       "icon": "build/icon.png",
-      "target": [
-        "AppImage",
-        "deb",
-        "tar.gz"
-      ],
+      "target": ["AppImage", "deb", "rpm", "tar.gz"],
       "category": "Utility"
     },
     "mac": {
       "icon": "build/icon.png",
-      "target": [
-        "dmg",
-        "zip"
-      ]
+      "target": ["dmg", "zip"]
     },
     "dmg": {
       "contents": [
-        {
-          "x": 130,
-          "y": 220,
-          "type": "file"
-        },
-        {
-          "x": 410,
-          "y": 220,
-          "type": "link",
-          "path": "/Applications"
-        }
+        {"x": 130, "y": 220, "type": "file"},
+        {"x": 410, "y": 220, "type": "link", "path": "/Applications"}
       ]
     }
   },
   "author": {
     "name": "zhuhezhang",
     "email": "zhuhezhang@qq.com",
-    "url": "https://github.com/zhuhezhang"
+    "url": ["https://github.com/zhuhezhang/zterm", "https://gitee.com/zhuhezhang/zterm"]
   },
   "license": "MIT"
 }

@@ -4,6 +4,7 @@ import type { TranslateFn } from '../types/common'
 import { syncUiLanguageToMain } from '../lib/resolveUiLanguage'
 import { downloadJsonExport } from '../lib/import/downloadJsonExport'
 import { DEFAULT_SETTINGS } from '../lib/settings/defaults'
+import { normalizeTerminalFontFamilyKey } from '../../shared/terminalFonts'
 import { ipcPathFromResponse } from '../lib/ipc/ipcResponse'
 import {
   clampSidebarWidthPx, clampTerminalScrollback, normalizeLoggingMode, clampSshKeepaliveInterval,
@@ -90,6 +91,7 @@ export function loadSettings(): AppSettings {
     }
     let merged = { ...DEFAULT_SETTINGS, ...saved }
     merged.terminalScrollback = clampTerminalScrollback(merged.terminalScrollback)
+    merged.terminalFontFamily = normalizeTerminalFontFamilyKey(merged.terminalFontFamily)
     merged.sshKeepaliveInterval = clampSshKeepaliveInterval(merged.sshKeepaliveInterval)
     merged.loggingMode = normalizeLoggingMode(merged.loggingMode)
     if (!('logPath' in saved)) {

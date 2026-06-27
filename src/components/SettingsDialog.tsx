@@ -19,6 +19,7 @@ import { useSettingsHoverTip } from '@/hooks/useSettingsHoverTip'
 import SettingsGenericSection from './settings/SettingsGenericSection'
 import type { SettingsDialogProps } from '@/types/components'
 import type { AppSettings, AppTheme, HighlightRule } from '@/types/settings'
+import type { TerminalFontFamilyKey } from '../../shared/terminalFonts'
 import type { SettingsActionKey, SettingsGenericSectionDef, SettingsTabKey } from '@/types/settings'
 import '../styles/dialog.css'
 import '../styles/settings.css'
@@ -32,7 +33,7 @@ function SettingsDialogContent({
   form: AppSettings
   setForm: Dispatch<SetStateAction<AppSettings>>
 }) {
-  const { savedSessions, onUpdateSessions, onUpdatePlaceholders, onClose, onSave, onAppThemePreview } = props
+  const { savedSessions, onUpdateSessions, onUpdatePlaceholders, onClose, onSave, onAppThemePreview, onTerminalFontFamilyPreview } = props
   const { t, lang: previewLanguage } = useI18n()
   /** 设置标签页列表 */
   const tabs = SETTINGS_TABS.map((tab) => ({ key: tab.key, label: t(tab.labelKey) }))
@@ -134,6 +135,9 @@ function SettingsDialogContent({
   const set = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
     setForm(prev => ({ ...prev, [key]: value }))
     if (key === 'appTheme') previewAppTheme(value as AppTheme)
+    if (key === 'terminalFontFamily') {
+      onTerminalFontFamilyPreview?.(value as TerminalFontFamilyKey)
+    }
   }  // [key] 表示“用这个变量的值作为属性名”
 
   /** 算法选项列表 */
@@ -247,6 +251,7 @@ function SettingsDialogContent({
         algorithmPreferences: { ...importedSettings.algorithmPreferences },
       })
       previewAppTheme(importedSettings.appTheme)
+      onTerminalFontFamilyPreview?.(importedSettings.terminalFontFamily)
       if (warnings.length) {
         alert(t('settings.importSettingsPartial', { details: formatSettingsImportWarnings(t, warnings) }))
       } else {
@@ -264,6 +269,7 @@ function SettingsDialogContent({
     const next = JSON.parse(JSON.stringify(DEFAULT_SETTINGS))
     setForm(next)
     previewAppTheme(next.appTheme)
+    onTerminalFontFamilyPreview?.(next.terminalFontFamily)
     saveSettings(next)
     onSave(next)
     alert(t('settings.restored'))

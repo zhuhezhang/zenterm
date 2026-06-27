@@ -6,6 +6,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 import { decodeIncomingTerminalWire } from '../terminalEncodingService'
 import { normalizeTerminalEncoding } from '../../../shared/terminalEncoding'
 import { clampTerminalScrollback } from '../settings/normalize'
+import { resolveTerminalFontFamily } from '../../../shared/terminalFonts'
 import { translateRender } from '../../i18n/translateRender'
 import { resolveEffectiveUiLanguage } from '../resolveUiLanguage'
 import { assertIpcSuccess } from '../ipc/ipcError'
@@ -58,9 +59,9 @@ function normalizeInputData(type: SessionType | string, data: string, session: A
  * @param scrollback 滚动缓冲行数（由设置 clamp）
  * @returns 配置好的 Terminal 实例
  */
-export function createTerminal(themeMode: 'dark' | 'light', scrollback: number): Terminal {
+export function createTerminal(themeMode: 'dark' | 'light', scrollback: number, fontFamily: string): Terminal {
   return new Terminal({
-    fontFamily: '"Cascadia Code", "Fira Code", "JetBrains Mono", Menlo, monospace',
+    fontFamily,
     fontSize: 14,
     lineHeight: 1.4,
     cursorBlink: true,
@@ -196,14 +197,19 @@ export async function connectSession(
   const writeSuccess = (m: string) => writelnWithLog(term, logFileRef, `\r\x1b[32m${m}\x1b[0m`)
   const terminalErr = (e: unknown) => formatThrownIpcError((p, params) => translateRender(L(), p, params), e)  // errorKnown:false 直出原文; true 则按 error 路径走 i18n
 
+  /** 提示按 R 重连并标记为可重连状态 */
+  const showReconnectHint = () => {
+    writeInfo(`\x1b[2m${translateRender(L(), 'terminal.pressR')}\x1b[0m`)
+    disconnectedRef.current = true
+  }
+
   /**
    * 连接断开处理函数：在终端显示断开消息，提示用户按 R 重连，更新会话状态为断开，并设置断连标记
    * @param msgKey terminal.* 文案键
    */
   const onDisconnect = (msgKey: string) => {
     writeInfo(`\r\n${translateRender(L(), msgKey)}`)
-    writeInfo(`\x1b[2m${translateRender(L(), 'terminal.pressR')}\x1b[0m`)
-    disconnectedRef.current = true
+    showReconnectHint()
     onUpdate({ status: 'disconnected', sftpReady: false })
   }
 
@@ -310,6 +316,7 @@ export async function connectSession(
     } catch (e) {
       if (isCancelled?.()) return
       writeError(terminalErr(e))
+      showReconnectHint()
       onUpdate({ status: 'error' })
     } finally {
       try {
@@ -334,6 +341,7 @@ export async function connectSession(
     } catch (e) {
       if (isCancelled?.()) return
       writeError(terminalErr(e))
+      showReconnectHint()
       onUpdate({ status: 'error' })
     }
   } else if (session.type === 'serial') {
@@ -366,6 +374,7 @@ export async function connectSession(
     } catch (e) {
       if (isCancelled?.()) return
       writeError(terminalErr(e))
+      showReconnectHint()
       onUpdate({ status: 'error' })
     }
   }
@@ -383,7 +392,11 @@ export function mountTerminal(
   appThemeEffective: 'dark' | 'light',
   settingsRef: RefObject<AppSettings>,
 ): { term: Terminal; fitAddon: FitAddon; disposeSettings: () => void } {
-  const term = createTerminal(appThemeEffective, clampTerminalScrollback(settingsRef.current?.terminalScrollback))
+  const term = createTerminal(
+    appThemeEffective,
+    clampTerminalScrollback(settingsRef.current?.terminalScrollback),
+    resolveTerminalFontFamily(settingsRef.current?.terminalFontFamily),
+  )
   const fitAddon = new FitAddon()
   term.loadAddon(fitAddon)
   term.loadAddon(new WebLinksAddon())  // WebLinksAddon 负责将终端中的 URL 自动识别为可点击链接

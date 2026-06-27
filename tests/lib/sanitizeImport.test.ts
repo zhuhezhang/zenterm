@@ -18,6 +18,15 @@ describe('sanitizeImportedSettings', () => {
     expect(warnings.some(w => w.code === 'invalidEnum' && w.params?.field === 'appTheme')).toBe(true)
   })
 
+  it('rejects invalid terminalFontFamily enum', async () => {
+    const { settings, warnings } = await sanitizeImportedSettings(
+      { terminalFontFamily: 'comic-sans' },
+      DEFAULT_SETTINGS,
+    )
+    expect(settings.terminalFontFamily).toBe(DEFAULT_SETTINGS.terminalFontFamily)
+    expect(warnings.some(w => w.code === 'invalidEnum' && w.params?.field === 'terminalFontFamily')).toBe(true)
+  })
+
   it('coerces invalid boolean fields', async () => {
     const { settings, warnings } = await sanitizeImportedSettings(
       { confirmDeleteSession: 'yes' },
