@@ -80,7 +80,7 @@
 .sb-section-row {
   display: flex;
   align-items: center;
-  height: 22px;
+  height: 25px;
   padding: 0 6px 0 4px;
   cursor: pointer;
   user-select: none;
@@ -192,8 +192,10 @@
 .sb-row {
   display: flex;
   align-items: center;
-  height: 22px;
+  height: 25px;
   gap: 4px;
+  padding-top: 3px;
+  padding-bottom: 3px;
   cursor: pointer;
   user-select: none;
   position: relative;

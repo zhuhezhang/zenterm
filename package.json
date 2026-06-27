@@ -6,7 +6,7 @@
   "main": "dist-electron/electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
-    "dev:silent": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron:silent\"",
+    "dev:no-restart": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron:no-restart\"",
     "build:main": "tsx scripts/build-electron.ts",
     "build:preload": "esbuild electron/preload.ts --bundle --platform=node --format=cjs --outfile=dist-electron/electron/preload.cjs --external:electron",
     "watch:preload": "esbuild electron/preload.ts --bundle --platform=node --format=cjs --outfile=dist-electron/electron/preload.cjs --external:electron --watch",
@@ -31,7 +31,7 @@
     "electron": "electron .",
     "dev:renderer": "vite",
     "dev:electron": "wait-on tcp:5173 && concurrently -k \"npm:watch:main\" \"wait-on dist-electron/electron/main.js dist-electron/electron/preload.cjs && nodemon --watch dist-electron --ext js,cjs --delay 1500 --exec \\\"electron .\\\"\"",
-    "dev:electron:silent": "wait-on tcp:5173 && concurrently -k \"npm:watch:main\" \"wait-on dist-electron/electron/main.js dist-electron/electron/preload.cjs && nodemon --watch dist-electron --ext js,cjs --delay 1500 --exec \\\"cross-env ELECTRON_DISABLE_SECURITY_WARNINGS=1 electron .\\\"\""
+    "dev:electron:no-restart": "wait-on tcp:5173 && concurrently -k \"npm:watch:main\" \"wait-on dist-electron/electron/main.js dist-electron/electron/preload.cjs && electron .\""
   },
   "dependencies": {
     "iconv-lite": "^0.6.3",
