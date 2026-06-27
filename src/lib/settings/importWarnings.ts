@@ -94,3 +94,42 @@ export function formatSettingsImportWarnings(
   if (!warnings?.length) return ''
   return warnings.map((w) => formatSettingsImportWarning(t, w)).join('\n')
 }
+
+/** 高亮规则因 id / name 重复而跳过的 reason 码 */
+const DUPLICATE_HIGHLIGHT_RULE_REASONS = new Set(['duplicateId', 'duplicateName'])
+
+/**
+ * 判断是否为重复高亮规则警告（不写入明细，仅汇总为 duplicateNote）
+ * @param warning 导入警告
+ * @returns 是否为重复高亮规则警告
+ */
+function isDuplicateHighlightRuleWarning(warning: SettingsImportWarning): boolean {
+  return (
+    warning.code === 'highlightRuleSkipped'
+    && typeof warning.params?.reason === 'string'
+    && DUPLICATE_HIGHLIGHT_RULE_REASONS.has(warning.params.reason)
+  )
+}
+
+/**
+ * 报告设置导入结果：重复高亮规则只提示已忽略，其余警告仍列明细
+ * @param t 翻译函数
+ * @param warnings 导入警告列表
+ */
+export function reportSettingsImportResult(
+  t: TranslateFn,
+  warnings: SettingsImportWarning[],
+): void {
+  const hasDuplicateWarnings = warnings.some(isDuplicateHighlightRuleWarning)
+  const duplicateNote = hasDuplicateWarnings ? t('settings.importSettingsDuplicatesNote') : ''
+  const otherWarnings = warnings.filter((w) => !isDuplicateHighlightRuleWarning(w))
+
+  if (otherWarnings.length) {
+    alert(t('settings.importSettingsPartial', {
+      duplicateNote,
+      details: formatSettingsImportWarnings(t, otherWarnings),
+    }))
+  } else {
+    alert(t('settings.importSettingsOk', { duplicateNote }))
+  }
+}

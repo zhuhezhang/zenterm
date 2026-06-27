@@ -1,6 +1,7 @@
 .cache
 .vitest-mock-home
 .vitest-mock-home-prepare-ssh
+.vitest-mock-known-hosts
 coverage
 dist
 dist-electron

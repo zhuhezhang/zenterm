@@ -4,7 +4,7 @@ import { alertIpcFailure } from '@/lib/ipc/formatIpcError'
 import { getZterm } from '@/lib/ipc/getZterm'
 import { isIpcSuccess } from '@/lib/ipc/ipcResponse'
 import { exportSessions, saveSessions } from '@/store/sessionStore'
-import { formatSettingsImportWarnings } from '@/lib/settings/importWarnings'
+import { reportSettingsImportResult } from '@/lib/settings/importWarnings'
 import { reportImportError } from '@/lib/import/handleImportErrors'
 import { createHighlightRuleId } from '@/lib/settings/highlightRules'
 import { buildSettingsFromForm } from '@/lib/settings/buildSettingsFromForm'
@@ -252,11 +252,7 @@ function SettingsDialogContent({
       })
       previewAppTheme(importedSettings.appTheme)
       onTerminalFontFamilyPreview?.(importedSettings.terminalFontFamily)
-      if (warnings.length) {
-        alert(t('settings.importSettingsPartial', { details: formatSettingsImportWarnings(t, warnings) }))
-      } else {
-        alert(t('settings.importSettingsOk'))
-      }
+      reportSettingsImportResult(t, warnings)
     } catch (err) {
       reportImportError(t, err)
     }
