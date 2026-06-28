@@ -247,6 +247,16 @@ npm run build:linux:x64    # Linux x64 only
 npm run build:mac:universal
 ```
 
+**Output files** (version and arch from `package.json`; x64 examples):
+
+| Platform | Files in `release/` |
+| --- | --- |
+| Windows | `ZTerm-{version}-win-{arch}-Setup.exe` (NSIS installer), `ZTerm-{version}-win-{arch}-Portable.exe`, `ZTerm-{version}-win-{arch}.zip` |
+| Linux | `ZTerm-{version}-linux-{arch}.AppImage`, `.deb`, `.rpm`, `.tar.gz` |
+| macOS | `ZTerm-{version}-mac-{arch}.dmg`, `ZTerm-{version}-mac-{arch}.zip` |
+
+NSIS and portable use separate `artifactName` templates so they are not overwritten during the same build.
+
 **GitHub Actions** (see `.github/workflows/README.md`):
 
 - **`ci.yml`**: typecheck, lint, test on push/PR
@@ -324,7 +334,7 @@ Typical `userData` paths:
 | Host key prompt every time                                                                                                                                                          | Check write permissions for `userData`; do not run from read-only profiles                                                                                                                                                                                                                                                                                            |
 | Import fails / wrong file type                                                                                                                                                      | Use the correct export file (`sessions` vs `settings`); max 8 MB                                                                                                                                                                                                                                                                                                      |
 | Changes under `electron/` not applied                                                                                                                                             | Ensure `npm run dev` is running and `tsc -w` recompiled; type `rs` in nodemon; or run `npm run build:main`                                                                                                                                                                                                                                                            |
-| Windows portable `ZTerm x.x.x.exe` shows the wrong icon in File Explorer, but **Properties** shows the correct icon; `release\win-unpacked\ZTerm.exe` and `ZTerm Setup x.x.x.exe` look fine | The icon is embedded in the EXE; this is usually the Windows Shell **icon cache** (common when rebuilding the same portable file name). Copy and rename the file (e.g. `ZTerm-test.exe`) to verify. If that fixes it, restart `explorer.exe`, delete `iconcache`* and `thumbcache*` under `%LocalAppData%\Microsoft\Windows\Explorer\`, then open File Explorer again |
+| Windows portable `ZTerm-x.x.x-win-x64-Portable.exe` shows the wrong icon in File Explorer, but **Properties** shows the correct icon; `release\win-unpacked\ZTerm.exe` and `ZTerm-x.x.x-win-x64-Setup.exe` look fine | The icon is embedded in the EXE; this is usually the Windows Shell **icon cache** (common when rebuilding the same portable file name). Copy and rename the file (e.g. `ZTerm-test.exe`) to verify. If that fixes it, restart `explorer.exe`, delete `iconcache`* and `thumbcache`* under `%LocalAppData%\Microsoft\Windows\Explorer\`, then open File Explorer again |
 | **Ctrl/Cmd+Shift+F** doesn't open in-terminal search | If this conflicts with your IME's simplified/traditional Chinese toggle, the IME may capture the shortcut when focus is in the terminal. Disable or remap the IME shortcut, or open search from the tab context menu → Search terminal. |
 | `npm run build:mac` failing on Electron 42 due to `cpu-features` / `nan` compile errors | `build.npmRebuild` in `package.json` is set to `false` to skip native module rebuilds during packaging. `serialport` uses N-API prebuilt packages; `cpu-features` is an optional dependency for `ssh2` and does not affect SSH functionality. After https://github.com/nodejs/nan/pull/1015 is released, `build.npmRebuild` can be set back to `true` to enable native `ssh2` acceleration. |
 

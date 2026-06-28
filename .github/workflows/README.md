@@ -103,7 +103,7 @@ npm run test
 
 | Job | Runner | Artifact 名称 | 典型文件（版本号以 `package.json` 为准） |
 |-----|--------|---------------|------------------------------------------|
-| `build-windows` | `windows-latest` | `zterm-windows-x64` / `zterm-windows-ia32` | `ZTerm Setup x.x.x.exe`、`ZTerm x.x.x.exe`（便携版）、`ZTerm-x.x.x-win.zip` |
+| `build-windows` | `windows-latest` | `zterm-windows-x64` / `zterm-windows-ia32` | `ZTerm-x.x.x-win-x64-Setup.exe`、`ZTerm-x.x.x-win-x64-Portable.exe`、`ZTerm-x.x.x-win-x64.zip` |
 | `build-linux` | `ubuntu-latest` | `zterm-linux-x64` | `.AppImage`、`.deb`、`.tar.gz` |
 | `build-mac` | `macos-latest` | `zterm-macos-{arch}` | `.dmg`、`-mac.zip` |
 | `publish-release` | `ubuntu-latest` | — | 仅 `github_release_all` 模式；创建 GitHub Release 并附加全部安装包 |

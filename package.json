@@ -106,10 +106,14 @@
       "target": ["nsis", "portable", "zip"]
     },
     "nsis": {
+      "artifactName": "${productName}-${version}-${os}-${arch}-Setup.${ext}",
       "oneClick": false,
       "perMachine": true,
       "allowElevation": true,
       "allowToChangeInstallationDirectory": true
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-${os}-${arch}-Portable.${ext}"
     },
     "linux": {
       "icon": "build/icon.png",

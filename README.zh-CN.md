@@ -247,6 +247,16 @@ npm run build:linux:x64    # 仅 Linux x64
 npm run build:mac:universal
 ```
 
+**产物文件名**（版本与架构以 `package.json` 为准；以下为 x64 示例）：
+
+| 平台 | `release/` 中的文件 |
+| --- | --- |
+| Windows | `ZTerm-{version}-win-{arch}-Setup.exe`（NSIS 安装包）、`ZTerm-{version}-win-{arch}-Portable.exe`（便携版）、`ZTerm-{version}-win-{arch}.zip` |
+| Linux | `ZTerm-{version}-linux-{arch}.AppImage`、`.deb`、`.rpm`、`.tar.gz` |
+| macOS | `ZTerm-{version}-mac-{arch}.dmg`、`ZTerm-{version}-mac-{arch}.zip` |
+
+NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会互相覆盖。
+
 **GitHub Actions**（见 `.github/workflows/README.md`）：
 
 - **`ci.yml`**：push/PR 自动跑 typecheck、lint、test
@@ -324,7 +334,7 @@ npm run build:mac:universal
 | 每次连接都提示主机密钥                                                                                                        | 检查 `userData` 是否可写；避免只读配置环境运行                                                                                                                                                                          |
 | 导入失败 / 文件类型错误                                                                                                      | 确认使用正确的导出文件（会话 vs 设置）；单文件不超过 8 MB                                                                                                                                                                      |
 | 修改 `electron/` 后未生效                                                                                                 | 确认 `npm run dev` 在跑且 `tsc -w` 有重编译；或对 nodemon 输入 `rs`；或 `npm run build:main`                                                                                                                                  |
-| Windows 便携版 `ZTerm x.x.x.exe` 在资源管理器中图标异常，但右键 **属性** 里图标正常；`release\win-unpacked\ZTerm.exe` 与 `ZTerm Setup x.x.x.exe` 显示正常 | 图标已写入 exe，多为 Windows Shell **图标缓存**（反复用同名覆盖打包时常见）。将文件复制并改名为 `ZTerm-test.exe` 可快速验证；若改名后正常，结束并重启 `explorer.exe`，删除 `%LocalAppData%\Microsoft\Windows\Explorer\` 下的 `iconcache`*、`thumbcache*` 后再打开资源管理器 |
+| Windows 便携版 `ZTerm-x.x.x-win-x64-Portable.exe` 在资源管理器中图标异常，但右键 **属性** 里图标正常；`release\win-unpacked\ZTerm.exe` 与 `ZTerm-x.x.x-win-x64-Setup.exe` 显示正常 | 图标已写入 exe，多为 Windows Shell **图标缓存**（反复用同名覆盖打包时常见）。将文件复制并改名为 `ZTerm-test.exe` 可快速验证；若改名后正常，结束并重启 `explorer.exe`，删除 `%LocalAppData%\Microsoft\Windows\Explorer\` 下的 `iconcache`*、`thumbcache`* 后再打开资源管理器 |
 | **Ctrl/Cmd+Shift+F** 无法打开终端内容搜索 | 若与输入法「简体/繁体切换」等快捷键相同，焦点在终端内时会被输入法优先拦截。可关闭或修改输入法的对应快捷键，或在标签页上 **右键 → 搜索终端内容** 打开搜索框 |
 | `npm run build:mac` 等在 Electron 42 下因 `cpu-features` / `nan` 编译失败 | `package.json` 的 `build.npmRebuild` 已设为 `false`，跳过打包时的原生模块重编译。`serialport` 使用 N-API 预编译包；`cpu-features` 为 `ssh2` 可选依赖，不影响 SSH 功能。待 [nodejs/nan#1015](https://github.com/nodejs/nan/pull/1015) 发布后，可恢复为 `true` 以启用 ssh2 原生加速 |
 
