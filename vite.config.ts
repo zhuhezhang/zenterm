@@ -64,6 +64,7 @@ export default defineConfig({
     minify: 'esbuild',  // 使用 esbuild 压缩
     cssMinify: true,  // 压缩 CSS
     reportCompressedSize: false,  // 不报告压缩后的文件大小
+    chunkSizeWarningLimit: 1000  //  chunk 大小警告限制
   },
   server: {
     port: 5173,  // 开发服务器端口

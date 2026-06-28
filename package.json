@@ -1,8 +1,10 @@
 {
   "name": "zterm",
   "version": "3.2.5",
-  "description": "A terminal emulator with SSH, SFTP, Telnet and Serial support",
+  "description": "A cross‑platform terminal emulator built with Electron, React, and xterm.js, supporting SSH, SFTP, serial, and Telnet",
+  "homepage": "https://github.com/zhuhezhang/zterm",
   "type": "module",
+  "desktopName": "per.zhuhezhang.zterm.desktop",
   "main": "dist-electron/electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
@@ -112,7 +114,8 @@
     "linux": {
       "icon": "build/icon.png",
       "target": ["AppImage", "deb", "rpm", "tar.gz"],
-      "category": "Utility"
+      "category": "Utility",
+      "syncDesktopName": true
     },
     "mac": {
       "icon": "build/icon.png",
