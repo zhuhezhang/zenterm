@@ -1,7 +1,7 @@
 {
   "name": "zterm",
   "private": true,
-  "version": "3.2.5",
+  "version": "3.2.6",
   "description": "A cross-platform terminal emulator built with Electron, React, and xterm.js, supporting SSH, SFTP, serial, and Telnet",
   "homepage": "https://github.com/zhuhezhang/zterm",
   "type": "module",

@@ -38,8 +38,10 @@ export default memo(function TabBar({
 }: TabBarProps) {
   const { t } = useI18n()
   const [ctxMenu, setCtxMenu] = useState<TabContextMenu | null>(null)
+  const [ctxMenuPos, setCtxMenuPos] = useState({ x: 0, y: 0 })  // 调整后的右键菜单位置
   const [backspaceSubmenuFlip, setBackspaceSubmenuFlip] = useState(false)
   const backspaceSubmenuRef = useRef<HTMLDivElement | null>(null)
+  const contextMenuRef = useRef<HTMLDivElement | null>(null)
   const dragRef = useRef<string | null>(null)
   const tabsRef = useRef<HTMLDivElement | null>(null)
   const prevCountRef = useRef(sessions.length) // 上一次会话数量的引用，用于检测新增标签页
@@ -80,6 +82,17 @@ export default memo(function TabBar({
     const panelWidth = panel.offsetWidth || 123
     setBackspaceSubmenuFlip(trigger.getBoundingClientRect().right + panelWidth + margin > window.innerWidth)
   }
+
+  useLayoutEffect(() => {   // 根据视口边界动态修正菜单位置，避免被遮挡
+    const menuEl = contextMenuRef.current
+    if (!ctxMenu || !menuEl) return
+    const margin = 8
+    const maxX = Math.max(margin, window.innerWidth - menuEl.offsetWidth - margin)
+    const maxY = Math.max(margin, window.innerHeight - menuEl.offsetHeight - margin)
+    const nextX = Math.max(margin, Math.min(ctxMenu.x, maxX))
+    const nextY = Math.max(margin, Math.min(ctxMenu.y, maxY))
+    setCtxMenuPos((prev) => (prev.x === nextX && prev.y === nextY ? prev : { x: nextX, y: nextY }))
+  }, [ctxMenu])
 
   useLayoutEffect(() => {   // 监听右键菜单的打开状态和退格键模式设置回调，如果打开且有回调，则更新退格键模式子菜单的翻转状态
     if (!ctxMenu || !onSetBackspaceMode) return
@@ -208,8 +221,9 @@ export default memo(function TabBar({
 
       {ctxMenu && (
         <div
+          ref={contextMenuRef}
           className="context-menu"
-          style={{ top: ctxMenu.y, left: ctxMenu.x }}
+          style={{ top: ctxMenuPos.y, left: ctxMenuPos.x }}
           onClick={e => e.stopPropagation()}
         >
           <button onClick={() => closeTab(ctxMenu.id)}>{t('tabbar.closeThis')}</button>

@@ -1,6 +1,6 @@
 # ZTerm
 
-**[简体中文](README.zh-CN.md)** · English · v3.2.5
+**[简体中文](README.zh-CN.md)** · English · v3.2.6
 
 ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
 
