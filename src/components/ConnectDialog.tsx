@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect, memo, type KeyboardEvent, type RefObject } from 'react'
 import { useI18n } from '../context/I18nContext'
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape'
 import { ipcPortsFromResponse } from '@/lib/ipc/ipcResponse'
 import { fetchSessionSecrets } from '../store/credentialsBridge'
 import { DEFAULT_TERMINAL_ENCODING } from '../../shared/terminalEncoding'
@@ -41,6 +42,8 @@ function ConnectDialog({
   const [ports, setPorts] = useState<{ path?: string }[]>([])
   const [error, setError] = useState('')
   const [credDialog, setCredDialog] = useState<ConnectCredDialogState | null>(null)
+  useDismissOnEscape(!!credDialog, () => setCredDialog(null))
+  useDismissOnEscape(!credDialog, onClose)
 
   const credUserInputRef = useRef<HTMLInputElement | null>(null)
   const credPkeyInputRef = useRef<HTMLTextAreaElement | null>(null)

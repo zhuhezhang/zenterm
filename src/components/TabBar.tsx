@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, memo, type DragEvent, type MouseEvent } from 'react'
 import { useI18n } from '../context/I18nContext'
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick'
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape'
 import { ConnectionTypeIcon } from './common'
 import type { TabBarProps } from '../types/components'
 import { sessionEndpoint } from '../types/session'
@@ -100,6 +101,7 @@ export default memo(function TabBar({
   }, [ctxMenu, onSetBackspaceMode])
 
   useDismissOnOutsideClick(!!ctxMenu, closeCtx, '.context-menu')
+  useDismissOnEscape(!!ctxMenu, closeCtx)
   /**
    * 关闭标签页
    * @param id 要关闭的标签页 ID

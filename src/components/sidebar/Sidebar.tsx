@@ -4,6 +4,7 @@ import {
 } from 'react'
 import { useI18n } from '@/context/I18nContext'
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick'
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape'
 import { useSessionsImport } from '@/hooks/useSessionsImport'
 import { useSidebarDragDrop } from '@/hooks/useSidebarDragDrop'
 import { uniqueLabelInGroup, ungroupSessionsUnderPath } from '@/store/sessionStore'
@@ -104,6 +105,7 @@ export default memo(function Sidebar(props: SidebarProps) {
   const closeCtx = () => setContextMenu(null)
 
   useDismissOnOutsideClick(!!contextMenu, closeCtx, '.context-menu')
+  useDismissOnEscape(!!contextMenu, closeCtx)
 
   /** 展开所有分组 */
   const expandAll = () => {

@@ -1,6 +1,6 @@
 # ZTerm
 
-简体中文 · **[English](README.md)** · v3.2.6
+简体中文 · **[English](README.md)** · v3.2.7
 
 ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、层级分组、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
 
@@ -96,11 +96,11 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ## 界面预览
 
-![ZTerm 主界面](docs/images/main.png)
+![ZTerm 欢迎界面](docs/images/welcome.zh-CN.png)
 
-![ZTerm 设置](docs/images/setting.png)
+![ZTerm 设置](docs/images/settings.zh-CN.png)
 
-![ZTerm 连接](docs/images/connection.png)
+![ZTerm 连接](docs/images/connection.zh-CN.png)
 
 ---
 

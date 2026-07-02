@@ -1,4 +1,5 @@
 import { useRef, useState, type RefObject } from 'react'
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape'
 import { useI18n } from '@/context/I18nContext'
 import { PrivateKeyField } from '@/components/connect/PrivateKeyField'
 import type { CredentialDialogProps } from '@/types/components'
@@ -16,6 +17,7 @@ export default function CredentialDialog({
   onSaveAndConnect,
   onClose,
 }: CredentialDialogProps) {
+  useDismissOnEscape(true, onClose)
   const { t } = useI18n()
   const [user, setUser] = useState(username || '')
   const [pass, setPass] = useState(password || '')

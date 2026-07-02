@@ -1,4 +1,5 @@
 import { useState, useEffect, Fragment, type Dispatch, type SetStateAction } from 'react'
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape'
 import { I18nProvider, useI18n } from '@/context/I18nContext'
 import { alertIpcFailure } from '@/lib/ipc/formatIpcError'
 import { getZterm } from '@/lib/ipc/getZterm'
@@ -34,6 +35,7 @@ function SettingsDialogContent({
   setForm: Dispatch<SetStateAction<AppSettings>>
 }) {
   const { savedSessions, onUpdateSessions, onUpdatePlaceholders, onClose, onSave, onAppThemePreview, onTerminalFontFamilyPreview } = props
+  useDismissOnEscape(true, onClose)
   const { t, lang: previewLanguage } = useI18n()
   /** 设置标签页列表 */
   const tabs = SETTINGS_TABS.map((tab) => ({ key: tab.key, label: t(tab.labelKey) }))

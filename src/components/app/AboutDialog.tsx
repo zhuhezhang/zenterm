@@ -1,5 +1,6 @@
 import { useI18n } from '@/context/I18nContext'
 import { useAppVersion } from '@/hooks/useAppVersion'
+import { useDismissOnEscape } from '@/hooks/useDismissOnEscape'
 import '@/styles/dialog.css'
 import '@/styles/about.css'
 
@@ -13,6 +14,7 @@ const PROJECT_URLS = [
 export default function AboutDialog({ onClose }: { onClose: () => void }) {
   const { t } = useI18n()
   const version = useAppVersion()
+  useDismissOnEscape(true, onClose)
 
   const openUrl = (url: string) => {
     void window.zterm?.others?.openExternal?.(url)
