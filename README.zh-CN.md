@@ -1,6 +1,6 @@
 # ZTerm
 
-简体中文 · **[English](README.md)** · v3.2.7
+简体中文 · **[English](README.md)** · v3.2.8
 
 ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、层级分组、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
 
@@ -38,6 +38,8 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 | **Serial** | 通过 `serialport` 访问本地串口（波特率、数据位、停止位、校验位）；须从枚举列表中选择端口        |
 
 
+
+
 ### 会话管理
 
 - 保存会话：**标签名**、**分组**（层级路径）、连接参数
@@ -47,6 +49,8 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 - **导出 / 导入**会话列表（JSON envelope，v1）；可在 **设置** 或 **侧边栏** 中导入
 - 连接对话框支持 **直接连接**、**保存并连接**、**仅保存**
 - 连接时可弹出 **凭据输入**；支持 **「保存并连接」** 写入加密库
+
+
 
 ### 终端体验
 
@@ -60,6 +64,8 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 - **标签栏**：新建连接、关闭当前/其他/左侧/右侧/全部、清屏、保存终端输出
 - **会话日志**：关闭 / 缓冲模式（与屏幕一致）/ 流模式（原始下行，去除 ANSI）；日志目录经路径策略校验
 
+
+
 ### 界面与国际化
 
 - 自定义 **无边框标题栏**（最小化 / 最大化 / 关闭）；点击 **⚡ ZTerm** 徽标打开 **关于** 对话框
@@ -67,6 +73,8 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 - **界面语言**：简体中文、English 或自动跟随系统
 - 可拖拽调整 **侧边栏** 宽度（会话列表与 SFTP 树）
 - **设置对话框** 分为「常规」「SSH 与终端」「数据与安全」三个标签页
+
+
 
 ### 安全相关能力
 
@@ -79,58 +87,65 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ---
 
+
+
 ## 键盘快捷键
 
 在 ZTerm 窗口获得焦点时生效。macOS 使用 **Cmd**；Windows / Linux 使用 **Ctrl**。
 
 
-| 快捷键 | 作用 |
-| --- | --- |
-| **Ctrl/Cmd+F** | 聚焦侧边栏 **已保存会话搜索**（若列表已收起则自动展开） |
-| **Ctrl/Cmd+Shift+F** | 打开当前标签页的 **终端内容搜索** |
-| **Enter** / **Shift+Enter** | 下一个 / 上一个匹配（终端搜索栏内） |
-| **Esc** | 关闭终端搜索栏 |
-| **R** | 重连当前终端会话（已断开或初次连接失败时） |
+| 快捷键                         | 作用                             |
+| --------------------------- | ------------------------------ |
+| **Ctrl/Cmd+F**              | 聚焦侧边栏 **已保存会话搜索**（若列表已收起则自动展开） |
+| **Ctrl/Cmd+Shift+F**        | 打开当前标签页的 **终端内容搜索**            |
+| **Enter** / **Shift+Enter** | 下一个 / 上一个匹配（终端搜索栏内）            |
+| **Esc**                     | 关闭终端搜索栏                        |
+| **R**                       | 重连当前终端会话（已断开或初次连接失败时）          |
+
 
 ---
+
+
 
 ## 界面预览
 
-![ZTerm 欢迎界面](docs/images/welcome.zh-CN.png)
-
-![ZTerm 设置](docs/images/settings.zh-CN.png)
-
-![ZTerm 连接](docs/images/connection.zh-CN.png)
+ZTerm 欢迎界面ZTerm 设置ZTerm 连接
 
 ---
+
+
 
 ## 技术栈
 
 
-| 层级         | 技术                                 |
-| ---------- | ---------------------------------- |
-| 桌面壳        | Electron 42                        |
-| 语言         | TypeScript                         |
-| 界面         | React 19、Vite 8                    |
+| 层级         | 技术                                         |
+| ---------- | ------------------------------------------ |
+| 桌面壳        | Electron 42                                |
+| 语言         | TypeScript                                 |
+| 界面         | React 19、Vite 8                            |
 | 终端         | @xterm/xterm 5、Fit / Web Links / Search 插件 |
-| SSH / SFTP | ssh2                               |
-| 串口         | serialport 12                      |
-| 编码         | iconv-lite                         |
-| 测试         | Vitest 3                           |
-| 打包         | electron-builder                   |
+| SSH / SFTP | ssh2                                       |
+| 串口         | serialport 12                              |
+| 编码         | iconv-lite                                 |
+| 测试         | Vitest 3                                   |
+| 打包         | electron-builder                           |
 
 
 ---
+
+
 
 ## 项目结构
 
 源码按 **前端 / 后端 / 共用** 三分：
 
-| 目录 | 角色 | 说明 |
-|------|------|------|
-| **`src/`** | 前端 | React 渲染进程：UI、xterm、localStorage、消费 `window.zterm` |
-| **`electron/`** | 后端 | 主进程 + Worker：IPC、文件/对话框、凭据、ssh2/SFTP、串口 |
-| **`shared/`** | 前后端共用 | IPC 类型、API 契约、算法默认值、与 UI 无关的纯工具 |
+
+| 目录          | 角色    | 说明                                                 |
+| ----------- | ----- | -------------------------------------------------- |
+| `src/`      | 前端    | React 渲染进程：UI、xterm、localStorage、消费 `window.zterm` |
+| `electron/` | 后端    | 主进程 + Worker：IPC、文件/对话框、凭据、ssh2/SFTP、串口            |
+| `shared/`   | 前后端共用 | IPC 类型、API 契约、算法默认值、与 UI 无关的纯工具                    |
+
 
 ```
 zterm/
@@ -184,6 +199,8 @@ shared/* ── 前后端共用（IPC 类型、算法、编码、错误码等）
 
 ---
 
+
+
 ## 环境要求
 
 - **Node.js** 18+（建议 LTS；CI 使用 Node 22）
@@ -194,6 +211,8 @@ shared/* ── 前后端共用（IPC 类型、算法、编码、错误码等）
   - **Linux**：`build-essential`、`libudev-dev`
 
 ---
+
+
 
 ## 快速开始
 
@@ -212,14 +231,18 @@ npm run dev
 
 将启动 **Vite**（端口 **5173**）与 **Electron** 开发链：`electron/` 经 `tsc -w` 编译到 `dist-electron/`，nodemon 监视产物并重启主进程；`src/` 由 Vite 热更新。
 
-| 脚本 | 说明 |
-| --- | --- |
-| `npm run dev:silent` | 同 `dev`，屏蔽 Electron 安全警告 |
-| `npm run dev:renderer` | 仅 Vite |
+
+| 脚本                     | 说明                            |
+| ---------------------- | ----------------------------- |
+| `npm run dev:silent`   | 同 `dev`，屏蔽 Electron 安全警告      |
+| `npm run dev:renderer` | 仅 Vite                        |
 | `npm run dev:electron` | 仅 Electron（需 Vite 已在 5173 运行） |
-| `npm run build:main` | 仅编译后端 → `dist-electron/` |
+| `npm run build:main`   | 仅编译后端 → `dist-electron/`      |
+
 
 ---
+
+
 
 ## 开发与质量
 
@@ -231,12 +254,16 @@ npm run lint
 npm run test        # Vitest，tests/**/*.test.ts
 ```
 
-| 脚本 | 说明 |
-| --- | --- |
-| `npm run test:watch` | 监听模式跑测试 |
+
+| 脚本                      | 说明                               |
+| ----------------------- | -------------------------------- |
+| `npm run test:watch`    | 监听模式跑测试                          |
 | `npm run test:coverage` | 覆盖率（src/lib、shared、electron/lib） |
 
+
 ---
+
+
 
 ## 构建与发布
 
@@ -249,21 +276,24 @@ npm run build:mac:universal
 
 **产物文件名**（版本与架构以 `package.json` 为准；以下为 x64 示例）：
 
-| 平台 | `release/` 中的文件 |
-| --- | --- |
+
+| 平台      | `release/` 中的文件                                                                                                                  |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Windows | `ZTerm-{version}-win-{arch}-Setup.exe`（NSIS 安装包）、`ZTerm-{version}-win-{arch}-Portable.exe`（便携版）、`ZTerm-{version}-win-{arch}.zip` |
-| Linux | `ZTerm-{version}-linux-{arch}.AppImage`、`.deb`、`.rpm`、`.tar.gz` |
-| macOS | `ZTerm-{version}-mac-{arch}.dmg`、`ZTerm-{version}-mac-{arch}.zip` |
+| Linux   | `ZTerm-{version}-linux-{arch}.AppImage`、`.deb`、`.rpm`、`.tar.gz`                                                                  |
+| macOS   | `ZTerm-{version}-mac-{arch}.dmg`、`ZTerm-{version}-mac-{arch}.zip`                                                                |
+
 
 NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会互相覆盖。
 
 **GitHub Actions**（见 `.github/workflows/README.md`）：
 
-- **`ci.yml`**：push/PR 自动跑 typecheck、lint、test
-- **`release.yml`**：手动触发打包；可选 `github_release_all` 一次性打 Win+Linux+macOS 并发布 GitHub Release
-
+- `ci.yml`：push/PR 自动跑 typecheck、lint、test
+- `release.yml`：手动触发打包；可选 `github_release_all` 一次性打 Win+Linux+macOS 并发布 GitHub Release
 
 ---
+
+
 
 ## 导入 / 导出格式
 
@@ -285,6 +315,8 @@ NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会�
 
 ---
 
+
+
 ## 安全设计
 
 1. **进程隔离**：网络与文件 IO 在主进程及 Worker 中执行；渲染进程仅通过 `preload.cjs` 白名单 IPC 调用。
@@ -298,20 +330,22 @@ NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会�
 
 ---
 
+
+
 ## 数据与存储位置
 
 
-| 数据          | 位置                                              |
-| ----------- | ----------------------------------------------- |
-| 已保存会话（不含密钥） | `localStorage` → `zterm_saved_sessions`         |
-| 空分组占位符      | `localStorage` → `__zterm_group_placeholders__` |
-| 应用设置        | `localStorage` → `zterm_settings`               |
-| SSH 已知主机    | `{userData}/zterm-known-hosts.json`（格式化 JSON，全量写入） |
+| 数据          | 位置                                                           |
+| ----------- | ------------------------------------------------------------ |
+| 已保存会话（不含密钥） | `localStorage` → `zterm_saved_sessions`                      |
+| 空分组占位符      | `localStorage` → `__zterm_group_placeholders__`              |
+| 应用设置        | `localStorage` → `zterm_settings`                            |
+| SSH 已知主机    | `{userData}/zterm-known-hosts.json`（格式化 JSON，全量写入）           |
 | 加密凭据        | `{userData}/zterm-credentials-vault.json` + 系统 `safeStorage` |
-| 会话日志        | 用户配置目录或 `下载/zterm-session-log/`                 |
+| 会话日志        | 用户配置目录或 `下载/zterm-session-log/`                              |
+
 
 上述 localStorage 由 Chromium 管理；`zterm-known-hosts.json` 与 `zterm-credentials-vault.json` 仅在对应操作（信任主机、同步凭据等）时重写整文件。
-
 
 典型 **userData** 路径：
 
@@ -321,25 +355,29 @@ NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会�
 
 ---
 
+
+
 ## 常见问题
 
 
-| 现象                                                                                                                 | 处理建议                                                                                                                                                                                                   |
-| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `npm install` 在 `serialport` 处失败                                                                                   | 安装对应平台编译工具；Linux 需 `libudev-dev`                                                                                                                                                                       |
-| SSH 算法协商失败                                                                                                         | 打开 **设置 → SSH 与终端 → 算法**，勾选服务器所需的遗留 KEX/加密                                                                                                                                                             |
-| 中文乱码                                                                                                               | 将会话编码设为 **GBK** 或 **GB18030**                                                                                                                                                                          |
-| SFTP 提示路径不允许                                                                                                       | 选择下载/文档/用户主目录下的路径，勿选系统目录                                                                                                                                                                               |
-| 串口列表为空                                                                                                             | 点击 **刷新**；Linux 用户需加入 `dialout` 组                                                                                                                                                                      |
-| 每次连接都提示主机密钥                                                                                                        | 检查 `userData` 是否可写；避免只读配置环境运行                                                                                                                                                                          |
-| 导入失败 / 文件类型错误                                                                                                      | 确认使用正确的导出文件（会话 vs 设置）；单文件不超过 8 MB                                                                                                                                                                      |
-| 修改 `electron/` 后未生效                                                                                                 | 确认 `npm run dev` 在跑且 `tsc -w` 有重编译；或对 nodemon 输入 `rs`；或 `npm run build:main`                                                                                                                                  |
-| Windows 便携版 `ZTerm-x.x.x-win-x64-Portable.exe` 在资源管理器中图标异常，但右键 **属性** 里图标正常；`release\win-unpacked\ZTerm.exe` 与 `ZTerm-x.x.x-win-x64-Setup.exe` 显示正常 | 图标已写入 exe，多为 Windows Shell **图标缓存**（反复用同名覆盖打包时常见）。将文件复制并改名为 `ZTerm-test.exe` 可快速验证；若改名后正常，结束并重启 `explorer.exe`，删除 `%LocalAppData%\Microsoft\Windows\Explorer\` 下的 `iconcache`*、`thumbcache`* 后再打开资源管理器 |
-| **Ctrl/Cmd+Shift+F** 无法打开终端内容搜索 | 若与输入法「简体/繁体切换」等快捷键相同，焦点在终端内时会被输入法优先拦截。可关闭或修改输入法的对应快捷键，或在标签页上 **右键 → 搜索终端内容** 打开搜索框 |
-| `npm run build:mac` 等在 Electron 42 下因 `cpu-features` / `nan` 编译失败 | `package.json` 的 `build.npmRebuild` 已设为 `false`，跳过打包时的原生模块重编译。`serialport` 使用 N-API 预编译包；`cpu-features` 为 `ssh2` 可选依赖，不影响 SSH 功能。待 [nodejs/nan#1015](https://github.com/nodejs/nan/pull/1015) 发布后，可恢复为 `true` 以启用 ssh2 原生加速 |
+| 现象                                                                                                                                                  | 处理建议                                                                                                                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm install` 在 `serialport` 处失败                                                                                                                    | 安装对应平台编译工具；Linux 需 `libudev-dev`                                                                                                                                                                                            |
+| SSH 算法协商失败                                                                                                                                          | 打开 **设置 → SSH 与终端 → 算法**，勾选服务器所需的遗留 KEX/加密                                                                                                                                                                                  |
+| 中文乱码                                                                                                                                                | 将会话编码设为 **GBK** 或 **GB18030**                                                                                                                                                                                               |
+| SFTP 提示路径不允许                                                                                                                                        | 选择下载/文档/用户主目录下的路径，勿选系统目录                                                                                                                                                                                                    |
+| 串口列表为空                                                                                                                                              | 点击 **刷新**；Linux 用户需加入 `dialout` 组                                                                                                                                                                                           |
+| 每次连接都提示主机密钥                                                                                                                                         | 检查 `userData` 是否可写；避免只读配置环境运行                                                                                                                                                                                               |
+| 导入失败 / 文件类型错误                                                                                                                                       | 确认使用正确的导出文件（会话 vs 设置）；单文件不超过 8 MB                                                                                                                                                                                           |
+| 修改 `electron/` 后未生效                                                                                                                                 | 确认 `npm run dev` 在跑且 `tsc -w` 有重编译；或对 nodemon 输入 `rs`；或 `npm run build:main`                                                                                                                                                |
+| Windows 便携版 `ZTerm-x.x.x-win-x64-Portable.exe` 在资源管理器中图标异常，但右键 **属性** 里图标正常；`release\win-unpacked\ZTerm.exe` 与 `ZTerm-x.x.x-win-x64-Setup.exe` 显示正常 | 图标已写入 exe，多为 Windows Shell **图标缓存**（反复用同名覆盖打包时常见）。将文件复制并改名为 `ZTerm-test.exe` 可快速验证；若改名后正常，结束并重启 `explorer.exe`，删除 `%LocalAppData%\Microsoft\Windows\Explorer\` 下的 `iconcache`*、*`thumbcache` 后再打开资源管理器                      |
+| **Ctrl/Cmd+Shift+F** 无法打开终端内容搜索                                                                                                                     | 若与输入法「简体/繁体切换」等快捷键相同，焦点在终端内时会被输入法优先拦截。可关闭或修改输入法的对应快捷键，或在标签页上 **右键 → 搜索终端内容** 打开搜索框                                                                                                                                          |
+| `npm run build:mac` 等在 Electron 42 下因 `cpu-features` / `nan` 编译失败                                                                                   | `package.json` 的 `build.npmRebuild` 已设为 `false`，跳过打包时的原生模块重编译。`serialport` 使用 N-API 预编译包；`cpu-features` 为 `ssh2` 可选依赖，不影响 SSH 功能。待 [nodejs/nan#1015](https://github.com/nodejs/nan/pull/1015) 发布后，可恢复为 `true` 以启用 ssh2 原生加速 |
 
 
 ---
+
+
 
 ## 许可证
 

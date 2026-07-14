@@ -15,6 +15,7 @@ import { formatThrownIpcError } from '@/lib/ipc/formatIpcError'
 import { getXtermTheme } from '../../theme/appTheme'
 import { pickSerialConnectConfig, pickSshConnectConfig, pickTelnetConnectConfig } from '../session/connectPayload'
 import { applyHighlightRules, nextLineBreakEndIndex } from './terminalHighlight'
+import { attachMissingControlKeys } from './missingControlKeys'
 import type { ActiveSession, SessionType } from '../../types/session'
 import type { AppSettings } from '../../types/settings'
 import type { SessionLogHandle } from '../../types/session'
@@ -401,6 +402,7 @@ export function mountTerminal(
   term.loadAddon(fitAddon)
   term.loadAddon(new WebLinksAddon())  // WebLinksAddon 负责将终端中的 URL 自动识别为可点击链接
   term.open(container)  // 将 xterm 实例挂载到 container 指向的 DOM 元素上
+  attachMissingControlKeys(term)  // Ctrl+Shift+6（Ctrl+^）→ RS，xterm 5.5 默认不发送
   fitTerminal(fitAddon)  // 初始调整终端尺寸以适应容器大小
   const disposeSettings = applyTerminalSettings(term, settingsRef)
   return { term, fitAddon, disposeSettings }
