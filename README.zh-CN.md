@@ -4,6 +4,8 @@
 
 ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、层级分组、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
 
+### 注：该项目自2026年7月27日起已不再维护，请移步至用rust重写的新项目**https://github.com/zhuhezhang/zterm** 或者 **https://gitee.com/zhuhezhang/zterm**
+
 ---
 
 ## 目录
@@ -38,8 +40,6 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 | **Serial** | 通过 `serialport` 访问本地串口（波特率、数据位、停止位、校验位）；须从枚举列表中选择端口        |
 
 
-
-
 ### 会话管理
 
 - 保存会话：**标签名**、**分组**（层级路径）、连接参数
@@ -49,8 +49,6 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 - **导出 / 导入**会话列表（JSON envelope，v1）；可在 **设置** 或 **侧边栏** 中导入
 - 连接对话框支持 **直接连接**、**保存并连接**、**仅保存**
 - 连接时可弹出 **凭据输入**；支持 **「保存并连接」** 写入加密库
-
-
 
 ### 终端体验
 
@@ -64,8 +62,6 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 - **标签栏**：新建连接、关闭当前/其他/左侧/右侧/全部、清屏、保存终端输出
 - **会话日志**：关闭 / 缓冲模式（与屏幕一致）/ 流模式（原始下行，去除 ANSI）；日志目录经路径策略校验
 
-
-
 ### 界面与国际化
 
 - 自定义 **无边框标题栏**（最小化 / 最大化 / 关闭）；点击 **⚡ ZTerm** 徽标打开 **关于** 对话框
@@ -73,8 +69,6 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 - **界面语言**：简体中文、English 或自动跟随系统
 - 可拖拽调整 **侧边栏** 宽度（会话列表与 SFTP 树）
 - **设置对话框** 分为「常规」「SSH 与终端」「数据与安全」三个标签页
-
-
 
 ### 安全相关能力
 
@@ -86,8 +80,6 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 - 日志与 SFTP 的 **本地路径策略**：用户主目录、文档、下载、桌面、音乐/图片/视频、userData；Windows 上另允许非系统盘根目录（如 `D:\`）
 
 ---
-
-
 
 ## 键盘快捷键
 
@@ -102,18 +94,17 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 | **Esc**                     | 关闭终端搜索栏                        |
 | **R**                       | 重连当前终端会话（已断开或初次连接失败时）          |
 
-
 ---
-
-
 
 ## 界面预览
 
-ZTerm 欢迎界面ZTerm 设置ZTerm 连接
+![ZTerm 欢迎界面](docs/images/welcome.png)
+
+![ZTerm 设置](docs/images/settings.png)
+
+![ZTerm 连接](docs/images/connection.png)
 
 ---
-
-
 
 ## 技术栈
 
@@ -133,19 +124,15 @@ ZTerm 欢迎界面ZTerm 设置ZTerm 连接
 
 ---
 
-
-
 ## 项目结构
 
 源码按 **前端 / 后端 / 共用** 三分：
-
 
 | 目录          | 角色    | 说明                                                 |
 | ----------- | ----- | -------------------------------------------------- |
 | `src/`      | 前端    | React 渲染进程：UI、xterm、localStorage、消费 `window.zterm` |
 | `electron/` | 后端    | 主进程 + Worker：IPC、文件/对话框、凭据、ssh2/SFTP、串口            |
 | `shared/`   | 前后端共用 | IPC 类型、API 契约、算法默认值、与 UI 无关的纯工具                    |
-
 
 ```
 zterm/
@@ -199,8 +186,6 @@ shared/* ── 前后端共用（IPC 类型、算法、编码、错误码等）
 
 ---
 
-
-
 ## 环境要求
 
 - **Node.js** 18+（建议 LTS；CI 使用 Node 22）
@@ -212,17 +197,15 @@ shared/* ── 前后端共用（IPC 类型、算法、编码、错误码等）
 
 ---
 
-
-
 ## 快速开始
 
 ```bash
 # GitHub
-git clone https://github.com/zhuhezhang/zterm.git
+git clone https://github.com/zhuhezhang/zterm_electron_version.git
 cd zterm
 
 # 或 Gitee
-# git clone https://gitee.com/zhuhezhang/zterm.git
+# git clone https://gitee.com/zhuhezhang/zterm_electron_version.git
 # cd zterm
 
 npm install
@@ -231,7 +214,6 @@ npm run dev
 
 将启动 **Vite**（端口 **5173**）与 **Electron** 开发链：`electron/` 经 `tsc -w` 编译到 `dist-electron/`，nodemon 监视产物并重启主进程；`src/` 由 Vite 热更新。
 
-
 | 脚本                     | 说明                            |
 | ---------------------- | ----------------------------- |
 | `npm run dev:silent`   | 同 `dev`，屏蔽 Electron 安全警告      |
@@ -239,10 +221,7 @@ npm run dev
 | `npm run dev:electron` | 仅 Electron（需 Vite 已在 5173 运行） |
 | `npm run build:main`   | 仅编译后端 → `dist-electron/`      |
 
-
 ---
-
-
 
 ## 开发与质量
 
@@ -254,16 +233,12 @@ npm run lint
 npm run test        # Vitest，tests/**/*.test.ts
 ```
 
-
 | 脚本                      | 说明                               |
 | ----------------------- | -------------------------------- |
 | `npm run test:watch`    | 监听模式跑测试                          |
 | `npm run test:coverage` | 覆盖率（src/lib、shared、electron/lib） |
 
-
 ---
-
-
 
 ## 构建与发布
 
@@ -276,13 +251,11 @@ npm run build:mac:universal
 
 **产物文件名**（版本与架构以 `package.json` 为准；以下为 x64 示例）：
 
-
 | 平台      | `release/` 中的文件                                                                                                                  |
 | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Windows | `ZTerm-{version}-win-{arch}-Setup.exe`（NSIS 安装包）、`ZTerm-{version}-win-{arch}-Portable.exe`（便携版）、`ZTerm-{version}-win-{arch}.zip` |
 | Linux   | `ZTerm-{version}-linux-{arch}.AppImage`、`.deb`、`.rpm`、`.tar.gz`                                                                  |
 | macOS   | `ZTerm-{version}-mac-{arch}.dmg`、`ZTerm-{version}-mac-{arch}.zip`                                                                |
-
 
 NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会互相覆盖。
 
@@ -291,9 +264,8 @@ NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会�
 - `ci.yml`：push/PR 自动跑 typecheck、lint、test
 - `release.yml`：手动触发打包；可选 `github_release_all` 一次性打 Win+Linux+macOS 并发布 GitHub Release
 
+
 ---
-
-
 
 ## 导入 / 导出格式
 
@@ -315,8 +287,6 @@ NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会�
 
 ---
 
-
-
 ## 安全设计
 
 1. **进程隔离**：网络与文件 IO 在主进程及 Worker 中执行；渲染进程仅通过 `preload.cjs` 白名单 IPC 调用。
@@ -330,8 +300,6 @@ NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会�
 
 ---
 
-
-
 ## 数据与存储位置
 
 
@@ -344,8 +312,8 @@ NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会�
 | 加密凭据        | `{userData}/zterm-credentials-vault.json` + 系统 `safeStorage` |
 | 会话日志        | 用户配置目录或 `下载/zterm-session-log/`                              |
 
-
 上述 localStorage 由 Chromium 管理；`zterm-known-hosts.json` 与 `zterm-credentials-vault.json` 仅在对应操作（信任主机、同步凭据等）时重写整文件。
+
 
 典型 **userData** 路径：
 
@@ -354,8 +322,6 @@ NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会�
 - **Linux**：`~/.config/zterm/`
 
 ---
-
-
 
 ## 常见问题
 
@@ -376,8 +342,6 @@ NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会�
 
 
 ---
-
-
 
 ## 许可证
 
