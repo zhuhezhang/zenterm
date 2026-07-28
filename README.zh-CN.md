@@ -201,11 +201,11 @@ shared/* ── 前后端共用（IPC 类型、算法、编码、错误码等）
 
 ```bash
 # GitHub
-git clone https://github.com/zhuhezhang/zterm_electron_version.git
+git clone https://github.com/zhuhezhang/zterm-v1.git
 cd zterm
 
 # 或 Gitee
-# git clone https://gitee.com/zhuhezhang/zterm_electron_version.git
+# git clone https://gitee.com/zhuhezhang/zterm-v1.git
 # cd zterm
 
 npm install

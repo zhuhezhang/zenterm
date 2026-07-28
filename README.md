@@ -201,11 +201,11 @@ shared/* ── used by frontend and backend (IPC types, algorithms, encodings, 
 
 ```bash
 # GitHub
-git clone https://github.com/zhuhezhang/zterm_electron_version.git
+git clone https://github.com/zhuhezhang/zterm-v1.git
 cd zterm
 
 # or Gitee
-# git clone https://gitee.com/zhuhezhang/zterm_electron_version.git
+# git clone https://gitee.com/zhuhezhang/zterm-v1.git
 # cd zterm
 
 npm install

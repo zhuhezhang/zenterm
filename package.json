@@ -3,8 +3,8 @@
   "private": true,
   "version": "3.2.8",
   "description": "A cross-platform terminal emulator built with Electron, React, and xterm.js, supporting SSH, SFTP, serial, and Telnet",
-  "homepage": "https://github.com/zhuhezhang/zterm_electron_version",
-  "homepageBackup": "https://gitee.com/zhuhezhang/zterm_electron_version",
+  "homepage": "https://github.com/zhuhezhang/zterm-v1",
+  "homepageBackup": "https://gitee.com/zhuhezhang/zterm-v1",
   "type": "module",
   "desktopName": "ZTerm.desktop",
   "main": "dist-electron/electron/main.js",
@@ -136,8 +136,8 @@
   "author": {
     "name": "zhuhezhang",
     "email": "zhuhezhang@qq.com",
-    "url": "https://github.com/zhuhezhang/zterm_electron_version",
-    "urlBackup": "https://gitee.com/zhuhezhang/zterm_electron_version"
+    "url": "https://github.com/zhuhezhang/zterm-v1",
+    "urlBackup": "https://gitee.com/zhuhezhang/zterm-v1"
   },
   "license": "MIT"
 }
