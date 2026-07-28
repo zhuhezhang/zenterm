@@ -4,8 +4,6 @@
 
 ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
 
-### Note: This project is no longer maintained as of July 27, 2026. Please move to the new Rust rewrite project **https://github.com/zhuhezhang/zterm** or **https://gitee.com/zhuhezhang/zterm**
-
 ---
 
 ## Table of Contents

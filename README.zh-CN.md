@@ -4,8 +4,6 @@
 
 ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、层级分组、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
 
-### 注：该项目自2026年7月27日起已不再维护，请移步至用rust重写的新项目**https://github.com/zhuhezhang/zterm** 或者 **https://gitee.com/zhuhezhang/zterm**
-
 ---
 
 ## 目录
