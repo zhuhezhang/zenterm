@@ -14,6 +14,7 @@
   min-width: 0;
   font-size: 12px;
   padding: 5px 8px;
+  height: 29px;
   background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -52,7 +53,7 @@
   flex-shrink: 0;
 }
 .settings-path-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
-.settings-path-btn.reset { padding: 5px 8px; font-size: 14px; height: 26.67px; }
+.settings-path-btn.reset { padding: 5px 8px; font-size: 14px; height: 29px; }
 .settings-path-btn.reset:hover { color: var(--accent); border-color: var(--accent); }
 
 .settings-path-row.is-log-path-disabled {
@@ -67,6 +68,7 @@
 
 .settings-select {
   width: auto;
+  height: 29px;
   padding: 5px 8px;
   border-radius: var(--radius-sm);
   font-size: 12px;
@@ -89,6 +91,7 @@
   width: 7.5rem;
   min-width: 0;
   padding: 5px 8px;
+  height: 29px;
   border-radius: var(--radius-sm);
   font-size: 12px;
   font-weight: 600;
@@ -432,7 +435,8 @@
 }
 
 .settings-algo-btn {
-  min-width: 32px;
+  width: 29px;
+  height: 29px;
   padding: 6px 8px;
   border-radius: 8px;
   border: 1px solid var(--border);
