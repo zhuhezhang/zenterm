@@ -94,7 +94,7 @@ function ConnectDialog({
 
   /** 刷新串口列表，用于串口连接时选择串口设备 */
   const refreshSerialPorts = useCallback(() => {  // useCallback: 记忆化回调函数，避免重复创建回调函数，提高性能。当依赖项变化时，回调函数会被重新创建并记忆化
-    window.zterm?.serial.listPorts().then((res) => {
+    window.zenterm?.serial.listPorts().then((res) => {
       setPorts(ipcPortsFromResponse(res) as { path?: string }[])
     })
   }, [])

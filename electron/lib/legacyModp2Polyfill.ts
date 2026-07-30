@@ -1,7 +1,7 @@
 /**
  * 兼容旧设备使用的diffie-hellman-group1-sha1算法（会报错Unknown DH group）。
  * 
- * Unknown DH group 不是服务端拒绝算法，而是 ZTerm（Electron 应用）本地 crypto 层不支持 modp2 这个 DH 参数组。
+ * Unknown DH group 不是服务端拒绝算法，而是 ZenTerm（Electron 应用）本地 crypto 层不支持 modp2 这个 DH 参数组。
  * 调用链如下：
  * 1.协商选中 diffie-hellman-group1-sha1；
  * 2.ssh2 在密钥交换时调用 Node.js 的 crypto.createDiffieHellmanGroup('modp2')；

@@ -11,7 +11,7 @@ import { collectResolvedRoots } from '../lib/localPathPolicy.js'
 import { prepareSshConnectConfig } from '../lib/prepareSshConnectConfig.js'
 import { assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots } from '../lib/sftpLocalPathRoots.js'
 import type { MainWindowGetter, SftpSessionState } from '../types/handlers.js'
-import type { SshConnectConfig } from '../../shared/zterm-api.js'
+import type { SshConnectConfig } from '../../shared/zenterm-api.js'
 import type { SftpWorkerCmdPayload, SftpWorkerCmdResultMessage, SftpWorkerOutboundMessage } from '../types/workerMessages.js'
 
 /** 存储每个 SFTP 会话对应的 Worker 和会话状态 */

@@ -49,7 +49,7 @@ describe('resolvePrivateKeyMaterial', () => {
   it('expands ~ in path', () => {
     const realHome = os.homedir()
     const sshDir = path.join(realHome, '.ssh')
-    const file = path.join(sshDir, `zterm-resolve-test-${Date.now()}`)
+    const file = path.join(sshDir, `zenterm-resolve-test-${Date.now()}`)
     try {
       fs.mkdirSync(sshDir, { recursive: true })
       fs.writeFileSync(file, SAMPLE_PEM, 'utf8')

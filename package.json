@@ -1,12 +1,12 @@
 {
-  "name": "zterm",
+  "name": "zenterm",
   "private": true,
   "version": "3.2.9",
   "description": "A cross-platform terminal emulator built with Electron, React, and xterm.js, supporting SSH, SFTP, serial, and Telnet",
-  "homepage": "https://github.com/zhuhezhang/zterm-v1",
-  "homepageBackup": "https://gitee.com/zhuhezhang/zterm-v1",
+  "homepage": "https://github.com/zhuhezhang/zenterm",
+  "homepageBackup": "https://gitee.com/zhuhezhang/zenterm",
   "type": "module",
-  "desktopName": "ZTerm.desktop",
+  "desktopName": "ZenTerm.desktop",
   "main": "dist-electron/electron/main.js",
   "scripts": {
     "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
@@ -85,8 +85,8 @@
     "ssh2@1.17.0": true
   },
   "build": {
-    "appId": "per.zhuhezhang.zterm",
-    "productName": "ZTerm",
+    "appId": "per.zhuhezhang.zenterm",
+    "productName": "ZenTerm",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "icon": "build/icon.png",
     "directories": {"output": "release", "buildResources": "build"},
@@ -136,8 +136,8 @@
   "author": {
     "name": "zhuhezhang",
     "email": "zhuhezhang@qq.com",
-    "url": "https://github.com/zhuhezhang/zterm-v1",
-    "urlBackup": "https://gitee.com/zhuhezhang/zterm-v1"
+    "url": "https://github.com/zhuhezhang/zenterm",
+    "urlBackup": "https://gitee.com/zhuhezhang/zenterm"
   },
   "license": "MIT"
 }

@@ -1,4 +1,4 @@
-import type { SshConnectConfig } from '../../shared/zterm-api.js'
+import type { SshConnectConfig } from '../../shared/zenterm-api.js'
 import { resolvePrivateKeyMaterial } from './resolvePrivateKeyMaterial.js'
 
 /**

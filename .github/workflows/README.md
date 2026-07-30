@@ -103,9 +103,9 @@ npm run test
 
 | Job | Runner | Artifact 名称 | 典型文件（版本号以 `package.json` 为准） |
 |-----|--------|---------------|------------------------------------------|
-| `build-windows` | `windows-latest` | `zterm-windows-x64` / `zterm-windows-ia32` | `ZTerm-x.x.x-win-x64-Setup.exe`、`ZTerm-x.x.x-win-x64-Portable.exe`、`ZTerm-x.x.x-win-x64.zip` |
-| `build-linux` | `ubuntu-latest` | `zterm-linux-x64` | `.AppImage`、`.deb`、`.tar.gz` |
-| `build-mac` | `macos-latest` | `zterm-macos-{arch}` | `.dmg`、`-mac.zip` |
+| `build-windows` | `windows-latest` | `zenterm-windows-x64` / `zenterm-windows-ia32` | `ZenTerm-x.x.x-win-x64-Setup.exe`、`ZenTerm-x.x.x-win-x64-Portable.exe`、`ZenTerm-x.x.x-win-x64.zip` |
+| `build-linux` | `ubuntu-latest` | `zenterm-linux-x64` | `.AppImage`、`.deb`、`.tar.gz` |
+| `build-mac` | `macos-latest` | `zenterm-macos-{arch}` | `.dmg`、`-mac.zip` |
 | `publish-release` | `ubuntu-latest` | — | 仅 `github_release_all` 模式；创建 GitHub Release 并附加全部安装包 |
 
 `artifacts_only` 模式：在 workflow run 页面底部 **Artifacts** 下载。  
@@ -119,7 +119,7 @@ npm run test
 4. 设置：
    - **mode** = `github_release_all`
    - **release_tag** = `v3.2.1`
-   - **release_name** = `ZTerm 3.2.1`（可选）
+   - **release_name** = `ZenTerm 3.2.1`（可选）
 5. 等待约 20–40 分钟（三平台并行），完成后在 **Releases** 查看
 
 ### 注意事项

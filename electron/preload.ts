@@ -1,6 +1,6 @@
-/** Preload模块：将 window.zterm API 契约挂载到 window.zterm（契约见 shared/zterm-api.d.ts） */
+/** Preload模块：将 window.zenterm API 契约挂载到 window.zenterm（契约见 shared/zenterm-api.d.ts） */
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import type { ZTermApi, ZTermProgress, VaultSecretPartial } from '../shared/zterm-api.js'
+import type { ZenTermApi, ZenTermProgress, VaultSecretPartial } from '../shared/zenterm-api.js'
 
 /** 
  * SSH / Telnet / Serial 共用的流式会话 IPC 桥接
@@ -11,7 +11,7 @@ function createStreamSessionBridge(prefix: 'ssh' | 'telnet' | 'serial') {
   const outputChannel = `${prefix}:output`
   const closedChannel = `${prefix}:closed`
   return {
-    connect: (id: string, config: Parameters<ZTermApi[typeof prefix]['connect']>[1]) => ipcRenderer.invoke(`${prefix}:connect`, id, config),
+    connect: (id: string, config: Parameters<ZenTermApi[typeof prefix]['connect']>[1]) => ipcRenderer.invoke(`${prefix}:connect`, id, config),
     disconnect: (id: string) => ipcRenderer.invoke(`${prefix}:disconnect`, id),
     sendData: (id: string, data: string, encoding?: string) => ipcRenderer.send(`${prefix}:data`, id, data, encoding || 'utf-8'),
     onData: (id: string, cb: (data: string) => void) => {
@@ -31,7 +31,7 @@ function createStreamSessionBridge(prefix: 'ssh' | 'telnet' | 'serial') {
   }
 }
 
-const ztermApi = {
+const zentermApi = {
   window: {
     minimize: () => ipcRenderer.send('window:minimize'),
     maximize: () => ipcRenderer.send('window:maximize'),
@@ -52,7 +52,7 @@ const ztermApi = {
   },
 
   sftp: {
-    connect: (id: string, config: Parameters<ZTermApi['sftp']['connect']>[1]) => ipcRenderer.invoke('sftp:connect', id, config),
+    connect: (id: string, config: Parameters<ZenTermApi['sftp']['connect']>[1]) => ipcRenderer.invoke('sftp:connect', id, config),
     disconnect: (id: string) => ipcRenderer.invoke('sftp:disconnect', id),
     list: (id: string, remotePath: string) => ipcRenderer.invoke('sftp:list', id, remotePath),
     download: (id: string, remotePath: string, localPath: string) => ipcRenderer.invoke('sftp:download', id, remotePath, localPath),
@@ -61,8 +61,8 @@ const ztermApi = {
     mkdir: (id: string, remotePath: string) => ipcRenderer.invoke('sftp:mkdir', id, remotePath),
     delete: (id: string, remotePath: string) => ipcRenderer.invoke('sftp:delete', id, remotePath),
     rename: (id: string, oldPath: string, newPath: string) => ipcRenderer.invoke('sftp:rename', id, oldPath, newPath),
-    onProgress: (id: string, cb: (progress: ZTermProgress) => void) => {
-      const handler = (_: unknown, sessionId: string, progress: ZTermProgress) => {
+    onProgress: (id: string, cb: (progress: ZenTermProgress) => void) => {
+      const handler = (_: unknown, sessionId: string, progress: ZenTermProgress) => {
         if (sessionId === id) cb(progress)
       }
       ipcRenderer.on('sftp:progress', handler)
@@ -118,6 +118,6 @@ const ztermApi = {
     clearKnownHosts: () => ipcRenderer.invoke('app:clearKnownHosts'),
     clearSessionHostKeyCache: () => ipcRenderer.invoke('app:clearSessionHostKeyCache'),
   },
-} satisfies ZTermApi  // satisfies 在这里是类型断言，将 ztermApi 断言为 ZTermApi 类型
+} satisfies ZenTermApi  // satisfies 在这里是类型断言，将 zentermApi 断言为 ZenTermApi 类型
 
-contextBridge.exposeInMainWorld('zterm', ztermApi)
+contextBridge.exposeInMainWorld('zenterm', zentermApi)

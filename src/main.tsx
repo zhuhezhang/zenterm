@@ -35,13 +35,13 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 }
 
 // macOS 不触发 zoom-changed；Cmd+滚轮经 IPC 调整 zoom level（Win/Linux 由 Chromium zoom-changed + Ctrl+滚轮）
-if (typeof window.zterm !== 'undefined' && /Mac/i.test(navigator.userAgent)) {
+if (typeof window.zenterm !== 'undefined' && /Mac/i.test(navigator.userAgent)) {
   window.addEventListener(
     'wheel',
     (e) => {
       if (!e.metaKey) return
       e.preventDefault()
-      window.zterm!.window.zoomWheelStep(e.deltaY)
+      window.zenterm!.window.zoomWheelStep(e.deltaY)
     },
     { passive: false, capture: true },
   )

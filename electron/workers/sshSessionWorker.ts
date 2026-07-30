@@ -5,7 +5,7 @@ import { Client } from 'ssh2'
 import type { Duplex } from 'node:stream'
 import { bufferToBinaryWire } from '../lib/terminalEncodingService.js'
 import { buildSshConnectConfig } from '../lib/sshConnectConfig.js'
-import type { SshConnectConfig } from '../../shared/zterm-api.js'
+import type { SshConnectConfig } from '../../shared/zenterm-api.js'
 import type { SshWorkerInboundMessage } from '../types/workerMessages.js'
 
 if (!parentPort) throw new Error('worker_threads parentPort missing')

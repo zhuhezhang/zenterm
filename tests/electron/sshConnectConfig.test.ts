@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_ALGORITHM_SELECTION } from '../../shared/sshAlgorithmDefaults'
 import { buildSshConnectConfig } from '../../electron/lib/sshConnectConfig'
-import type { SshConnectConfig } from '../../shared/zterm-api'
+import type { SshConnectConfig } from '../../shared/zenterm-api'
 
 const hostVerifier = vi.fn()
 

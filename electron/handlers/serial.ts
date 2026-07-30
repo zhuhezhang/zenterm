@@ -11,7 +11,7 @@ import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
 import { translateMain } from '../i18n/translateMain.js'
 import type { MainWindowGetter } from '../types/handlers.js'
 import { isSerialPathInEnumeratedList } from '../../shared/isSerialPathInEnumeratedList.js'
-import type { SerialConnectConfig } from '../../shared/zterm-api.js'
+import type { SerialConnectConfig } from '../../shared/zenterm-api.js'
 
 let SerialPort: typeof SerialPortClass | undefined
 try {

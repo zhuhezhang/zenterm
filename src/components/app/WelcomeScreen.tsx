@@ -11,7 +11,7 @@ export default function WelcomeScreen({ onNewSession }: WelcomeScreenProps) {
   return (
     <div className="welcome">
       <div className="welcome-logo">
-        <span className="welcome-title">ZTerm</span>
+        <span className="welcome-title">ZenTerm</span>
         <span className="welcome-sub">{t('welcome.subtitle')}</span>
         {version ? (
           <span className="welcome-version">{'v' + version}</span>

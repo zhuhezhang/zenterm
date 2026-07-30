@@ -1,8 +1,8 @@
-# ZTerm
+# ZenTerm
 
 **[简体中文](README.zh-CN.md)** · English · v3.2.9
 
-ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
+ZenTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
 
 ---
 
@@ -62,7 +62,7 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 ### UI & i18n
 
-- Custom **frameless title bar** (minimize / maximize / close); click the **⚡ ZTerm** logo to open **About**
+- Custom **frameless title bar** (minimize / maximize / close); click the **⚡ ZenTerm** logo to open **About**
 - **Dark**, **light**, or **auto** theme (follows OS); **live preview** in Settings before saving
 - **UI language**: English, 简体中文, or auto (follows system)
 - Resizable **sidebar** for saved sessions and SFTP tree
@@ -72,7 +72,7 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 - Renderer runs with **context isolation**, **sandbox**, no Node integration
 - IPC limited to **trusted** main-window senders
-- **SSH host key verification** (known-hosts style, `userData/zterm-known-hosts.json`); prompts on first connect and fingerprint change
+- **SSH host key verification** (known-hosts style, `userData/zenterm-known-hosts.json`); prompts on first connect and fingerprint change
 - **Weak SSH algorithms** flagged in settings; modern defaults exclude legacy CBC / SHA-1 / `ssh-rsa` where possible
 - Optional **encrypted vault** for passwords and keys (`safeStorage` when available)
 - **Local path policy** for logs and SFTP: home, Documents, Downloads, Desktop, Music/Pictures/Videos, userData; on Windows, non-system drive roots (e.g. `D:\`) are also allowed
@@ -81,13 +81,16 @@ ZTerm is a cross-platform desktop terminal emulator built with **Electron**, **R
 
 ## Keyboard Shortcuts
 
-Global shortcuts work when ZTerm is focused. On macOS use **Cmd**; on Windows and Linux use **Ctrl**.
+Global shortcuts work when ZenTerm is focused. On macOS use **Cmd**; on Windows and Linux use **Ctrl**.
 
 
 | Shortcut | Action |
 | -------- | ------ |
 | **Ctrl/Cmd+F** | Focus sidebar **saved session search** (expands the session list if collapsed) |
 | **Ctrl/Cmd+Shift+F** | Open **in-terminal search** on the active tab |
+| **Ctrl/Cmd+0** | Reset zoom to default |
+| **Ctrl/Cmd+-** | Zoom out |
+| **Ctrl/Cmd++** | Zoom in |
 | **Enter** / **Shift+Enter** | Next / previous match (in terminal search bar) |
 | **Esc** | Close terminal search bar |
 | **R** | Reconnect the active terminal session (when disconnected or after a failed connect) |
@@ -96,11 +99,11 @@ Global shortcuts work when ZTerm is focused. On macOS use **Cmd**; on Windows an
 
 ## Screenshots
 
-![ZTerm welcome window](docs/images/welcome.png)
+![ZenTerm welcome window](docs/images/welcome.png)
 
-![ZTerm settings](docs/images/settings.png)
+![ZenTerm settings](docs/images/settings.png)
 
-![ZTerm connect dialog](docs/images/connection.png)
+![ZenTerm connect dialog](docs/images/connection.png)
 
 ---
 
@@ -128,12 +131,12 @@ Source code is organized as **frontend / backend / shared**:
 
 | Directory | Role | Description |
 |-----------|------|-------------|
-| **`src/`** | Frontend | React renderer: UI, xterm, localStorage, consumes `window.zterm` |
+| **`src/`** | Frontend | React renderer: UI, xterm, localStorage, consumes `window.zenterm` |
 | **`electron/`** | Backend | Main process + workers: IPC, files/dialogs, credentials, ssh2/SFTP, serial |
 | **`shared/`** | Shared | IPC types, API contract, algorithm defaults, UI-agnostic utilities |
 
 ```
-zterm/
+zenterm/
 ├── src/                                 # Frontend (renderer)
 │   ├── main.tsx, App.tsx
 │   ├── components/                      # Title bar, sidebar, terminal, SFTP, connect/settings dialogs
@@ -143,7 +146,7 @@ zterm/
 │
 ├── electron/                            # Backend (main process + workers)
 │   ├── main.ts                          # App entry, registers handlers
-│   ├── preload.ts                       # contextBridge → window.zterm (built as preload.cjs)
+│   ├── preload.ts                       # contextBridge → window.zenterm (built as preload.cjs)
 │   ├── handlers/                        # ssh / sftp / telnet / serial / credentials / app / window / log
 │   ├── workers/                         # sshSessionWorker, sftpSessionWorker
 │   ├── lib/                             # IPC responses, path policy, known_hosts, SSH config, file dialogs, …
@@ -151,7 +154,7 @@ zterm/
 │   └── types/
 │
 ├── shared/                              # Shared (types, contract, pure functions)
-│   ├── ipc.ts, zterm-api.d.ts
+│   ├── ipc.ts, zenterm-api.d.ts
 │   ├── sshAlgorithmDefaults.ts, terminalEncoding.ts, privateKeyMaterial.ts, …
 │
 ├── tests/                               # Vitest unit tests (tests/**/*.test.ts)
@@ -170,7 +173,7 @@ zterm/
 
 ```
 Frontend src/ (React / xterm)
-    │  window.zterm.* (preload.cjs)
+    │  window.zenterm.* (preload.cjs)
     ▼
 Backend electron/ (handlers + lib)
     │  worker threads (SSH / SFTP)
@@ -199,12 +202,12 @@ shared/* ── used by frontend and backend (IPC types, algorithms, encodings, 
 
 ```bash
 # GitHub
-git clone https://github.com/zhuhezhang/zterm-v1.git
-cd zterm
+git clone https://github.com/zhuhezhang/zenterm.git
+cd zenterm
 
 # or Gitee
-# git clone https://gitee.com/zhuhezhang/zterm-v1.git
-# cd zterm
+# git clone https://gitee.com/zhuhezhang/zenterm.git
+# cd zenterm
 
 npm install
 npm run dev
@@ -251,9 +254,9 @@ npm run build:mac:universal
 
 | Platform | Files in `release/` |
 | --- | --- |
-| Windows | `ZTerm-{version}-win-{arch}-Setup.exe` (NSIS installer), `ZTerm-{version}-win-{arch}-Portable.exe`, `ZTerm-{version}-win-{arch}.zip` |
-| Linux | `ZTerm-{version}-linux-{arch}.AppImage`, `.deb`, `.rpm`, `.tar.gz` |
-| macOS | `ZTerm-{version}-mac-{arch}.dmg`, `ZTerm-{version}-mac-{arch}.zip` |
+| Windows | `ZenTerm-{version}-win-{arch}-Setup.exe` (NSIS installer), `ZenTerm-{version}-win-{arch}-Portable.exe`, `ZenTerm-{version}-win-{arch}.zip` |
+| Linux | `ZenTerm-{version}-linux-{arch}.AppImage`, `.deb`, `.rpm`, `.tar.gz` |
+| macOS | `ZenTerm-{version}-mac-{arch}.dmg`, `ZenTerm-{version}-mac-{arch}.zip` |
 
 NSIS and portable use separate `artifactName` templates so they are not overwritten during the same build.
 
@@ -271,14 +274,14 @@ Exported **sessions** and **settings** use a versioned JSON envelope (max file s
 
 ```json
 {
-  "ztermExport": "sessions",
+  "zentermExport": "sessions",
   "version": 1,
   "exportedAt": "Mon May 19 2026 ...",
   "data": [ /* session objects or settings object */ ]
 }
 ```
 
-- `ztermExport` must be `"sessions"` or `"settings"` (cross-import is rejected).
+- `zentermExport` must be `"sessions"` or `"settings"` (cross-import is rejected).
 - `version` must be `1`.
 - Unknown settings keys are stripped on import; invalid sessions are skipped with a summary alert.
 - Session imports are capped at **99999** entries per file (see `src/lib/import/constants.ts`).
@@ -303,21 +306,21 @@ This app is a convenience tool, not a full security audit. Review your threat mo
 
 | Data                        | Location                                                |
 | --------------------------- | ------------------------------------------------------- |
-| Saved sessions (no secrets) | `localStorage` → `zterm_saved_sessions`                 |
-| Empty group placeholders    | `localStorage` → `__zterm_group_placeholders__`         |
-| App settings                | `localStorage` → `zterm_settings`                       |
-| SSH known hosts             | `{userData}/zterm-known-hosts.json` (pretty JSON, full rewrite) |
-| Encrypted credentials       | `{userData}/zterm-credentials-vault.json` + OS `safeStorage` |
-| Session logs                | User-configured or `Downloads/zterm-session-log/`       |
+| Saved sessions (no secrets) | `localStorage` → `zenterm_saved_sessions`                 |
+| Empty group placeholders    | `localStorage` → `__zenterm_group_placeholders__`         |
+| App settings                | `localStorage` → `zenterm_settings`                       |
+| SSH known hosts             | `{userData}/zenterm-known-hosts.json` (pretty JSON, full rewrite) |
+| Encrypted credentials       | `{userData}/zenterm-credentials-vault.json` + OS `safeStorage` |
+| Session logs                | User-configured or `Downloads/zenterm-session-log/`       |
 
-localStorage is managed by Chromium; `zterm-known-hosts.json` and `zterm-credentials-vault.json` rewrite the entire file when trust/sync actions occur.
+localStorage is managed by Chromium; `zenterm-known-hosts.json` and `zenterm-credentials-vault.json` rewrite the entire file when trust/sync actions occur.
 
 
 Typical `userData` paths:
 
-- **macOS**: `~/Library/Application Support/zterm/`
-- **Windows**: `%APPDATA%\zterm\`
-- **Linux**: `~/.config/zterm/`
+- **macOS**: `~/Library/Application Support/zenterm/`
+- **Windows**: `%APPDATA%\zenterm\`
+- **Linux**: `~/.config/zenterm/`
 
 ---
 
@@ -334,7 +337,7 @@ Typical `userData` paths:
 | Host key prompt every time                                                                                                                                                          | Check write permissions for `userData`; do not run from read-only profiles                                                                                                                                                                                                                                                                                            |
 | Import fails / wrong file type                                                                                                                                                      | Use the correct export file (`sessions` vs `settings`); max 8 MB                                                                                                                                                                                                                                                                                                      |
 | Changes under `electron/` not applied                                                                                                                                             | Ensure `npm run dev` is running and `tsc -w` recompiled; type `rs` in nodemon; or run `npm run build:main`                                                                                                                                                                                                                                                            |
-| Windows portable `ZTerm-x.x.x-win-x64-Portable.exe` shows the wrong icon in File Explorer, but **Properties** shows the correct icon; `release\win-unpacked\ZTerm.exe` and `ZTerm-x.x.x-win-x64-Setup.exe` look fine | The icon is embedded in the EXE; this is usually the Windows Shell **icon cache** (common when rebuilding the same portable file name). Copy and rename the file (e.g. `ZTerm-test.exe`) to verify. If that fixes it, restart `explorer.exe`, delete `iconcache`* and `thumbcache`* under `%LocalAppData%\Microsoft\Windows\Explorer\`, then open File Explorer again |
+| Windows portable `ZenTerm-x.x.x-win-x64-Portable.exe` shows the wrong icon in File Explorer, but **Properties** shows the correct icon; `release\win-unpacked\ZenTerm.exe` and `ZenTerm-x.x.x-win-x64-Setup.exe` look fine | The icon is embedded in the EXE; this is usually the Windows Shell **icon cache** (common when rebuilding the same portable file name). Copy and rename the file (e.g. `ZenTerm-test.exe`) to verify. If that fixes it, restart `explorer.exe`, delete `iconcache`* and `thumbcache`* under `%LocalAppData%\Microsoft\Windows\Explorer\`, then open File Explorer again |
 | **Ctrl/Cmd+Shift+F** doesn't open in-terminal search | If this conflicts with your IME's simplified/traditional Chinese toggle, the IME may capture the shortcut when focus is in the terminal. Disable or remap the IME shortcut, or open search from the tab context menu → Search terminal. |
 | `npm run build:mac` failing on Electron 42 due to `cpu-features` / `nan` compile errors | `build.npmRebuild` in `package.json` is set to `false` to skip native module rebuilds during packaging. `serialport` uses N-API prebuilt packages; `cpu-features` is an optional dependency for `ssh2` and does not affect SSH functionality. After https://github.com/nodejs/nan/pull/1015 is released, `build.npmRebuild` can be set back to `true` to enable native `ssh2` acceleration. |
 

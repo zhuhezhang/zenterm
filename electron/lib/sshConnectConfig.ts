@@ -1,6 +1,6 @@
 import type { AlgorithmPreferences } from '../../shared/sshAlgorithmDefaults.js'
 import { DEFAULT_ALGORITHM_PREFERENCES, DEFAULT_ALGORITHM_SELECTION } from '../../shared/sshAlgorithmDefaults.js'
-import type { SshConnectConfig } from '../../shared/zterm-api.js'
+import type { SshConnectConfig } from '../../shared/zenterm-api.js'
 
 function resolveKeepaliveIntervalMs(raw: unknown): number {
   const sec = Math.floor(Number(raw))

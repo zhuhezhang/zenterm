@@ -1,8 +1,8 @@
-# ZTerm
+# ZenTerm
 
 简体中文 · **[English](README.md)** · v3.2.9
 
-ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、层级分组、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
+ZenTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、层级分组、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
 
 ---
 
@@ -62,7 +62,7 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ### 界面与国际化
 
-- 自定义 **无边框标题栏**（最小化 / 最大化 / 关闭）；点击 **⚡ ZTerm** 徽标打开 **关于** 对话框
+- 自定义 **无边框标题栏**（最小化 / 最大化 / 关闭）；点击 **⚡ ZenTerm** 徽标打开 **关于** 对话框
 - **深色**、**浅色** 或 **跟随系统** 主题；设置中支持 **实时预览**（保存前生效）
 - **界面语言**：简体中文、English 或自动跟随系统
 - 可拖拽调整 **侧边栏** 宽度（会话列表与 SFTP 树）
@@ -72,7 +72,7 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 - 渲染进程启用 **上下文隔离**、**沙箱**，禁用 Node 集成
 - IPC 仅接受 **可信** 主窗口来源
-- **SSH 主机公钥校验**（类似 known_hosts，`userData/zterm-known-hosts.json`）；首次连接与指纹变更时弹窗确认
+- **SSH 主机公钥校验**（类似 known_hosts，`userData/zenterm-known-hosts.json`）；首次连接与指纹变更时弹窗确认
 - 设置中可标记 **弱 SSH 算法**；默认优先现代 AEAD / EtM，排除常见遗留弱算法
 - 可选 **加密凭据库**（系统支持时使用 `safeStorage`）
 - 日志与 SFTP 的 **本地路径策略**：用户主目录、文档、下载、桌面、音乐/图片/视频、userData；Windows 上另允许非系统盘根目录（如 `D:\`）
@@ -81,13 +81,16 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ## 键盘快捷键
 
-在 ZTerm 窗口获得焦点时生效。macOS 使用 **Cmd**；Windows / Linux 使用 **Ctrl**。
+在 ZenTerm 窗口获得焦点时生效。macOS 使用 **Cmd**；Windows / Linux 使用 **Ctrl**。
 
 
 | 快捷键                         | 作用                             |
 | --------------------------- | ------------------------------ |
 | **Ctrl/Cmd+F**              | 聚焦侧边栏 **已保存会话搜索**（若列表已收起则自动展开） |
 | **Ctrl/Cmd+Shift+F**        | 打开当前标签页的 **终端内容搜索**            |
+| **Ctrl/Cmd+0**              | 恢复默认缩放大小                       |
+| **Ctrl/Cmd+-**              | 缩小                             |
+| **Ctrl/Cmd++**              | 放大                             |
 | **Enter** / **Shift+Enter** | 下一个 / 上一个匹配（终端搜索栏内）            |
 | **Esc**                     | 关闭终端搜索栏                        |
 | **R**                       | 重连当前终端会话（已断开或初次连接失败时）          |
@@ -96,11 +99,11 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 ## 界面预览
 
-![ZTerm 欢迎界面](docs/images/welcome.png)
+![ZenTerm 欢迎界面](docs/images/welcome.png)
 
-![ZTerm 设置](docs/images/settings.png)
+![ZenTerm 设置](docs/images/settings.png)
 
-![ZTerm 连接](docs/images/connection.png)
+![ZenTerm 连接](docs/images/connection.png)
 
 ---
 
@@ -128,12 +131,12 @@ ZTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌�
 
 | 目录          | 角色    | 说明                                                 |
 | ----------- | ----- | -------------------------------------------------- |
-| `src/`      | 前端    | React 渲染进程：UI、xterm、localStorage、消费 `window.zterm` |
+| `src/`      | 前端    | React 渲染进程：UI、xterm、localStorage、消费 `window.zenterm` |
 | `electron/` | 后端    | 主进程 + Worker：IPC、文件/对话框、凭据、ssh2/SFTP、串口            |
 | `shared/`   | 前后端共用 | IPC 类型、API 契约、算法默认值、与 UI 无关的纯工具                    |
 
 ```
-zterm/
+zenterm/
 ├── src/                                 # 前端（渲染进程）
 │   ├── main.tsx, App.tsx
 │   ├── components/                      # 标题栏、侧边栏、终端、SFTP、连接/设置对话框
@@ -143,7 +146,7 @@ zterm/
 │
 ├── electron/                            # 后端（主进程 + Worker）
 │   ├── main.ts                          # 应用入口、注册 handlers
-│   ├── preload.ts                       # contextBridge → window.zterm（编译为 preload.cjs）
+│   ├── preload.ts                       # contextBridge → window.zenterm（编译为 preload.cjs）
 │   ├── handlers/                        # ssh / sftp / telnet / serial / credentials / app / window / log
 │   ├── workers/                         # sshSessionWorker、sftpSessionWorker
 │   ├── lib/                             # IPC 响应、路径策略、known_hosts、SSH 配置、文件对话框等
@@ -151,7 +154,7 @@ zterm/
 │   └── types/
 │
 ├── shared/                              # 前后端共用（类型、契约、纯函数）
-│   ├── ipc.ts, zterm-api.d.ts
+│   ├── ipc.ts, zenterm-api.d.ts
 │   ├── sshAlgorithmDefaults.ts, terminalEncoding.ts, privateKeyMaterial.ts, …
 │
 ├── tests/                               # Vitest 单元测试（tests/**/*.test.ts）
@@ -170,7 +173,7 @@ zterm/
 
 ```
 前端 src/（React / xterm）
-    │  window.zterm.*（preload.cjs）
+    │  window.zenterm.*（preload.cjs）
     ▼
 后端 electron/（handlers + lib）
     │  Worker 线程（SSH / SFTP）
@@ -199,12 +202,12 @@ shared/* ── 前后端共用（IPC 类型、算法、编码、错误码等）
 
 ```bash
 # GitHub
-git clone https://github.com/zhuhezhang/zterm-v1.git
-cd zterm
+git clone https://github.com/zhuhezhang/zenterm.git
+cd zenterm
 
 # 或 Gitee
-# git clone https://gitee.com/zhuhezhang/zterm-v1.git
-# cd zterm
+# git clone https://gitee.com/zhuhezhang/zenterm.git
+# cd zenterm
 
 npm install
 npm run dev
@@ -251,9 +254,9 @@ npm run build:mac:universal
 
 | 平台      | `release/` 中的文件                                                                                                                  |
 | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Windows | `ZTerm-{version}-win-{arch}-Setup.exe`（NSIS 安装包）、`ZTerm-{version}-win-{arch}-Portable.exe`（便携版）、`ZTerm-{version}-win-{arch}.zip` |
-| Linux   | `ZTerm-{version}-linux-{arch}.AppImage`、`.deb`、`.rpm`、`.tar.gz`                                                                  |
-| macOS   | `ZTerm-{version}-mac-{arch}.dmg`、`ZTerm-{version}-mac-{arch}.zip`                                                                |
+| Windows | `ZenTerm-{version}-win-{arch}-Setup.exe`（NSIS 安装包）、`ZenTerm-{version}-win-{arch}-Portable.exe`（便携版）、`ZenTerm-{version}-win-{arch}.zip` |
+| Linux   | `ZenTerm-{version}-linux-{arch}.AppImage`、`.deb`、`.rpm`、`.tar.gz`                                                                  |
+| macOS   | `ZenTerm-{version}-mac-{arch}.dmg`、`ZenTerm-{version}-mac-{arch}.zip`                                                                |
 
 NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会互相覆盖。
 
@@ -271,14 +274,14 @@ NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会�
 
 ```json
 {
-  "ztermExport": "sessions",
+  "zentermExport": "sessions",
   "version": 1,
   "exportedAt": "Mon May 19 2026 ...",
   "data": [ /* 会话对象数组或设置对象 */ ]
 }
 ```
 
-- `ztermExport` 须为 `"sessions"` 或 `"settings"`（类型不匹配会报错）。
+- `zentermExport` 须为 `"sessions"` 或 `"settings"`（类型不匹配会报错）。
 - `version` 须为 `1`。
 - 导入设置时会剥离未知键；无效会话条目会跳过并在完成后提示统计。
 - 单次会话导入上限 **99999** 条（见 `src/lib/import/constants.ts`）。
@@ -303,21 +306,21 @@ NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会�
 
 | 数据          | 位置                                                           |
 | ----------- | ------------------------------------------------------------ |
-| 已保存会话（不含密钥） | `localStorage` → `zterm_saved_sessions`                      |
-| 空分组占位符      | `localStorage` → `__zterm_group_placeholders__`              |
-| 应用设置        | `localStorage` → `zterm_settings`                            |
-| SSH 已知主机    | `{userData}/zterm-known-hosts.json`（格式化 JSON，全量写入）           |
-| 加密凭据        | `{userData}/zterm-credentials-vault.json` + 系统 `safeStorage` |
-| 会话日志        | 用户配置目录或 `下载/zterm-session-log/`                              |
+| 已保存会话（不含密钥） | `localStorage` → `zenterm_saved_sessions`                      |
+| 空分组占位符      | `localStorage` → `__zenterm_group_placeholders__`              |
+| 应用设置        | `localStorage` → `zenterm_settings`                            |
+| SSH 已知主机    | `{userData}/zenterm-known-hosts.json`（格式化 JSON，全量写入）           |
+| 加密凭据        | `{userData}/zenterm-credentials-vault.json` + 系统 `safeStorage` |
+| 会话日志        | 用户配置目录或 `下载/zenterm-session-log/`                              |
 
-上述 localStorage 由 Chromium 管理；`zterm-known-hosts.json` 与 `zterm-credentials-vault.json` 仅在对应操作（信任主机、同步凭据等）时重写整文件。
+上述 localStorage 由 Chromium 管理；`zenterm-known-hosts.json` 与 `zenterm-credentials-vault.json` 仅在对应操作（信任主机、同步凭据等）时重写整文件。
 
 
 典型 **userData** 路径：
 
-- **macOS**：`~/Library/Application Support/zterm/`
-- **Windows**：`%APPDATA%\zterm\`
-- **Linux**：`~/.config/zterm/`
+- **macOS**：`~/Library/Application Support/zenterm/`
+- **Windows**：`%APPDATA%\zenterm\`
+- **Linux**：`~/.config/zenterm/`
 
 ---
 
@@ -334,7 +337,7 @@ NSIS 与便携版使用独立的 `artifactName` 模板，同一次打包不会�
 | 每次连接都提示主机密钥                                                                                                                                         | 检查 `userData` 是否可写；避免只读配置环境运行                                                                                                                                                                                               |
 | 导入失败 / 文件类型错误                                                                                                                                       | 确认使用正确的导出文件（会话 vs 设置）；单文件不超过 8 MB                                                                                                                                                                                           |
 | 修改 `electron/` 后未生效                                                                                                                                 | 确认 `npm run dev` 在跑且 `tsc -w` 有重编译；或对 nodemon 输入 `rs`；或 `npm run build:main`                                                                                                                                                |
-| Windows 便携版 `ZTerm-x.x.x-win-x64-Portable.exe` 在资源管理器中图标异常，但右键 **属性** 里图标正常；`release\win-unpacked\ZTerm.exe` 与 `ZTerm-x.x.x-win-x64-Setup.exe` 显示正常 | 图标已写入 exe，多为 Windows Shell **图标缓存**（反复用同名覆盖打包时常见）。将文件复制并改名为 `ZTerm-test.exe` 可快速验证；若改名后正常，结束并重启 `explorer.exe`，删除 `%LocalAppData%\Microsoft\Windows\Explorer\` 下的 `iconcache`*、*`thumbcache` 后再打开资源管理器                      |
+| Windows 便携版 `ZenTerm-x.x.x-win-x64-Portable.exe` 在资源管理器中图标异常，但右键 **属性** 里图标正常；`release\win-unpacked\ZenTerm.exe` 与 `ZenTerm-x.x.x-win-x64-Setup.exe` 显示正常 | 图标已写入 exe，多为 Windows Shell **图标缓存**（反复用同名覆盖打包时常见）。将文件复制并改名为 `ZenTerm-test.exe` 可快速验证；若改名后正常，结束并重启 `explorer.exe`，删除 `%LocalAppData%\Microsoft\Windows\Explorer\` 下的 `iconcache`*、*`thumbcache` 后再打开资源管理器                      |
 | **Ctrl/Cmd+Shift+F** 无法打开终端内容搜索                                                                                                                     | 若与输入法「简体/繁体切换」等快捷键相同，焦点在终端内时会被输入法优先拦截。可关闭或修改输入法的对应快捷键，或在标签页上 **右键 → 搜索终端内容** 打开搜索框                                                                                                                                          |
 | `npm run build:mac` 等在 Electron 42 下因 `cpu-features` / `nan` 编译失败                                                                                   | `package.json` 的 `build.npmRebuild` 已设为 `false`，跳过打包时的原生模块重编译。`serialport` 使用 N-API 预编译包；`cpu-features` 为 `ssh2` 可选依赖，不影响 SSH 功能。待 [nodejs/nan#1015](https://github.com/nodejs/nan/pull/1015) 发布后，可恢复为 `true` 以启用 ssh2 原生加速 |
 

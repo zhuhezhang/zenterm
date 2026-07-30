@@ -1,6 +1,6 @@
 /**
  * SSH 主机公钥指纹校验（类似 OpenSSH known_hosts），降低中间人风险。
- * 持久化存于 userData/zterm-known-hosts.json；「仅信任一次」写入本会话内存缓存。
+ * 持久化存于 userData/zenterm-known-hosts.json；「仅信任一次」写入本会话内存缓存。
  */
 import type { BrowserWindow } from 'electron'
 import { app, dialog } from 'electron'
@@ -21,13 +21,13 @@ const pendingHostVerifications = new Map<string, Promise<boolean>>()
 
 /**
  * 获取存储路径
- * mac 示例：/Users/zhuhezhang/Library/Application Support/zterm/zterm-known-hosts.json
- * windows 示例：C:\Users\zhuhezhang\AppData\Roaming\zterm\zterm-known-hosts.json
- * linux 示例：/home/zhuhezhang/.config/zterm/zterm-known-hosts.json
+ * mac 示例：/Users/zhuhezhang/Library/Application Support/zenterm/zenterm-known-hosts.json
+ * windows 示例：C:\Users\zhuhezhang\AppData\Roaming\zenterm\zenterm-known-hosts.json
+ * linux 示例：/home/zhuhezhang/.config/zenterm/zenterm-known-hosts.json
  * @returns 存储路径
  */
 function storePath() {
-  return path.join(app.getPath('userData'), 'zterm-known-hosts.json')
+  return path.join(app.getPath('userData'), 'zenterm-known-hosts.json')
 }
 
 /** 已知主机公钥条目 */
@@ -236,7 +236,7 @@ export async function verifySshHostKeyTrust(
   }
 }
 
-/** 清空已保存的 SSH 已知主机公钥（zterm-known-hosts.json） */
+/** 清空已保存的 SSH 已知主机公钥（zenterm-known-hosts.json） */
 export function clearKnownHostsStore() {
   const p = storePath()
   try {

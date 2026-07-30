@@ -4,7 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import { isTrustedIpcSender } from '../lib/trustedSender.js'
 import { ipcFail, ipcOk } from '../lib/ipcResponse.js'
-import type { VaultGetContent, VaultSecretPartial } from '../../shared/zterm-api.js'
+import type { VaultGetContent, VaultSecretPartial } from '../../shared/zenterm-api.js'
 
 /** 凭据存储条目 */
 interface VaultEntry {
@@ -29,7 +29,7 @@ interface Vault {
  * @returns 凭据存储文件路径
  */
 function vaultPath() {
-  return path.join(app.getPath('userData'), 'zterm-credentials-vault.json')
+  return path.join(app.getPath('userData'), 'zenterm-credentials-vault.json')
 }
 
 /**

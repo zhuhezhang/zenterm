@@ -10,7 +10,7 @@ import { resolveTerminalFontFamily } from '../../../shared/terminalFonts'
 import { translateRender } from '../../i18n/translateRender'
 import { resolveEffectiveUiLanguage } from '../resolveUiLanguage'
 import { assertIpcSuccess } from '../ipc/ipcError'
-import { getZterm } from '@/lib/ipc/getZterm'
+import { getZenterm } from '@/lib/ipc/getZenterm'
 import { formatThrownIpcError } from '@/lib/ipc/formatIpcError'
 import { getXtermTheme } from '../../theme/appTheme'
 import { pickSerialConnectConfig, pickSshConnectConfig, pickTelnetConnectConfig } from '../session/connectPayload'
@@ -134,17 +134,17 @@ export function teardownSessionTransport(
   session: { id: string; type: string; enableSftp?: boolean },
   options?: { includeSftp?: boolean },
 ): void {
-  const zterm = getZterm()
+  const zenterm = getZenterm()
   const { id, type } = session
   const includeSftp = options?.includeSftp ?? !!session.enableSftp
   try {
     if (type === 'ssh') {
-      if (includeSftp) void zterm.sftp.disconnect(`${id}-sftp`)
-      void zterm.ssh.disconnect(id)
+      if (includeSftp) void zenterm.sftp.disconnect(`${id}-sftp`)
+      void zenterm.ssh.disconnect(id)
     } else if (type === 'telnet') {
-      void zterm.telnet.disconnect(id)
+      void zenterm.telnet.disconnect(id)
     } else if (type === 'serial') {
-      void zterm.serial.disconnect(id)
+      void zenterm.serial.disconnect(id)
     }
   } catch {
     /* 主进程会话可能尚未建立或已断开 */
@@ -278,39 +278,39 @@ export async function connectSession(
   if (session.type === 'ssh') {
     writeInfo(translateRender(L(), 'terminal.sshConnecting', { host: session.host ?? '', port: session.port ?? 22 }))
     try {
-      const zterm = getZterm()
+      const zenterm = getZenterm()
       const connectPayload = pickSshConnectConfig(session, settingsRef.current)
-      const res = await zterm.ssh.connect(id, connectPayload)
+      const res = await zenterm.ssh.connect(id, connectPayload)
       if (abortIfCancelled(session, isCancelled, { includeSftp: false })) return
       assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
       const dim = proposeTerminalDimensions(term) || { cols: 80, rows: 24 }
-      zterm.ssh.resize(id, dim.cols, dim.rows)
+      zenterm.ssh.resize(id, dim.cols, dim.rows)
 
-      const r1 = zterm.ssh.onData(id, recv)
-      const r2 = zterm.ssh.onClose(id, () => onDisconnect('terminal.closed'))
+      const r1 = zenterm.ssh.onData(id, recv)
+      const r2 = zenterm.ssh.onClose(id, () => onDisconnect('terminal.closed'))
       const d1 = term.onData((data) => {
-        zterm.ssh.sendData(id, normalizeInputData(type, data, sessionRef.current), terminalEncoding)
+        zenterm.ssh.sendData(id, normalizeInputData(type, data, sessionRef.current), terminalEncoding)
       })
-      const d2 = term.onResize(({ cols, rows }) => zterm.ssh.resize(id, cols, rows))
-      cleanupRef.current.push(r1, r2, () => d1.dispose(), () => d2.dispose(), () => zterm.ssh.disconnect(id))
+      const d2 = term.onResize(({ cols, rows }) => zenterm.ssh.resize(id, cols, rows))
+      cleanupRef.current.push(r1, r2, () => d1.dispose(), () => d2.dispose(), () => zenterm.ssh.disconnect(id))
 
       // SFTP 与 SSH 并行：失败只提示，不阻断 shell
       if (session.enableSftp) {
         try {
           const sftpPayload = pickSshConnectConfig(session, settingsRef.current)
-          const sr = await zterm.sftp.connect(id + '-sftp', sftpPayload)
+          const sr = await zenterm.sftp.connect(id + '-sftp', sftpPayload)
           if (abortIfCancelled(session, isCancelled, { includeSftp: true })) return
           if (sr.success) {
             onUpdate({ status: 'connected', sftpReady: true })
-            cleanupRef.current.push(() => zterm.sftp.disconnect(id + '-sftp'))
+            cleanupRef.current.push(() => zenterm.sftp.disconnect(id + '-sftp'))
           } else {
             assertIpcSuccess(sr)
           }
         } catch (e) {
           writeError(terminalErr(e))
-          zterm.ssh.sendData(id, '\n', terminalEncoding)  // 让用户看到错误后仍可操作 shell
+          zenterm.ssh.sendData(id, '\n', terminalEncoding)  // 让用户看到错误后仍可操作 shell
           onUpdate({ sftpReady: false })
         }
       }
@@ -321,24 +321,24 @@ export async function connectSession(
       onUpdate({ status: 'error' })
     } finally {
       try {
-        await getZterm().others.clearSessionHostKeyCache()
+        await getZenterm().others.clearSessionHostKeyCache()
       } catch { /* 清理临时指纹缓存，失败不影响连接结果 */ }
     }
   } else if (session.type === 'telnet') {
     writeInfo(translateRender(L(), 'terminal.telnetConnecting', { host: session.host ?? '', port: session.port ?? 23 }))
     try {
-      const zterm = getZterm()
-      const res = await zterm.telnet.connect(id, pickTelnetConnectConfig(session))
+      const zenterm = getZenterm()
+      const res = await zenterm.telnet.connect(id, pickTelnetConnectConfig(session))
       if (abortIfCancelled(session, isCancelled)) return
       assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.connected'))
       onUpdate({ status: 'connected' })
-      const r1 = zterm.telnet.onData(id, recv)
-      const r2 = zterm.telnet.onClose(id, () => onDisconnect('terminal.closed'))
+      const r1 = zenterm.telnet.onData(id, recv)
+      const r2 = zenterm.telnet.onClose(id, () => onDisconnect('terminal.closed'))
       const d1 = term.onData((data) => {
-        zterm.telnet.sendData(id, normalizeInputData(type, data, sessionRef.current), terminalEncoding)
+        zenterm.telnet.sendData(id, normalizeInputData(type, data, sessionRef.current), terminalEncoding)
       })
-      cleanupRef.current.push(r1, r2, () => d1.dispose(), () => zterm.telnet.disconnect(id))
+      cleanupRef.current.push(r1, r2, () => d1.dispose(), () => zenterm.telnet.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
       writeError(terminalErr(e))
@@ -348,16 +348,16 @@ export async function connectSession(
   } else if (session.type === 'serial') {
     writeInfo(translateRender(L(), 'terminal.serialOpening', { path: session.path ?? '', baud: session.baudRate ?? 9600 }))
     try {
-      const zterm = getZterm()
-      const res = await zterm.serial.connect(id, pickSerialConnectConfig(session))
+      const zenterm = getZenterm()
+      const res = await zenterm.serial.connect(id, pickSerialConnectConfig(session))
       if (abortIfCancelled(session, isCancelled)) return
       assertIpcSuccess(res)
       writeSuccess(translateRender(L(), 'terminal.serialOpened'))
       onUpdate({ status: 'connected' })
-      const r1 = zterm.serial.onData(id, recv)
-      const r2 = zterm.serial.onClose(id, () => onDisconnect('terminal.portClosed'))
+      const r1 = zenterm.serial.onData(id, recv)
+      const r2 = zenterm.serial.onClose(id, () => onDisconnect('terminal.portClosed'))
       const d1 = term.onData((data) => {
-        zterm.serial.sendData(id, normalizeInputData(type, data, sessionRef.current), terminalEncoding)
+        zenterm.serial.sendData(id, normalizeInputData(type, data, sessionRef.current), terminalEncoding)
       })
       cleanupRef.current.push(() => {  // 断开前刷掉串口高亮缓冲
         if (serialHighlightIdleTimer != null) {
@@ -371,7 +371,7 @@ export async function connectSession(
           logFileRef.current?.enqueue?.(highlighted)
           serialHighlightBuf = ''
         }
-      }, r1, r2, () => d1.dispose(), () => zterm.serial.disconnect(id))
+      }, r1, r2, () => d1.dispose(), () => zenterm.serial.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
       writeError(terminalErr(e))

@@ -6,7 +6,7 @@ import { Client } from 'ssh2'
 import type { SftpClient, SftpDirEntry } from 'ssh2'
 import { postWorkerCmdFail, postWorkerCmdFailFromThrown, postWorkerCmdOk } from '../lib/workerCmdResult.js'
 import { buildSshConnectConfig } from '../lib/sshConnectConfig.js'
-import type { SshConnectConfig } from '../../shared/zterm-api.js'
+import type { SshConnectConfig } from '../../shared/zenterm-api.js'
 import type { SftpWorkerCmdPayload, SftpWorkerInboundMessage } from '../types/workerMessages.js'
 import {
   assertSftpLocalDirAllowedForRoots, assertSftpLocalFilePathAllowedForRoots, safeJoinLocalDownloadPathForRoots,

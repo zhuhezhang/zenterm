@@ -28,11 +28,11 @@ import {
 const HOST = 'example.test'
 const PORT = 22
 const HP = `${HOST}:${PORT}`
-const RAW_KEY = Buffer.from('zterm-test-host-key')
+const RAW_KEY = Buffer.from('zenterm-test-host-key')
 const FINGERPRINT = crypto.createHash('sha256').update(RAW_KEY).digest('base64')
 
 function storePath() {
-  return path.join(mockUserData, 'zterm-known-hosts.json')
+  return path.join(mockUserData, 'zenterm-known-hosts.json')
 }
 
 function writeStore(data: Record<string, unknown>) {

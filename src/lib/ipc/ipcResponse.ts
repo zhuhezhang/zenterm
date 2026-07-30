@@ -1,5 +1,5 @@
 import type { IpcContent, IpcResult } from '../../../shared/ipc'
-import type { SerialPortInfo, VaultGetContent } from '../../../shared/zterm-api'
+import type { SerialPortInfo, VaultGetContent } from '../../../shared/zenterm-api'
 
 /** IPC 响应对象 */
 type IpcLike = IpcResult<IpcContent> | null | undefined

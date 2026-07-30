@@ -1,13 +1,13 @@
-import type { ZTermApi } from '../../../shared/zterm-api'
+import type { ZenTermApi } from '../../../shared/zenterm-api'
 
 /**
  * 渲染进程内获取 preload 暴露的 bridge；不可用时抛错供调用方 catch
- * @returns ZTermApi
+ * @returns ZenTermApi
  */
-export function getZterm(): ZTermApi {
-  const api = window.zterm
+export function getZenterm(): ZenTermApi {
+  const api = window.zenterm
   if (!api) {
-    throw new Error('window.zterm is not available')
+    throw new Error('window.zenterm is not available')
   }
   return api
 }

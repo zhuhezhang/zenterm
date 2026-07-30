@@ -1,34 +1,34 @@
 ---
-name: zterm-development
+name: zenterm-development
 description: >-
-  Develop, debug, test, and release the ZTerm Electron terminal app (SSH/SFTP/Telnet/Serial).
-  Use when working in the zterm repo. Code layout: src/ frontend, electron/ backend,
+  Develop, debug, test, and release the ZenTerm Electron terminal app (SSH/SFTP/Telnet/Serial).
+  Use when working in the zenterm repo. Code layout: src/ frontend, electron/ backend,
   shared/ frontend-backend shared. Also for IPC, path policy, Vitest, electron-builder, release.
 ---
 
-# ZTerm 开发 Skill
+# ZenTerm 开发 Skill
 
 跨平台 Electron 终端：React 渲染进程 + Node 主进程 + Worker 线程（ssh2/SFTP）。连接类型：SSH、SFTP、Telnet、Serial。
 
 ## 代码三分法（最重要）
 
-ZTerm 源码按**前后端 + 共享**划分，改代码前先确认归属：
+ZenTerm 源码按**前后端 + 共享**划分，改代码前先确认归属：
 
 | 目录 | 角色 | 运行环境 | 说明 |
 |------|------|----------|------|
-| **`src/`** | **前端** | Electron 渲染进程（Chromium） | React UI、xterm、会话/设置 store、消费 `window.zterm` IPC |
+| **`src/`** | **前端** | Electron 渲染进程（Chromium） | React UI、xterm、会话/设置 store、消费 `window.zenterm` IPC |
 | **`electron/`** | **后端** | Electron 主进程 + Worker | 主进程 handlers、系统 API（文件/对话框/凭据/串口）、ssh2 Worker |
 | **`shared/`** | **前后端共用** | 两侧均可 import | IPC 类型、API 契约、算法默认值、与协议无关的纯工具函数 |
 
 **边界规则：**
 
-- 前端 **不** 直接访问 Node/Electron API；一律经 `electron/preload.ts` → `window.zterm`
+- 前端 **不** 直接访问 Node/Electron API；一律经 `electron/preload.ts` → `window.zenterm`
 - 后端 **不** 写 React/UI；负责 IPC、文件 I/O、加密存储、网络/串口
 - 需要前后端对齐的类型/常量/纯函数放 **`shared/`**，避免在 `src/` 与 `electron/` 各写一份
 - `electron/preload.ts` 是桥梁（后端编译、前端调用），逻辑归属后端目录
 
 ```
-前端 src/  ←—— window.zterm ——→  preload (electron/)  ←—— IPC ——→  后端 electron/handlers/
+前端 src/  ←—— window.zenterm ——→  preload (electron/)  ←—— IPC ——→  后端 electron/handlers/
                                                                         ↓
                                                                    workers/ (ssh2/SFTP)
          ↑________________________ shared/（类型、契约、共用工具）________________________↑
@@ -38,7 +38,7 @@ ZTerm 源码按**前后端 + 共享**划分，改代码前先确认归属：
 
 ```
 前端 src/              桥梁 electron/preload.ts          后端 electron/
-  React + xterm    ←→  contextBridge → window.zterm  ←→  handlers/*.ts
+  React + xterm    ←→  contextBridge → window.zenterm  ←→  handlers/*.ts
                                                           ↓ postMessage
                                                     workers/*SessionWorker.ts
 ```
@@ -46,7 +46,7 @@ ZTerm 源码按**前后端 + 共享**划分，改代码前先确认归属：
 | 层 | 目录 | 职责 |
 |----|------|------|
 | 前端 | `src/` | UI、会话/设置 localStorage、IPC 消费 |
-| 共用 | `shared/` | IPC 类型、`zterm-api.d.ts`、算法默认值、编码工具 |
+| 共用 | `shared/` | IPC 类型、`zenterm-api.d.ts`、算法默认值、编码工具 |
 | 后端 | `electron/handlers/` | IPC 注册、弹窗、转发 Worker |
 | 后端库 | `electron/lib/` | 路径策略、known_hosts、凭据、SSH 配置、对话框 |
 | 后端 Worker | `electron/workers/` | 阻塞式 ssh2 I/O、SFTP 操作 |
@@ -59,7 +59,7 @@ ZTerm 源码按**前后端 + 共享**划分，改代码前先确认归属：
 | 需求 | 优先改哪里 |
 |------|------------|
 | UI / 会话列表 / 设置 | **前端** `src/components/`、`src/store/`、`src/context/` |
-| 新增 IPC 能力 | **共用** `shared/zterm-api.d.ts` → **后端** `electron/handlers/`、`electron/preload.ts` → **前端** `src/lib/ipc/` |
+| 新增 IPC 能力 | **共用** `shared/zenterm-api.d.ts` → **后端** `electron/handlers/`、`electron/preload.ts` → **前端** `src/lib/ipc/` |
 | SSH/SFTP 协议逻辑 | **后端** `electron/workers/` + `electron/lib/sshConnectConfig.ts` |
 | 本地路径权限 | **后端** `electron/lib/localPathPolicy.ts`、`sftpLocalPathRoots.ts` |
 | 主机指纹 | **后端** `electron/lib/sshKnownHosts.ts` |
@@ -97,7 +97,7 @@ import { ipcOk } from '../lib/ipcResponse'     // ❌
 | ssh2 连接、PTY、SFTP | Worker（加载前 `legacyModp2Polyfill`） |
 | 主机密钥弹窗 | 主进程 `sshKnownHosts`（Worker 发 `HOST_VERIFY`） |
 | 会话/设置持久化 | 渲染进程 `localStorage`（**不含**密钥明文） |
-| 密钥明文 | 主进程 `zterm-credentials-vault.json` + `safeStorage` |
+| 密钥明文 | 主进程 `zenterm-credentials-vault.json` + `safeStorage` |
 
 ### 4. 路径 alias
 
@@ -151,10 +151,10 @@ npm run build            # 当前平台 electron-builder → release/
 
 | 数据 | 位置 |
 |------|------|
-| 已知主机 | `{userData}/zterm-known-hosts.json` |
-| 凭据 vault | `{userData}/zterm-credentials-vault.json` |
-| 已保存会话 | `localStorage` → `zterm_saved_sessions` |
-| 设置 | `localStorage` → `zterm_settings` |
+| 已知主机 | `{userData}/zenterm-known-hosts.json` |
+| 凭据 vault | `{userData}/zenterm-credentials-vault.json` |
+| 已保存会话 | `localStorage` → `zenterm_saved_sessions` |
+| 设置 | `localStorage` → `zenterm_settings` |
 
 JSON 写入使用 `JSON.stringify(data, null, 2)` + `.tmp` 原子替换（主进程两文件）。
 
@@ -162,16 +162,16 @@ JSON 写入使用 `JSON.stringify(data, null, 2)` + `.tmp` 原子替换（主进
 
 **新增 IPC handler**
 
-1. `shared/zterm-api.d.ts` 扩展 `ZTermApi`
+1. `shared/zenterm-api.d.ts` 扩展 `ZenTermApi`
 2. `electron/handlers/*.ts` 注册 `ipcMain.handle`，校验 trusted sender
-3. `electron/preload.ts` 暴露给 `window.zterm`
-4. `src/lib/ipc/getZterm.ts` 或组件内调用
+3. `electron/preload.ts` 暴露给 `window.zenterm`
+4. `src/lib/ipc/getZenterm.ts` 或组件内调用
 5. 错误码加入 `src/i18n/ipcErrors.ts`（若需 i18n）
 6. 补 Vitest（主进程 lib）或渲染 lib 测试
 
 **改 SSH 连接参数**
 
-- 表单/API 类型：`shared/zterm-api.ts`、`src/types/session.ts`
+- 表单/API 类型：`shared/zenterm-api.ts`、`src/types/session.ts`
 - 主进程解析私钥：`prepareSshConnectConfig` → `resolvePrivateKeyMaterial`
 - Worker 组装 ssh2：`buildSshConnectConfig`
 

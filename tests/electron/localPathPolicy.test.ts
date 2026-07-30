@@ -27,7 +27,7 @@ function deniedLogDirectory(): string {
     const drive = (process.env.SystemDrive || 'C:').replace(/\\$/, '')
     return path.resolve(`${drive}\\Windows\\System32\\config`)
   }
-  return '/var/log/zterm'
+  return '/var/log/zenterm'
 }
 
 describe('parseProcMountsForPolicy', () => {
@@ -68,7 +68,7 @@ describe('localPathPolicy', () => {
   })
 
   it('accepts log directory under mocked downloads', () => {
-    const res = validateLogWriteDirectory(path.resolve('/mock/downloads/zterm-logs'))
+    const res = validateLogWriteDirectory(path.resolve('/mock/downloads/zenterm-logs'))
     expect(res.success).toBe(true)
   })
 

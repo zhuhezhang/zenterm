@@ -2,7 +2,7 @@ import { useState, useEffect, Fragment, type Dispatch, type SetStateAction } fro
 import { useDismissOnEscape } from '@/hooks/useDismissOnEscape'
 import { I18nProvider, useI18n } from '@/context/I18nContext'
 import { alertIpcFailure } from '@/lib/ipc/formatIpcError'
-import { getZterm } from '@/lib/ipc/getZterm'
+import { getZenterm } from '@/lib/ipc/getZenterm'
 import { isIpcSuccess } from '@/lib/ipc/ipcResponse'
 import { exportSessions, saveSessions } from '@/store/sessionStore'
 import { reportSettingsImportResult } from '@/lib/settings/importWarnings'
@@ -52,7 +52,7 @@ function SettingsDialogContent({
     let cancelled = false
     ;(async () => {
       try {
-        const res = await window.zterm?.credentials?.isAvailable?.()
+        const res = await window.zenterm?.credentials?.isAvailable?.()
         if (cancelled) return
         setVaultEncryptionAvailable(isIpcSuccess(res) && res.content?.available === true)
       } catch {
@@ -237,7 +237,7 @@ function SettingsDialogContent({
   /** 处理导入设置的操作，从 JSON 文件导入设置并更新表单 */
   const handleImportSettings = async () => {
     try {
-      const picked = await getZterm().paths.chooseOpen('importSettings')
+      const picked = await getZenterm().paths.chooseOpen('importSettings')
       if (!picked?.success) {
         alertIpcFailure(t, picked, 'settings.importFail')
         return
@@ -285,8 +285,8 @@ function SettingsDialogContent({
       p.startsWith('\\') ||
       /^[a-zA-Z]:[\\/]/.test(p)
     try {
-      if (window.zterm?.paths?.validateLogDirectory && likelyAbsolute) {
-        const vr = await window.zterm.paths.validateLogDirectory(p)
+      if (window.zenterm?.paths?.validateLogDirectory && likelyAbsolute) {
+        const vr = await window.zenterm.paths.validateLogDirectory(p)
         if (alertIpcFailure(t, vr, 'settings.logPathRejected')) return
       }
       set('logPath', p)
@@ -298,8 +298,8 @@ function SettingsDialogContent({
   /** 处理选择日志路径的操作，兼容使用不同的 API 弹出目录选择对话框，选择后更新日志路径设置 */
   const handleChooseLogPath = async () => {
     try {
-      if (window.zterm?.paths?.chooseOpen) {
-        const picked = await window.zterm.paths.chooseOpen('logSave')
+      if (window.zenterm?.paths?.chooseOpen) {
+        const picked = await window.zenterm.paths.chooseOpen('logSave')
         if (isIpcSuccess(picked) && !picked?.content?.canceled) {
           const logPath = picked.content.path
           if (typeof logPath === 'string' && logPath) {
@@ -317,8 +317,8 @@ function SettingsDialogContent({
           const f = el.files?.[0]
           if (!f) return
           const diskPath =
-            typeof window.zterm?.paths?.getPathForFile === 'function'
-              ? window.zterm.paths.getPathForFile(f)
+            typeof window.zenterm?.paths?.getPathForFile === 'function'
+              ? window.zenterm.paths.getPathForFile(f)
               : (typeof f.path === 'string' ? f.path : '')
           if (!diskPath) return
           const dirPath = diskPath.replace(/[/\\][^/\\]*$/, '')
@@ -348,7 +348,7 @@ function SettingsDialogContent({
   const handleClearKnownHosts = async () => {
     if (!confirm(t('settings.confirmClearKnownHosts'))) return
     try {
-      const res = await getZterm().others.clearKnownHosts()
+      const res = await getZenterm().others.clearKnownHosts()
       if (alertIpcFailure(t, res)) return
       alert(t('settings.clearedKnownHosts'))
     } catch (e) {

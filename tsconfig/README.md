@@ -1,6 +1,6 @@
 # TypeScript 配置说明
 
-本目录集中存放 ZTerm 的全部 `tsconfig*.json`（五个文件）。配置文件内的 `include`、`paths`、`outDir`、`rootDir` 等路径均**相对于本目录**书写，因此指向源码时使用 `../` 回到项目根目录。
+本目录集中存放 ZenTerm 的全部 `tsconfig*.json`（五个文件）。配置文件内的 `include`、`paths`、`outDir`、`rootDir` 等路径均**相对于本目录**书写，因此指向源码时使用 `../` 回到项目根目录。
 
 项目根目录另有一个 `[../tsconfig.json](../tsconfig.json)`，仅含 `"extends": "./tsconfig/tsconfig.json"`，供 Cursor / VS Code 自动发现渲染进程配置；不参与额外编译规则。
 
@@ -18,7 +18,7 @@
 
 ## 为何拆成多个文件？
 
-ZTerm 是 Electron 应用，源码并非跑在同一个 JavaScript 运行时里。把全部 `.ts` 丢进一个 `tsconfig.json`，TypeScript 只能选**一套** `module` / `moduleResolution` / `lib` / `jsx` / `noEmit` 规则——而这几套代码的打包方式、可用 API、是否产出文件都互不相同，合并后必然有一部分目录类型检查失败，或 IDE 提示与真实构建行为不一致。
+ZenTerm 是 Electron 应用，源码并非跑在同一个 JavaScript 运行时里。把全部 `.ts` 丢进一个 `tsconfig.json`，TypeScript 只能选**一套** `module` / `moduleResolution` / `lib` / `jsx` / `noEmit` 规则——而这几套代码的打包方式、可用 API、是否产出文件都互不相同，合并后必然有一部分目录类型检查失败，或 IDE 提示与真实构建行为不一致。
 
 下面按「运行环境 → 规则冲突 → 打包链路 → 目录边界 → 若强行合并会怎样」说明拆分原因。
 
@@ -65,7 +65,7 @@ flowchart TB
 
 ### 1. 模块解析规则无法统一
 
-TypeScript 的 `moduleResolution` 决定 `import` 如何解析到文件、是否要求 `.js` 扩展名、如何处理 `package.json` 的 `"exports"` 等。ZTerm 里至少有两种互斥策略：
+TypeScript 的 `moduleResolution` 决定 `import` 如何解析到文件、是否要求 `.js` 扩展名、如何处理 `package.json` 的 `"exports"` 等。ZenTerm 里至少有两种互斥策略：
 
 
 | 策略                              | 使用方         | 原因                                                    |
@@ -77,7 +77,7 @@ TypeScript 的 `moduleResolution` 决定 `import` 如何解析到文件、是否
 主进程里的典型写法（编译后 Node 按 ESM 加载）：
 
 ```ts
-import type { SshConnectConfig } from '../../shared/zterm-api.js'
+import type { SshConnectConfig } from '../../shared/zenterm-api.js'
 ```
 
 渲染进程里同类文件往往不带 `.js` 后缀，且可走 `@/` 别名：
@@ -94,7 +94,7 @@ import { something } from '@/lib/foo'
 文中 **bundler** 有两层含义，不要混为一谈：
 
 
-| 层面               | 含义                                                                                                                                           | ZTerm 中的对应                                                |
+| 层面               | 含义                                                                                                                                           | ZenTerm 中的对应                                                |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | **打包工具（日常说法）**   | 把许多 `.ts` / `.tsx` / `.css` 等打成浏览器或 Node 能加载的少量 JS 的工具                                                                                       | 渲染进程用 **Vite**；Preload 用 **esbuild**；测试由 **Vitest** 走类似解析 |
 | **tsconfig 选项值** | `compilerOptions.moduleResolution` 设为 `"bundler"`，告诉 TypeScript：**这段代码的 `import` 最终会交给打包工具处理**，类型检查应按 bundler 的解析习惯来，而不是按 Node 直接跑 `.js` 的规则 | `tsconfig.json`、`tsconfig.node.json`                      |
@@ -122,7 +122,7 @@ import { something } from '@/lib/foo'
 |             | `moduleResolution: "bundler"`                | `moduleResolution: "NodeNext"`                      |
 | ----------- | -------------------------------------------- | --------------------------------------------------- |
 | 假设的运行方式     | 先经 Vite 等打包，再进浏览器                            | Node 直接 `import` 编译后的 `.js`                         |
-| 典型 `import` | `from '@/lib/foo'`、`from '../../shared/ipc'` | `from '../../shared/zterm-api.js'`（ESM 常须 `.js` 后缀） |
+| 典型 `import` | `from '@/lib/foo'`、`from '../../shared/ipc'` | `from '../../shared/zenterm-api.js'`（ESM 常须 `.js` 后缀） |
 | 本项目的使用范围    | `src/`、`tests/`、配置文件                         | `electron/` 主进程、Preload                             |
 
 
@@ -145,7 +145,7 @@ import { something } from '@/lib/foo'
 
 ### 3. 打包链路不同，emit 策略必须分开
 
-ZTerm 并非「一个 `tsc` 编完全部」：
+ZenTerm 并非「一个 `tsc` 编完全部」：
 
 ```
 渲染进程：  src/*.tsx  ──Vite──►  dist/（给 BrowserWindow 加载）
@@ -162,14 +162,14 @@ Preload：   preload.ts   ──esbuild（CJS）──► dist-electron/electron
 
 ### 4. `shared/` 为何出现在多个 include 里？
 
-`shared/` 存放前后端共用的类型与纯函数（如 `zterm-api`、`ipc` 工具）。它会被 **渲染进程、主进程、测试** 分别 import，因此会同时出现在：
+`shared/` 存放前后端共用的类型与纯函数（如 `zenterm-api`、`ipc` 工具）。它会被 **渲染进程、主进程、测试** 分别 import，因此会同时出现在：
 
 - `tsconfig.json` 的 `include`（前端与测试引用）
 - `tsconfig.main.json` 的 `include`（主进程引用，且随主进程一起编译进 `dist-electron/shared/`）
 
 这不是重复配置失误，而是 **同一份源码要在不同模块解析规则下各自通过检查**。`shared` 内文件应尽量保持环境无关（少碰 `window` / `fs`），以便两套配置都能消费。
 
-Preload 通过 `import type` 引用 `shared/zterm-api.js` 等，类型检查由 `tsconfig.preload.json` 覆盖；运行时 preload 由 esbuild 打包进单文件，不单独 emit `shared` 目录。
+Preload 通过 `import type` 引用 `shared/zenterm-api.js` 等，类型检查由 `tsconfig.preload.json` 覆盖；运行时 preload 由 esbuild 打包进单文件，不单独 emit `shared` 目录。
 
 ### 5. Preload 为何单独一个文件？
 

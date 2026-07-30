@@ -105,8 +105,8 @@ export async function normalizeImportedLogPath(raw: unknown, fallback: string = 
   const p = raw.trim()
   if (!p) return ''
   try {
-    if (typeof window !== 'undefined' && window.zterm?.paths?.validateLogDirectory && isLikelyAbsoluteLogPath(p)) {
-      const vr = await window.zterm.paths.validateLogDirectory(p)
+    if (typeof window !== 'undefined' && window.zenterm?.paths?.validateLogDirectory && isLikelyAbsoluteLogPath(p)) {
+      const vr = await window.zenterm.paths.validateLogDirectory(p)
       if (isIpcFailure(vr)) return fb
     }
     return p

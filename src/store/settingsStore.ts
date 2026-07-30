@@ -11,9 +11,9 @@ import {
 } from '../lib/settings/normalize'
 
 /** 本地存储设置的键名 */
-const SETTINGS_KEY = 'zterm_settings'
+const SETTINGS_KEY = 'zenterm_settings'
 /** 默认放在系统下载目录下的日志子文件夹名 */
-export const LOG_PATH_SUBFOLDER = 'zterm-session-log'
+export const LOG_PATH_SUBFOLDER = 'zenterm-session-log'
 
 /** 由 app:getDownloadsPath invoke 填充的系统下载目录缓存 */
 let cachedDownloadsPath = ''
@@ -24,7 +24,7 @@ let cachedDownloadsPath = ''
  */
 export async function refreshDownloadsPathCache() {
   try {
-    const res = await window?.zterm?.paths?.getDownloadsPath?.()
+    const res = await window?.zenterm?.paths?.getDownloadsPath?.()
     cachedDownloadsPath = ipcPathFromResponse(res)
   } catch {
     cachedDownloadsPath = ''
@@ -53,7 +53,7 @@ function buildDefaultLogPathFromBase(base: string) {
 }
 
 /**
- * 默认日志目录：系统下载目录下的 zterm-session-log（需先 refreshDownloadsPathCache）
+ * 默认日志目录：系统下载目录下的 zenterm-session-log（需先 refreshDownloadsPathCache）
  * @returns 默认日志目录
  */
 export function getDefaultLogPath() {

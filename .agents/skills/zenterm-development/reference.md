@@ -1,4 +1,4 @@
-# ZTerm 参考手册
+# ZenTerm 参考手册
 
 供 SKILL.md 引用的详细映射；仅在需要定位文件或理解数据流时阅读。
 
@@ -30,7 +30,7 @@ src/                      # 前端（渲染进程 React）
 
 shared/                   # 前后端共用（类型、契约、纯函数）
   ipc.ts                  IpcOk / IpcFail / IpcError
-  zterm-api.d.ts          window.zterm 契约
+  zenterm-api.d.ts          window.zenterm 契约
   sshAlgorithmDefaults.ts
   privateKeyMaterial.ts
   terminalEncoding.ts
@@ -89,16 +89,16 @@ Worker 消息类型见 `electron/types/workerMessages.ts`。
 
 **userData**（因平台而异）：
 
-- Windows: `%APPDATA%/zterm/`
-- macOS: `~/Library/Application Support/zterm/`
-- Linux: `~/.config/zterm/`
+- Windows: `%APPDATA%/zenterm/`
+- macOS: `~/Library/Application Support/zenterm/`
+- Linux: `~/.config/zenterm/`
 
 | 文件/键 | 内容 |
 |---------|------|
-| `zterm-known-hosts.json` | SSH 主机 SHA256 指纹 |
-| `zterm-credentials-vault.json` | encrypted 密码/私钥/passphrase |
-| `localStorage.zterm_saved_sessions` | 会话元数据（无密钥） |
-| `localStorage.zterm_settings` | 应用设置 |
+| `zenterm-known-hosts.json` | SSH 主机 SHA256 指纹 |
+| `zenterm-credentials-vault.json` | encrypted 密码/私钥/passphrase |
+| `localStorage.zenterm_saved_sessions` | 会话元数据（无密钥） |
+| `localStorage.zenterm_settings` | 应用设置 |
 
 ## 开发构建流水线
 

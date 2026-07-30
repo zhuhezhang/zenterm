@@ -283,7 +283,7 @@ export function SessionProvider({
     const label = s?.label || `${s?.type?.toUpperCase?.() || 'SESSION'}_${(s && sessionEndpoint(s)) || s?.id || sessionId}`
     const filename = `${fileTimestamp()}_${safeFileToken(label)}.txt`
     try {
-      const res = await window.zterm?.save?.saveFile('terminalOutput', filename, text)
+      const res = await window.zenterm?.save?.saveFile('terminalOutput', filename, text)
       if (res?.content?.canceled) return
       if (alertIpcFailure(t, res, 'app.saveOutputFail')) return
       alert(t('app.saveOutputOk'))
