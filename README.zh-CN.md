@@ -99,11 +99,11 @@ ZenTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台�
 
 ## 界面预览
 
-![ZenTerm 欢迎界面](docs/images/welcome.png)
+![ZenTerm 欢迎界面](docs/images/welcome.zh-CN.png)
 
-![ZenTerm 设置](docs/images/settings.png)
+![ZenTerm 设置](docs/images/settings.zh-CN.png)
 
-![ZenTerm 连接](docs/images/connection.png)
+![ZenTerm 连接](docs/images/connection.zh-CN.png)
 
 ---
 
