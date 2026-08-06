@@ -1,7 +1,7 @@
 {
   "name": "zenterm",
   "private": true,
-  "version": "3.2.9",
+  "version": "3.3.0",
   "description": "A cross-platform terminal emulator built with Electron, React, and xterm.js, supporting SSH, SFTP, serial, and Telnet",
   "homepage": "https://github.com/zhuhezhang/zenterm",
   "homepageBackup": "https://gitee.com/zhuhezhang/zenterm",
@@ -35,7 +35,8 @@
     "electron": "electron .",
     "dev:renderer": "vite",
     "dev:electron": "wait-on tcp:5173 && concurrently -k \"npm:watch:main\" \"wait-on dist-electron/electron/main.js dist-electron/electron/preload.cjs && nodemon --watch dist-electron --ext js,cjs --delay 1500 --exec \\\"electron .\\\"\"",
-    "dev:electron:no-restart": "wait-on tcp:5173 && concurrently -k \"npm:watch:main\" \"wait-on dist-electron/electron/main.js dist-electron/electron/preload.cjs && electron .\""
+    "dev:electron:no-restart": "wait-on tcp:5173 && concurrently -k \"npm:watch:main\" \"wait-on dist-electron/electron/main.js dist-electron/electron/preload.cjs && electron .\"",
+    "mod:ver": "node scripts/modify-project-version.mjs"
   },
   "dependencies": {
     "iconv-lite": "^0.6.3",

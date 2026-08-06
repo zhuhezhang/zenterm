@@ -1,6 +1,6 @@
 # ZenTerm
 
-简体中文 · **[English](README.md)** · v3.2.9
+简体中文 · **[English](README.md)** · v3.3.0
 
 ZenTerm 是一款基于 **Electron**、**React** 与 **xterm.js** 的跨平台桌面终端模拟器。支持 **SSH**、**SFTP**、**Telnet** 与 **串口（Serial）** 连接，并提供会话保存、层级分组、加密凭据存储，以及无边框自定义界面（深色/浅色主题、中英双语）。
 
@@ -242,6 +242,14 @@ npm run test        # Vitest，tests/**/*.test.ts
 ---
 
 ## 构建与发布
+
+发布前可用以下命令一次性同步版本号（`package.json` 与两份 README 顶部）：
+
+```bash
+npm run mod:ver -- 3.3.0
+```
+
+会同时更新 `package.json` 的 `"version"`，以及 `README.md` / `README.zh-CN.md` 第 3 行的 `vX.Y.Z`。新版本号写在 `--` 之后（npm 需要 `--` 才能把参数传给脚本）。
 
 ```bash
 npm run build              # 当前平台：NSIS + 便携版 + zip（Windows）等 → release/

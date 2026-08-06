@@ -1,6 +1,6 @@
 # ZenTerm
 
-**[简体中文](README.zh-CN.md)** · English · v3.2.9
+**[简体中文](README.zh-CN.md)** · English · v3.3.0
 
 ZenTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
 
@@ -242,6 +242,14 @@ npm run test        # Vitest, tests/**/*.test.ts
 ---
 
 ## Build & Release
+
+Bump the app version in `package.json` and both README headers in one step:
+
+```bash
+npm run mod:ver -- 3.3.0
+```
+
+This updates `package.json` `"version"`, plus the `vX.Y.Z` marker on line 3 of `README.md` and `README.zh-CN.md`. Pass the new semver after `--` (required so npm forwards the argument).
 
 ```bash
 npm run build              # current platform → release/ (e.g. NSIS + portable + zip on Windows)
