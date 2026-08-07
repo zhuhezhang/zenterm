@@ -1,8 +1,8 @@
 # ZenTerm
 
-**[简体中文](README.zh-CN.md)** · English · v3.3.2
+**[简体中文](README.zh-CN.md)** · English · v3.3.3
 
-ZenTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, **Serial**, and **Local** (system shell) connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
+Most remote terminals are packed with features I rarely need. They aren’t simple enough for me, so this project was born. ZenTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, **Serial**, and **Local** (system shell) connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
 
 ---
 
