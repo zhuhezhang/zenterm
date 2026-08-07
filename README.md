@@ -1,8 +1,8 @@
 # ZenTerm
 
-**[简体中文](README.zh-CN.md)** · English · v3.3.0
+**[简体中文](README.zh-CN.md)** · English · v3.3.2
 
-ZenTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, and **Serial** connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
+ZenTerm is a cross-platform desktop terminal emulator built with **Electron**, **React**, and **xterm.js**. It supports **SSH**, **SFTP**, **Telnet**, **Serial**, and **Local** (system shell) connections, with saved sessions, hierarchical grouping, encrypted credential storage, and a polished custom UI (frameless window, dark/light themes, bilingual interface).
 
 ---
 
@@ -36,13 +36,14 @@ ZenTerm is a cross-platform desktop terminal emulator built with **Electron**, *
 | **SFTP**   | File browser in the sidebar: list, upload, download, mkdir, rename, delete; progress events; local paths restricted to safe user directories |
 | **Telnet** | Raw TCP Telnet client                                                                                                                        |
 | **Serial** | Local serial ports via `serialport` (baud rate, data/stop bits, parity); port list must be chosen from enumerated devices                    |
+| **Local**  | Interactive system shell via `node-pty` (ConPTY on Windows); optional shell path and working directory (empty = default shell / home); cwd checked by the same local path policy |
 
 
 ### Session management
 
 - Save sessions with **label**, **group** (hierarchical paths), and connection parameters
 - **Empty group placeholders** — create folder-like groups before adding sessions
-- **Search** saved sessions by name, host, or serial path (**Ctrl/Cmd+F**)
+- **Search** saved sessions by name, host, serial path, or local shell (**Ctrl/Cmd+F**)
 - **Duplicate**, **rename**, **edit**, **delete** sessions; optional confirm dialogs
 - **Export / import** session lists (JSON envelope, v1); import from **Settings** or the **sidebar**
 - **Connect**, **Save & connect**, or **Save only** from the connection dialog
@@ -54,7 +55,7 @@ ZenTerm is a cross-platform desktop terminal emulator built with **Electron**, *
 - **Press R to reconnect** after a session disconnects or an initial connection fails
 - **In-terminal search**: incremental find with match highlighting; **case sensitive**, **whole word**, and **regex** modes; prev/next navigation; open via tab context menu or **Ctrl/Cmd+Shift+F**
 - **Character encodings**: UTF-8, GBK, GB18030, GB2312, Big5, UTF-16 LE, Latin-1 (via `iconv-lite` in the main process)
-- **Backspace mode** (per session): Auto (DEL for SSH, BS for Telnet/Serial), or force DEL / BS
+- **Backspace mode** (per session): Auto (DEL for SSH/Local, BS for Telnet/Serial), or force DEL / BS
 - **Terminal interaction**: select-to-copy and right-click paste (toggle in settings)
 - **Output highlighting**: regex rules with colors (defaults for error/success/warning/IP)
 - **Tab bar**: new connection, close tab/others/left/right/all, clear screen, save terminal output to file
@@ -75,7 +76,7 @@ ZenTerm is a cross-platform desktop terminal emulator built with **Electron**, *
 - **SSH host key verification** (known-hosts style, `userData/zenterm-known-hosts.json`); prompts on first connect and fingerprint change
 - **Weak SSH algorithms** flagged in settings; modern defaults exclude legacy CBC / SHA-1 / `ssh-rsa` where possible
 - Optional **encrypted vault** for passwords and keys (`safeStorage` when available)
-- **Local path policy** for logs and SFTP: home, Documents, Downloads, Desktop, Music/Pictures/Videos, userData; on Windows, non-system drive roots (e.g. `D:\`) are also allowed
+- **Local path policy** for logs, SFTP local paths, and Local-shell working directories: home, Documents, Downloads, Desktop, Music/Pictures/Videos, userData; on Windows, non-system drive roots (e.g. `D:\`) are also allowed
 
 ---
 
@@ -118,6 +119,7 @@ Global shortcuts work when ZenTerm is focused. On macOS use **Cmd**; on Windows 
 | Terminal      | @xterm/xterm 5, Fit / Web Links / Search addons |
 | SSH / SFTP    | ssh2                                       |
 | Serial        | serialport 12                              |
+| Local shell   | node-pty (N-API prebuilds)                 |
 | Encoding      | iconv-lite                                 |
 | Testing       | Vitest 3                                   |
 | Packaging     | electron-builder                           |
@@ -178,7 +180,7 @@ Frontend src/ (React / xterm)
 Backend electron/ (handlers + lib)
     │  worker threads (SSH / SFTP)
     ▼
-Remote host / local serial / OS keychain (safeStorage)
+Remote host / local serial / local PTY shell / OS keychain (safeStorage)
 
 shared/* ── used by frontend and backend (IPC types, algorithms, encodings, error codes)
 ```
@@ -191,7 +193,7 @@ shared/* ── used by frontend and backend (IPC types, algorithms, encodings, 
 
 - **Node.js** 18+ (LTS recommended; CI uses Node 22)
 - **npm** 9+
-- **Platform build tools** (for native modules):
+- **Platform build tools** (for native modules such as Serial / optional node-pty rebuild):
   - **macOS**: Xcode Command Line Tools
   - **Windows**: Visual Studio Build Tools, Python (for `node-gyp`)
   - **Linux**: `build-essential`, `libudev-dev` (for Serial)
@@ -302,8 +304,9 @@ Exported **sessions** and **settings** use a versioned JSON envelope (max file s
 2. **Trusted IPC**: Window control, logging, and credential APIs reject senders that are not the registered main window.
 3. **SSH MITM mitigation**: Host keys are recorded; unknown or changed fingerprints require user confirmation in a native dialog.
 4. **Algorithm hygiene**: Defaults prefer modern AEAD ciphers and EtM MACs; legacy options remain selectable for old equipment but are marked weak in the UI.
-5. **Path sandboxing**: Session logs and SFTP local paths must resolve under allowed user folders, app `userData`, or (Windows) non-system drive roots; denials return structured `SFTP_ERROR` codes mapped to i18n in the renderer.
+5. **Path sandboxing**: Session logs, SFTP local paths, and Local-shell working directories must resolve under allowed user folders, app `userData`, or (Windows) non-system drive roots; denials return structured IPC error codes mapped to i18n in the renderer.
 6. **Serial safety**: Connect only accepts paths returned by `listPorts` (refreshed list), reducing arbitrary device open attempts.
+7. **Local shell**: Optional explicit shell path must exist when it contains path separators; bare command names resolve via `PATH`. Working directory defaults to the user home when empty.
 
 This app is a convenience tool, not a full security audit. Review your threat model before storing production keys in the vault.
 
@@ -338,10 +341,13 @@ Typical `userData` paths:
 | Issue                                                                                                                                                                               | Suggestions                                                                                                                                                                                                                                                                                                                                                           |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm install` fails on `serialport`                                                                                                                                                 | Install platform build tools; on Linux install `libudev-dev`                                                                                                                                                                                                                                                                                                          |
+| Local shell fails / `node-pty` unavailable                                                                                                                                          | Ensure `node-pty` installed (N-API prebuilds under `prebuilds/`); packaging unpacks `**/node_modules/node-pty/**`. Optional: `npm run rebuild:native` if you must rebuild against Electron                                                                                                                                                                           |
+| Local shell “working directory not allowed”                                                                                                                                         | Pick a cwd under home/Documents/Downloads (or another allowed root); empty cwd uses the user home                                                                                                                                                                                                                                                                     |
 | SSH algorithm mismatch                                                                                                                                                              | Open Settings → SSH & Terminal → algorithms; enable legacy KEX/cipher required by the server                                                                                                                                                                                                                                                                          |
 | Garbled Chinese output                                                                                                                                                              | Set session encoding to **GBK** or **GB18030**                                                                                                                                                                                                                                                                                                                        |
 | SFTP “path not allowed”                                                                                                                                                             | Choose a directory under Downloads/Documents/home, not system paths                                                                                                                                                                                                                                                                                                   |
 | Serial port not listed                                                                                                                                                              | Click **Refresh**; on Linux ensure user is in `dialout` group                                                                                                                                                                                                                                                                                                         |
+| `No handler registered for 'local:connect'`                                                                                                                                         | Restart `npm run dev` so the main process loads after `build:main` (dev scripts now build main before launching Electron)                                                                                                                                                                                                                                             |
 | Host key prompt every time                                                                                                                                                          | Check write permissions for `userData`; do not run from read-only profiles                                                                                                                                                                                                                                                                                            |
 | Import fails / wrong file type                                                                                                                                                      | Use the correct export file (`sessions` vs `settings`); max 8 MB                                                                                                                                                                                                                                                                                                      |
 | Changes under `electron/` not applied                                                                                                                                             | Ensure `npm run dev` is running and `tsc -w` recompiled; type `rs` in nodemon; or run `npm run build:main`                                                                                                                                                                                                                                                            |

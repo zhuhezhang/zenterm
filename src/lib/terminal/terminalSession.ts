@@ -13,7 +13,7 @@ import { assertIpcSuccess } from '../ipc/ipcError'
 import { getZenterm } from '@/lib/ipc/getZenterm'
 import { formatThrownIpcError } from '@/lib/ipc/formatIpcError'
 import { getXtermTheme } from '../../theme/appTheme'
-import { pickSerialConnectConfig, pickSshConnectConfig, pickTelnetConnectConfig } from '../session/connectPayload'
+import { pickLocalConnectConfig, pickSerialConnectConfig, pickSshConnectConfig, pickTelnetConnectConfig } from '../session/connectPayload'
 import { applyHighlightRules, nextLineBreakEndIndex } from './terminalHighlight'
 import { attachMissingControlKeys } from './missingControlKeys'
 import type { ActiveSession, SessionType } from '../../types/session'
@@ -125,7 +125,7 @@ export function applyTerminalSettings(
 }
 
 /**
- * 断开主进程侧会话 transport（SSH/Telnet/Serial，及可选 SFTP）。
+ * 断开主进程侧会话 transport（SSH/Telnet/Serial/Local，及可选 SFTP）。
  * 标签页关闭或连接中途取消时调用；重复 disconnect 安全
  * @param session 会话对象，包含会话 ID、类型和可选 SFTP 配置
  * @param options 可选参数，包含是否包含 SFTP 配置
@@ -145,6 +145,8 @@ export function teardownSessionTransport(
       void zenterm.telnet.disconnect(id)
     } else if (type === 'serial') {
       void zenterm.serial.disconnect(id)
+    } else if (type === 'local') {
+      void zenterm.local.disconnect(id)
     }
   } catch {
     /* 主进程会话可能尚未建立或已断开 */
@@ -169,7 +171,7 @@ function abortIfCancelled(
 }
 
 /**
- * 连接会话：根据会话类型（SSH/Telnet/Serial）调用对应的连接函数，设置数据接收和连接关闭的处理函数，并将清理函数添加到 cleanupRef 以便组件卸载时调用
+ * 连接会话：根据会话类型（SSH/Telnet/Serial/Local）调用对应的连接函数，设置数据接收和连接关闭的处理函数，并将清理函数添加到 cleanupRef 以便组件卸载时调用
  * @param term xterm 终端实例
  * @param session 会话对象，包含连接信息和状态
  * @param onUpdate 会话状态更新回调函数
@@ -382,6 +384,37 @@ export async function connectSession(
           serialHighlightBuf = ''
         }
       }, r1, r2, () => d1.dispose(), () => zenterm.serial.disconnect(id))
+    } catch (e) {
+      if (isCancelled?.()) return
+      writeError(terminalErr(e))
+      showReconnectHint()
+      onUpdate({ status: 'error' })
+    }
+  } else if (session.type === 'local') {
+    const shellHint = String(session.shell ?? '').trim() || 'default'
+    writeInfo(translateRender(L(), 'terminal.localConnecting', { shell: shellHint }))
+    try {
+      const zenterm = getZenterm()
+      const dim = proposeTerminalDimensions(term) || { cols: 80, rows: 24 }
+      const connectPayload = {
+        ...pickLocalConnectConfig(session),
+        cols: dim.cols,
+        rows: dim.rows,
+      }
+      const res = await zenterm.local.connect(id, connectPayload)
+      if (abortIfCancelled(session, isCancelled)) return
+      assertIpcSuccess(res)
+      writeSuccess(translateRender(L(), 'terminal.connected'))
+      onUpdate({ status: 'connected' })
+      zenterm.local.resize(id, dim.cols, dim.rows)
+
+      const r1 = zenterm.local.onData(id, recv)
+      const r2 = zenterm.local.onClose(id, () => onDisconnect('terminal.closed'))
+      const d1 = term.onData((data) => {
+        zenterm.local.sendData(id, normalizeInputData(type, data, sessionRef.current), terminalEncoding)
+      })
+      const d2 = term.onResize(({ cols, rows }) => zenterm.local.resize(id, cols, rows))
+      cleanupRef.current.push(r1, r2, () => d1.dispose(), () => d2.dispose(), () => zenterm.local.disconnect(id))
     } catch (e) {
       if (isCancelled?.()) return
       writeError(terminalErr(e))

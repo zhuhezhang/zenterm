@@ -13,6 +13,7 @@ electron/                 # 后端（主进程 + Worker + preload 桥梁）
   handlers/
     ssh.ts sftp.ts        委托 Worker；SFTP 走 CMD_RESULT 桥接
     telnet.ts serial.ts   主进程直连 TCP/serialport
+    local.ts              主进程 node-pty 本机 Shell（含 resize）
     credentials.ts        vault 读写 IPC
     app.ts window.ts log.ts
   workers/
@@ -47,9 +48,10 @@ scripts/build-electron.ts tsc main + esbuild preload
 
 | 前缀 | 模式 | 示例 |
 |------|------|------|
-| `ssh:` | invoke + send/on | `ssh:connect`, `ssh:data`, `ssh:output` |
+| `ssh:` | invoke + send/on | `ssh:connect`, `ssh:data`, `ssh:output`, `ssh:resize` |
 | `sftp:` | invoke + Worker CMD | `sftp:list`, `sftp:download` |
-| `telnet:` / `serial:` | 同 ssh 流式 | |
+| `telnet:` / `serial:` | 同 ssh 流式（无 resize） | |
+| `local:` | 同 ssh 流式 + resize | `local:connect`, `local:data`, `local:output`, `local:resize` |
 | `credentials:` | invoke | `credentials:sync` |
 | `app:` / `window:` / `log:` | invoke/send | |
 
@@ -62,8 +64,9 @@ Worker 消息类型见 `electron/types/workerMessages.ts`。
 | `ipcResponse` | ipcOk / ipcFail / createIpcError |
 | `workerCmdResult` | Worker CMD_RESULT ↔ IPC |
 | `trustedSender` | 限制主窗口 webContents |
-| `localPathPolicy` | 收集允许根、validate/assert 路径 |
+| `localPathPolicy` | 收集允许根、validate/assert 路径（日志 / SFTP / Local cwd） |
 | `localPathRoots` | `isPathWithinResolvedRoots` 纯函数 |
+| `localShellResolve` | Local：默认 shell/cwd、显式路径校验、Unix `-l`、PTY 尺寸夹取 |
 | `sftpLocalPathRoots` | SFTP 下载/上传路径拼接与校验 |
 | `sshKnownHosts` | known_hosts JSON + 弹窗 |
 | `hostVerifyMessage` | Worker HOST_VERIFY 桥接 |
@@ -106,6 +109,7 @@ Worker 消息类型见 `electron/types/workerMessages.ts`。
 npm run dev
 ├── dev:renderer     vite :5173
 └── dev:electron
+    ├── build:main   先完整编译主进程 + preload（避免 IPC handler 未注册竞态）
     ├── watch:main   tsc -p tsconfig/tsconfig.main.json -w
     │                esbuild preload --watch
     └── nodemon      监视 dist-electron → electron .
@@ -116,6 +120,7 @@ npm run build
 └── electron-builder → release/
 ```
 
+`node-pty`：N-API 预编译 + `asarUnpack`；可选 `npm run rebuild:native`。
 ## Preload 为何是 .cjs
 
 根 `package.json` 有 `"type": "module"`，preload 必须 CJS 且输出 `.cjs`，否则 Electron 按 ESM 加载会失败。

@@ -3,11 +3,11 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { ZenTermApi, ZenTermProgress, VaultSecretPartial } from '../shared/zenterm-api.js'
 
 /** 
- * SSH / Telnet / Serial 共用的流式会话 IPC 桥接
- * @param prefix 前缀：ssh / telnet / serial
+ * SSH / Telnet / Serial / Local 共用的流式会话 IPC 桥接
+ * @param prefix 前缀：ssh / telnet / serial / local
  * @returns 流式会话 IPC 桥接
  */
-function createStreamSessionBridge(prefix: 'ssh' | 'telnet' | 'serial') {
+function createStreamSessionBridge(prefix: 'ssh' | 'telnet' | 'serial' | 'local') {
   const outputChannel = `${prefix}:output`
   const closedChannel = `${prefix}:closed`
   return {
@@ -75,6 +75,11 @@ const zentermApi = {
   serial: {
     listPorts: () => ipcRenderer.invoke('serial:listPorts'),
     ...createStreamSessionBridge('serial'),
+  },
+
+  local: {
+    ...createStreamSessionBridge('local'),
+    resize: (id: string, cols: number, rows: number) => ipcRenderer.send('local:resize', id, cols, rows),
   },
 
   credentials: {

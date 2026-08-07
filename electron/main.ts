@@ -6,6 +6,7 @@ import { setupSSHHandlers } from './handlers/ssh.js'  // import 里的路径是�
 import { setupSFTPHandlers } from './handlers/sftp.js'
 import { setupTelnetHandlers } from './handlers/telnet.js'
 import { setupSerialHandlers } from './handlers/serial.js'
+import { setupLocalHandlers } from './handlers/local.js'
 import { setupCredentialHandlers } from './handlers/credentials.js'
 import { setupWindowHandlers, attachWindowMaximizeEvents, attachZoomWheelHandler } from './handlers/window.js'
 import { setupAppHandlers } from './handlers/app.js'
@@ -45,6 +46,7 @@ function registerIpcHandlersOnce() {
   setupSFTPHandlers(ipcMain, getMainWindow)  // 设置 SFTP 相关的 IPC 处理函数
   setupTelnetHandlers(ipcMain, getMainWindow)  // 设置 Telnet 相关的 IPC 处理函数
   setupSerialHandlers(ipcMain, getMainWindow)  // 设置 Serial 相关的 IPC 处理函数
+  setupLocalHandlers(ipcMain, getMainWindow)  // 设置 Local Shell 相关的 IPC 处理函数
   setupCredentialHandlers(ipcMain)  // 设置凭据处理程序
 }
 

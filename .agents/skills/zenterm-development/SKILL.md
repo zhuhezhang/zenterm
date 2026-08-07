@@ -1,14 +1,14 @@
 ---
 name: zenterm-development
 description: >-
-  Develop, debug, test, and release the ZenTerm Electron terminal app (SSH/SFTP/Telnet/Serial).
+  Develop, debug, test, and release the ZenTerm Electron terminal app (SSH/SFTP/Telnet/Serial/Local).
   Use when working in the zenterm repo. Code layout: src/ frontend, electron/ backend,
   shared/ frontend-backend shared. Also for IPC, path policy, Vitest, electron-builder, release.
 ---
 
 # ZenTerm 开发 Skill
 
-跨平台 Electron 终端：React 渲染进程 + Node 主进程 + Worker 线程（ssh2/SFTP）。连接类型：SSH、SFTP、Telnet、Serial。
+跨平台 Electron 终端：React 渲染进程 + Node 主进程 + Worker 线程（ssh2/SFTP）。连接类型：SSH、SFTP、Telnet、Serial、Local（本机 Shell / node-pty）。
 
 ## 代码三分法（最重要）
 
@@ -17,13 +17,13 @@ ZenTerm 源码按**前后端 + 共享**划分，改代码前先确认归属：
 | 目录 | 角色 | 运行环境 | 说明 |
 |------|------|----------|------|
 | **`src/`** | **前端** | Electron 渲染进程（Chromium） | React UI、xterm、会话/设置 store、消费 `window.zenterm` IPC |
-| **`electron/`** | **后端** | Electron 主进程 + Worker | 主进程 handlers、系统 API（文件/对话框/凭据/串口）、ssh2 Worker |
+| **`electron/`** | **后端** | Electron 主进程 + Worker | 主进程 handlers、系统 API（文件/对话框/凭据/串口/本机 PTY）、ssh2 Worker |
 | **`shared/`** | **前后端共用** | 两侧均可 import | IPC 类型、API 契约、算法默认值、与协议无关的纯工具函数 |
 
 **边界规则：**
 
 - 前端 **不** 直接访问 Node/Electron API；一律经 `electron/preload.ts` → `window.zenterm`
-- 后端 **不** 写 React/UI；负责 IPC、文件 I/O、加密存储、网络/串口
+- 后端 **不** 写 React/UI；负责 IPC、文件 I/O、加密存储、网络/串口/本机 PTY
 - 需要前后端对齐的类型/常量/纯函数放 **`shared/`**，避免在 `src/` 与 `electron/` 各写一份
 - `electron/preload.ts` 是桥梁（后端编译、前端调用），逻辑归属后端目录
 
@@ -47,8 +47,8 @@ ZenTerm 源码按**前后端 + 共享**划分，改代码前先确认归属：
 |----|------|------|
 | 前端 | `src/` | UI、会话/设置 localStorage、IPC 消费 |
 | 共用 | `shared/` | IPC 类型、`zenterm-api.d.ts`、算法默认值、编码工具 |
-| 后端 | `electron/handlers/` | IPC 注册、弹窗、转发 Worker |
-| 后端库 | `electron/lib/` | 路径策略、known_hosts、凭据、SSH 配置、对话框 |
+| 后端 | `electron/handlers/` | IPC 注册、弹窗、转发 Worker；Telnet/Serial/Local 在主进程直连 |
+| 后端库 | `electron/lib/` | 路径策略、known_hosts、凭据、SSH 配置、本机 Shell 解析、对话框 |
 | 后端 Worker | `electron/workers/` | 阻塞式 ssh2 I/O、SFTP 操作 |
 | 测试 | `tests/` | Vitest，`environment: node` |
 
@@ -61,7 +61,8 @@ ZenTerm 源码按**前后端 + 共享**划分，改代码前先确认归属：
 | UI / 会话列表 / 设置 | **前端** `src/components/`、`src/store/`、`src/context/` |
 | 新增 IPC 能力 | **共用** `shared/zenterm-api.d.ts` → **后端** `electron/handlers/`、`electron/preload.ts` → **前端** `src/lib/ipc/` |
 | SSH/SFTP 协议逻辑 | **后端** `electron/workers/` + `electron/lib/sshConnectConfig.ts` |
-| 本地路径权限 | **后端** `electron/lib/localPathPolicy.ts`、`sftpLocalPathRoots.ts` |
+| 本机 Shell（Local） | **后端** `electron/handlers/local.ts` + `electron/lib/localShellResolve.ts`；前端 `LocalForm` / `terminalSession` |
+| 本地路径权限 | **后端** `electron/lib/localPathPolicy.ts`、`sftpLocalPathRoots.ts`（Local cwd 也走此策略） |
 | 主机指纹 | **后端** `electron/lib/sshKnownHosts.ts` |
 | 密码/私钥存储 | **后端** `electron/handlers/credentials.ts`（前端不含明文） |
 | 导入导出 JSON | **前端** `src/lib/import/` + **共用** envelope 格式 |
@@ -85,7 +86,7 @@ import { ipcOk } from '../lib/ipcResponse'     // ❌
 
 - 成功：`ipcOk({ ... })` → `{ success: true, content }`
 - 失败：`ipcFail(code, true, params)` 或 `ipcFailFromThrown(e)`
-- 已知错误用 **i18n 错误码**（如 `sftp.pathErrors.localDirDenied`），渲染进程 `formatIpcError` 翻译
+- 已知错误用 **i18n 错误码**（如 `sftp.pathErrors.localDirDenied`、`local.cwdDenied`），渲染进程 `formatIpcError` 翻译
 
 每个 handler 开头检查 `isTrustedIpcSender(event.sender)`。
 
@@ -94,7 +95,8 @@ import { ipcOk } from '../lib/ipcResponse'     // ❌
 | 操作 | 进程 |
 |------|------|
 | 读本地私钥文件、路径策略 | 主进程 `prepareSshConnectConfig` / `resolvePrivateKeyMaterial` |
-| ssh2 连接、PTY、SFTP | Worker（加载前 `legacyModp2Polyfill`） |
+| ssh2 连接、远程 PTY、SFTP | Worker（加载前 `legacyModp2Polyfill`） |
+| Telnet / Serial / Local（node-pty） | 主进程 handlers（非 Worker） |
 | 主机密钥弹窗 | 主进程 `sshKnownHosts`（Worker 发 `HOST_VERIFY`） |
 | 会话/设置持久化 | 渲染进程 `localStorage`（**不含**密钥明文） |
 | 密钥明文 | 主进程 `zenterm-credentials-vault.json` + `safeStorage` |
@@ -116,11 +118,12 @@ import { ipcOk } from '../lib/ipcResponse'     // ❌
 - `electron/types/ssh2.d.ts`：ssh2 手写类型，`tsconfig` 中 `paths` 映射 `"ssh2"`；运行时仍用 `node_modules/ssh2`
 - `electron/types/shims.d.ts`：其余 ambient 增强（如 `worker_threads`）
 - 渲染进程 `tsconfig.json` 与主进程 `tsconfig.main.json` 均须配置 `paths`，因 `moduleResolution: bundler` 不会自动拾取 ambient `declare module`
+- **node-pty**：使用带 N-API 预编译的版本；打包 `asarUnpack` 覆盖 `**/node_modules/node-pty/**`；`npmRebuild: false`。可选 `npm run rebuild:native`（勿在 Windows 上无 Spectre 库时强制 postinstall 全量 rebuild）
 
 ## 开发与构建
 
 ```bash
-npm run dev              # Vite + tsc watch + nodemon 重启 Electron
+npm run dev              # 先 build:main，再 Vite + tsc watch + nodemon 重启 Electron
 npm run typecheck        # 四套 tsconfig，合并前必跑
 npm run lint
 npm run test             # vitest run
@@ -128,7 +131,7 @@ npm run build:main       # 仅编译主进程 → dist-electron/
 npm run build            # 当前平台 electron-builder → release/
 ```
 
-**主进程热更新链**：改 `electron/**/*.ts` → `tsc -w` → `dist-electron/` → nodemon 重启。若未生效：看终端是否有 recompile；或对 nodemon 输入 `rs`；或 `npm run build:main`。
+**主进程热更新链**：改 `electron/**/*.ts` → `tsc -w` → `dist-electron/` → nodemon 重启。若未生效：看终端是否有 recompile；或对 nodemon 输入 `rs`；或 `npm run build:main`。`npm run dev` 会先 `build:main` 再启动 Electron，避免 IPC handler 未注册的竞态。
 
 **TypeScript 配置**：集中在 `tsconfig/`（见 `tsconfig/README.md`）。根 `tsconfig.json` 仅 extends 渲染配置。
 
@@ -136,8 +139,8 @@ npm run build            # 当前平台 electron-builder → release/
 
 - 文件：`tests/**/*.test.ts`，镜像 `shared/`、`electron/lib/`、`src/lib/`
 - 纯函数直接测；依赖 `electron` 的用 `vi.mock('electron', ...)`（mock 写在 import 被测模块之前）
-- 不测 React 组件、不测真实 SSH/串口
-- 新增 `electron/lib` 逻辑时优先补对应 `tests/electron/` 用例
+- 不测 React 组件、不测真实 SSH/串口/本机 PTY
+- 新增 `electron/lib` 逻辑时优先补对应 `tests/electron/` 用例（如 `localShellResolve`）
 
 ## 打包与 Release
 
@@ -174,6 +177,13 @@ JSON 写入使用 `JSON.stringify(data, null, 2)` + `.tmp` 原子替换（主进
 - 表单/API 类型：`shared/zenterm-api.ts`、`src/types/session.ts`
 - 主进程解析私钥：`prepareSshConnectConfig` → `resolvePrivateKeyMaterial`
 - Worker 组装 ssh2：`buildSshConnectConfig`
+
+**改 Local（本机 Shell）连接**
+
+- 类型/默认值：`src/types/session.ts`、`src/lib/session/defaults.ts`（`SessionType` 含 `'local'`）
+- IPC：`LocalConnectConfig` / `ZenTermLocalApi`；preload `local` 桥（含 `resize`）
+- 主进程：`handlers/local.ts`（node-pty）+ `lib/localShellResolve.ts`（shell/cwd 校验）
+- 前端：`LocalForm`、`terminalSession` local 分支；Auto 退格与 SSH 同为 DEL
 
 ## 延伸阅读
 

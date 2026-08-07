@@ -119,6 +119,7 @@
 
 .welcome-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   z-index: 1;
 }
