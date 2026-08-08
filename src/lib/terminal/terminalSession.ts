@@ -21,9 +21,9 @@ import type { AppSettings } from '../../types/settings'
 import type { SessionLogHandle } from '../../types/session'
 
 /**
- * 写入一行终端内容并按当前日志模式记入会话日志
+ * 写入一行终端内容并记入会话日志
  * @param term xterm 终端实例
- * @param logRef 日志引用，包含 scheduleSnapshot 和 enqueue 方法
+ * @param logRef 日志引用，含 scheduleSnapshot
  * @param lineForWriteln 传给 term.writeln 的字符串（不含结尾换行），用于写入终端
  */
 export function writelnWithLog(
@@ -33,7 +33,6 @@ export function writelnWithLog(
 ): void {
   term.writeln(lineForWriteln)
   logRef.current?.scheduleSnapshot?.()
-  logRef.current?.enqueue?.(lineForWriteln + '\r\n')
 }
 
 /**
@@ -238,7 +237,6 @@ export async function connectSession(
     const highlighted = applyHighlightRules(chunk, settingsRef.current)
     term.write(highlighted)
     logFileRef.current?.scheduleSnapshot?.()
-    logFileRef.current?.enqueue?.(highlighted)
   }
   /** 计划串口高亮缓冲区空闲时刷新：避免长时间无数据时高亮规则无法匹配 */
   const scheduleSerialHighlightFlush = () => {
@@ -256,7 +254,6 @@ export async function connectSession(
       const highlighted = applyHighlightRules(decoded, settingsRef.current)
       term.write(highlighted)
       logFileRef.current?.scheduleSnapshot?.()
-      logFileRef.current?.enqueue?.(highlighted)
       return
     }
     serialHighlightBuf += decoded
@@ -267,7 +264,6 @@ export async function connectSession(
       const highlighted = applyHighlightRules(line, settingsRef.current)
       term.write(highlighted)
       logFileRef.current?.scheduleSnapshot?.()
-      logFileRef.current?.enqueue?.(highlighted)
     }
     if (serialHighlightBuf.length > 8192) {  // 防止无换行长流撑爆缓冲
       const overflow = serialHighlightBuf
@@ -275,7 +271,6 @@ export async function connectSession(
       const highlighted = applyHighlightRules(overflow, settingsRef.current)
       term.write(highlighted)
       logFileRef.current?.scheduleSnapshot?.()
-      logFileRef.current?.enqueue?.(highlighted)
     }
     if (serialHighlightBuf.length === 0) {
       if (serialHighlightIdleTimer != null) {
@@ -380,7 +375,6 @@ export async function connectSession(
           const highlighted = applyHighlightRules(serialHighlightBuf, settingsRef.current)
           term.write(highlighted)
           logFileRef.current?.scheduleSnapshot?.()
-          logFileRef.current?.enqueue?.(highlighted)
           serialHighlightBuf = ''
         }
       }, r1, r2, () => d1.dispose(), () => zenterm.serial.disconnect(id))

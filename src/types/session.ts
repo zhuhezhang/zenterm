@@ -280,13 +280,11 @@ export type TerminalClearFn = () => void
 /** 打开终端内容搜索栏 */
 export type TerminalOpenSearchFn = () => void
 
-/** 终端面板内会话日志控制器（buffer / stream 模式） */
+/** 终端面板内会话日志控制器（缓冲已提交行增量追加） */
 export interface SessionLogHandle {
-  /** 调度快照 */
+  /** 调度增量提交 */
   scheduleSnapshot?: () => void
-  /** 入队 */
-  enqueue?: (s: string) => void
-  /** 立即刷新 */
+  /** 立即刷新（含当前光标行） */
   flushNow?: () => void
   /** 设置终端 */
   setTerminal?: (term: Terminal) => void

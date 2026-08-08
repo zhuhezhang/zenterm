@@ -1,7 +1,7 @@
 {
   "name": "zenterm",
   "private": true,
-  "version": "3.3.3",
+  "version": "3.3.4",
   "description": "A cross-platform terminal emulator built with Electron, React, and xterm.js, supporting SSH, SFTP, serial, Telnet, and local shell",
   "homepage": "https://github.com/zhuhezhang/zenterm",
   "homepageBackup": "https://gitee.com/zhuhezhang/zenterm",
